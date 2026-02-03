@@ -1,4 +1,3 @@
-import InviteAccept from '../pages/InviteAccept';
 import { Routes, Route, Navigate } from "react-router-dom";
 import OwnerPermissions from '../pages/OwnerPermissions';
 import LandingPage from "../pages/LandingPage";
@@ -14,7 +13,6 @@ import MyAchievements from "../pages/MyAchievements";
 import AchievementAdmin from "../pages/AchievementAdmin";
 import Permissions from "../pages/Permissions";
 
-import AllianceRoster from '../pages/AllianceRoster';
 export default function AppRoutes() {
   return (
     <Routes>
@@ -41,8 +39,6 @@ export default function AppRoutes() {
   <Route path="/auth/callback" element={<AuthCallback />} />
   <Route path="/dashboard" element={<AllianceDashboard />} />
   <Route path="/alliance/:allianceId/permissions" element={<OwnerPermissions />} />
-  <Route path="/invite/:token" element={<InviteAccept />} />
-  <Route path="/dashboard/roster" element={<AllianceRoster />} />
 </Routes>
   );
 }
@@ -50,8 +46,5 @@ export default function AppRoutes() {
 
 
 
-
-
-
-
-
+import allianceInvite from './commands/allianceInvite.js';
+commands.set(allianceInvite.name, allianceInvite);
