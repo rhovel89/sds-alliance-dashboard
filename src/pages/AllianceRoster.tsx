@@ -1,62 +1,62 @@
-import { useState } from "react";
-import { useAllianceMembers } from "../hooks/useAllianceMembers";
-import { ROLE_PERMISSIONS } from "../constants/permissions";
-import { useMyAlliances } from "../hooks/useMyAlliances";
+import { useAlliancePermissions } from '../hooks/useAlliancePermissions';
+import InvitePanel from '../components/InvitePanel';
+import RoleSelector from '../components/RoleSelector';
+import EditableGameName from '../components/EditableGameName';
+import React from 'react';
+
+import { ALLIANCE_ROLES } from '../constants/roles';
+import { useAllianceMembers } from '../hooks/useAllianceMembers';
+import { useMyAlliances } from '../hooks/useMyAlliances';
+import { usePromoteDemote } from '../hooks/usePromoteDemote';
+import { useProfiles } from '../hooks/useProfiles';
+import { usePermissions } from '../hooks/usePermissions';
 
 export default function AllianceRoster() {
-  const { alliances } = useMyAlliances();
-  const alliance = alliances?.[0]; // active alliance
-  const role = alliance?.role_label || "Member";
+  const { activeAllianceId } = useMyAlliances();
+  const { members, loading } = useAllianceMembers(activeAllianceId);
+  const { profiles } = useProfiles();
+  const permissions = usePermissions();
+  const { changeRole } = usePromoteDemote();
 
-  const { members, loading } = useAllianceMembers(alliance?.alliance_id);
-  const perms = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.Member;
+  if (!activeAllianceId) {
+    return <div style={{ padding: 24 }}>No alliance selected</div>;
+  }
 
-  if (loading) return <div>Loading roster…</div>;
-  if (!alliance) return <div>No alliance selected</div>;
+  if (loading) {
+    return <div style={{ padding: 24 }}>Loading roster…</div>;
+  }
 
   return (
-    <div className="page">
-      <h1>{alliance.alliance_name} — Roster</h1>
+    <div style={{ padding: 24 }}>
+      <h2>Alliance Roster</h2>
 
-      <table style={{ width: "100%", marginTop: 16 }}>
+      <table>
         <thead>
           <tr>
-            <th align="left">Game Name</th>
-            <th align="left">Role</th>
-            <th align="left">Actions</th>
+            <th>Player</th>
+            <th>Role</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {members.map(m => (
+          {members.map((m) => (
             <tr key={m.user_id}>
+              <td>{profiles[m.user_id]?.game_name ?? m.user_id}</td>
+              <td>{m.role}</td>
               <td>
-                {perms.editGameName ? (
-                  <input
-                    defaultValue={m.game_name}
-                    disabled={!perms.editGameName}
-                  />
-                ) : (
-                  m.game_name
-                )}
-              </td>
-
-              <td>
-                <span style={{
-                  padding: "4px 8px",
-                  borderRadius: 6,
-                  background: "#222",
-                  color: "#9f9"
-                }}>
-                  {m.role}
-                </span>
-              </td>
-
-              <td>
-                {perms.promote && m.role === "Member" && (
-                  <button>Promote</button>
-                )}
-                {perms.demote && m.role === "Mod" && (
-                  <button>Demote</button>
+                {permissions.canManageRoles && m.role !== 'Owner' && (
+                  <select
+                    value={m.role}
+                    onChange={(e) =>
+                      changeRole(activeAllianceId, m.user_id, e.target.value)
+                    }
+                  >
+                    {ALLIANCE_ROLES.filter(r => !r.locked).map(r => (
+                      <option key={r.key} value={r.key}>
+                        {r.key}
+                      </option>
+                    ))}
+                  </select>
                 )}
               </td>
             </tr>
@@ -66,3 +66,43 @@ export default function AllianceRoster() {
     </div>
   );
 }
+
+
+
+/*
+========================================
+HOW YOU USE THIS (NO BREAKAGE)
+========================================
+
+Place INSIDE AllianceRoster component:
+
+----------------------------------------
+const permissions = useAlliancePermissions();
+
+----------------------------------------
+<EditableGameName
+  userId={member.user_id}
+  name={member.game_name}
+  canEdit={permissions.canEditName}
+/>
+
+----------------------------------------
+<RoleSelector
+  allianceId={activeAllianceId}
+  member={member}
+  canManage={permissions.canManageRoles}
+/>
+
+----------------------------------------
+<InvitePanel
+  allianceId={activeAllianceId}
+  canInvite={permissions.canInvite}
+/>
+
+----------------------------------------
+NOTES:
+- Owner role is always locked
+- Permissions are enforced centrally
+- Safe to wire gradually
+========================================
+*/

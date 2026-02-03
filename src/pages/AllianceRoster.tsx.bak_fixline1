@@ -1,0 +1,70 @@
+ { ALLIANCE_ROLES } from '../constants/roles';
+import { useAllianceMembers } from "../hooks/useAllianceMembers";
+import { ROLE_PERMISSIONS } from "../constants/permissions";
+import { useMyAlliances } from "../hooks/useMyAlliances";
+
+export default function AllianceRoster() {
+  const { alliances } = useMyAlliances();
+  const alliance = alliances?.[0]; // active alliance
+  const role = alliance?.role_label || "Member";
+
+  const { members, loading } = useAllianceMembers(alliance?.alliance_id);
+  const perms = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.Member;
+
+  if (loading) return <div>Loading roster…</div>;
+  if (!alliance) return <div>No alliance selected</div>;
+
+  return (
+    <div className="page">
+      <h1>{alliance.alliance_name} — Roster</h1>
+
+      <table style={{ width: "100%", marginTop: 16 }}>
+        <thead>
+          <tr>
+            <th align="left">Game Name</th>
+            <th align="left">Role</th>
+            <th align="left">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {members.map(m => (
+            <tr key={m.user_id}>
+              <td>
+                {perms.editGameName ? (
+                  <input
+                    defaultValue={m.game_name}
+                    disabled={!perms.editGameName}
+                  />
+                ) : (
+                  m.game_name
+                )}
+              </td>
+
+              <td>
+                <span style={{
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  background: "#222",
+                  color: "#9f9"
+                }}>
+                  {m.role}
+                </span>
+              </td>
+
+              <td>
+                {perms.promote && m.role === "Member" && (
+                  <button>Promote</button>
+                )}
+                {perms.demote && m.role === "Mod" && (
+                  <button>Demote</button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+

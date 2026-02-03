@@ -30,3 +30,4 @@ export default function InvitePermissions({ allianceId }: { allianceId: string }
     </div>
   );
 }
+

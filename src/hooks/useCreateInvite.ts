@@ -1,14 +1,17 @@
-import { supabase } from "../lib/supabaseClient";
-import { nanoid } from "nanoid";
+import { supabase } from '../lib/supabaseClient';
 
-export async function createInvite(allianceId: string, role = "Member", email?: string) {
-  const token = nanoid(24);
+export function useCreateInvite() {
+  async function createInvite(allianceId: string, role = 'Member') {
+    const token = crypto.randomUUID();
 
-  return supabase.from("alliance_invites").insert({
-    alliance_id: allianceId,
-    role,
-    email,
-    token,
-    invited_by: (await supabase.auth.getUser()).data.user?.id
-  });
+    await supabase.from('alliance_invites').insert({
+      alliance_id: allianceId,
+      token,
+      role
+    });
+
+    return \\/invite/\\;
+  }
+
+  return { createInvite };
 }

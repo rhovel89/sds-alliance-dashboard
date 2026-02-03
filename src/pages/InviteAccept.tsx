@@ -1,41 +1,72 @@
-import { useParams } from "react-router-dom";
-import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../contexts/AuthContext";
+import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 export default function InviteAccept() {
   const { token } = useParams();
-  const { session } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [invite, setInvite] = useState<any>(null);
 
-  async function acceptInvite() {
-    if (!session) return alert("Login required");
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase
+        .from('alliance_invites')
+        .select('*')
+        .eq('token', token)
+        .single();
 
-    const { data, error } = await supabase
-      .from("alliance_invites")
-      .select("*")
-      .eq("token", token)
-      .single();
+      if (!data || data.used || data.revoked) {
+        navigate('/login');
+        return;
+      }
 
-    if (error || !data) return alert("Invalid invite");
+      setInvite(data);
+      setLoading(false);
+    }
+    load();
+  }, [token]);
 
-    await supabase.from("alliance_members").insert({
-      user_id: session.user.id,
-      alliance_id: data.alliance_id,
-      state_id: data.state_id,
-      role: data.role
+  async function accept() {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) return navigate('/login');
+
+    // Ensure profile exists
+    await supabase
+      .from('profiles')
+      .upsert({ user_id: user.id, game_name: 'Pending' });
+
+    // Join alliance
+    await supabase.from('alliance_members').insert({
+      user_id: user.id,
+      alliance_id: invite.alliance_id,
+      role: invite.role,
+      state_id: 789
     });
 
+    // Mark invite used
     await supabase
-      .from("alliance_invites")
-      .update({ used_at: new Date(), used_by: session.user.id })
-      .eq("id", data.id);
+      .from('alliance_invites')
+      .update({ used: true, used_at: new Date() })
+      .eq('id', invite.id);
 
-    alert("Joined alliance!");
+    // Audit
+    await supabase.from('alliance_invite_audit').insert({
+      invite_id: invite.id,
+      action: 'accepted',
+      actor: user.id
+    });
+
+    navigate('/dashboard');
   }
 
+  if (loading) return <div>Loading invite…</div>;
+
   return (
-    <div className="page">
-      <h1>Accept Alliance Invite</h1>
-      <button onClick={acceptInvite}>Accept Invite</button>
+    <div style={{ padding: 24 }}>
+      <h1>Alliance Invitation</h1>
+      <p>You’ve been invited to join <b>{invite.alliance_id}</b></p>
+      <button onClick={accept}>Accept Invite</button>
     </div>
   );
 }

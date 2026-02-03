@@ -1,23 +1,32 @@
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../contexts/AuthContext";
 
 export default function AcceptInvite() {
   const { token } = useParams();
-  const { session } = useAuth();
 
   async function accept() {
-    await supabase.rpc("accept_alliance_invite_token", {
-      token,
-      user_uuid: session?.user.id
+    const { data: invite } = await supabase
+      .from("alliance_invites")
+      .select("*")
+      .eq("token", token)
+      .eq("revoked", false)
+      .single();
+
+    if (!invite) return alert("Invalid invite");
+
+    await supabase.from("alliance_members").insert({
+      alliance_id: invite.alliance_id,
+      role: invite.role,
     });
-    window.location.href = "/dashboard";
+
+    alert("Joined alliance!");
   }
 
   return (
-    <div style={{ padding: 24 }}>
+    <div>
       <h1>Accept Alliance Invite</h1>
-      <button onClick={accept}>Accept Invite</button>
+      <button onClick={accept}>Join Alliance</button>
     </div>
   );
 }
+

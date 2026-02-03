@@ -26,3 +26,4 @@ export default function OwnerInvites({ allianceId }: { allianceId: string }) {
   );
 }
 
+

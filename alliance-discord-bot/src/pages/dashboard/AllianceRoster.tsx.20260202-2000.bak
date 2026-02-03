@@ -1,0 +1,47 @@
+import { useMyAlliances } from "../../hooks/useMyAlliances";
+import { useAllianceMembers } from "../../hooks/useAllianceMembers";
+
+export default function AllianceRoster() {
+  const { alliances } = useMyAlliances();
+  const activeAlliance = alliances?.[0]; // Phase 1: first alliance only
+
+  const { members, loading } = useAllianceMembers(activeAlliance?.alliance_id);
+
+  if (!activeAlliance) {
+    return <div>You are not assigned to an alliance.</div>;
+  }
+
+  if (loading) {
+    return <div>Loading roster...</div>;
+  }
+
+  return (
+    <div style={{ padding: 24 }}>
+      <h2>{activeAlliance.alliance_name} — Roster</h2>
+
+      <table style={{ width: "100%", marginTop: 16 }}>
+        <thead>
+          <tr>
+            <th align="left">In-Game Name</th>
+            <th align="left">Role</th>
+            <th align="left">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {members.map(m => (
+            <tr key={m.id}>
+              <td>{m.profiles?.game_name || "— Not Set —"}</td>
+              <td>{m.role}</td>
+              <td>
+                <em>(Actions next phase)</em>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+
+

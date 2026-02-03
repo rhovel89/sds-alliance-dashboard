@@ -14,3 +14,4 @@ export function FeatureProvider({ children }: { children: React.ReactNode }) {
 export function useFeatures() {
   return useContext(FeatureContext);
 }
+

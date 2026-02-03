@@ -1,74 +1,64 @@
-import { useMyAlliances } from "../hooks/useMyAlliances";
+import { ALLIANCE_ROLES } from "../constants/roles";
 import { useAllianceMembers } from "../hooks/useAllianceMembers";
-
-function RoleBadge({ role }: { role: string }) {
-  const colors: Record<string, string> = {
-    Owner: "#ff5252",
-    "Dashboard Mod": "#ff9800",
-    Member: "#4caf50"
-  };
-
-  return (
-    <span style={{
-      padding: "4px 10px",
-      borderRadius: 12,
-      fontSize: 12,
-      background: colors[role] || "#555",
-      color: "#fff"
-    }}>
-      {role}
-    </span>
-  );
-}
+import { useProfiles } from '../hooks/useProfiles';
+import { ROLE_PERMISSIONS } from "../constants/permissions";
+import { useMyAlliances } from "../hooks/useMyAlliances";
 
 export default function AllianceRoster() {
-  const { alliances, loading } = useMyAlliances();
-  const activeAlliance = alliances?.[0]; // temporary single-alliance support
-  const { members, loading: membersLoading } =
-    useAllianceMembers(activeAlliance?.alliance_id);
+  const { alliances } = useMyAlliances();
+  const alliance = alliances?.[0]; // active alliance
+  const role = alliance?.role_label || "Member";
 
-  if (loading || membersLoading) {
-    return <div className="page">Loading roster...</div>;
-  }
+  const { members, loading } = useAllianceMembers(alliance?.alliance_id);
+  const profiles = useProfiles(members.map(m => m.user_id));
+  const perms = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.Member;
 
-  if (!activeAlliance) {
-    return <div className="page">No alliance selected.</div>;
-  }
+  if (loading) return <div>Loading roster…</div>;
+  if (!alliance) return <div>No alliance selected</div>;
 
   return (
     <div className="page">
-      <h1>{activeAlliance.alliance_name} — Roster</h1>
+      <h1>{alliance.alliance_name} — Roster</h1>
 
-      <table style={{ width: "100%", marginTop: 24, borderCollapse: "collapse" }}>
+      <table style={{ width: "100%", marginTop: 16 }}>
         <thead>
           <tr>
-            <th align="left">Player</th>
+            <th align="left">Game Name</th>
             <th align="left">Role</th>
             <th align="left">Actions</th>
           </tr>
         </thead>
-
         <tbody>
-          {members.map((m: any) => (
-            <tr key={m.id} style={{ borderTop: "1px solid #333" }}>
-              <td style={{ padding: 12 }}>
-                {m.game_name || "Unknown Player"}
+          {members.map(m => (
+            <tr key={profiles[m.user_id] ?? '— not set —'}>
+              <td>
+                {perms.editGameName ? (
+                  <input
+                    defaultValue={m.game_name}
+                    disabled={!perms.editGameName}
+                  />
+                ) : (
+                  m.game_name
+                )}
               </td>
 
               <td>
-                <RoleBadge role={m.role} />
+                <span style={{
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  background: "#222",
+                  color: "#9f9"
+                }}>
+                  {m.role}
+                </span>
               </td>
 
               <td>
-                {m.role !== "Owner" && (
-                  <>
-                    <button disabled style={{ marginRight: 8 }}>
-                      Promote
-                    </button>
-                    <button disabled>
-                      Remove
-                    </button>
-                  </>
+                {perms.promote && m.role === "Member" && (
+                  <button>Promote</button>
+                )}
+                {perms.demote && m.role === "Mod" && (
+                  <button>Demote</button>
                 )}
               </td>
             </tr>
@@ -78,3 +68,6 @@ export default function AllianceRoster() {
     </div>
   );
 }
+
+
+
