@@ -1,0 +1,80 @@
+import { useMyAlliances } from "../hooks/useMyAlliances";
+import { useAllianceMembers } from "../hooks/useAllianceMembers";
+
+function RoleBadge({ role }: { role: string }) {
+  const colors: Record<string, string> = {
+    Owner: "#ff5252",
+    "Dashboard Mod": "#ff9800",
+    Member: "#4caf50"
+  };
+
+  return (
+    <span style={{
+      padding: "4px 10px",
+      borderRadius: 12,
+      fontSize: 12,
+      background: colors[role] || "#555",
+      color: "#fff"
+    }}>
+      {role}
+    </span>
+  );
+}
+
+export default function AllianceRoster() {
+  const { alliances, loading } = useMyAlliances();
+  const activeAlliance = alliances?.[0]; // temporary single-alliance support
+  const { members, loading: membersLoading } =
+    useAllianceMembers(activeAlliance?.alliance_id);
+
+  if (loading || membersLoading) {
+    return <div className="page">Loading roster...</div>;
+  }
+
+  if (!activeAlliance) {
+    return <div className="page">No alliance selected.</div>;
+  }
+
+  return (
+    <div className="page">
+      <h1>{activeAlliance.alliance_name} — Roster</h1>
+
+      <table style={{ width: "100%", marginTop: 24, borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            <th align="left">Player</th>
+            <th align="left">Role</th>
+            <th align="left">Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {members.map((m: any) => (
+            <tr key={m.id} style={{ borderTop: "1px solid #333" }}>
+              <td style={{ padding: 12 }}>
+                {m.game_name || "Unknown Player"}
+              </td>
+
+              <td>
+                <RoleBadge role={m.role} />
+              </td>
+
+              <td>
+                {m.role !== "Owner" && (
+                  <>
+                    <button disabled style={{ marginRight: 8 }}>
+                      Promote
+                    </button>
+                    <button disabled>
+                      Remove
+                    </button>
+                  </>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

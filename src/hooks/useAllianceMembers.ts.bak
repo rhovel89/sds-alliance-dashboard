@@ -1,0 +1,52 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
+
+export interface AllianceMember {
+  id: string;
+  role: string;
+  game_name: string | null;
+}
+
+export function useAllianceMembers(allianceId: string) {
+  const [members, setMembers] = useState<AllianceMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!allianceId) return;
+
+    async function loadMembers() {
+      setLoading(true);
+
+      const { data, error } = await supabase
+        .from("alliance_members")
+        .select(`
+          id,
+          role,
+          profiles (
+            game_name
+          )
+        `)
+        .eq("alliance_id", allianceId);
+
+      if (error) {
+        console.error("[useAllianceMembers]", error);
+        setMembers([]);
+      } else {
+        const mapped =
+          data?.map((row: any) => ({
+            id: row.id,
+            role: row.role,
+            game_name: row.profiles?.game_name ?? "—",
+          })) ?? [];
+
+        setMembers(mapped);
+      }
+
+      setLoading(false);
+    }
+
+    loadMembers();
+  }, [allianceId]);
+
+  return { members, loading };
+}
