@@ -32,3 +32,10 @@ export function useAllianceMembers(allianceId: string) {
 
   return { members, loading };
 }
+
+export async function updateMemberRole(memberId: string, role: string) {
+  return supabase
+    .from('alliance_members')
+    .update({ role })
+    .eq('id', memberId);
+}

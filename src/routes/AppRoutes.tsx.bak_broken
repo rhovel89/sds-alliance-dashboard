@@ -1,0 +1,92 @@
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+import AllianceSettings from '../pages/AllianceSettings';
+
+
+import AllianceSettings from '../pages/AllianceSettings';
+export default function AppRoutes() {
+  return (
+    <Routes>
+  <Route path='/dashboard/settings' element={<AllianceSettings />} />
+        <Route path='/owner-permissions' element={<OwnerPermissions />} />
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+
+      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/owner-onboarding" element={<OwnerOnboarding />} />
+      <Route path="/pending" element={<PendingApproval />} />
+
+      <Route path="/dashboard" element={<AllianceDashboard />} />
+      <Route path="/my-alliance" element={<MyAlliance />} />
+      <Route path="/hq-map" element={<HQMap />} />
+
+      <Route path="/permissions" element={<Permissions />} />
+      <Route path="/permissions-admin" element={<PermissionsAdmin />} />
+
+      <Route path="/achievements" element={<MyAchievements />} />
+      <Route path="/achievements-admin" element={<AchievementAdmin />} />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    
+  <Route path="/auth/callback" element={<AuthCallback />} />
+  <Route path="/dashboard" element={<AllianceDashboard />} />
+  <Route path="/alliance/:allianceId/permissions" element={<OwnerPermissions />} />
+  <Route path="/invite/:token" element={<InviteAccept />} />
+  <Route path="/dashboard/roster" element={<AllianceRoster\n
+import AllianceSettings from '../pages/AllianceSettings'; />} />
+<Route path='/dashboard/invites' element={<AllianceInvites />} />
+</Routes>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

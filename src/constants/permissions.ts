@@ -1,23 +1,37 @@
 export const ROLE_PERMISSIONS = {
   Owner: {
-    editGameName: true,
-    promote: true,
-    demote: true,
-    invite: true,
-    viewAudit: true
+    canPromote: true,
+    canEditName: true,
+    canManageRoles: true,
+    canInvite: true,
+    canEditSettings: true,
+  },
+  R5: {
+    canPromote: true,
+    canEditName: true,
+    canManageRoles: true,
+    canInvite: true,
+    canEditSettings: false,
+  },
+  R4: {
+    canPromote: false,
+    canEditName: true,
+    canManageRoles: false,
+    canInvite: true,
+    canEditSettings: false,
   },
   Mod: {
-    editGameName: true,
-    promote: false,
-    demote: false,
-    invite: true,
-    viewAudit: false
+    canPromote: false,
+    canEditName: true,
+    canManageRoles: false,
+    canInvite: true,
+    canEditSettings: false,
   },
   Member: {
-    editGameName: false,
-    promote: false,
-    demote: false,
-    invite: false,
-    viewAudit: false
-  }
+    canPromote: false,
+    canEditName: false,
+    canManageRoles: false,
+    canInvite: false,
+    canEditSettings: false,
+  },
 };
