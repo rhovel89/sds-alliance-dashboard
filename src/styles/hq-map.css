@@ -93,3 +93,7 @@
 .hq-editor input::placeholder {
   color: #4f7f5a;
 }
+.hq-map-grid > div {
+  aspect-ratio: 5 / 3;
+  min-height: 70px;
+}
