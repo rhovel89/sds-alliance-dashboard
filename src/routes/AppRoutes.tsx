@@ -13,25 +13,23 @@ import InviteAccept from '../pages/InviteAccept';
 export default function AppRoutes() {
   return (
     <Routes>
-  <Route path="/hq" element={<PublicHQMap />} />
-      <Route path='/' element={<LandingPage />} />
+      <Route path="/hq" element={<PublicHQMap />} />
+      <Route path="/" element={<LandingPage />} />
 
-      <Route path='/dashboard' element={<AllianceDashboard />} />
-      <Route path='/dashboard/roster' element={<AllianceRoster />} />
-      <Route path='/dashboard/invites' element={<AllianceInvites />} />
-      <Route path='/dashboard/settings' element={<AllianceSettings />} />
-      <Route path='/dashboard/hq-map' element={<HQMap />} />
+      {/* OAuth callback (public) */}
 
-      <Route path='/alliance/:allianceId/permissions' element={<OwnerPermissions />} />
-      <Route path='/invite/:token' element={<InviteAccept />} />
+      <Route path="/dashboard" element={<AllianceDashboard />} />
+      <Route path="/dashboard/roster" element={<AllianceRoster />} />
+      <Route path="/dashboard/invites" element={<AllianceInvites />} />
+      <Route path="/dashboard/settings" element={<AllianceSettings />} />
+      <Route path="/dashboard/hq-map" element={<HQMap />} />
 
-      <Route path='*' element={<Navigate to='/' replace />} />
-      <Route
-    path="/public/hq-map/:allianceId"
-    element={<PublicHQMap />}
-  />
-</Routes>
+      <Route path="/alliance/:allianceId/permissions" element={<OwnerPermissions />} />
+      <Route path="/invite/:token" element={<InviteAccept />} />
+
+      <Route path="/public/hq-map/:allianceId" element={<PublicHQMap />} />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
-
-
