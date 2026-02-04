@@ -8,12 +8,17 @@ export default function LandingPage() {
     setPageTitle("Welcome");
   }, []);
 
+  const redirectBase =
+    import.meta.env.PROD
+      ? "https://state789.site"
+      : "http://localhost:5173";
+
   const loginDiscord = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {
-        redirectTo: window.location.origin + "/auth/callback"
-      }
+        redirectTo: `${redirectBase}/auth/callback`,
+      },
     });
   };
 
@@ -21,8 +26,8 @@ export default function LandingPage() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin + "/auth/callback"
-      }
+        redirectTo: `${redirectBase}/auth/callback`,
+      },
     });
   };
 
@@ -35,7 +40,6 @@ export default function LandingPage() {
         </div>
 
         <div className="auth-actions">
-          {/* DISCORD */}
           <button
             onClick={loginDiscord}
             style={{
@@ -53,7 +57,6 @@ export default function LandingPage() {
             Continue with Discord
           </button>
 
-          {/* GOOGLE */}
           <button
             onClick={loginGoogle}
             style={{
