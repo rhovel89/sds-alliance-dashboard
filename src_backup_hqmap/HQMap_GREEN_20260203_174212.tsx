@@ -182,29 +182,6 @@ export default function HQMap() {
     });
   }
 
-    // ================================
-  // HQ AUTOSAVE (DEBOUNCED)
-  // ================================
-  const autosaveTimerRef = useRef<number | null>(null);
-
-  function autosaveSlot(index: number, cell: HQCell) {
-    if (!activeAllianceId) return;
-
-    if (autosaveTimerRef.current) {
-      window.clearTimeout(autosaveTimerRef.current);
-    }
-
-    autosaveTimerRef.current = window.setTimeout(async () => {
-      await supabase.from("hq_slots").upsert({
-        alliance_id: activeAllianceId,
-        slot_index: index,
-        player_name: cell.player_name,
-        coords: cell.coords
-      });
-    }, 300);
-  }
-  // HQ_AUTOSAVE_V1
-
   // ----------------------------------
   // RENDER
   // ----------------------------------
@@ -258,8 +235,6 @@ export default function HQMap() {
     </div>
   );
 }
-
-
 
 
 

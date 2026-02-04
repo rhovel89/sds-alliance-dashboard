@@ -10,7 +10,7 @@ export function useCreateInvite() {
       role
     });
 
-    return "/invite/";
+    return \\/invite/\\;
   }
 
   return { createInvite };

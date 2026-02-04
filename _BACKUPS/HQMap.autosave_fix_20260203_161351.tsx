@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { useMyAlliances } from '../hooks/useMyAlliances';
-import '../styles/hq-map.css';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
+import { useMyAlliances } from "../../hooks/useMyAlliances";
+import "../../styles/hq-map.css";
 
-/* REST OF FILE UNCHANGED — LOGIC PRESERVED */
 type HQCell = {
-  player_name: string;
+  name: string;
   coords: string;
 };
 
@@ -14,29 +13,30 @@ const ROWS = 11;
 const DEFAULT_SLOTS = 120;
 
 export default function HQMap() {
-  // -----------------------------
-  // Alliance context
-  // -----------------------------
+  // ----------------------------------
+  // Alliance context (REQUIRED)
+  // ----------------------------------
   const { alliances } = useMyAlliances();
   const activeAllianceId = alliances?.[0]?.alliance_id ?? null;
 
-  // -----------------------------
+  // ----------------------------------
   // State
-  // -----------------------------
-  const [hqSize, setHqSize] = useState(DEFAULT_SLOTS);
+  // ----------------------------------
+  const [hqSize, setHqSize] = useState<number>(DEFAULT_SLOTS);
   const [cells, setCells] = useState<Record<number, HQCell>>({});
   const [selected, setSelected] = useState<number | null>(null);
 
-  const saveTimer = useRef<number | null>(null);
+  // Debounce timer per slot (prevents overwriting when editing multiple HQs)
+  const timersRef = useRef<Record<number, number>>({});
 
   const indices = useMemo(
     () => Array.from({ length: hqSize }, (_, i) => i),
     [hqSize]
   );
 
-  // -----------------------------
-  // Load HQ slots
-  // -----------------------------
+  // ----------------------------------
+  // LOAD HQ SLOTS FROM DB
+  // ----------------------------------
   useEffect(() => {
     if (!activeAllianceId) return;
 
@@ -49,9 +49,9 @@ export default function HQMap() {
       if (error || !data) return;
 
       const map: Record<number, HQCell> = {};
-      data.forEach((r) => {
+      data.forEach((r: any) => {
         map[r.slot_index] = {
-          player_name: r.player_name ?? "",
+          name: r.player_name ?? "",
           coords: r.coords ?? ""
         };
       });
@@ -60,21 +60,23 @@ export default function HQMap() {
     })();
   }, [activeAllianceId]);
 
-  // -----------------------------
-  // Autosave (debounced)
-  // -----------------------------
-  function saveCell(index: number, cell: HQCell) {
+  // ----------------------------------
+  // DEBOUNCED AUTOSAVE (per-slot)
+  // ----------------------------------
+  function queueSave(index: number, cell: HQCell) {
     if (!activeAllianceId) return;
 
-    if (saveTimer.current) {
-      window.clearTimeout(saveTimer.current);
+    const timers = timersRef.current;
+
+    if (timers[index]) {
+      window.clearTimeout(timers[index]);
     }
 
-    saveTimer.current = window.setTimeout(async () => {
+    timers[index] = window.setTimeout(async () => {
       await supabase.from("hq_slots").upsert({
         alliance_id: activeAllianceId,
         slot_index: index,
-        player_name: cell.player_name,
+        player_name: cell.name,
         coords: cell.coords
       });
     }, 300);
@@ -82,24 +84,22 @@ export default function HQMap() {
 
   function updateCell(index: number, field: keyof HQCell, value: string) {
     setCells((prev) => {
-      const next: HQCell = {
-        player_name: prev[index]?.player_name ?? "",
-        coords: prev[index]?.coords ?? "",
-        [field]: value
-      };
+      const current = prev[index] ?? { name: "", coords: "" };
 
-      saveCell(index, next);
+      // no-op if unchanged (prevents pointless saves)
+      if (current[field] === value) return prev;
 
-      return {
-        ...prev,
-        [index]: next
-      };
+      const next: HQCell = { ...current, [field]: value };
+
+      queueSave(index, next);
+
+      return { ...prev, [index]: next };
     });
   }
 
-  // -----------------------------
-  // Render
-  // -----------------------------
+  // ----------------------------------
+  // RENDER
+  // ----------------------------------
   return (
     <div className="hq-map-wrapper">
       <div className="hq-map-controls">
@@ -123,12 +123,8 @@ export default function HQMap() {
             onClick={() => setSelected(i)}
           >
             <div className="hq-title">HQ {i + 1}</div>
-            <div className="hq-name">
-              {cells[i]?.player_name || "—"}
-            </div>
-            <div className="hq-coords">
-              {cells[i]?.coords || "—"}
-            </div>
+            <div className="hq-name">{cells[i]?.name || "—"}</div>
+            <div className="hq-coords">{cells[i]?.coords || "—"}</div>
           </div>
         ))}
       </div>
@@ -139,22 +135,17 @@ export default function HQMap() {
 
           <input
             placeholder="Player Game Name"
-            value={cells[selected]?.player_name || ""}
-            onChange={(e) =>
-              updateCell(selected, "player_name", e.target.value)
-            }
+            value={cells[selected]?.name || ""}
+            onChange={(e) => updateCell(selected, "name", e.target.value)}
           />
 
           <input
             placeholder="Coordinates (e.g. X:123 Y:456)"
             value={cells[selected]?.coords || ""}
-            onChange={(e) =>
-              updateCell(selected, "coords", e.target.value)
-            }
+            onChange={(e) => updateCell(selected, "coords", e.target.value)}
           />
         </div>
       )}
     </div>
   );
 }
-

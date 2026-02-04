@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsx src/bot.ts"
   },
   "keywords": [],
   "author": "",
@@ -14,5 +15,8 @@
     "@supabase/supabase-js": "^2.93.3",
     "discord.js": "^14.25.1",
     "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
   }
 }

@@ -1,3 +1,4 @@
+import PublicHQMap from '../pages/hq/PublicHQMap';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import LandingPage from '../pages/LandingPage';
@@ -12,6 +13,7 @@ import InviteAccept from '../pages/InviteAccept';
 export default function AppRoutes() {
   return (
     <Routes>
+  <Route path="/hq" element={<PublicHQMap />} />
       <Route path='/' element={<LandingPage />} />
 
       <Route path='/dashboard' element={<AllianceDashboard />} />
@@ -24,6 +26,12 @@ export default function AppRoutes() {
       <Route path='/invite/:token' element={<InviteAccept />} />
 
       <Route path='*' element={<Navigate to='/' replace />} />
-    </Routes>
+      <Route
+    path="/public/hq-map/:allianceId"
+    element={<PublicHQMap />}
+  />
+</Routes>
   );
 }
+
+

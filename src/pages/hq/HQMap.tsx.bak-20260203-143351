@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { useMyAlliances } from '../hooks/useMyAlliances';
-import '../styles/hq-map.css';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
+import { useMyAlliances } from "../../hooks/useMyAlliances";
+import "../../styles/hq-map.css";
 
-/* REST OF FILE UNCHANGED — LOGIC PRESERVED */
 type HQCell = {
   player_name: string;
   coords: string;
@@ -14,15 +13,15 @@ const ROWS = 11;
 const DEFAULT_SLOTS = 120;
 
 export default function HQMap() {
-  // -----------------------------
-  // Alliance context
-  // -----------------------------
+  // ----------------------------------
+  // Alliance context (REQUIRED)
+  // ----------------------------------
   const { alliances } = useMyAlliances();
   const activeAllianceId = alliances?.[0]?.alliance_id ?? null;
 
-  // -----------------------------
+  // ----------------------------------
   // State
-  // -----------------------------
+  // ----------------------------------
   const [hqSize, setHqSize] = useState(DEFAULT_SLOTS);
   const [cells, setCells] = useState<Record<number, HQCell>>({});
   const [selected, setSelected] = useState<number | null>(null);
@@ -34,9 +33,9 @@ export default function HQMap() {
     [hqSize]
   );
 
-  // -----------------------------
-  // Load HQ slots
-  // -----------------------------
+  // ----------------------------------
+  // LOAD HQ SLOTS FROM DB
+  // ----------------------------------
   useEffect(() => {
     if (!activeAllianceId) return;
 
@@ -60,9 +59,9 @@ export default function HQMap() {
     })();
   }, [activeAllianceId]);
 
-  // -----------------------------
-  // Autosave (debounced)
-  // -----------------------------
+  // ----------------------------------
+  // DEBOUNCED AUTOSAVE
+  // ----------------------------------
   function saveCell(index: number, cell: HQCell) {
     if (!activeAllianceId) return;
 
@@ -81,12 +80,18 @@ export default function HQMap() {
   }
 
   function updateCell(index: number, field: keyof HQCell, value: string) {
-    setCells((prev) => {
-      const next: HQCell = {
-        player_name: prev[index]?.player_name ?? "",
-        coords: prev[index]?.coords ?? "",
-        [field]: value
-      };
+  setCells(prev => {
+    const next = {
+      name: prev[index]?.name || "",
+      coords: prev[index]?.coords || "",
+      [field]: value
+    };
+
+    queueSave(index, next);
+    return { ...prev, [index]: next };
+  });
+}
+// HQ_AUTOSAVE_WIRE_V1;
 
       saveCell(index, next);
 
@@ -97,9 +102,9 @@ export default function HQMap() {
     });
   }
 
-  // -----------------------------
-  // Render
-  // -----------------------------
+  // ----------------------------------
+  // RENDER
+  // ----------------------------------
   return (
     <div className="hq-map-wrapper">
       <div className="hq-map-controls">
@@ -114,7 +119,9 @@ export default function HQMap() {
 
       <div
         className="hq-map-grid"
-        style={{ gridTemplateColumns: `repeat(${COLUMNS}, 1fr)` }}
+        style={{
+          gridTemplateColumns: `repeat(${COLUMNS}, 1fr)`
+        }}
       >
         {indices.map((i) => (
           <div
@@ -122,9 +129,8 @@ export default function HQMap() {
             className={`hq-cell ${selected === i ? "active" : ""}`}
             onClick={() => setSelected(i)}
           >
-            <div className="hq-title">HQ {i + 1}</div>
-            <div className="hq-name">
-              {cells[i]?.player_name || "—"}
+            <div className="hq-title">
+              {cells[i]?.player_name || ""}
             </div>
             <div className="hq-coords">
               {cells[i]?.coords || "—"}
@@ -157,4 +163,5 @@ export default function HQMap() {
     </div>
   );
 }
+
 
