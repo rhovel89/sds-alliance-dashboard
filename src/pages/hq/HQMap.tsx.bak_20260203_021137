@@ -12,13 +12,8 @@ const GRID_COLS = 13;
 const GRID_ROWS = 11;
 
 export default function HQMap() {
-  
-
   const { alliances } = useMyAlliances();
   const activeAllianceId = alliances?.[0]?.alliance_id || null;
-const isReady = Boolean(activeAllianceId);
-
-
   const myRole = alliances?.[0]?.role_label || "Member";
   const canEdit = myRole === "Owner" || myRole === "Mod";
 
@@ -27,16 +22,6 @@ const isReady = Boolean(activeAllianceId);
 
   const [selected, setSelected] = useState<number | null>(null);
   const [cells, setCells] = useState<Record<number, HQCell>>({});
-  // ================================
-  // HQ SLOT PERSISTENCE (AUTO-SAVE)
-  // ================================
-  useEffect(() => {
-  // (intentionally left blank – placeholder restored)
-}, [activeAllianceId]);
-
-  useEffect(() => {
-  // repaired empty effect (no-op)
-}, [cells, activeAllianceId]);
 
   const [draftName, setDraftName] = useState("");
   const [draftCoords, setDraftCoords] = useState("");
@@ -49,68 +34,61 @@ const isReady = Boolean(activeAllianceId);
   // Load map state (size + lock)
   // ----------------------------
   useEffect(() => {
-  (async () => {
-    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activeAllianceId);
-    if (data) {
-      const map = {};
-      data.forEach(r => {
-        map[r.slot_index] = {
-          name: r.player_name,
-          coords: r.coords
-        };
-      });
-      setCells(map);
-    }
-  })();
-}, []);
+    if (!activeAllianceId) return;
 
-useEffect(() => {
-  // (intentionally left blank – placeholder restored)
-}, [activeAllianceId]);
+    supabase
+      .from("hq_map_state")
+      .select("hq_size, edit_locked")
+      .eq("alliance_id", activeAllianceId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) return;
+        if (data?.hq_size) setHqSize(data.hq_size);
+        if (typeof data?.edit_locked === "boolean") setEditLocked(data.edit_locked);
+      });
+
+  }, [activeAllianceId]);
 
   // Persist state (Owner only)
   useEffect(() => {
-  (async () => {
-    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activeAllianceId);
-    if (data) {
-      const map = {};
-      data.forEach(r => {
-        map[r.slot_index] = {
-          name: r.player_name,
-          coords: r.coords
-        };
-      });
-      setCells(map);
-    }
-  })();
-}, []);
+    if (!activeAllianceId) return;
+    if (myRole !== "Owner") return;
 
-useEffect(() => {
-  // repaired empty effect (no-op)
-}, [activeAllianceId, hqSize, editLocked, myRole]);
+    supabase
+      .from("hq_map_state")
+      .upsert({
+        alliance_id: activeAllianceId,
+        hq_size: hqSize,
+        edit_locked: editLocked,
+        updated_at: new Date().toISOString()
+      })
+      .then(() => {});
+  }, [activeAllianceId, hqSize, editLocked, myRole]);
 
   // ----------------------------
   // Load cells from Supabase
   // ----------------------------
   useEffect(() => {
-  (async () => {
-    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activeAllianceId);
-    if (data) {
-      const map = {};
-      data.forEach(r => {
-        map[r.slot_index] = {
-          name: r.player_name,
-          coords: r.coords
-        };
-      });
-      setCells(map);
-    }
-  })();
-}, []);
+    if (!activeAllianceId) return;
 
-useEffect(() => {
-  // (intentionally left blank – placeholder restored)
-}, [activeAllianceId]);
+    supabase
+      .from("hq_map_cells")
+      .select("slot_index, player_name, coords")
+      .eq("alliance_id", activeAllianceId)
+      .then(({ data, error }) => {
+        if (error) return;
+
+        const next: Record<number, HQCell> = {};
+        (data || []).forEach((row: any) => {
+          next[row.slot_index] = {
+            player_name: row.player_name || "",
+            coords: row.coords || ""
+          };
+        });
+
+        setCells(next);
+      });
+  }, [activeAllianceId]);
 
   // ----------------------------
   // Open editor (loads drafts)
@@ -126,13 +104,24 @@ useEffect(() => {
   // Debounced save of a cell
   // ----------------------------
   function queueSaveCell(index: number, nextCell: HQCell) {
-  // SAFE STUB: debounce logic removed due to corruption
-  // Persistence will be reintroduced later in a controlled step
-  setCells(prev => ({
-    ...prev,
-    [index]: nextCell
-  }));
-}
+    if (!activeAllianceId) return;
+    if (!canEdit || editLocked) return;
+
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+
+    saveTimer.current = window.setTimeout(() => {
+      supabase
+        .from("hq_map_cells")
+        .upsert({
+          alliance_id: activeAllianceId,
+          slot_index: index,
+          player_name: nextCell.player_name || "",
+          coords: nextCell.coords || "",
+          updated_at: new Date().toISOString()
+        })
+        .then(() => {});
+    }, 250);
+  }
 
   // ----------------------------
   // Live update drafts + tile + persist
@@ -231,7 +220,8 @@ useEffect(() => {
     padding: 12
   };
 
-  return (isReady ? (<div style={pageStyle}>
+  return (
+    <div style={pageStyle}>
       <div style={headerStyle}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700 }}>HQ Map</div>
@@ -258,7 +248,8 @@ useEffect(() => {
           const c = cells[i];
           const isSelected = selected === i;
 
-          return (isReady ? (<div
+          return (
+            <div
               key={i}
               onClick={() => openEditor(i)}
               style={{
@@ -266,7 +257,7 @@ useEffect(() => {
                 border: isSelected ? "2px solid #a855f7" : "1px solid rgba(255,255,255,0.18)",
                 background: isSelected ? "rgba(168,85,247,0.14)" : "rgba(0,0,0,0.24)"
               }}
-              title={"Slot"}
+              title={Slot}
             >
               <div style={{ fontWeight: 650, fontSize: 12, marginBottom: 2 }}>
                 {c?.player_name || ""}
@@ -275,7 +266,7 @@ useEffect(() => {
                 {c?.coords || ""}
               </div>
             </div>
-          )
+          );
         })}
       </div>
 
@@ -287,7 +278,7 @@ useEffect(() => {
         }}
       >
         <div style={{ fontWeight: 700, marginBottom: 8 }}>
-          {selected === null ? "Select a slot" : "Editing Slot"}
+          {selected === null ? "Select a slot" : Editing Slot #}
         </div>
 
         {selected !== null && (
@@ -325,21 +316,6 @@ useEffect(() => {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
