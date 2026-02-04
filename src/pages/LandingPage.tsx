@@ -8,26 +8,19 @@ export default function LandingPage() {
     setPageTitle("Welcome");
   }, []);
 
-  const redirectBase =
-    import.meta.env.PROD
-      ? "https://state789.site"
-      : "http://localhost:5173";
+  const redirectTo = window.location.origin + "/auth/callback";
 
   const loginDiscord = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "discord",
-      options: {
-        redirectTo: `${redirectBase}/auth/callback`,
-      },
+      options: { redirectTo }
     });
   };
 
   const loginGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${redirectBase}/auth/callback`,
-      },
+      options: { redirectTo }
     });
   };
 
@@ -40,36 +33,30 @@ export default function LandingPage() {
         </div>
 
         <div className="auth-actions">
-          <button
-            onClick={loginDiscord}
-            style={{
-              width: "100%",
-              padding: "14px 18px",
-              marginBottom: 12,
-              borderRadius: 8,
-              border: "none",
-              background: "#5865F2",
-              color: "#fff",
-              fontSize: 16,
-              cursor: "pointer"
-            }}
-          >
+          <button onClick={loginDiscord} style={{
+            width: "100%",
+            padding: "14px 18px",
+            marginBottom: 12,
+            borderRadius: 8,
+            border: "none",
+            background: "#5865F2",
+            color: "#fff",
+            fontSize: 16,
+            cursor: "pointer"
+          }}>
             Continue with Discord
           </button>
 
-          <button
-            onClick={loginGoogle}
-            style={{
-              width: "100%",
-              padding: "14px 18px",
-              borderRadius: 8,
-              border: "none",
-              background: "#ffffff",
-              color: "#000",
-              fontSize: 16,
-              cursor: "pointer"
-            }}
-          >
+          <button onClick={loginGoogle} style={{
+            width: "100%",
+            padding: "14px 18px",
+            borderRadius: 8,
+            border: "none",
+            background: "#ffffff",
+            color: "#000",
+            fontSize: 16,
+            cursor: "pointer"
+          }}>
             Continue with Google
           </button>
         </div>
