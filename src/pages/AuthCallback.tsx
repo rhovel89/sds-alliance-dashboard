@@ -1,44 +1,54 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function completeOAuth() {
-      try {
-        console.info("[AuthCallback] exchanging OAuth code for session");
+    let cancelled = false;
 
-        const { data, error } = await supabase.auth.exchangeCodeForSession(
-        window.location.origin + window.location.pathname + window.location.search
+    async function finishAuth() {
+      console.info("[AuthCallback] exchanging OAuth code for session");
+
+      const { data, error } =
+        await supabase.auth.exchangeCodeForSession(
+          window.location.origin +
+            window.location.pathname +
+            window.location.search
         );
 
-        if (error) {
-          console.error("[AuthCallback] exchange failed", error);
-          return;
-        }
+      if (cancelled) return;
 
-        if (!data?.session) {
-          console.error("[AuthCallback] session missing after exchange");
-          return;
-        }
-
-        console.info("[AuthCallback] session established", data.session.user.id);
-
-        navigate("/dashboard", { replace: true });
-      } catch (err) {
-        console.error("[AuthCallback] fatal error", err);
+      if (error) {
+        console.error("[AuthCallback] exchange failed", error);
+        setError(error.message);
+        return;
       }
+
+      if (!data?.session) {
+        console.error("[AuthCallback] no session returned");
+        setError("No session returned from Supabase");
+        return;
+      }
+
+      console.info("[AuthCallback] session OK — redirecting to dashboard");
+      navigate("/dashboard", { replace: true });
     }
 
-    completeOAuth();
+    finishAuth();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   return (
-    <div style={{ padding: "2rem", color: "#fff" }}>
+    <div style={{ color: "#9aff9a", padding: "2rem" }}>
       <h2>Entering the Zone…</h2>
-      <p>Finalizing authentication</p>
+      <p>Completing authentication.</p>
+      {error && <pre style={{ color: "red" }}>{error}</pre>}
     </div>
   );
 }
