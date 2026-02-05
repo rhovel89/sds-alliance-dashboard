@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-import { Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useSession } from "../hooks/useSession";
 import "../styles/zombie-buttons.css";
@@ -7,19 +5,11 @@ import "../styles/zombie-buttons.css";
 export default function LandingPage() {
   const { session } = useSession();
 
-  // ✅ If already logged in, go dashboard
-  // ✅ CRITICAL: If OAuth returns to "/" with ?code=... (your current problem),
-  // immediately forward the same query params to /auth/callback
-  const search = window.location.search || "";
-  const hash = window.location.hash || "";
-
-  if (search.includes("code=") || search.includes("error=") || hash.includes("access_token=")) {
-    return <Navigate to={`/auth/callback${search || hash}`} replace />;
-  }
+  // If already logged in, let routing handle redirect
+  if (session) return null;
 
   async function loginDiscord() {
     const redirectTo = `${window.location.origin}/auth/callback`;
-    console.info("[LandingPage] Discord login redirectTo:", redirectTo);
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "discord",
@@ -31,7 +21,6 @@ export default function LandingPage() {
 
   async function loginGoogle() {
     const redirectTo = `${window.location.origin}/auth/callback`;
-    console.info("[LandingPage] Google login redirectTo:", redirectTo);
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -60,4 +49,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
