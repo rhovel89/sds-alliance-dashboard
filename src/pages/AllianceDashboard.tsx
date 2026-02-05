@@ -1,22 +1,39 @@
-import { useEffect, useState } from "react";
-import LoginTransition from "../components/LoginTransition";
+import { useEffect } from 'react'
+import '../styles/dashboard-theme.css'
+import { Link } from 'react-router-dom'
 
 export default function AllianceDashboard() {
-  const [showTransition, setShowTransition] = useState(true);
-
   useEffect(() => {
-    const t = setTimeout(() => setShowTransition(false), 1800);
-    return () => clearTimeout(t);
-  }, []);
+    document.body.classList.add('dashboard-theme')
+    return () => document.body.classList.remove('dashboard-theme')
+  }, [])
 
   return (
     <>
-      {showTransition && <LoginTransition />}
+      <div className='dashboard-header'>
+        <div className='dashboard-title'>STATE 789 — ALLIANCE HQ</div>
+      </div>
 
-      <div style={{ padding: "2rem", color: "#ddd" }}>
-        <h1>Alliance Dashboard</h1>
-        <p>Survivors connected.</p>
+      <div className='dashboard-container'>
+        <div className='dashboard-sidebar'>
+          <Link to='/dashboard'>🧠 Overview</Link>
+          <Link to='/hq-map'>🗺 HQ Map</Link>
+          <Link to='/permissions'>🔐 Permissions</Link>
+          <Link to='/achievements'>🏆 Achievements</Link>
+        </div>
+
+        <div className='dashboard-content'>
+          <div className='dashboard-card'>
+            <h2>Alliance Status</h2>
+            <p>Systems online. Awaiting commands.</p>
+          </div>
+
+          <div className='dashboard-card'>
+            <h2>Threat Level</h2>
+            <p>⚠️ Zombie activity increasing near HQ perimeter.</p>
+          </div>
+        </div>
       </div>
     </>
-  );
+  )
 }
