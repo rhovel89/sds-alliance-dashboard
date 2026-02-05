@@ -1,20 +1,26 @@
-import { useSession } from "../hooks/useSession";
+import { useEffect } from 'react'
+import '../styles/dashboard-zombie.css'
 
 export default function AllianceDashboard() {
-  const { loading, session } = useSession();
 
-  if (loading) {
-    return <div>Loading dashboard…</div>;
-  }
-
-  if (!session) {
-    return <div>Session missing. Please refresh.</div>;
-  }
+  useEffect(() => {
+    document.body.classList.add('dashboard-mode')
+    return () => document.body.classList.remove('dashboard-mode')
+  }, [])
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>Dashboard Loaded ✅</h1>
-      <pre>{JSON.stringify(session.user, null, 2)}</pre>
+    <div className='dashboard-shell'>
+      <h1>🧟 Alliance Dashboard</h1>
+
+      <div className='dashboard-card'>
+        <h2>Status</h2>
+        <p>All systems operational.</p>
+      </div>
+
+      <div className='dashboard-card'>
+        <h2>Alerts</h2>
+        <p>No zombie breaches detected.</p>
+      </div>
     </div>
-  );
+  )
 }
