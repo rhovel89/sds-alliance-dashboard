@@ -1,20 +1,39 @@
+import "../styles/zombie-landing.css";
 import { supabase } from "../lib/supabaseClient";
 
 export default function LandingPage() {
-  const loginWithDiscord = async () => {
+  async function loginDiscord() {
     await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {
-        redirectTo: window.location.origin + "/auth/callback"
-      }
+        redirectTo: window.location.origin + "/auth/callback",
+      },
     });
-  };
+  }
+
+  async function loginGoogle() {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin + "/auth/callback",
+      },
+    });
+  }
 
   return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-      <div>
-        <h1>State Alliance Dashboard</h1>
-        <button onClick={loginWithDiscord}>Login with Discord</button>
+    <div className="zombie-bg">
+      <div className="fog" />
+
+      <div className="login-panel">
+        <h1>STATE 789</h1>
+
+        <button className="login-btn" onClick={loginDiscord}>
+          🧟 Login with Discord
+        </button>
+
+        <button className="login-btn" onClick={loginGoogle}>
+          ☣️ Login with Google
+        </button>
       </div>
     </div>
   );
