@@ -1,38 +1,58 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 export default function AuthCallback() {
-  const navigate = useNavigate();
+  const [msg, setMsg] = useState("ENTERING ZONE…");
 
   useEffect(() => {
-    const finalize = async () => {
-      const { data, error } = await supabase.auth.getSession();
+    async function run() {
+      try {
+        const href = window.location.href;
 
-      if (error) {
-        console.error("Auth callback error:", error);
-        navigate("/login", { replace: true });
-        return;
+        console.info("[AuthCallback] href:", href);
+
+        // ✅ Explicitly exchange code for session (prevents race/loop)
+        const { data: exData, error: exErr } = await supabase.auth.exchangeCodeForSession(href);
+        if (exErr) {
+          console.error("[AuthCallback] exchangeCodeForSession error", exErr);
+          setMsg("AUTH FAILED (exchange error). Check console.");
+          return;
+        }
+
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("[AuthCallback] getSession error", error);
+          setMsg("AUTH FAILED (session error). Check console.");
+          return;
+        }
+
+        if (!data.session) {
+          console.error("[AuthCallback] No session after exchange.");
+          setMsg("AUTH FAILED (no session). Check provider + redirect URLs.");
+          return;
+        }
+
+        console.info("[AuthCallback] Session OK. Redirecting to /dashboard");
+        window.location.replace("/dashboard");
+      } catch (e) {
+        console.error("[AuthCallback] Fatal error", e);
+        setMsg("AUTH FAILED (fatal). Check console.");
       }
+    }
 
-      if (!data.session) {
-        console.error("No session after callback");
-        navigate("/login", { replace: true });
-        return;
-      }
-
-      // 🔥 CLEAN URL (remove ?code=...)
-      window.history.replaceState({}, document.title, "/dashboard");
-
-      navigate("/dashboard", { replace: true });
-    };
-
-    finalize();
-  }, [navigate]);
+    run();
+  }, []);
 
   return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-      <div>Finalizing sign-in…</div>
+    <div style={{
+      minHeight: "100vh",
+      display: "grid",
+      placeItems: "center",
+      background: "#000",
+      color: "#0f0",
+      fontFamily: "monospace"
+    }}>
+      <h2>{msg}</h2>
     </div>
   );
 }
