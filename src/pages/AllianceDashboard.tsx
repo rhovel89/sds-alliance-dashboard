@@ -30,10 +30,11 @@ export default function AllianceDashboard() {
 
           <div className='dashboard-card'>
             <h2>Threat Level</h2>
-            <p>⚠️ Zombie activity increasing near HQ perimeter.</p>
+            <p>⚠️ <span className='warning'>⚠️ Zombie activity increasing near HQ perimeter.</span></p>
           </div>
         </div>
       </div>
     </>
   )
 }
+import '../styles/dashboard-hud-effects.css'
