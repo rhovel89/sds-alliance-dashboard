@@ -44,7 +44,7 @@ export default function HQMap() {
   }
 
   return (
-    <div className="hq-map-page">
+    <div className="hq-map-page zombie-hq-map">`n<div className="hq-fog"></div>
       <h2 className="hq-map-title">🧟 Alliance HQ Map</h2>
 
       <div
@@ -56,8 +56,8 @@ export default function HQMap() {
         {cells.map((_, i) => (
           <div
             key={i}
-            className="hq-cell"
-            onClick={() => setSelected(i)}
+            className={`hq-cell ${!isOwner ? "hq-readonly" : ""} ${selected === i ? "selected" : ""} ${cells[i]?.player_name ? "ally" : "empty"}`}
+            onClick={() => { if (isOwner || isMod || cells[i]?.hq_role === "officer") setSelected(i); }}
           >
             <div className="hq-title">{cells[i]?.player_name || ""}</div>
             <div className="hq-coords">{cells[i]?.coords || "—"}</div>
@@ -65,8 +65,8 @@ export default function HQMap() {
         ))}
       </div>
 
-      {selected !== null && (
-        <div className="hq-editor">
+      {selected !== null && (isOwner || isMod || cells[selected]?.hq_role === "officer") && (isOwner || isMod || cells[selected]?.hq_role === "officer") && isOwner && (
+        <div className="hq-editor survivor-terminal">
           <h4>HQ {selected + 1}</h4>
 
           <input
@@ -89,3 +89,24 @@ export default function HQMap() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
