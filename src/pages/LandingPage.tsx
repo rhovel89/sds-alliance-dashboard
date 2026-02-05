@@ -3,6 +3,8 @@ import '../styles/zombie-landing.css'
 import { supabase } from '../lib/supabaseClient'
 
 export default function LandingPage() {
+  const { session } = useSession();
+  if (session) return <Navigate to="/dashboard" replace />;
   useEffect(() => {
     document.body.classList.add('zombie-landing')
     return () => document.body.classList.remove('zombie-landing')
@@ -41,3 +43,4 @@ export default function LandingPage() {
     </>
   )
 }
+
