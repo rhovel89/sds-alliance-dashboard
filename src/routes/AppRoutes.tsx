@@ -1,36 +1,24 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import { useSession } from "../hooks/useSession";
+import { Routes, Route } from 'react-router-dom';
 
-import LandingPage from "../pages/LandingPage";
-import AuthCallback from "../pages/AuthCallback";
-import AllianceDashboard from "../pages/AllianceDashboard";
+import LandingPage from '../pages/LandingPage';
+import AuthCallback from '../pages/AuthCallback';
+import Dashboard from '../pages/AllianceDashboard';
+import HQMap from '../pages/HQMap';
 
-function RequireAuth({ children }: { children: JSX.Element }) {
-  const { session, loading } = useSession();
-
-  if (loading) return <div>Loading session…</div>;
-  if (!session) return <Navigate to="/" replace />;
-
-  return children;
-}
+import DashboardLayout from '../layouts/DashboardLayout';
 
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path='/' element={<LandingPage />} />
+      <Route path='/auth/callback' element={<AuthCallback />} />
 
-      <Route
-        path="/dashboard"
-        element={
-          <RequireAuth>
-            <AllianceDashboard />
-          </RequireAuth>
-        }
-      />
+      <Route element={<DashboardLayout />}>
+        <Route path='/dashboard' element={<Dashboard />} />
+        <Route path='/hq-map' element={<HQMap />} />
+      </Route>
 
-      {/* HARD STOP — no auto redirect loops */}
-      <Route path="*" element={<div>Fallback Route</div>} />
+      <Route path='*' element={<div style={{ padding: 40 }}>Fallback Route</div>} />
     </Routes>
   );
 }
