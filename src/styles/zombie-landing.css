@@ -6,18 +6,50 @@ body {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(circle at top, #1a0000 0%, #000 70%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(255,0,0,0.03) 0,
-      rgba(255,0,0,0.03) 1px,
-      transparent 2px,
-      transparent 4px
-    );
+    radial-gradient(circle at top, #1a0000 0%, #000 70%);
   overflow: hidden;
   font-family: "Courier New", monospace;
 }
 
+/* =========================
+   BLOOD DRIP LAYER
+   ========================= */
+.blood-drip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 140px;
+  background: linear-gradient(
+    to bottom,
+    #6b0000 0%,
+    #3a0000 60%,
+    transparent 100%
+  );
+  clip-path: polygon(
+    0% 0%, 100% 0%, 100% 35%,
+    95% 30%, 90% 45%, 85% 25%,
+    80% 50%, 75% 30%, 70% 55%,
+    65% 35%, 60% 60%, 55% 25%,
+    50% 50%, 45% 30%, 40% 55%,
+    35% 25%, 30% 50%, 25% 35%,
+    20% 55%, 15% 30%, 10% 45%,
+    5% 25%, 0% 35%
+  );
+  animation: dripMove 6s ease-in-out infinite;
+  box-shadow: 0 15px 40px rgba(255, 0, 0, 0.35);
+  z-index: 3;
+}
+
+@keyframes dripMove {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(12px); }
+  100% { transform: translateY(0); }
+}
+
+/* =========================
+   FOG
+   ========================= */
 .fog {
   position: absolute;
   inset: 0;
@@ -32,13 +64,16 @@ body {
   to { background-position: 2000px 0; }
 }
 
+/* =========================
+   LOGIN PANEL
+   ========================= */
 .login-panel {
   position: relative;
-  z-index: 2;
+  z-index: 4;
   width: 380px;
-  margin: 15vh auto;
+  margin: 18vh auto;
   padding: 32px;
-  background: rgba(10,10,10,0.85);
+  background: rgba(10,10,10,0.88);
   border: 1px solid #330000;
   box-shadow: 0 0 40px rgba(255,0,0,0.25);
   text-align: center;

@@ -22,6 +22,7 @@ export default function LandingPage() {
 
   return (
     <div className="zombie-bg">
+      <div className="blood-drip" />
       <div className="fog" />
 
       <div className="login-panel">
