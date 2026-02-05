@@ -1,63 +1,42 @@
-/* ===== DASHBOARD SURVIVAL THEME ===== */
-
-body.dashboard-mode {
-  background: radial-gradient(circle at top, #111a16 0%, #050807 75%);
-  color: #d6e0db;
-  font-family: 'Inter', system-ui, sans-serif;
+.dashboard-root {
+  display: flex;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #0b0f0c, #000);
+  color: #c7ffb6;
+  font-family: 'Courier New', monospace;
 }
 
-/* Page wrapper */
-.dashboard-shell {
-  padding: 2rem;
-  animation: fadeIn 0.8s ease forwards;
+.dashboard-sidebar {
+  width: 220px;
+  background: #050805;
+  border-right: 1px solid #1e2a1e;
+  padding: 20px;
 }
 
-/* Headings */
-.dashboard-shell h1,
-.dashboard-shell h2,
-.dashboard-shell h3 {
-  color: #e2f2ea;
-  text-shadow: 0 0 8px rgba(0,0,0,0.8);
+.sidebar-title {
+  margin-bottom: 20px;
+  text-shadow: 0 0 8px #66ff66;
 }
 
-/* Cards */
-.dashboard-card {
-  background: rgba(12, 18, 15, 0.85);
-  border: 1px solid #26352f;
-  border-radius: 10px;
-  padding: 1.25rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 0 25px rgba(0,0,0,0.6);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+.dashboard-sidebar a {
+  display: block;
+  color: #9dff9d;
+  text-decoration: none;
+  margin: 10px 0;
 }
 
-.dashboard-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 40px rgba(0,0,0,0.9);
+.dashboard-sidebar a:hover {
+  color: #ffffff;
+  text-shadow: 0 0 6px #66ff66;
 }
 
-/* Buttons */
-.dashboard-shell button {
-  background: #1f2f28;
-  color: #e6f1ec;
-  border: 1px solid #344c42;
-  padding: 0.6rem 1rem;
-  border-radius: 6px;
+.dashboard-main {
+  flex: 1;
+  padding: 30px;
+  animation: fadeIn 0.4s ease-out;
 }
 
-.dashboard-shell button:hover {
-  background: #8b0000;
-  box-shadow: 0 0 10px #8b0000;
-}
-
-/* Fade-in animation */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
