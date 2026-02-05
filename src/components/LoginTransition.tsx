@@ -1,10 +1,11 @@
-import { ReactNode } from 'react'
-import '../styles/transition.css'
+import "./login-transition.css";
 
-export default function LoginTransition({ children }: { children: ReactNode }) {
+export default function LoginTransition() {
   return (
-    <div className='login-transition'>
-      {children}
+    <div className="login-transition">
+      <div className="login-transition__glitch">
+        ENTERING ZONE…
+      </div>
     </div>
-  )
+  );
 }

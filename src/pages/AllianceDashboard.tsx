@@ -1,26 +1,22 @@
-import { useEffect } from 'react'
-import '../styles/dashboard-zombie.css'
+import { useEffect, useState } from "react";
+import LoginTransition from "../components/LoginTransition";
 
 export default function AllianceDashboard() {
+  const [showTransition, setShowTransition] = useState(true);
 
   useEffect(() => {
-    document.body.classList.add('dashboard-mode')
-    return () => document.body.classList.remove('dashboard-mode')
-  }, [])
+    const t = setTimeout(() => setShowTransition(false), 1800);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
-    <div className='dashboard-shell'>
-      <h1>🧟 Alliance Dashboard</h1>
+    <>
+      {showTransition && <LoginTransition />}
 
-      <div className='dashboard-card'>
-        <h2>Status</h2>
-        <p>All systems operational.</p>
+      <div style={{ padding: "2rem", color: "#ddd" }}>
+        <h1>Alliance Dashboard</h1>
+        <p>Survivors connected.</p>
       </div>
-
-      <div className='dashboard-card'>
-        <h2>Alerts</h2>
-        <p>No zombie breaches detected.</p>
-      </div>
-    </div>
-  )
+    </>
+  );
 }
