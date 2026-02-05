@@ -5,7 +5,7 @@ export default function AllianceDashboard() {
   const { alliances, loading } = useMyAlliances();
 
   if (loading) {
-    return <div className="page">Loading alliances...</div>;
+    return <div className="page">Loading dashboard…</div>;
   }
 
   if (!alliances || alliances.length === 0) {

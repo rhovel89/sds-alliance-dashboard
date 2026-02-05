@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { useMyAlliances } from "../hooks/useMyAlliances";
-import "../styles/hq-map.css";
+import { supabase } from "../../lib/supabaseClient";
+import { useMyAlliances } from "../../hooks/useMyAlliances";
+import "../../styles/hq-map.css";
 
 type HQCell = {
   player_name: string;
@@ -24,7 +24,7 @@ export default function HQMap() {
   const activeAllianceId = alliances?.[0]?.alliance_id ?? null;
 
   // ----------------------------------
-  // cell.state
+  // State
   // ----------------------------------
   const [hqSize, setHqSize] = useState(DEFAULT_SLOTS);
   const [cells, setCells] = useState<Record<number, HQCell>>({});
@@ -235,8 +235,6 @@ export default function HQMap() {
     </div>
   );
 }
-
-
 
 
 

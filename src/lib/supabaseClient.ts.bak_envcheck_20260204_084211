@@ -1,0 +1,41 @@
+import { createClient } from "@supabase/supabase-js";
+
+/**
+ * 🔎 BUILD-TIME ENV CHECK (SAFE)
+ * This log tells us definitively whether Cloudflare injected env vars.
+ * It will appear ONCE in the browser console after deploy.
+ */
+console.log("[ENV CHECK]", {
+  url: import.meta.env.VITE_SUPABASE_URL,
+  hasAnon: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+});
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error(
+    "[SUPABASE CONFIG ERROR] Missing env vars",
+    { SUPABASE_URL, SUPABASE_ANON_KEY }
+  );
+}
+
+/**
+ * ✅ SINGLE SOURCE OF TRUTH SUPABASE CLIENT
+ * - PKCE enabled
+ * - Session auto-detected from URL
+ * - Session persisted
+ * - NO redirects here (routes handle auth)
+ */
+export const supabase = createClient(
+  SUPABASE_URL!,
+  SUPABASE_ANON_KEY!,
+  {
+    auth: {
+      flowType: "pkce",
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+    },
+  }
+);

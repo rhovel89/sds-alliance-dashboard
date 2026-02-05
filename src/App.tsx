@@ -1,13 +1,7 @@
-import { BrowserRouter } from "react-router-dom";
-import AppRoutes from "./routes/AppRoutes";
-import ErrorBoundary from "./components/ErrorBoundary";
+import './lib/supabaseClient'; // 🔥 FORCE INCLUDE — DO NOT REMOVE
+
+import AppRoutes from './routes/AppRoutes';
 
 export default function App() {
-  return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <AppRoutes />
-      </ErrorBoundary>
-    </BrowserRouter>
-  );
+  return <AppRoutes />;
 }

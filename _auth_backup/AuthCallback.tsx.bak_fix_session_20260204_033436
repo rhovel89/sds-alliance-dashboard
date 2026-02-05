@@ -1,0 +1,47 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
+
+export default function AuthCallback() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        // If we returned with ?code= (PKCE), explicitly exchange it.
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("code");
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+
+          // Clean the URL (remove ?code=...)
+          url.searchParams.delete("code");
+          window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+        } else {
+          // If no code param, still ensure we have a session (hash flow or already stored)
+          const { data } = await supabase.auth.getSession();
+          if (!data.session) {
+            navigate("/login", { replace: true });
+            return;
+          }
+        }
+
+        // Always go to dashboard after successful auth
+        navigate("/dashboard", { replace: true });
+      } catch (e) {
+        console.error("AuthCallback failed:", e);
+        navigate("/login", { replace: true });
+      }
+    };
+
+    run();
+  }, [navigate]);
+
+  return (
+    <div style={{ padding: 40, textAlign: "center" }}>
+      Finalizing authentication…
+    </div>
+  );
+}
