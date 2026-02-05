@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import "../styles/hq-map-zombie.css";
 
 const COLUMNS = 13;
@@ -14,12 +15,24 @@ function storageKey(allianceId: string) {
 }
 
 export default function HQMap() {
+  if (!session) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (!activeAllianceId) {
+    return (
+      <div style={{ padding: 40, color: "#9fef00", fontFamily: "monospace" }}>
+        ⚠ No active alliance selected.<br />
+        Please return to the dashboard.
+      </div>
+    );
+  }
   const [cells, setCells] = useState<Cell[]>(
     Array.from({ length: COLUMNS * ROWS }, () => ({}))
   );
   const [selected, setSelected] = useState<number | null>(null);
 
-  const activeAllianceId = "default"; // placeholder until alliance context is wired
+  const activeAllianceId = localStorage.getItem("activeAllianceId");
 
   // Load from localStorage
   useEffect(() => {
@@ -89,6 +102,9 @@ export default function HQMap() {
     </div>
   );
 }
+
+
+
 
 
 
