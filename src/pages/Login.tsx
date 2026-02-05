@@ -1,19 +1,20 @@
-import { useEffect } from "react";
-import { setPageTitle } from "../utils/pageTitle";
+import { supabase } from '../lib/supabaseClient';
 
 export default function Login() {
-  useEffect(() => {
-    setPageTitle("Login");
-  }, []);
+  const login = async () => {
+    await supabase.auth.signInWithOtp({
+      email: prompt('Enter your email'),
+      options: {
+        emailRedirectTo: window.location.origin + '/dashboard'
+      }
+    });
+    alert('Check your email for the login link');
+  };
 
   return (
-    <>
-      <div className="auth-title">Sign in</div>
-      <div className="auth-subtitle">
-        Access the State 789 Alliance Dashboard
-      </div>
-
-      {/* EXISTING LOGIN BUTTONS / UI BELOW */}
-    </>
+    <div style={{ padding: 40 }}>
+      <h1>Login</h1>
+      <button onClick={login}>Login with Email</button>
+    </div>
   );
 }
