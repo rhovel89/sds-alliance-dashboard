@@ -8,8 +8,6 @@ export default function LandingPage() {
   const { session } = useSession();
 
   // ✅ If already logged in, go dashboard
-  if (session) return <Navigate to="/dashboard" replace />;
-
   // ✅ CRITICAL: If OAuth returns to "/" with ?code=... (your current problem),
   // immediately forward the same query params to /auth/callback
   const search = window.location.search || "";
@@ -62,3 +60,4 @@ export default function LandingPage() {
     </div>
   );
 }
+
