@@ -1,74 +1,40 @@
 import { useEffect } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { setPageTitle } from "../utils/pageTitle";
-import "../styles/auth.css";
+import { useNavigate } from "react-router-dom";
+import { useSession } from "../hooks/useSession";
 
 export default function LandingPage() {
+  const { session, loading } = useSession();
+  const navigate = useNavigate();
+
   useEffect(() => {
-    setPageTitle("Welcome");
-  }, []);
-
-  const loginDiscord = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "discord",
-      options: {
-        redirectTo: "https://state789.site/auth/callback"
-      }
+    console.log("🧪 LANDING PAGE CHECK", {
+      loading,
+      hasSession: !!session,
+      session,
     });
-  };
 
-  const loginGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: "https://state789.site/auth/callback"
-      }
-    });
-  };
+    if (!loading && session) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [session, loading, navigate]);
+
+  if (loading) return <div>Loading…</div>;
+  if (session) return null;
 
   return (
-    <div className="auth-shell">
-      <div className="auth-card" style={{ textAlign: "center" }}>
-        <div className="auth-title">Alliance Dashboard</div>
-        <div className="auth-subtitle">
-          Sign in to access your alliance tools
-        </div>
-
-        <div className="auth-actions">
-          <button
-            onClick={loginDiscord}
-            style={{
-              width: "100%",
-              padding: "14px 18px",
-              marginBottom: 12,
-              borderRadius: 8,
-              border: "none",
-              background: "#5865F2",
-              color: "#fff",
-              fontSize: 16,
-              cursor: "pointer"
-            }}
-          >
-            Continue with Discord
-          </button>
-
-          <button
-            onClick={loginGoogle}
-            style={{
-              width: "100%",
-              padding: "14px 18px",
-              borderRadius: 8,
-              border: "none",
-              background: "#ffffff",
-              color: "#000",
-              fontSize: 16,
-              cursor: "pointer"
-            }}
-          >
-            Continue with Google
-          </button>
-        </div>
-      </div>
+    <div style={{ padding: 40 }}>
+      <h1>State Alliance Dashboard</h1>
+      <button
+        onClick={async () => {
+          const { supabase } = await import("../lib/supabaseClient");
+          await supabase.auth.signInWithOAuth({
+            provider: "discord",
+            options: { redirectTo: window.location.origin },
+          });
+        }}
+      >
+        Login with Discord
+      </button>
     </div>
   );
 }

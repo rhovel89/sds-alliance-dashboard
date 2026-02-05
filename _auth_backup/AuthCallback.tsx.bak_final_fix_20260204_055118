@@ -1,0 +1,47 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
+
+export default function AuthCallback() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const finalize = async () => {
+      // 1️⃣ Handle PKCE ?code= flow
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error("❌ exchangeCodeForSession failed", error);
+          navigate("/login", { replace: true });
+          return;
+        }
+      }
+
+      // 2️⃣ Confirm session is now available
+      const { data } = await supabase.auth.getSession();
+
+      if (!cancelled && data.session) {
+        navigate("/dashboard", { replace: true });
+      } else {
+        navigate("/login", { replace: true });
+      }
+    };
+
+    finalize();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
+
+  return (
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+      <div>Finalizing authentication…</div>
+    </div>
+  );
+}

@@ -1,0 +1,40 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
+
+export default function AuthCallback() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const run = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+
+      if (!code) {
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+      // Clean URL
+      window.history.replaceState({}, document.title, "/");
+
+      if (error) {
+        console.error("OAuth exchange failed:", error);
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      navigate("/dashboard", { replace: true });
+    };
+
+    run();
+  }, [navigate]);
+
+  return (
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+      <div>Finalizing authentication…</div>
+    </div>
+  );
+}
