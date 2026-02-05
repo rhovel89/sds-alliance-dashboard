@@ -1,58 +1,55 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
 export default function AuthCallback() {
-  const [msg, setMsg] = useState("ENTERING ZONE…");
+  const navigate = useNavigate();
+  const [status, setStatus] = useState("Completing authentication…");
 
   useEffect(() => {
-    async function run() {
+    let cancelled = false;
+
+    async function finishAuth() {
       try {
-        const href = window.location.href;
+        console.info("[AuthCallback] handling OAuth response");
 
-        console.info("[AuthCallback] href:", href);
-
-        // ✅ Explicitly exchange code for session (prevents race/loop)
-        const { data: exData, error: exErr } = await supabase.auth.exchangeCodeForSession(href);
-        if (exErr) {
-          console.error("[AuthCallback] exchangeCodeForSession error", exErr);
-          setMsg("AUTH FAILED (exchange error). Check console.");
-          return;
-        }
-
+        // IMPORTANT: this finalizes the session
         const { data, error } = await supabase.auth.getSession();
+
         if (error) {
           console.error("[AuthCallback] getSession error", error);
-          setMsg("AUTH FAILED (session error). Check console.");
+          setStatus("Authentication failed.");
           return;
         }
 
         if (!data.session) {
-          console.error("[AuthCallback] No session after exchange.");
-          setMsg("AUTH FAILED (no session). Check provider + redirect URLs.");
+          console.warn("[AuthCallback] No session yet, retrying…");
+          setTimeout(finishAuth, 300);
           return;
         }
 
-        console.info("[AuthCallback] Session OK. Redirecting to /dashboard");
-        window.location.replace("/dashboard");
+        console.info("[AuthCallback] session ready", data.session.user?.id);
+
+        if (!cancelled) {
+          navigate("/dashboard", { replace: true });
+        }
       } catch (e) {
-        console.error("[AuthCallback] Fatal error", e);
-        setMsg("AUTH FAILED (fatal). Check console.");
+        console.error("[AuthCallback] unexpected error", e);
+        setStatus("Authentication error.");
       }
     }
 
-    run();
-  }, []);
+    finishAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "grid",
-      placeItems: "center",
-      background: "#000",
-      color: "#0f0",
-      fontFamily: "monospace"
-    }}>
-      <h2>{msg}</h2>
+    <div style={{ padding: "2rem", color: "#fff" }}>
+      <h2>Entering the Zone…</h2>
+      <p>{status}</p>
     </div>
   );
 }
