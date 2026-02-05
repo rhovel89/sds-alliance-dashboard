@@ -1,35 +1,12 @@
-import PublicHQMap from '../pages/hq/PublicHQMap';
-import { Routes, Route, Navigate } from 'react-router-dom';
-
-import LandingPage from '../pages/LandingPage';
+import { Routes, Route } from 'react-router-dom';
+import Login from '../pages/Login';
 import AllianceDashboard from '../pages/AllianceDashboard';
-import AllianceRoster from '../pages/AllianceRoster';
-import OwnerPermissions from '../pages/OwnerPermissions';
-import AllianceInvites from '../pages/AllianceInvites';
-import AllianceSettings from '../pages/AllianceSettings';
-import HQMap from '../pages/hq/HQMap';
-import InviteAccept from '../pages/InviteAccept';
 
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/hq" element={<PublicHQMap />} />
-      <Route path="/" element={<LandingPage />} />
-
-      {/* OAuth callback (public) */}
-
+      <Route path="/" element={<Login />} />
       <Route path="/dashboard" element={<AllianceDashboard />} />
-      <Route path="/dashboard/roster" element={<AllianceRoster />} />
-      <Route path="/dashboard/invites" element={<AllianceInvites />} />
-      <Route path="/dashboard/settings" element={<AllianceSettings />} />
-      <Route path="/dashboard/hq-map" element={<HQMap />} />
-
-      <Route path="/alliance/:allianceId/permissions" element={<OwnerPermissions />} />
-      <Route path="/invite/:token" element={<InviteAccept />} />
-
-      <Route path="/public/hq-map/:allianceId" element={<PublicHQMap />} />
-
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
