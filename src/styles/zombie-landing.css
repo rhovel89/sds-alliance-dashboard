@@ -110,3 +110,83 @@ body {
   background: linear-gradient(#700000, #300000);
   box-shadow: 0 0 15px rgba(255,0,0,0.6);
 }
+/* =========================
+   VHS / CRT GLITCH OVERLAY
+   ========================= */
+
+.vhs-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.02),
+      rgba(255,255,255,0.02) 1px,
+      rgba(0,0,0,0.02) 2px
+    );
+  mix-blend-mode: overlay;
+  animation: scanlines 0.15s linear infinite;
+}
+
+@keyframes scanlines {
+  from { transform: translateY(0); }
+  to { transform: translateY(2px); }
+}
+
+/* =========================
+   RGB SPLIT GLITCH
+   ========================= */
+
+.glitch {
+  position: relative;
+}
+
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  overflow: hidden;
+  opacity: 0.8;
+}
+
+.glitch::before {
+  color: red;
+  transform: translateX(-2px);
+  animation: glitchRed 2.5s infinite linear alternate-reverse;
+}
+
+.glitch::after {
+  color: cyan;
+  transform: translateX(2px);
+  animation: glitchBlue 3s infinite linear alternate-reverse;
+}
+
+@keyframes glitchRed {
+  0% { clip-path: inset(0 0 90% 0); }
+  50% { clip-path: inset(40% 0 40% 0); }
+  100% { clip-path: inset(85% 0 5% 0); }
+}
+
+@keyframes glitchBlue {
+  0% { clip-path: inset(10% 0 80% 0); }
+  50% { clip-path: inset(60% 0 20% 0); }
+  100% { clip-path: inset(30% 0 60% 0); }
+}
+
+/* =========================
+   SCREEN JITTER
+   ========================= */
+
+.zombie-bg {
+  animation: screenJitter 8s infinite;
+}
+
+@keyframes screenJitter {
+  0%, 98%, 100% { transform: translate(0,0); }
+  99% { transform: translate(-1px, 1px); }
+}
