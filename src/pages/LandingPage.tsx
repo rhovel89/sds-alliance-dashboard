@@ -1,42 +1,43 @@
-import "../styles/zombie-landing.css";
-import { supabase } from "../lib/supabaseClient";
+import { useEffect } from 'react'
+import '../styles/zombie-landing.css'
+import { supabase } from '../lib/supabaseClient'
 
 export default function LandingPage() {
-  async function loginDiscord() {
+  useEffect(() => {
+    document.body.classList.add('zombie-landing')
+    return () => document.body.classList.remove('zombie-landing')
+  }, [])
+
+  const loginDiscord = async () => {
     await supabase.auth.signInWithOAuth({
-      provider: "discord",
-      options: { redirectTo: window.location.origin + "/auth/callback" },
-    });
+      provider: 'discord',
+      options: { redirectTo: window.location.origin + '/auth/callback' }
+    })
   }
 
-  async function loginGoogle() {
+  const loginGoogle = async () => {
     await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin + "/auth/callback" },
-    });
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/auth/callback' }
+    })
   }
 
   return (
-    <div className="zombie-bg">
-      <div className="blood-drip" />
-      <div className="fog" />
-      <div className="vhs-overlay" />
+    <>
+      <div className='blood-drip' />
+      <div className='zombie-fog' />
 
-      <div className="login-panel glitch" data-text="STATE 789">
-        <h1>STATE 789</h1>
+      <div className='zombie-panel'>
+        <div className='zombie-title'>STATE 789</div>
 
-        <button className="zombie-btn" onClick={loginDiscord}>
+        <button className='zombie-btn' onClick={loginDiscord}>
           🧟 Login with Discord
         </button>
 
-        <button className="zombie-btn" onClick={loginGoogle}>
+        <button className='zombie-btn' onClick={loginGoogle}>
           ☣️ Login with Google
         </button>
       </div>
-    </div>
-  );
+    </>
+  )
 }
-
-import '../styles/zombie-buttons.css';
-
-
