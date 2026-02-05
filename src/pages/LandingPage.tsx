@@ -1,12 +1,18 @@
+import { Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useSession } from "../hooks/useSession";
 import "../styles/zombie-buttons.css";
 
 export default function LandingPage() {
-  const { session } = useSession();
+  const { session, loading } = useSession();
 
-  // If already logged in, let routing handle redirect
-  if (session) return null;
+  // Avoid flash while session is loading
+  if (loading) return null;
+
+  // ✅ Logged in → dashboard
+  if (session) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   async function loginDiscord() {
     const redirectTo = `${window.location.origin}/auth/callback`;
