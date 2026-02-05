@@ -1,55 +1,44 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState("Completing authentication…");
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function finishAuth() {
+    async function completeOAuth() {
       try {
-        console.info("[AuthCallback] handling OAuth response");
+        console.info("[AuthCallback] exchanging OAuth code for session");
 
-        // IMPORTANT: this finalizes the session
-        const { data, error } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.exchangeCodeForSession(
+          window.location.href
+        );
 
         if (error) {
-          console.error("[AuthCallback] getSession error", error);
-          setStatus("Authentication failed.");
+          console.error("[AuthCallback] exchange failed", error);
           return;
         }
 
-        if (!data.session) {
-          console.warn("[AuthCallback] No session yet, retrying…");
-          setTimeout(finishAuth, 300);
+        if (!data?.session) {
+          console.error("[AuthCallback] session missing after exchange");
           return;
         }
 
-        console.info("[AuthCallback] session ready", data.session.user?.id);
+        console.info("[AuthCallback] session established", data.session.user.id);
 
-        if (!cancelled) {
-          navigate("/dashboard", { replace: true });
-        }
-      } catch (e) {
-        console.error("[AuthCallback] unexpected error", e);
-        setStatus("Authentication error.");
+        navigate("/dashboard", { replace: true });
+      } catch (err) {
+        console.error("[AuthCallback] fatal error", err);
       }
     }
 
-    finishAuth();
-
-    return () => {
-      cancelled = true;
-    };
+    completeOAuth();
   }, [navigate]);
 
   return (
     <div style={{ padding: "2rem", color: "#fff" }}>
       <h2>Entering the Zone…</h2>
-      <p>{status}</p>
+      <p>Finalizing authentication</p>
     </div>
   );
 }
