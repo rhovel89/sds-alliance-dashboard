@@ -11,7 +11,7 @@ export default function AuthCallback() {
         console.info("[AuthCallback] exchanging OAuth code for session");
 
         const { data, error } = await supabase.auth.exchangeCodeForSession(
-          window.location.href
+        window.location.origin + window.location.pathname + window.location.search
         );
 
         if (error) {
