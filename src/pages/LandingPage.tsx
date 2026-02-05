@@ -25,11 +25,11 @@ export default function LandingPage() {
       <div className="login-panel glitch" data-text="STATE 789">
         <h1>STATE 789</h1>
 
-        <Button className="login-btn" onClick={loginDiscord} className="zombie-btn" className="zombie-btn">
+        <button className="zombie-btn" onClick={loginDiscord}>
           🧟 Login with Discord
         </button>
 
-        <Button className="login-btn" onClick={loginGoogle} className="zombie-btn" className="zombie-btn">
+        <button className="zombie-btn" onClick={loginGoogle}>
           ☣️ Login with Google
         </button>
       </div>
@@ -38,4 +38,5 @@ export default function LandingPage() {
 }
 
 import '../styles/zombie-buttons.css';
+
 
