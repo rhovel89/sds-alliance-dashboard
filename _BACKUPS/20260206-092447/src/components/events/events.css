@@ -1,0 +1,37 @@
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  font-weight: bold;
+  text-align: center;
+}
+
+.day-cell {
+  border: 1px solid #333;
+  min-height: 90px;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.day-cell.empty {
+  background: #111;
+  cursor: default;
+}
+
+.day-number {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.event-block {
+  background: #2b6cff;
+  color: white;
+  padding: 2px 4px;
+  margin-top: 2px;
+  border-radius: 3px;
+  font-size: 11px;
+}
