@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../contexts/AuthContext";
+import { useSession } from "../hooks/useSession";
 
 export function useMyAchievements() {
-  const { session } = useAuth();
+  const { session } = useSession();
   const [rows, setRows] = useState<any[]>([]);
 
   useEffect(() => {
@@ -18,3 +18,4 @@ export function useMyAchievements() {
 
   return rows;
 }
+

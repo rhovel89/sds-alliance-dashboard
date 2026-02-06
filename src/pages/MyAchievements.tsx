@@ -1,10 +1,10 @@
 import { useAchievements } from "../hooks/useAchievements";
 import { useMyAchievements } from "../hooks/useMyAchievements";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../contexts/AuthContext";
+import { useSession } from "../hooks/useSession";
 
 export default function MyAchievements() {
-  const { session } = useAuth();
+  const { session } = useSession();
   const { list } = useAchievements(789);
   const mine = useMyAchievements();
 
@@ -37,5 +37,6 @@ export default function MyAchievements() {
     </div>
   );
 }
+
 
 
