@@ -37,3 +37,7 @@
   border: none;
   cursor: default;
 }
+.calendar-cell.disabled {
+  pointer-events: none;
+  opacity: 0.35;
+}

@@ -12,15 +12,20 @@ export default function MonthBlock({ month, events, timezone, onDayClick }: any)
       </div>
 
       <div className='month-grid'>
-        {Array.from({ length: daysInMonth }, (_, i) => (
-          <DayCell
-            key={i}
-            date={new Date(year, monthIndex, i + 1)}
-            events={events}
-            timezone={timezone}
-            onDayClick={onDayClick}
-          />
-        ))}
+        {Array.from({ length: daysInMonth }, (_, i) => {
+          const dateObj = new Date(year, monthIndex, i + 1);
+          const dateStr = dateObj.toISOString().split('T')[0];
+
+          return (
+            <DayCell
+              key={dateStr}
+              date={dateObj}
+              events={events}
+              timezone={timezone}
+              onClick={() => onDayClick(dateStr)}
+            />
+          );
+        })}
       </div>
     </div>
   );

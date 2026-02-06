@@ -1,24 +1,18 @@
-export default function DayCell({ date, events }: any) {
-  const dayKey = date.toISOString().slice(0, 10);
-
-  const dayEvents = events.filter((e: any) =>
-    e.alliance_event_rules?.some(
-      (r: any) =>
-        dayKey >= r.effective_from &&
-        dayKey <= r.until_date
-    )
-  );
+export default function DayCell({ date, events, timezone, onDayClick }: any) {
+  const iso = date.toISOString().split('T')[0];
 
   return (
-    <div className={`day-cell ${dayEvents.length ? "has-event" : ""}`}>
-      <span className="day-number">{date.getDate()}</span>
-
-      {dayEvents.length > 0 && (
-        <span
-          className="event-dot"
-          title={`${dayEvents.length} events`}
-        />
-      )}
+    <div
+      className='calendar-day'
+      onClick={() => onDayClick(iso)}
+      style={{
+        border: '1px solid red',
+        padding: '12px',
+        cursor: 'pointer',
+        userSelect: 'none'
+      }}
+    >
+      <div className='day-number'>{date.getDate()}</div>
     </div>
   );
 }
