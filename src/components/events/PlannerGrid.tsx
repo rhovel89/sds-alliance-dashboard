@@ -1,34 +1,40 @@
-import { useState } from 'react';
-import MonthBlock from './MonthBlock';
-import EventModal from './EventModal';
+import { useMemo, useState } from "react";
+import MonthBlock from "./MonthBlock";
+import EventModal from "./EventModal";
+import "./events.css";
 
-export default function PlannerGrid({ events, timezone }: any) {
+type Props = {
+  events: any[];
+  onCreate?: (payload: any) => Promise<void>;
+};
+
+export default function PlannerGrid({ events, onCreate }: Props) {
   const now = new Date();
 
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now);
-    d.setMonth(now.getMonth() + i);
-    return d;
-  });
+  const months = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now);
+      d.setMonth(now.getMonth() + i);
+      d.setDate(1);
+      return d;
+    });
+  }, [now]);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  function handleDayClick(date: string) {
-  alert('CLICKED DATE: ' + date);
-
-    setSelectedDate(date);
+  function handleDayClick(isoDate: string) {
+    setSelectedDate(isoDate);
     setModalOpen(true);
   }
 
   return (
     <div className="planner-grid">
-      {months.map((month) => (
+      {months.map((m) => (
         <MonthBlock
-          key={month.toISOString()}
-          month={month}
+          key={m.toISOString()}
+          month={m}
           events={events}
-          timezone={timezone}
           onDayClick={handleDayClick}
         />
       ))}
@@ -37,13 +43,11 @@ export default function PlannerGrid({ events, timezone }: any) {
         open={modalOpen}
         date={selectedDate}
         onClose={() => setModalOpen(false)}
-        onSave={(event) => {
-          console.log('EVENT SAVED (UI ONLY):', event);
+        onSave={async (payload: any) => {
+          if (onCreate) await onCreate(payload);
           setModalOpen(false);
         }}
       />
     </div>
   );
 }
-
-
