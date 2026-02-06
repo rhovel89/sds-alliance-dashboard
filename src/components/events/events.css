@@ -1,52 +1,138 @@
-.calendar-day {
-  cursor: pointer;
-}
-
-.event-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.event-modal {
-  background: #111;
-  padding: 20px;
-  border-radius: 8px;
-  width: 320px;
-  color: #fff;
-}
-
-/* === CLICK FIX OVERRIDES (SAFE) === */
-.planner-grid,
-.month-block,
-.month-grid,
-.day-cell {
-  pointer-events: auto !important;
-}
+/* Real calendar grid */
+.events-page { padding: 20px; }
 
 .planner-grid {
-  position: relative;
-  z-index: 50;
+  display: grid;
+  gap: 24px;
 }
 
 .month-block {
-  position: relative;
-  z-index: 51;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.55);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.month-title {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 10px 0;
+}
+
+.weekday-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+  opacity: 0.85;
+  font-weight: 700;
+}
+
+.weekday-header div {
+  padding: 6px 8px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
 }
 
 .day-cell {
-  position: relative;
-  z-index: 52;
+  min-height: 92px;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px;
+  padding: 8px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.04);
 }
 
-/* Prevent overlays from blocking clicks */
-.fog-overlay,
-.vhs-overlay,
-.effect-layer,
-.background-layer {
-  pointer-events: none !important;
+.day-cell:hover {
+  outline: 2px solid rgba(0,255,160,0.35);
+}
+
+.day-cell.is-outside {
+  opacity: 0.35;
+}
+
+.day-num {
+  font-weight: 800;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.event-chip {
+  display: block;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  margin-top: 6px;
+  background: rgba(0,255,160,0.12);
+  border: 1px solid rgba(0,255,160,0.28);
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-card {
+  width: min(720px, 92vw);
+  background: rgba(10,10,10,0.96);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+
+.modal-title {
+  font-size: 28px;
+  font-weight: 900;
+  margin: 0 0 8px 0;
+}
+
+.modal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.modal-row label { font-size: 12px; opacity: 0.8; }
+.modal-row input, .modal-row select, .modal-row textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+  color: white;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.btn {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+}
+.btn-primary {
+  border-color: rgba(0,255,160,0.35);
+  background: rgba(0,255,160,0.14);
 }

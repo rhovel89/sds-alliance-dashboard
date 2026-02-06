@@ -17,10 +17,14 @@ export default function EventsPage() {
       const { data, error } = await supabase
         .from("alliance_events")
         .select("*")
-        .eq("alliance_id", allianceId);
+        .eq("alliance_id", allianceId)
+        .order("start_time_utc", { ascending: true });
 
-      if (!error) setEvents(data || []);
-      else console.error(error);
+      if (error) {
+        console.error("❌ Failed to load events:", error);
+      } else {
+        setEvents(data || []);
+      }
 
       setLoadingEvents(false);
     }
@@ -30,6 +34,10 @@ export default function EventsPage() {
 
   if (loading || loadingEvents) {
     return <div style={{ padding: 20 }}>Loading events…</div>;
+  }
+
+  if (!allianceId) {
+    return <div style={{ padding: 20 }}>No alliance selected</div>;
   }
 
   return (
