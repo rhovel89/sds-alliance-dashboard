@@ -15,7 +15,7 @@ export default function AppRoutes() {
       <Route element={<AuthGate />}>
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<AllianceDashboard />} />
-          <Route path="/hq-map" element={<HQMap />} />
+          <Route path="/hq-map" element={<ErrorBoundary><HQMap /></ErrorBoundary>} />
         </Route>
       </Route>
 
@@ -23,3 +23,4 @@ export default function AppRoutes() {
     </Routes>
   );
 }
+
