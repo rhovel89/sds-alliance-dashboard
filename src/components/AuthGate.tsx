@@ -1,23 +1,18 @@
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useSession } from "../hooks/useSession";
 
-export default function AuthGate({ children }: { children: JSX.Element }) {
+export default function AuthGate() {
   const { session, loading } = useSession();
+  const loc = useLocation();
 
   if (loading) {
-    return (
-      <div style={{
-        background: "#000",
-        color: "#9f0000",
-        height: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "monospace"
-      }}>
-        Initializing session…
-      </div>
-    );
+    return <div style={{ padding: 24 }}>Initializing session…</div>;
   }
 
-  return children;
+  if (!session) {
+    const next = encodeURIComponent(loc.pathname + loc.search + loc.hash);
+    return <Navigate to={`/?next=${next}`} replace />;
+  }
+
+  return <Outlet />;
 }
