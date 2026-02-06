@@ -78,7 +78,7 @@ export default function HQMap() {
           <div
             key={i}
             onClick={() => canEdit && setSelected(i)}
-            className={`hq-cell ${cell.player_name ? "ally" : "empty"} ${selected === i ? "selected" : ""}`}
+            className={`hq-cell ${selected === i ? "hq-selected" : ""} ${cell.player_name ? "ally" : "empty"} ${selected === i ? "selected" : ""}`}
           >
             <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>HQ {i + 1}</div>
             <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>

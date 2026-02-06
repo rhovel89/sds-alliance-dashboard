@@ -1,0 +1,32 @@
+/* === HQ TILE BASE === */
+.hq-cell {
+  border: 2px solid #555;
+  padding: 10px;
+  min-height: 70px;
+  text-align: center;
+  background: #0b0b0b;
+  color: #e6ffe6;
+  font-family: monospace;
+}
+
+/* === OWNERSHIP STATES === */
+.hq-cell.empty {
+  border-color: #777;
+}
+
+.hq-cell.ally {
+  border-color: #4cff4c;
+}
+
+.hq-cell.danger {
+  border-color: #ff4c4c;
+}
+.hq-selected {
+  animation: hqPulse 1.6s infinite;
+}
+
+@keyframes hqPulse {
+  0%   { box-shadow: 0 0 4px #2cff7b; }
+  50%  { box-shadow: 0 0 18px #2cff7b; }
+  100% { box-shadow: 0 0 4px #2cff7b; }
+}
