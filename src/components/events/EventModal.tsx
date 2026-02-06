@@ -112,3 +112,4 @@ export default function EventModal({ open, date, onClose, onSave }: any) {
     </div>
   );
 }
+

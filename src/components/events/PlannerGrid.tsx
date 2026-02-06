@@ -1,32 +1,13 @@
-import { useState, useMemo } from "react";
-import MonthBlock from "./MonthBlock";
-import EventModal from "./EventModal";
+import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useAlliance } from "../../context/AllianceContext";
+import MonthBlock from "./MonthBlock";
+import EventModal from "./EventModal";
 
-export default function PlannerGrid({ events, timezone }: any) {
+export default function PlannerGrid({ events, timezone, onEventSaved }: any) {
   const { allianceId } = useAlliance();
-  const now = new Date();
-
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now);
-    d.setMonth(now.getMonth() + i);
-    return d;
-  });
-
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-
-  const normalizedEvents = useMemo(() => {
-    return (events || []).map((e: any) => {
-      const d = new Date(e.start_time_utc);
-      const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-      return {
-        ...e,
-        __dayKey: local.toISOString().slice(0, 10),
-      };
-    });
-  }, [events]);
 
   function handleDayClick(date: string) {
     setSelectedDate(date);
@@ -36,27 +17,44 @@ export default function PlannerGrid({ events, timezone }: any) {
   async function handleSave(event: any) {
     if (!allianceId) return;
 
-    const start = new Date(`${event.date}T${event.startTime}:00`);
-    const end = new Date(`${event.date}T${event.endTime}:00`);
-    const durationMinutes = Math.max(1, (end.getTime() - start.getTime()) / 60000);
-
-    const { error } = await supabase.from("alliance_events").insert({
+    const payload = {
       title: event.title,
       alliance_id: allianceId,
-      start_time_utc: start.toISOString(),
-      duration_minutes: durationMinutes,
-      recurrence_type: event.frequency || "once",
+      start_time_utc: new Date(
+        `${event.date}T${event.startTime}:00`
+      ).toISOString(),
+      duration_minutes:
+        (Number(event.endTime.split(":")[0]) * 60 +
+          Number(event.endTime.split(":")[1])) -
+        (Number(event.startTime.split(":")[0]) * 60 +
+          Number(event.startTime.split(":")[1])),
+      recurrence_type: event.frequency,
       days_of_week: event.days || [],
       timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    });
+      created_by: (await supabase.auth.getUser()).data.user?.id,
+    };
+
+    const { error } = await supabase.from("alliance_events").insert(payload);
 
     if (error) {
       console.error("❌ Supabase insert failed:", error);
       return;
     }
 
-    window.location.reload();
+    setModalOpen(false);
+    setSelectedDate(null);
+
+    if (onEventSaved) {
+      onEventSaved();
+    }
   }
+
+  const now = new Date();
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now);
+    d.setMonth(now.getMonth() + i);
+    return d;
+  });
 
   return (
     <div className="planner-grid">
@@ -64,7 +62,7 @@ export default function PlannerGrid({ events, timezone }: any) {
         <MonthBlock
           key={month.toISOString()}
           month={month}
-          events={normalizedEvents}
+          events={events}
           timezone={timezone}
           onDayClick={handleDayClick}
         />
@@ -79,3 +77,5 @@ export default function PlannerGrid({ events, timezone }: any) {
     </div>
   );
 }
+
+
