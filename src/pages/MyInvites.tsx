@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../contexts/AuthContext";
+import { useSession } from "../hooks/useSession";
 
 export default function MyInvites() {
-  const { session } = useAuth();
+  const { session } = useSession();
   const [invites, setInvites] = useState<any[]>([]);
 
   useEffect(() => {
@@ -42,4 +42,5 @@ export default function MyInvites() {
     </div>
   );
 }
+
 

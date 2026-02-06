@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { useAuth } from "./AuthContext";
+import { useSession } from "../hooks/useSession";
 
 type UserContextType = {
   user: any;
@@ -10,7 +10,7 @@ const UserContext = createContext<UserContextType>({
 });
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const { session } = useAuth();
+  const { session } = useSession();
 
   const user = session?.user ?? null;
 
@@ -24,4 +24,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 export function useUser() {
   return useContext(UserContext);
 }
+
+
 

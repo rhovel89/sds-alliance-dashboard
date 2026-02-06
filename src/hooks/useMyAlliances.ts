@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../contexts/AuthContext";
+import { useSession } from "../hooks/useSession";
 
 export function useMyAlliances() {
-  const { session } = useAuth();
+  const { session } = useSession();
   const [alliances, setAlliances] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,3 +22,4 @@ export function useMyAlliances() {
 
   return { alliances, loading };
 }
+

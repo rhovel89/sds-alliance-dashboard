@@ -1,0 +1,44 @@
+.hq-cell.selected {
+  animation: greenPulse 1.6s infinite;
+  box-shadow: 0 0 12px rgba(0,255,0,0.6);
+}
+
+@keyframes greenPulse {
+  0% { box-shadow: 0 0 6px rgba(0,255,0,0.4); }
+  50% { box-shadow: 0 0 16px rgba(0,255,0,0.9); }
+  100% { box-shadow: 0 0 6px rgba(0,255,0,0.4); }
+}
+
+/* Ownership colors */
+.hq-cell.ally { background: rgba(0,120,0,0.35); }
+.hq-cell.empty { background: rgba(80,80,80,0.25); }
+.hq-cell.danger { background: rgba(120,0,0,0.35); }
+
+/* Fog overlay */
+.hq-map-page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/fog.png") repeat;
+  opacity: 0.12;
+  animation: fogMove 60s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes fogMove {
+  from { background-position: 0 0; }
+  to { background-position: 1000px 0; }
+}
+
+/* VHS glitch flicker */
+.hq-map-page {
+  position: relative;
+  animation: vhsFlicker 8s infinite;
+}
+
+@keyframes vhsFlicker {
+  0%, 100% { filter: none; }
+  92% { filter: contrast(1.1) brightness(1.05); }
+  94% { filter: hue-rotate(5deg); }
+  96% { filter: none; }
+}

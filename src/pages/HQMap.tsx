@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { useSession } from "../hooks/useSession";
 import "../styles/hq-map-zombie.css";
+
+
 
 const COLUMNS = 13;
 const ROWS = 11;
@@ -15,6 +18,7 @@ function storageKey(allianceId: string) {
 }
 
 export default function HQMap() {
+  const { session } = useSession();
   if (!session) {
     return <Navigate to="/" replace />;
   }
@@ -102,6 +106,10 @@ export default function HQMap() {
     </div>
   );
 }
+
+
+
+
 
 
 

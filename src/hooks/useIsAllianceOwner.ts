@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../contexts/AuthContext";
+import { useSession } from "../hooks/useSession";
 
 export function useIsAllianceOwner(allianceId: string | null) {
-  const { session } = useAuth();
+  const { session } = useSession();
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -27,3 +27,4 @@ export function useIsAllianceOwner(allianceId: string | null) {
 
   return { isOwner, loading };
 }
+
