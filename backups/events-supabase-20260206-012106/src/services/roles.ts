@@ -1,0 +1,14 @@
+import { supabase } from '../lib/supabaseClient';
+
+export async function changeMemberRole(allianceId: string, userId: string, role: string) {
+  await supabase.from('alliance_members')
+    .update({ role })
+    .eq('alliance_id', allianceId)
+    .eq('user_id', userId);
+
+  await supabase.from('alliance_role_audit').insert({
+    alliance_id: allianceId,
+    target_user: userId,
+    new_role: role,
+  });
+}

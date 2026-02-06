@@ -1,0 +1,95 @@
+import { useState, useMemo } from "react";
+import "../../styles/hq-map.css";
+
+type HQCell = {
+  name: string;
+  coords: string;
+};
+
+const COLUMNS = 13;
+const ROWS = 11;
+const DEFAULT_SLOTS = 120;
+
+export default function HQMap() {
+  const [hqSize, setHqSize] = useState(DEFAULT_SLOTS);
+  const [cells, setCells] = useState<Record<number, HQCell>>({});
+  const [selected, setSelected] = useState<number | null>(null);
+
+  const indices = useMemo(
+    () => Array.from({ length: hqSize }, (_, i) => i),
+    [hqSize]
+  );
+
+  function updateCell(index: number, field: keyof HQCell, value: string) {
+    setCells(prev => ({
+      ...prev,
+      [index]: {
+        name: prev[index]?.name || "",
+        coords: prev[index]?.coords || "",
+        [field]: value
+      }
+    }));
+  }
+
+  return (
+    <div className="hq-map-wrapper">
+      <div className="hq-map-controls">
+        <button onClick={() => setHqSize(v => v + 1)}>➕ Add HQ Spot</button>
+        <button
+          onClick={() =>
+            setHqSize(v => (v > 1 ? v - 1 : v))
+          }
+        >
+          ➖ Remove HQ Spot
+        </button>
+        <span>{hqSize} / {COLUMNS * ROWS} slots</span>
+      </div>
+
+      <div
+        className="hq-map-grid"
+        style={{
+          gridTemplateColumns: `repeat(${COLUMNS}, 1fr)`
+        }}
+      >
+        {indices.map(i => (
+          <div
+            key={i}
+            className={`hq-cell ${selected === i ? "active" : ""}`}
+            onClick={() => setSelected(i)}
+          >
+            
+            <div className="hq-coords">
+              {cells[i]?.coords || "—"}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {selected !== null && (
+        <div className="hq-editor">
+          <h4>HQ {selected + 1}</h4>
+
+          <input
+            placeholder="Player Game Name"
+            value={cells[selected]?.name || ""}
+            onChange={e =>
+              updateCell(selected, "name", e.target.value)
+            }
+          />
+
+          <input
+            placeholder="Coordinates (e.g. X:123 Y:456)"
+            value={cells[selected]?.coords || ""}
+            onChange={e =>
+              updateCell(selected, "coords", e.target.value)
+            }
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+
