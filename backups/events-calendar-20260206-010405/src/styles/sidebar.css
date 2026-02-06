@@ -1,0 +1,37 @@
+.sidebar {
+  width: 220px;
+  background: #0f1522;
+  border-right: 1px solid rgba(255,255,255,0.05);
+  padding: 16px;
+}
+
+.sidebar-section {
+  margin-bottom: 24px;
+}
+
+.sidebar-title {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #9aa4b2;
+  margin-bottom: 10px;
+}
+
+.nav-item {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: #e6e9ef;
+  text-decoration: none;
+  margin-bottom: 6px;
+  transition: background 0.15s ease;
+}
+
+.nav-item:hover {
+  background: rgba(107,92,255,0.12);
+}
+
+.nav-item.active {
+  background: rgba(107,92,255,0.25);
+  color: #ffffff;
+}
