@@ -1,3 +1,4 @@
+
 .zombie-hq-map {
   position: relative;
   min-height: 100vh;
@@ -18,20 +19,22 @@
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Ownership states */
-.hq-empty {
+/* Ownership states — match JSX */
+.hq-cell.empty {
   background: #1a1a1a;
+  border-color: #444;
 }
 
-.hq-ally {
+.hq-cell.ally {
   background: #0f2a14;
   border-color: #2cff7b;
 }
 
-.hq-danger {
+.hq-cell.danger {
   background: #2a0f0f;
   border-color: #ff3c3c;
 }
+
 
 /* Selected HQ pulse */
 .hq-selected {

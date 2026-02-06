@@ -45,3 +45,14 @@
   from { transform: translateX(0); }
   to   { transform: translateX(-200px); }
 }
+@keyframes vhsFlicker {
+  0%   { filter: none; }
+  97%  { filter: none; }
+  98%  { filter: contrast(1.05) saturate(1.1); }
+  99%  { filter: brightness(0.95); }
+  100% { filter: none; }
+}
+
+.hq-vhs {
+  animation: vhsFlicker 8s infinite;
+}
