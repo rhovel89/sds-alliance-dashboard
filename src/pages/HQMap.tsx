@@ -56,19 +56,18 @@ export default function HQMap() {
   }
 
   if (cells.length !== TOTAL_HQ) {
-    return <div style={{ padding: 24 }}>Loading HQ Map…</div>;
+    return <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>Loading HQ Map…</div>;
   }
 
   return (
-    <div style={{ padding: 24 }}>
+    <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>
       <h2 style={{ color: "#9fef00" }}>🧟 Alliance HQ Map</h2>
       <p style={{ color: "#6b6b6b", fontSize: 12 }}>
         Role: <strong>{role}</strong> — HQs persist locally
       </p>
 
       <div
-        style={{
-          display: "grid",
+        className="hq-grid" style={{ display: "grid",
           gridTemplateColumns: `repeat(${COLUMNS}, 1fr)`,
           gap: 12,
           marginTop: 20
@@ -78,21 +77,13 @@ export default function HQMap() {
           <div
             key={i}
             onClick={() => canEdit && setSelected(i)}
-            style={{
-              border: "1px solid #2a2a2a",
-              background: selected === i ? "#111" : "#0b0b0b",
-              color: "#9fef00",
-              padding: 10,
-              minHeight: 70,
-              fontSize: 12,
-              cursor: canEdit ? "pointer" : "default"
-            }}
+            className={`hq-cell ${cell.player_name ? "ally" : "empty"} ${selected === i ? "selected" : ""}`}
           >
-            <div style={{ fontWeight: 600 }}>HQ {i + 1}</div>
-            <div style={{ opacity: 0.8 }}>
+            <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>HQ {i + 1}</div>
+            <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>
               {cell.player_name || "— empty —"}
             </div>
-            <div style={{ opacity: 0.6, fontSize: 11 }}>
+            <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>
               {cell.coords || ""}
             </div>
           </div>
@@ -100,7 +91,7 @@ export default function HQMap() {
       </div>
 
       {canEdit && selected !== null && (
-        <div style={{ marginTop: 20 }}>
+        <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>
           <h4 style={{ color: "#9fef00" }}>
             Editing HQ {selected + 1}
           </h4>
@@ -142,3 +133,4 @@ export default function HQMap() {
     </div>
   );
 }
+
