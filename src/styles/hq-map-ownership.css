@@ -30,3 +30,18 @@
   50%  { box-shadow: 0 0 18px #2cff7b; }
   100% { box-shadow: 0 0 4px #2cff7b; }
 }
+.hq-fog {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    repeating-radial-gradient(circle at 20% 30%, rgba(255,255,255,0.03), transparent 80px),
+    repeating-radial-gradient(circle at 70% 60%, rgba(255,255,255,0.02), transparent 120px);
+  animation: fogDrift 40s linear infinite;
+}
+
+@keyframes fogDrift {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-200px); }
+}
