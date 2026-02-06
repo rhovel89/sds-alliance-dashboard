@@ -46,3 +46,20 @@
   color: #000;
   cursor: not-allowed;
 }
+.dow-grid {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dow-grid button {
+  background: transparent;
+  border: 1px solid #1f3d2b;
+  color: #ccc;
+  padding: 4px 6px;
+}
+
+.dow-grid button.active {
+  background: #00ff88;
+  color: #000;
+}
