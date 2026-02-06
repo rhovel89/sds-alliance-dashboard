@@ -1,39 +1,35 @@
-type Props = {
-  date: Date;
-  isOutside?: boolean;
-  events?: any[];
-  onClick?: (isoDate: string) => void;
-};
-
-function toISODate(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-export default function DayCell({ date, isOutside, events = [], onClick }: Props) {
-  const iso = toISODate(date);
-  const dayEvents = events.filter((e) => e?.__uiDate === iso);
+export default function DayCell({ date, events, onClick }: any) {
+  const iso = date.toISOString().split('T')[0];
+  const dayEvents = events.filter((e: any) => e.__eventDate === iso);
 
   return (
     <div
-      className={`day-cell ${isOutside ? "is-outside" : ""}`}
-      onClick={() => onClick?.(iso)}
-      role="button"
-      tabIndex={0}
+      className="calendar-day"
+      onClick={() => onClick(iso)}
+      style={{
+        border: '1px solid #333',
+        padding: 6,
+        minHeight: 80,
+        cursor: 'pointer'
+      }}
     >
-      <div className="day-num">{date.getDate()}</div>
+      <div style={{ fontWeight: 'bold' }}>{date.getDate()}</div>
 
-      {dayEvents.slice(0, 3).map((e: any) => (
-        <span key={e.id ?? `${e.title}-${e.start_time_utc}`} className="event-chip">
+      {dayEvents.map((e: any) => (
+        <div
+          key={e.id}
+          style={{
+            marginTop: 4,
+            padding: '2px 4px',
+            background: '#1e1e1e',
+            color: '#9cff9c',
+            fontSize: 12,
+            borderRadius: 4
+          }}
+        >
           {e.title}
-        </span>
+        </div>
       ))}
-
-      {dayEvents.length > 3 ? (
-        <span className="event-chip">+{dayEvents.length - 3} more</span>
-      ) : null}
     </div>
   );
 }

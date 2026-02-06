@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import PlannerGrid from "../components/events/PlannerGrid";
-import { useAlliance } from "../context/AllianceContext";
-import { supabase } from "../lib/supabaseClient";
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { useAlliance } from '../context/AllianceContext';
+import PlannerGrid from '../components/events/PlannerGrid';
+import { normalizeEvents } from '../components/events/normalizeEvents';
 
 export default function EventsPage() {
   const { allianceId, loading } = useAlliance();
@@ -15,12 +16,13 @@ export default function EventsPage() {
       setLoadingEvents(true);
 
       const { data, error } = await supabase
-        .from("alliance_events")
-        .select("*")
-        .eq("alliance_id", allianceId);
+        .from('alliance_events')
+        .select('*')
+        .eq('alliance_id', allianceId);
 
-      if (!error) setEvents(data || []);
-      else console.error(error);
+      if (!error && data) {
+        setEvents(normalizeEvents(data));
+      }
 
       setLoadingEvents(false);
     }
@@ -30,6 +32,10 @@ export default function EventsPage() {
 
   if (loading || loadingEvents) {
     return <div style={{ padding: 20 }}>Loading events…</div>;
+  }
+
+  if (!allianceId) {
+    return <div style={{ padding: 20 }}>No alliance selected</div>;
   }
 
   return (
