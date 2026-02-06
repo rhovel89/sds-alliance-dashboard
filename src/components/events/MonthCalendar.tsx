@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useAlliance } from "../../context/AllianceContext";
 import EventModal from "./EventModal";
 import "./calendar.css";
 
@@ -8,6 +9,7 @@ type Props = {
 };
 
 export default function MonthCalendar({ year, month }: Props) {
+  const { alliance, loading } = useAlliance();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const firstDay = new Date(year, month, 1);
@@ -25,6 +27,12 @@ export default function MonthCalendar({ year, month }: Props) {
           {firstDay.toLocaleString("default", { month: "long", year: "numeric" })}
         </div>
 
+        {loading && (
+          <div style={{ opacity: 0.6, marginBottom: 8 }}>
+            Loading alliance context…
+          </div>
+        )}
+
         <div className="calendar-grid">
           {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
             <div key={d} className="calendar-day-label">{d}</div>
@@ -33,8 +41,11 @@ export default function MonthCalendar({ year, month }: Props) {
           {cells.map((day, i) => (
             <div
               key={i}
-              className={`calendar-cell ${day ? "" : "empty"}`}
-              onClick={() => day && setSelectedDate(new Date(year, month, day))}
+              className={`calendar-cell ${day ? "" : "empty"} ${!alliance ? "disabled" : ""}`}
+              onClick={() => {
+                if (!alliance || !day) return;
+                setSelectedDate(new Date(year, month, day));
+              }}
             >
               {day}
             </div>

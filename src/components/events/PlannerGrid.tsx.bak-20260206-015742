@@ -15,8 +15,6 @@ export default function PlannerGrid({ events, timezone }: any) {
   const [modalOpen, setModalOpen] = useState(false);
 
   function handleDayClick(date: string) {
-  alert('CLICKED DATE: ' + date);
-
     setSelectedDate(date);
     setModalOpen(true);
   }
@@ -45,5 +43,4 @@ export default function PlannerGrid({ events, timezone }: any) {
     </div>
   );
 }
-
 
