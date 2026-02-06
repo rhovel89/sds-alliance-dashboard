@@ -1,69 +1,101 @@
-import { useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
-import { useAlliance } from "../../context/AllianceContext";
+import { useMemo, useState } from "react";
 import MonthBlock from "./MonthBlock";
 import EventModal from "./EventModal";
+import { supabase } from "../../lib/supabaseClient";
 
-export default function PlannerGrid({ events, timezone, onEventSaved }: any) {
-  const { allianceId } = useAlliance();
+type Props = {
+  events: any[];
+  allianceId: string;
+  onEventsChanged: () => Promise<void>;
+};
+
+function toISODateParts(dateISO: string, timeHHMM: string) {
+  // dateISO = YYYY-MM-DD
+  // timeHHMM = HH:MM
+  const dt = new Date(`${dateISO}T${timeHHMM}:00`);
+  if (Number.isNaN(dt.getTime())) {
+    throw new Error("Invalid date/time. Please check your Start/End time.");
+  }
+  return dt.toISOString(); // UTC timestamp
+}
+
+function minutesBetween(startHHMM: string, endHHMM: string) {
+  const [sh, sm] = startHHMM.split(":").map(Number);
+  const [eh, em] = endHHMM.split(":").map(Number);
+  const start = sh * 60 + sm;
+  const end = eh * 60 + em;
+  const diff = end - start;
+  return diff > 0 ? diff : 0;
+}
+
+export default function PlannerGrid({ events, allianceId, onEventsChanged }: Props) {
+  const now = new Date();
+
+  const months = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now);
+      d.setMonth(now.getMonth() + i);
+      d.setDate(1);
+      return d;
+    });
+  }, []);
+
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  function handleDayClick(date: string) {
-    setSelectedDate(date);
+  function handleDayClick(dateISO: string) {
+    setSelectedDate(dateISO);
     setModalOpen(true);
   }
 
-  async function handleSave(event: any) {
-    if (!allianceId) return;
+  async function handleSave(payload: any) {
+    // payload from modal:
+    // { title, date, startTime, endTime, recurrence_type, days_of_week, scope }
+    console.log("💾 SAVING EVENT:", payload);
 
-    const payload = {
-      title: event.title,
+    const startUtc = toISODateParts(payload.date, payload.startTime);
+    const duration = minutesBetween(payload.startTime, payload.endTime);
+    if (!duration) {
+      throw new Error("End time must be later than start time.");
+    }
+
+    // We store BOTH:
+    // - event_date (YYYY-MM-DD) for easy day matching
+    // - start_time_utc (timestamptz) for reminders + sorting
+    const row = {
       alliance_id: allianceId,
-      start_time_utc: new Date(
-        `${event.date}T${event.startTime}:00`
-      ).toISOString(),
-      duration_minutes:
-        (Number(event.endTime.split(":")[0]) * 60 +
-          Number(event.endTime.split(":")[1])) -
-        (Number(event.startTime.split(":")[0]) * 60 +
-          Number(event.startTime.split(":")[1])),
-      recurrence_type: event.frequency,
-      days_of_week: event.days || [],
-      timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      created_by: (await supabase.auth.getUser()).data.user?.id,
+      title: payload.title,
+      description: payload.description ?? null,
+      event_date: payload.date,
+      start_time_utc: startUtc,
+      duration_minutes: duration,
+      recurrence_type: payload.recurrence_type, // enum: none/daily/weekly/biweekly/monthly
+      days_of_week: payload.days_of_week ?? [],
+      timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone || "local",
+      send_reminders: true,
+      discord_channel_id: null,
     };
 
-    const { error } = await supabase.from("alliance_events").insert(payload);
-
+    const { error } = await supabase.from("alliance_events").insert(row);
     if (error) {
-      console.error("❌ Supabase insert failed:", error);
-      return;
+      console.error("❌ Insert failed:", error);
+      throw new Error(error.message);
     }
 
+    // Refresh list so the new event appears immediately
+    await onEventsChanged();
+
+    // close modal
     setModalOpen(false);
-    setSelectedDate(null);
-
-    if (onEventSaved) {
-      onEventSaved();
-    }
   }
 
-  const now = new Date();
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now);
-    d.setMonth(now.getMonth() + i);
-    return d;
-  });
-
   return (
-    <div className="planner-grid">
-      {months.map((month) => (
+    <div>
+      {months.map((m) => (
         <MonthBlock
-          key={month.toISOString()}
-          month={month}
+          key={m.toISOString()}
+          month={m}
           events={events}
-          timezone={timezone}
           onDayClick={handleDayClick}
         />
       ))}
@@ -77,5 +109,3 @@ export default function PlannerGrid({ events, timezone, onEventSaved }: any) {
     </div>
   );
 }
-
-

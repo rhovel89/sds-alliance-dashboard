@@ -1,115 +1,154 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-export default function EventModal({ open, date, onClose, onSave }: any) {
-  if (!open) return null;
+type Props = {
+  open: boolean;
+  date: string | null;
+  onClose: () => void;
+  onSave: (payload: any) => Promise<void> | void;
+};
 
+const RECURRENCE = [
+  { value: "none", label: "None" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "biweekly", label: "Biweekly" },
+  { value: "monthly", label: "Monthly" },
+];
+
+const DAYS = [
+  { value: "Sun", label: "Sun" },
+  { value: "Mon", label: "Mon" },
+  { value: "Tue", label: "Tue" },
+  { value: "Wed", label: "Wed" },
+  { value: "Thu", label: "Thu" },
+  { value: "Fri", label: "Fri" },
+  { value: "Sat", label: "Sat" },
+];
+
+export default function EventModal({ open, date, onClose, onSave }: Props) {
   const [title, setTitle] = useState("");
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("13:00");
-  const [frequency, setFrequency] = useState("Weekly");
-  const [scope, setScope] = useState("alliance");
+  const [recurrence, setRecurrence] = useState("none");
   const [days, setDays] = useState<string[]>([]);
+  const [scope, setScope] = useState<"alliance" | "state">("alliance");
+  const [saving, setSaving] = useState(false);
 
-  function toggleDay(day: string) {
-    setDays(prev =>
-      prev.includes(day)
-        ? prev.filter(d => d !== day)
-        : [...prev, day]
-    );
-  }
+  useEffect(() => {
+    if (!open) return;
+    setTitle("");
+    setStartTime("12:00");
+    setEndTime("13:00");
+    setRecurrence("none");
+    setDays([]);
+    setScope("alliance");
+    setSaving(false);
+  }, [open]);
 
-  function handleSave() {
+  const canPickDays = useMemo(() => recurrence === "weekly" || recurrence === "biweekly", [recurrence]);
+
+  if (!open || !date) return null;
+
+  async function handleSave() {
     if (!title.trim()) {
-      alert("Event name is required");
+      alert("Event name is required.");
+      return;
+    }
+    if (!startTime || !endTime) {
+      alert("Start and end time are required.");
       return;
     }
 
-    onSave({
-      title,
-      date,
-      startTime,
-      endTime,
-      frequency,
-      days,
-      scope
-    });
+    setSaving(true);
+    try {
+      await onSave({
+        title: title.trim(),
+        date,
+        startTime,
+        endTime,
+        recurrence_type: recurrence,      // matches Supabase enum labels
+        days_of_week: canPickDays ? days : [],
+        scope,
+      });
+      onClose();
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.message || "Save failed. Check console.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function toggleDay(v: string) {
+    setDays((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
   }
 
   return (
-    <div style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.75)",
-      zIndex: 9999,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center"
-    }}>
-      <div style={{
-        background: "#111",
-        color: "#fff",
-        padding: "24px",
-        width: "480px",
-        borderRadius: "8px"
-      }}>
-        <h2>Create Event</h2>
-        <p>Date: {date}</p>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-title">Create Event</div>
+        <div style={{ opacity: 0.9, marginBottom: 10 }}>Date: <b>{date}</b></div>
 
-        <label>Event Name</label>
-        <input
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
-        />
-
-        <label>Start Time</label>
-        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
-
-        <label style={{ marginLeft: "10px" }}>End Time</label>
-        <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
-
-        <div style={{ marginTop: "10px" }}>
-          <label>Frequency</label>
-          <select value={frequency} onChange={e => setFrequency(e.target.value)}>
-            <option>Daily</option>
-            <option>Weekly</option>
-            <option>Bi-Weekly</option>
-            <option>Monthly</option>
-            <option>Custom</option>
-          </select>
+        <div className="modal-row">
+          <div className="modal-label">Event Name</div>
+          <input
+            className="modal-input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Event name"
+          />
         </div>
 
-        <div style={{ marginTop: "10px" }}>
-          <label>Days</label>
+        <div className="modal-row two">
           <div>
-            {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-              <label key={d} style={{ marginRight: "8px" }}>
-                <input
-                  type="checkbox"
-                  checked={days.includes(d)}
-                  onChange={() => toggleDay(d)}
-                /> {d}
-              </label>
-            ))}
+            <div className="modal-label">Start Time</div>
+            <input className="modal-input" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+          </div>
+          <div>
+            <div className="modal-label">End Time</div>
+            <input className="modal-input" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
           </div>
         </div>
 
-        <div style={{ marginTop: "10px" }}>
-          <label>Scope</label>
-          <select value={scope} onChange={e => setScope(e.target.value)}>
-            <option value="alliance">Alliance Event</option>
-            <option value="state">State Event</option>
-          </select>
+        <div className="modal-row two">
+          <div>
+            <div className="modal-label">Frequency</div>
+            <select className="modal-select" value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
+              {RECURRENCE.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <div className="modal-label">Scope</div>
+            <select className="modal-select" value={scope} onChange={(e) => setScope(e.target.value as any)}>
+              <option value="alliance">Alliance Event</option>
+              <option value="state">State Event</option>
+            </select>
+          </div>
         </div>
 
-        <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
-          <button onClick={onClose}>Cancel</button>
-          <button onClick={handleSave} style={{ background: "#4caf50" }}>
-            Save Event
+        {canPickDays && (
+          <div className="modal-row">
+            <div className="modal-label">Days</div>
+            <div className="days-row">
+              {DAYS.map((d) => (
+                <label key={d.value} className="day-chip">
+                  <input type="checkbox" checked={days.includes(d.value)} onChange={() => toggleDay(d.value)} />
+                  {d.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="modal-actions">
+          <button className="btn btn-cancel" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="btn btn-save" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving…" : "Save Event"}
           </button>
         </div>
       </div>
     </div>
   );
 }
-
