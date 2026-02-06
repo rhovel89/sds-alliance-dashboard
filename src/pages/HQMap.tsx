@@ -1,3 +1,4 @@
+import "../styles/hq-map-ownership.css";
 import { useEffect, useState } from "react";
 
 type Cell = {
