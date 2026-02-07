@@ -1,19 +1,17 @@
-@'
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import PlannerGrid from "../components/events/PlannerGrid";
 import { useAlliance } from "../context/AllianceContext";
 import { supabase } from "../lib/supabaseClient";
-import { normalizeEvents } from "../components/events/normalizeEvents";
 import "../styles/events-calendar.css";
+import { normalizeEvents } from "../components/events/normalizeEvents";
 
 export default function EventsPage() {
   const { allianceId, loading } = useAlliance();
   const [events, setEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
 
-  async function loadEvents() {
+  const loadEvents = useCallback(async () => {
     if (!allianceId) return;
-
     setLoadingEvents(true);
 
     const { data, error } = await supabase
@@ -30,14 +28,19 @@ export default function EventsPage() {
     }
 
     setLoadingEvents(false);
-  }
+  }, [allianceId]);
 
   useEffect(() => {
+    if (!allianceId) return;
     loadEvents();
-  }, [allianceId]);
+  }, [allianceId, loadEvents]);
 
   if (loading || loadingEvents) {
     return <div className="events-page">Loading events…</div>;
+  }
+
+  if (!allianceId) {
+    return <div className="events-page">No alliance selected</div>;
   }
 
   return (
@@ -50,4 +53,3 @@ export default function EventsPage() {
     </div>
   );
 }
-'@ | Set-Content src/pages/EventsPage.tsx -Encoding UTF8

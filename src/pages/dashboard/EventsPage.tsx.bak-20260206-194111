@@ -1,10 +1,9 @@
-@'
 import { useEffect, useState } from "react";
-import PlannerGrid from "../components/events/PlannerGrid";
-import { useAlliance } from "../context/AllianceContext";
-import { supabase } from "../lib/supabaseClient";
-import { normalizeEvents } from "../components/events/normalizeEvents";
-import "../styles/events-calendar.css";
+import PlannerGrid from "../../components/events/PlannerGrid";
+import { useAlliance } from "../../context/AllianceContext";
+import { supabase } from "../../lib/supabaseClient";
+import { normalizeEvents } from "../../components/events/normalizeEvents";
+import "../../styles/events-calendar.css";
 
 export default function EventsPage() {
   const { allianceId, loading } = useAlliance();
@@ -40,6 +39,10 @@ export default function EventsPage() {
     return <div className="events-page">Loading events…</div>;
   }
 
+  if (!allianceId) {
+    return <div className="events-page">No alliance selected</div>;
+  }
+
   return (
     <div className="events-page">
       <PlannerGrid
@@ -50,4 +53,3 @@ export default function EventsPage() {
     </div>
   );
 }
-'@ | Set-Content src/pages/EventsPage.tsx -Encoding UTF8

@@ -1,14 +1,16 @@
-export function normalizeEvents(events: any[]) {
-  return events.map(e => {
-    const date =
-      e.event_date ||
-      (e.start_time_utc
-        ? new Date(e.start_time_utc).toISOString().split('T')[0]
-        : null);
+export function normalizeEvents(raw: any[]) {
+  return raw
+    .map(e => {
+      const start = e.start_time_utc ? new Date(e.start_time_utc) : null;
+      const end = e.end_time_utc ? new Date(e.end_time_utc) : null;
 
-    return {
-      ...e,
-      __eventDate: date
-    };
-  });
+      if (!start || isNaN(start.getTime())) return null;
+
+      return {
+        ...e,
+        startDate: start,
+        endDate: end ?? start
+      };
+    })
+    .filter(Boolean);
 }

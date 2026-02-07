@@ -1,0 +1,82 @@
+import { useState } from "react";
+import EventModal from "./EventModal";
+
+function toISODate(dateInput: any) {
+  if (!dateInput) return null;
+
+  // If already a Date object
+  if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
+    return dateInput.toISOString().slice(0, 10);
+  }
+
+  // If string like YYYY-MM-DD
+  if (typeof dateInput === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+    return dateInput;
+  }
+
+  // Try parsing anything else
+  const d = new Date(`${event.date}T${event.startTime}:00`);
+  if (!isNaN(d.getTime())) {
+    return d.toISOString().slice(0, 10);
+  }
+
+  return null;
+}
+
+export default function PlannerGrid({ events }: any) {
+  const [openDate, setOpenDate] = useState<any>(null);
+
+  async function handleSave(e: any) {
+    console.log("💾 SAVING EVENT:", e);
+
+    const isoDate = toISODate(e.date);
+    if (!isoDate) {
+      alert("Invalid date selected. Please click a valid calendar day.");
+      return;
+    }
+
+    const start = new Date(`${event.date}T${event.startTime}:00`);
+    if (isNaN(start.getTime())) {
+      alert("Invalid start time.");
+      return;
+    }
+
+    const startUTC = start.toISOString();
+
+    console.log("✅ UTC TIME:", startUTC);
+
+    // TEMP: no DB insert yet — just confirm logic
+    alert("Event processed correctly. Ready for DB save.");
+    setOpenDate(null);
+  }
+
+  return (
+    <>
+      <div className="calendar-grid">
+        {[...Array(28)].map((_, i) => {
+          const day = String(i + 1).padStart(2, "0");
+          const date = `2026-02-${day}`;
+
+          return (
+            <div
+              key={date}
+              onClick={() => setOpenDate(date)}
+              style={{ cursor: "pointer", padding: 8, border: "1px solid #333" }}
+            >
+              {i + 1}
+            </div>
+          );
+        })}
+      </div>
+
+      {openDate && (
+        <EventModal
+          date={openDate}
+          onSave={handleSave}
+          onClose={() => setOpenDate(null)}
+        />
+      )}
+    </>
+  );
+}
+
