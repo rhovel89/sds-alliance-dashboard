@@ -1,4 +1,3 @@
-@'
 import { useEffect, useState } from "react";
 import PlannerGrid from "../components/events/PlannerGrid";
 import { useAlliance } from "../context/AllianceContext";
@@ -26,18 +25,25 @@ export default function EventsPage() {
       console.error("❌ Failed to load events:", error);
       setEvents([]);
     } else {
-      setEvents(normalizeEvents(data ?? []));
+      const normalized = normalizeEvents(data || []);
+      setEvents(normalized);
     }
 
     setLoadingEvents(false);
   }
 
   useEffect(() => {
+    if (!allianceId) return;
     loadEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allianceId]);
 
   if (loading || loadingEvents) {
     return <div className="events-page">Loading events…</div>;
+  }
+
+  if (!allianceId) {
+    return <div className="events-page">No alliance selected</div>;
   }
 
   return (
@@ -50,4 +56,3 @@ export default function EventsPage() {
     </div>
   );
 }
-'@ | Set-Content src/pages/EventsPage.tsx -Encoding UTF8

@@ -1,29 +1,51 @@
-type DayCellProps = {
-  date: Date;
+type Props = {
+  date: Date | null;
   events: any[];
+  onCreate: (dateStr: string) => void;
   onEventClick: (event: any) => void;
 };
 
-export default function DayCell({ date, events, onEventClick }: DayCellProps) {
-  const dayKey = date.toISOString().slice(0, 10);
+export default function DayCell({ date, events = [], onCreate, onEventClick }: Props) {
+  if (!date) {
+    return <div className="day-cell day-cell-empty" />;
+  }
 
-  const dayEvents = events.filter(
-    (e) => e.event_date === dayKey
-  );
+  const dateStr = date.toISOString().slice(0, 10);
+
+  const dayEvents = (events || []).filter((e: any) => {
+    const ed = e?.event_date;
+    return typeof ed === "string" && ed.slice(0, 10) === dateStr;
+  });
 
   return (
-    <div className="calendar-day">
+    <div
+      className="day-cell"
+      role="button"
+      tabIndex={0}
+      onClick={() => onCreate(dateStr)}
+      onKeyDown={(ev) => {
+        if (ev.key === "Enter" || ev.key === " ") onCreate(dateStr);
+      }}
+      style={{ cursor: "pointer" }}
+    >
       <div className="day-number">{date.getDate()}</div>
 
-      {dayEvents.map((event) => (
-        <div
-          key={event.id}
-          className="calendar-event"
-          onClick={() => onEventClick(event)}
-        >
-          {event.title}
-        </div>
-      ))}
+      <div className="day-events">
+        {dayEvents.map((ev: any) => (
+          <div
+            key={ev.id || ev.start_time_utc || ev.event_name}
+            className="day-event"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEventClick(ev);
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            {ev.event_name || ev.title || "Event"}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

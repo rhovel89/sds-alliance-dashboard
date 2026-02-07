@@ -5,7 +5,6 @@ import AllianceDashboard from "../pages/AllianceDashboard";
 import HQMap from "../pages/HQMap";
 import EventsPage from "../pages/EventsPage";
 import AuthGate from "../components/AuthGate";
-import DashboardLayout from "../layouts/DashboardLayout";
 
 export default function AppRoutes() {
   return (
@@ -14,11 +13,12 @@ export default function AppRoutes() {
       <Route path="/auth/callback" element={<AuthCallback />} />
 
       <Route element={<AuthGate />}>
-        <Route element={<DashboardLayout />}>
-          <Route path="/dashboard" element={<AllianceDashboard />} />
-          <Route path="/dashboard/events" element={<EventsPage />} />
-          <Route path="/dashboard/hq-map" element={<HQMap />} />
-        </Route>
+        <Route path="/dashboard" element={<AllianceDashboard />} />
+        <Route path="/dashboard/events" element={<EventsPage />} />
+        <Route path="/dashboard/hq-map" element={<HQMap />} />
+
+        {/* keep old direct route too if you still use it */}
+        <Route path="/hq-map" element={<HQMap />} />
       </Route>
 
       <Route path="*" element={<div style={{ padding: 40 }}>Not Found</div>} />

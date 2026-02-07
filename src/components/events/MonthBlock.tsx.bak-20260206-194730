@@ -1,34 +1,34 @@
 import DayCell from "./DayCell";
 
-const WEEKDAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-
 type Props = {
-  monthDate: Date;
-  events: any[];
-  onCreate: (dateStr: string) => void;
-  onEventClick: (event: any) => void;
+  date?: Date;
+  events?: any[];
+  onDayClick?: (day: Date) => void;
 };
 
-export default function MonthBlock({ monthDate, events = [], onCreate, onEventClick }: Props) {
-  const safeMonth = monthDate instanceof Date && !isNaN(monthDate.getTime()) ? monthDate : new Date();
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-  const year = safeMonth.getFullYear();
-  const monthIndex = safeMonth.getMonth();
+export default function MonthBlock({ date, events = [], onDayClick }: Props) {
+  const safeDate = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+
+  const year = safeDate.getFullYear();
+  const monthIndex = safeDate.getMonth();
 
   const firstOfMonth = new Date(year, monthIndex, 1);
   const firstDow = firstOfMonth.getDay(); // 0..6
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
 
+  // Build cells with leading blanks so it aligns by weekday
   const cells: (Date | null)[] = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, monthIndex, d));
 
-  const monthName = safeMonth.toLocaleString("default", { month: "long" });
+  const monthLabel = safeDate.toLocaleString("default", { month: "long" });
 
   return (
     <div className="month-block">
       <div className="month-title">
-        {monthName} {year}
+        {monthLabel} {year}
       </div>
 
       <div className="weekday-row">
@@ -43,8 +43,7 @@ export default function MonthBlock({ monthDate, events = [], onCreate, onEventCl
             key={idx}
             date={cell}
             events={events}
-            onCreate={onCreate}
-            onEventClick={onEventClick}
+            onClick={cell ? () => onDayClick?.(cell) : undefined}
           />
         ))}
       </div>

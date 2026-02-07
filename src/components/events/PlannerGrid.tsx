@@ -7,13 +7,13 @@ export default function PlannerGrid({ events, allianceId, onEventsChanged }: any
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  function handleDayCreate(date: string) {
+  function handleCreate(date: string) {
     setSelectedDate(date);
     setEditingEvent(null);
     setModalOpen(true);
   }
 
-  function handleEventEdit(event: any) {
+  function handleEdit(event: any) {
     setSelectedDate(event.event_date);
     setEditingEvent(event);
     setModalOpen(true);
@@ -23,8 +23,8 @@ export default function PlannerGrid({ events, allianceId, onEventsChanged }: any
     <>
       <MonthBlock
         events={events}
-        onCreate={handleDayCreate}
-        onEventClick={handleEventEdit}
+        onCreate={handleCreate}
+        onEventClick={handleEdit}
       />
 
       <EventModal

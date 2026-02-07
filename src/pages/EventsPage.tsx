@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import PlannerGrid from "../components/events/PlannerGrid";
 import { useAlliance } from "../context/AllianceContext";
 import { supabase } from "../lib/supabaseClient";
+import { normalizeEvents } from "../components/events/normalizeEvents";
 import "../styles/events-calendar.css";
 
 export default function EventsPage() {
@@ -11,6 +12,7 @@ export default function EventsPage() {
 
   async function loadEvents() {
     if (!allianceId) return;
+
     setLoadingEvents(true);
 
     const { data, error } = await supabase
@@ -20,27 +22,21 @@ export default function EventsPage() {
       .order("start_time_utc", { ascending: true });
 
     if (error) {
-      console.error("❌ Failed to load events:", error);
+      console.error("Failed to load events", error);
       setEvents([]);
     } else {
-      setEvents(data || []);
+      setEvents(normalizeEvents(data || []));
     }
 
     setLoadingEvents(false);
   }
 
   useEffect(() => {
-    if (!allianceId) return;
     loadEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allianceId]);
 
   if (loading || loadingEvents) {
     return <div className="events-page">Loading events…</div>;
-  }
-
-  if (!allianceId) {
-    return <div className="events-page">No alliance selected</div>;
   }
 
   return (
