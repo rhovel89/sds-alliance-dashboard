@@ -1,12 +1,11 @@
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from "../../lib/supabaseClient";
+import type { CalendarEvent, EventException } from "./types";
 
-/* =========================
-   EVENTS
-========================= */
+/* ---------------- EVENTS ---------------- */
 
-export async function upsertEvent(event: any) {
+export async function upsertEvent(event: CalendarEvent) {
   const { data, error } = await supabase
-    .from('alliance_events')
+    .from("alliance_events")
     .upsert(event)
     .select()
     .single();
@@ -17,36 +16,34 @@ export async function upsertEvent(event: any) {
 
 export async function deleteEvent(id: string) {
   const { error } = await supabase
-    .from('alliance_events')
+    .from("alliance_events")
     .delete()
-    .eq('id', id);
+    .eq("id", id);
 
   if (error) throw error;
 }
 
-/* =========================
-   EXCEPTIONS (RESTORED)
-========================= */
+/* ---------------- EXCEPTIONS ---------------- */
 
 export async function listExceptionsForEventIds(eventIds: string[]) {
-  if (!eventIds.length) return [];
+  if (eventIds.length === 0) return [];
 
   const { data, error } = await supabase
-    .from('alliance_event_exceptions')
-    .select('*')
-    .in('event_id', eventIds);
+    .from("alliance_event_exceptions")
+    .select("*")
+    .in("event_id", eventIds);
 
   if (error) throw error;
-  return data ?? [];
+  return data as EventException[];
 }
 
-export async function upsertExceptionSkip(eventId: string, iso: string) {
+export async function upsertExceptionSkip(eventId: string, occurrenceDate: string) {
   const { data, error } = await supabase
-    .from('alliance_event_exceptions')
+    .from("alliance_event_exceptions")
     .upsert({
       event_id: eventId,
-      occurrence_date: iso,
-      action: 'skip'
+      occurrence_date: occurrenceDate,
+      action: "skip",
     })
     .select()
     .single();
@@ -55,18 +52,26 @@ export async function upsertExceptionSkip(eventId: string, iso: string) {
   return data;
 }
 
-export async function upsertExceptionOverride(payload: any) {
+export async function upsertExceptionOverride(payload: {
+  eventId: string;
+  occurrenceDate: string;
+  newDate: string;
+  newStartTime?: string | null;
+  newEndTime?: string | null;
+  newTitle?: string | null;
+  newDescription?: string | null;
+}) {
   const { data, error } = await supabase
-    .from('alliance_event_exceptions')
+    .from("alliance_event_exceptions")
     .upsert({
       event_id: payload.eventId,
       occurrence_date: payload.occurrenceDate,
-      action: 'override',
+      action: "override",
       new_date: payload.newDate,
       new_start_time: payload.newStartTime,
       new_end_time: payload.newEndTime,
       new_title: payload.newTitle,
-      new_description: payload.newDescription
+      new_description: payload.newDescription,
     })
     .select()
     .single();
@@ -75,16 +80,24 @@ export async function upsertExceptionOverride(payload: any) {
   return data;
 }
 
-/* =========================
-   TEMPLATE RUNNER (RPC)
-========================= */
+/* ---------------- TEMPLATE RUN ---------------- */
 
-export async function runEventTemplate(templateId: string) {
+export async function runEventTemplate(templateId: string, runDate?: string) {
+  const effectiveDate =
+    runDate ?? new Date().toISOString().slice(0, 10);
+
   const { data, error } = await supabase.rpc(
-    'generate_event_from_template',
-    { template_id: templateId }
+    "generate_event_from_template",
+    {
+      p_template_id: templateId,
+      p_run_date: effectiveDate,
+    }
   );
 
-  if (error) throw error;
+  if (error) {
+    console.error("RPC error:", error);
+    throw error;
+  }
+
   return data;
 }
