@@ -1,6 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+  <script>
+    // 🛡️ Universal global guard for hardened runtimes (SES / lockdown)
+    (function () {
+      const g = window;
+
+      // Proxy that safely returns empty objects for missing globals
+      const safeGlobal = new Proxy({}, {
+        get(target, prop) {
+          if (!(prop in target)) {
+            target[prop] = {};
+          }
+          return target[prop];
+        }
+      });
+
+      // List of commonly assumed globals
+      const globals = [
+        'hq',
+        'map',
+        'maps',
+        'events',
+        'store',
+        'state',
+        'app',
+        'config'
+      ];
+
+      globals.forEach(name => {
+        if (!(name in g)) {
+          Object.defineProperty(g, name, {
+            value: safeGlobal,
+            writable: false,
+            configurable: false
+          });
+        }
+      });
+    })();
+  </script>
+  <script>
+    // 🛡️ Global guards for SES / hardened runtimes
+    (function () {
+      const g = window;
+
+      g.hq = g.hq || {};
+      g.map = g.map || {};
+      g.maps = g.maps || {};
+      g.store = g.store || {};
+      g.state = g.state || {};
+      g.app = g.app || {};
+
+      try {
+        Object.freeze(g.hq);
+        Object.freeze(g.map);
+      } catch {}
+    })();
+  </script>
+  <script>
+    // 🛡️ Global guard for SES / hardened runtimes
+    window.hq = window.hq || {};
+  </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>State Alliance Dashboard</title>

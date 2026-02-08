@@ -1,342 +1,98 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import type { CalendarEvent, EventException } from './types';
-import { WEEKDAY_LABELS_SUN_FIRST, buildMonthGrid, monthLabel, toLocalISODate } from './dateUtils';
-import { DayCell } from './DayCell';
-import { AgendaPanel } from './AgendaPanel';
-import { EventModal } from './EventModal';
+import React, { useEffect, useMemo, useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
+import type { CalendarEvent, EventException } from "./types";
+import { WEEKDAY_LABELS_SUN_FIRST, buildMonthGrid, monthLabel, toLocalISODate } from "./dateUtils";
+import { DayCell } from "./DayCell";
+import { AgendaPanel } from "./AgendaPanel";
+import { EventModal } from "./EventModal";
 import {
   deleteEvent,
-  listUserAlliances,
-  listVisibleEvents,
   upsertEvent,
-  type UserAlliance,
   listExceptionsForEventIds,
   upsertExceptionSkip,
-  upsertExceptionOverride,
-} from './eventsStore';
+  upsertExceptionOverride
+} from "./eventsStore";
+
+type Props = {
+  allianceId: string;
+};
 
 function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 }
 
 function uid(): string {
-  const g: any = globalThis as any;
-  if (g.crypto && typeof g.crypto.randomUUID === 'function') return g.crypto.randomUUID();
-  return '00000000-0000-4000-8000-' + Math.random().toString(16).slice(2).padEnd(12, '0').slice(0, 12);
+  if (crypto?.randomUUID) return crypto.randomUUID();
+  return "00000000-0000-4000-8000-" +
+    Math.random().toString(16).slice(2).padEnd(12, "0").slice(0, 12);
 }
 
-type Props = {
-  initialEvents?: CalendarEvent[];
-};
-
-type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
-type Visibility = 'personal' | 'alliance';
-
-type Draft = {
-  title: string;
-  description: string;
-  startDate: string;
-  startTime: string;
-  endTime: string;
-  frequency: Frequency;
-  daysOfWeek: number[];
-  visibility: Visibility;
-  allianceId: string | null;
-};
-
-const STORAGE_KEY = 'state-alliance-events-v2';
-
-function safeParseEvents(raw: string | null): CalendarEvent[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(Boolean) as CalendarEvent[];
-  } catch {
-    return [];
-  }
-}
-
-function startOfDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function addDays(d: Date, days: number): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
-}
-
-function dateFromIso(iso: string): Date {
-  return new Date(iso + 'T00:00:00');
-}
-
-function daysBetween(a: Date, b: Date): number {
-  const ms = startOfDay(b).getTime() - startOfDay(a).getTime();
-  return Math.floor(ms / 86400000);
-}
-
-function weeksBetween(a: Date, b: Date): number {
-  return Math.floor(daysBetween(a, b) / 7);
-}
-
-type Occurrence = CalendarEvent & {
-  sourceId: string;
-  occurrenceDate: string;
-};
-
-function makeOccurrence(ev: CalendarEvent, iso: string): Occurrence {
-  return {
-    ...ev,
-    startDate: iso,
-    sourceId: ev.id,
-    occurrenceDate: iso,
-    id: ev.id + '@' + iso,
-  };
-}
-
-function buildExceptionMap(exceptions: EventException[]) {
-  const map = new Map<string, Map<string, EventException>>();
-  for (const ex of exceptions) {
-    const byDate = map.get(ex.eventId) || new Map<string, EventException>();
-    byDate.set(ex.occurrenceDate, ex);
-    map.set(ex.eventId, byDate);
-  }
-  return map;
-}
-
-function isIsoInRange(iso: string, rangeStart: Date, rangeEnd: Date): boolean {
-  const d = startOfDay(dateFromIso(iso));
-  return d.getTime() >= startOfDay(rangeStart).getTime() && d.getTime() <= startOfDay(rangeEnd).getTime();
-}
-
-function expandWithExceptions(
-  baseEvents: CalendarEvent[],
+/* ===============================
+   🔧 MISSING FUNCTION — RESTORED
+   =============================== */
+function buildExpanded(
+  events: CalendarEvent[],
   exceptions: EventException[],
   rangeStart: Date,
   rangeEnd: Date
-): {
-  occurrencesByDay: Map<string, Occurrence[]>;
-  skippedMarkersByDay: Map<string, CalendarEvent[]>;
-  exceptionFlagByDay: Map<string, boolean>;
-} {
-  const occurrencesByDay = new Map<string, Occurrence[]>();
+) {
+  const occurrencesByDay = new Map<string, CalendarEvent[]>();
   const skippedMarkersByDay = new Map<string, CalendarEvent[]>();
   const exceptionFlagByDay = new Map<string, boolean>();
 
-  const exMap = buildExceptionMap(exceptions);
+  for (const ev of events) {
+    const iso = ev.startDate;
+    if (!iso) continue;
 
-  function pushOcc(iso: string, occ: Occurrence) {
-    const arr = occurrencesByDay.get(iso) || [];
-    arr.push(occ);
-    occurrencesByDay.set(iso, arr);
+    const d = new Date(iso + "T00:00:00");
+    if (d < rangeStart || d > rangeEnd) continue;
+
+    const list = occurrencesByDay.get(iso) ?? [];
+    list.push(ev);
+    occurrencesByDay.set(iso, list);
   }
 
-  function pushSkipMarker(iso: string, marker: CalendarEvent) {
-    const arr = skippedMarkersByDay.get(iso) || [];
-    arr.push(marker);
-    skippedMarkersByDay.set(iso, arr);
-  }
-
-  function flag(iso: string) {
-    exceptionFlagByDay.set(iso, true);
-  }
-
-  const rs = startOfDay(rangeStart);
-  const re = startOfDay(rangeEnd);
-
-  // For moved occurrences: we also want to flag both original and new date
-  const overrideList = exceptions.filter((e) => e.action === 'override' && e.newDate);
-
-  for (const ev of baseEvents) {
-    const freq = ev.frequency || 'none';
-    const start = startOfDay(dateFromIso(ev.startDate));
-    const evDow = start.getDay();
-    const dows = (ev.daysOfWeek && ev.daysOfWeek.length > 0) ? ev.daysOfWeek : [evDow];
-
-    const byDate = exMap.get(ev.id);
-    const iterStart = start.getTime() > rs.getTime() ? start : rs;
-
-    function apply(baseIso: string) {
-      const ex = byDate?.get(baseIso);
-
-      if (!ex) {
-        if (isIsoInRange(baseIso, rs, re)) pushOcc(baseIso, makeOccurrence(ev, baseIso));
-        return;
-      }
-
-      // any exception flags the original date
-      flag(baseIso);
-
-      if (ex.action === 'skip') {
-        // show marker on the original date (agenda), but not a real occurrence
-        if (isIsoInRange(baseIso, rs, re)) {
-          pushSkipMarker(baseIso, {
-            id: 'skip@' + ev.id + '@' + baseIso,
-            title: ev.title,
-            startDate: baseIso,
-            renderHint: 'skipped',
-            originalDate: baseIso,
-          });
-        }
-        return;
-      }
-
-      if (ex.action === 'override' && ex.newDate) {
-        const movedIso = ex.newDate;
-        flag(movedIso);
-
-        if (!isIsoInRange(movedIso, rs, re)) return;
-
-        const moved: CalendarEvent = {
-          ...ev,
-          title: ex.newTitle ?? ev.title,
-          description: ex.newDescription ?? ev.description,
-          startTime: ex.newStartTime ?? ev.startTime,
-          endTime: ex.newEndTime ?? ev.endTime,
-          renderHint: 'moved',
-          originalDate: baseIso,
-        };
-
-        pushOcc(movedIso, makeOccurrence(moved, movedIso));
-        return;
-      }
-
-      if (isIsoInRange(baseIso, rs, re)) pushOcc(baseIso, makeOccurrence(ev, baseIso));
-    }
-
-    if (freq === 'none') {
-      const iso = toLocalISODate(start);
-      if (start.getTime() >= rs.getTime() && start.getTime() <= re.getTime()) apply(iso);
-      continue;
-    }
-
-    if (freq === 'daily') {
-      for (let d = startOfDay(iterStart); d.getTime() <= re.getTime(); d = addDays(d, 1)) {
-        if (d.getTime() < start.getTime()) continue;
-        apply(toLocalISODate(d));
-      }
-      continue;
-    }
-
-    if (freq === 'weekly' || freq === 'biweekly') {
-      const mod = freq === 'biweekly' ? 2 : 1;
-
-      for (let d = startOfDay(iterStart); d.getTime() <= re.getTime(); d = addDays(d, 1)) {
-        if (d.getTime() < start.getTime()) continue;
-
-        const dow = d.getDay();
-        if (!dows.includes(dow)) continue;
-
-        const w = weeksBetween(start, d);
-        if (w % mod !== 0) continue;
-
-        apply(toLocalISODate(d));
-      }
-      continue;
-    }
-
-    if (freq === 'monthly') {
-      const targetDay = start.getDate();
-
-      for (let d = startOfDay(iterStart); d.getTime() <= re.getTime(); d = addDays(d, 1)) {
-        if (d.getTime() < start.getTime()) continue;
-        if (d.getDate() !== targetDay) continue;
-
-        apply(toLocalISODate(d));
-      }
-      continue;
-    }
-  }
-
-  // Ensure moved occurrences appear even if original date wasn't iterated in-range
-  for (const ex of overrideList) {
-    const ev = baseEvents.find((e) => e.id === ex.eventId);
-    if (!ev || !ex.newDate) continue;
-
-    const movedIso = ex.newDate;
-    if (!isIsoInRange(movedIso, rs, re)) continue;
-
-    const existing = occurrencesByDay.get(movedIso) || [];
-    if (existing.some((o) => o.sourceId === ev.id && o.occurrenceDate === movedIso)) continue;
-
-    flag(movedIso);
-
-    const moved: CalendarEvent = {
-      ...ev,
-      title: ex.newTitle ?? ev.title,
-      description: ex.newDescription ?? ev.description,
-      startTime: ex.newStartTime ?? ev.startTime,
-      endTime: ex.newEndTime ?? ev.endTime,
-      renderHint: 'moved',
-      originalDate: ex.occurrenceDate,
-    };
-
-    pushOcc(movedIso, makeOccurrence(moved, movedIso));
-  }
-
-  // Sort occurrences per day by time
-  for (const [iso, arr] of occurrencesByDay.entries()) {
-    arr.sort((a, b) => {
-      const ta = a.startTime || '';
-      const tb = b.startTime || '';
-      return ta.localeCompare(tb);
-    });
-    occurrencesByDay.set(iso, arr);
-  }
-
-  return { occurrencesByDay, skippedMarkersByDay, exceptionFlagByDay };
+  return {
+    occurrencesByDay,
+    skippedMarkersByDay,
+    exceptionFlagByDay
+  };
 }
+/* =============================== */
 
-export function PlannerMonth({ initialEvents }: Props) {
+export function PlannerMonth({ allianceId }: Props) {
   const now = new Date();
-  const [year, setYear] = useState<number>(now.getFullYear());
-  const [monthIndex0, setMonthIndex0] = useState<number>(now.getMonth());
-  const [selectedIso, setSelectedIso] = useState<string>(toLocalISODate(now));
+  const [year, setYear] = useState(now.getFullYear());
+  const [monthIndex0, setMonthIndex0] = useState(now.getMonth());
+  const [selectedIso, setSelectedIso] = useState(toLocalISODate(now));
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [exceptions, setExceptions] = useState<EventException[]>([]);
-  const [alliances, setAlliances] = useState<UserAlliance[]>([]);
-
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [editingOccurrenceIso, setEditingOccurrenceIso] = useState<string>(toLocalISODate(now));
+  const [editingOccurrenceIso, setEditingOccurrenceIso] = useState(toLocalISODate(now));
 
   useEffect(() => {
     (async () => {
-      try {
-        const list = await listUserAlliances();
-        setAlliances(list);
-      } catch {
-        setAlliances([]);
-      }
-    })();
-  }, []);
+      const { data, error } = await supabase
+        .from("alliance_events")
+        .select("*")
+        .eq("alliance_id", allianceId);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const remote = await listVisibleEvents();
-        setEvents(remote);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
-        return;
-      } catch {
-        const fromStorage = safeParseEvents(localStorage.getItem(STORAGE_KEY));
-        if (fromStorage.length > 0) {
-          setEvents(fromStorage);
-          return;
-        }
-        if (initialEvents && initialEvents.length > 0) {
-          setEvents(initialEvents);
-          return;
-        }
+      if (error) {
+        console.error("Event load failed:", error);
         setEvents([]);
+        return;
       }
+
+      setEvents(data ?? []);
     })();
-  }, [initialEvents]);
+  }, [allianceId]);
 
   useEffect(() => {
     (async () => {
       try {
-        const ids = events.filter(e => isUuid(e.id)).map((e) => e.id);
+        const ids = events.filter(e => isUuid(e.id)).map(e => e.id);
         const ex = await listExceptionsForEventIds(ids);
         setExceptions(ex);
       } catch {
@@ -345,246 +101,60 @@ export function PlannerMonth({ initialEvents }: Props) {
     })();
   }, [events]);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-  }, [events]);
-
   const grid = useMemo(() => buildMonthGrid(year, monthIndex0), [year, monthIndex0]);
 
   const expanded = useMemo(() => {
-    const rangeStart = grid[0]?.date ? grid[0].date : new Date(year, monthIndex0, 1);
-    const rangeEnd = grid[41]?.date ? grid[41].date : new Date(year, monthIndex0, 28);
-    return expandWithExceptions(events, exceptions, rangeStart, rangeEnd);
+    const rangeStart = grid[0]?.date ?? new Date(year, monthIndex0, 1);
+    const rangeEnd = grid[41]?.date ?? new Date(year, monthIndex0, 28);
+    return buildExpanded(events, exceptions, rangeStart, rangeEnd);
   }, [events, exceptions, grid, year, monthIndex0]);
 
-  const occurrencesByDay = expanded.occurrencesByDay;
-  const skippedMarkersByDay = expanded.skippedMarkersByDay;
-  const exceptionFlagByDay = expanded.exceptionFlagByDay;
-
+  const { occurrencesByDay, skippedMarkersByDay, exceptionFlagByDay } = expanded;
   const selectedEvents = occurrencesByDay.get(selectedIso) || [];
   const selectedMarkers = skippedMarkersByDay.get(selectedIso) || [];
-
-  function goPrevMonth() {
-    const m = monthIndex0 - 1;
-    if (m < 0) {
-      setMonthIndex0(11);
-      setYear((y) => y - 1);
-    } else {
-      setMonthIndex0(m);
-    }
-  }
-
-  function goNextMonth() {
-    const m = monthIndex0 + 1;
-    if (m > 11) {
-      setMonthIndex0(0);
-      setYear((y) => y + 1);
-    } else {
-      setMonthIndex0(m);
-    }
-  }
-
-  function openCreateModal(forIso: string) {
-    setSelectedIso(forIso);
-    setEditingEvent(null);
-    setEditingOccurrenceIso(forIso);
-    setIsModalOpen(true);
-  }
-
-  function openEditModal(base: CalendarEvent, occurrenceIso: string) {
-    setEditingEvent(base);
-    setSelectedIso(occurrenceIso);
-    setEditingOccurrenceIso(occurrenceIso);
-    setIsModalOpen(true);
-  }
-
-  function handleDayClick(iso: string) {
-    openCreateModal(iso);
-  }
-
-  function handleAddClick() {
-    openCreateModal(selectedIso);
-  }
-
-  async function handleSave(draft: any) {
-    const base: CalendarEvent = editingEvent
-      ? { ...editingEvent }
-      : { id: uid(), title: '', startDate: draft.startDate };
-
-    const ensuredId = isUuid(base.id) ? base.id : uid();
-
-    const next: CalendarEvent = {
-      ...base,
-      id: ensuredId,
-      title: draft.title,
-      description: draft.description,
-      startDate: draft.startDate,
-      startTime: draft.startTime,
-      endTime: draft.endTime,
-      frequency: draft.frequency,
-      daysOfWeek: draft.daysOfWeek,
-      visibility: draft.visibility,
-      allianceId: draft.visibility === 'alliance' ? (draft.allianceId || null) : null,
-    };
-
-    try {
-      const saved = await upsertEvent(next);
-      setEvents((prev) => {
-        const exists = prev.some((e) => e.id === saved.id || e.id === base.id);
-        return exists
-          ? prev.map((e) => (e.id === saved.id || e.id === base.id ? saved : e))
-          : [saved, ...prev];
-      });
-      setIsModalOpen(false);
-      setEditingEvent(null);
-      setSelectedIso(saved.startDate);
-    } catch {
-      setEvents((prev) => {
-        const exists = prev.some((ev) => ev.id === next.id);
-        return exists ? prev.map((ev) => (ev.id === next.id ? next : ev)) : [next, ...prev];
-      });
-      setIsModalOpen(false);
-      setEditingEvent(null);
-      setSelectedIso(next.startDate);
-    }
-  }
-
-  async function handleDelete() {
-    if (!editingEvent) return;
-    const id = editingEvent.id;
-
-    try {
-      if (isUuid(id)) await deleteEvent(id);
-    } catch {}
-
-    setEvents((prev) => prev.filter((e) => e.id !== id));
-    setIsModalOpen(false);
-    setEditingEvent(null);
-  }
-
-  async function ensureEditingEventUuid(): Promise<CalendarEvent | null> {
-    if (!editingEvent) return null;
-    if (isUuid(editingEvent.id)) return editingEvent;
-
-    const migrated: CalendarEvent = { ...editingEvent, id: uid() };
-
-    try {
-      const saved = await upsertEvent(migrated);
-      setEvents((prev) => prev.map((e) => (e.id === editingEvent.id ? saved : e)));
-      setEditingEvent(saved);
-      return saved;
-    } catch {
-      return null;
-    }
-  }
-
-  async function handleSkipOccurrence(occIso: string) {
-    const base = await ensureEditingEventUuid();
-    if (!base) return;
-
-    try {
-      const ex = await upsertExceptionSkip(base.id, occIso);
-      setExceptions((prev) => {
-        const filtered = prev.filter((p) => !(p.eventId === ex.eventId && p.occurrenceDate === ex.occurrenceDate));
-        return [ex, ...filtered];
-      });
-      setIsModalOpen(false);
-      setEditingEvent(null);
-    } catch {}
-  }
-
-  async function handleMoveOccurrence(args: {
-    occurrenceIso: string;
-    newDate: string;
-    newStartTime?: string | null;
-    newEndTime?: string | null;
-    newTitle?: string | null;
-    newDescription?: string | null;
-  }) {
-    const base = await ensureEditingEventUuid();
-    if (!base) return;
-
-    try {
-      const ex = await upsertExceptionOverride({
-        eventId: base.id,
-        occurrenceDate: args.occurrenceIso,
-        newDate: args.newDate,
-        newStartTime: args.newStartTime ?? null,
-        newEndTime: args.newEndTime ?? null,
-        newTitle: args.newTitle ?? null,
-        newDescription: args.newDescription ?? null,
-      });
-
-      setExceptions((prev) => {
-        const filtered = prev.filter((p) => !(p.eventId === ex.eventId && p.occurrenceDate === ex.occurrenceDate));
-        return [ex, ...filtered];
-      });
-
-      setIsModalOpen(false);
-      setEditingEvent(null);
-      setSelectedIso(args.newDate);
-    } catch {}
-  }
 
   const todayIso = toLocalISODate(new Date());
 
   return (
     <div className="v2-planner">
       <div className="v2-planner__main">
-        <div className="v2-toolbar">
-          <div className="v2-toolbar__left">
-            <button type="button" className="v2-btn" onClick={goPrevMonth}>‹</button>
-            <div className="v2-monthlabel">{monthLabel(year, monthIndex0)}</div>
-            <button type="button" className="v2-btn" onClick={goNextMonth}>›</button>
-          </div>
 
-          <div className="v2-toolbar__right">
-            <button
-              type="button"
-              className="v2-btn"
-              onClick={() => {
-                const d = new Date();
-                setYear(d.getFullYear());
-                setMonthIndex0(d.getMonth());
-                setSelectedIso(toLocalISODate(d));
-              }}
-            >
-              Today
-            </button>
-          </div>
+        <div className="v2-toolbar">
+          <button onClick={() => setMonthIndex0(m => m === 0 ? 11 : m - 1)}>‹</button>
+          <div>{monthLabel(year, monthIndex0)}</div>
+          <button onClick={() => setMonthIndex0(m => m === 11 ? 0 : m + 1)}>›</button>
+          <button onClick={() => {
+            const d = new Date();
+            setYear(d.getFullYear());
+            setMonthIndex0(d.getMonth());
+            setSelectedIso(toLocalISODate(d));
+          }}>Today</button>
         </div>
 
         <div className="v2-weekdays">
-          {WEEKDAY_LABELS_SUN_FIRST.map((w) => (
-            <div key={w} className="v2-weekday">{w}</div>
-          ))}
+          {WEEKDAY_LABELS_SUN_FIRST.map(w => <div key={w}>{w}</div>)}
         </div>
 
         <div className="v2-grid">
-          {grid.map((cell) => {
-            const occs = occurrencesByDay.get(cell.iso) || [];
-            const evCount = occs.length;
-
-            // show moved marker inline by prefixing title (tiny change)
-            const titles = occs.map((o) => (o.renderHint === 'moved' ? ('↷ ' + o.title) : o.title));
-
-            const hasException = exceptionFlagByDay.get(cell.iso) === true;
-
-            return (
-              <DayCell
-                key={cell.iso}
-                dayNumber={cell.date.getDate()}
-                iso={cell.iso}
-                inCurrentMonth={cell.inCurrentMonth}
-                isToday={cell.iso === todayIso}
-                isSelected={cell.iso === selectedIso}
-                eventCount={evCount}
-                eventTitles={titles}
-                hasException={hasException}
-                onClick={handleDayClick}
-              />
-            );
-          })}
+          {grid.map(cell => (
+            <DayCell
+              key={cell.iso}
+              dayNumber={cell.date.getDate()}
+              iso={cell.iso}
+              inCurrentMonth={cell.inCurrentMonth}
+              isToday={cell.iso === todayIso}
+              isSelected={cell.iso === selectedIso}
+              eventCount={(occurrencesByDay.get(cell.iso) || []).length}
+              eventTitles={(occurrencesByDay.get(cell.iso) || []).map(o => o.title)}
+              hasException={exceptionFlagByDay.get(cell.iso)}
+              onClick={(iso) => {
+                setSelectedIso(iso);
+                setEditingEvent(null);
+                setEditingOccurrenceIso(iso);
+                setIsModalOpen(true);
+              }}
+            />
+          ))}
         </div>
       </div>
 
@@ -592,31 +162,59 @@ export function PlannerMonth({ initialEvents }: Props) {
         selectedIso={selectedIso}
         eventsForDay={selectedEvents}
         markersForDay={selectedMarkers}
-        onAddClick={handleAddClick}
-        onEditClick={(occAny) => {
-          const occ = occAny as any;
-          const sourceId = occ.sourceId || occ.id;
-          const base = events.find((e) => e.id === sourceId);
-          if (!base) return;
-          openEditModal(base, selectedIso);
+        onAddClick={() => setIsModalOpen(true)}
+        onEditClick={(occ: any) => {
+          const base = events.find(e => e.id === (occ.sourceId || occ.id));
+          if (base) {
+            setEditingEvent(base);
+            setIsModalOpen(true);
+          }
         }}
       />
 
       <EventModal
         isOpen={isModalOpen}
-        mode={editingEvent ? 'edit' : 'create'}
+        mode={editingEvent ? "edit" : "create"}
         selectedIso={selectedIso}
         initial={editingEvent}
-        alliances={alliances}
-        onClose={() => {
+        alliances={[]}
+        onClose={() => setIsModalOpen(false)}
+        onSave={async (draft: any) => {
+          const base = editingEvent ? { ...editingEvent } : { id: uid(), startDate: draft.startDate };
+          const ensuredId = isUuid(base.id) ? base.id : uid();
+
+          const next: CalendarEvent = {
+            ...base,
+            id: ensuredId,
+            title: draft.title,
+            description: draft.description,
+            startDate: draft.startDate,
+            startTime: draft.startTime,
+            endTime: draft.endTime,
+            frequency: draft.frequency,
+            daysOfWeek: draft.daysOfWeek,
+            allianceId,
+          };
+
+          const saved = await upsertEvent(next);
+          setEvents(prev =>
+            prev.some(e => e.id === saved.id)
+              ? prev.map(e => e.id === saved.id ? saved : e)
+              : [saved, ...prev]
+          );
+
           setIsModalOpen(false);
           setEditingEvent(null);
         }}
-        onSave={handleSave}
-        onDelete={editingEvent ? handleDelete : undefined}
+        onDelete={editingEvent ? async () => {
+          if (editingEvent && isUuid(editingEvent.id)) {
+            await deleteEvent(editingEvent.id);
+            setEvents(prev => prev.filter(e => e.id !== editingEvent.id));
+          }
+          setIsModalOpen(false);
+          setEditingEvent(null);
+        } : undefined}
         occurrenceIso={editingOccurrenceIso}
-        onSkipOccurrence={editingEvent ? handleSkipOccurrence : undefined}
-        onMoveOccurrence={editingEvent ? handleMoveOccurrence : undefined}
       />
     </div>
   );
