@@ -1,5 +1,6 @@
-import "../styles/hq-map-ownership.css";
-import { useEffect, useState } from "react";
+import "../styles/hq-map.css";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from '../lib/supabaseClient';
 
 type Cell = {
   player_name?: string;
@@ -7,17 +8,36 @@ type Cell = {
 };
 
 const TOTAL_HQ = 120;
-const COLUMNS = 10;
+const COLUMNS = 6;
 const STORAGE_KEY = "hqmap:data:v1";
 
-// 🔐 TEMP ROLE SIMULATION
+// 🔐 TEMP ROLE SIMULATION (replace later with real auth/roles)
 const role: "owner" | "mod" | "member" = "owner";
+
+function normalizeCoords(s: string) {
+  return (s || "").trim();
+}
+
+function normalizeName(s: string) {
+  return (s || "").trim();
+}
 
 export default function HQMap() {
   const [cells, setCells] = useState<Cell[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
+  const [locked, setLocked] = useState(false);
 
-  const canEdit = role === "owner" || role === "mod";
+  const canEditRole = role === "owner" || role === "mod";
+  const canEdit = canEditRole && !locked;
+
+  // editor draft
+  const selectedCell = useMemo(() => {
+    if (selected === null) return null;
+    return cells[selected] ?? {};
+  }, [cells, selected]);
+
+  const [draftName, setDraftName] = useState("");
+  const [draftCoords, setDraftCoords] = useState("");
 
   // 🔄 Load saved HQ data
   useEffect(() => {
@@ -26,13 +46,14 @@ export default function HQMap() {
       try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          setCells(parsed);
+          // pad/truncate to TOTAL_HQ
+          const fixed = parsed.slice(0, TOTAL_HQ);
+          while (fixed.length < TOTAL_HQ) fixed.push({});
+          setCells(fixed);
           return;
         }
       } catch {}
     }
-
-    // Fallback init
     setCells(Array.from({ length: TOTAL_HQ }, () => ({})));
   }, []);
 
@@ -43,96 +64,156 @@ export default function HQMap() {
     }
   }, [cells]);
 
-  function updateCell(index: number, field: "player_name" | "coords", value: string) {
-    if (!canEdit) return;
+  // keep draft in sync when selecting a cell
+  useEffect(() => {
+    if (selected === null) return;
+    const c = cells[selected] ?? {};
+    setDraftName(c.player_name ?? "");
+    setDraftCoords(c.coords ?? "");
+  }, [selected, cells]);
+
+  function applyDraft() {
+    if (!canEdit || selected === null) return;
+
+    const name = normalizeName(draftName);
+    const coords = normalizeCoords(draftCoords);
 
     setCells(prev => {
       const next = [...prev];
-      next[index] = {
-        ...next[index],
-        [field]: value
+      next[selected] = {
+        player_name: name || undefined,
+        coords: coords || undefined
       };
       return next;
     });
   }
 
+  function clearCell() {
+    if (!canEdit || selected === null) return;
+
+    setCells(prev => {
+      const next = [...prev];
+      next[selected] = {};
+      return next;
+    });
+    setDraftName("");
+    setDraftCoords("");
+  }
+
   if (cells.length !== TOTAL_HQ) {
-    return <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>Loading HQ Map…</div>;
+    return <div className="hq-page"><div className="hq-shell">Loading HQ Map…</div></div>;
   }
 
   return (
-    <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>
-      <h2 style={{ color: "#9fef00" }}>🧟 Alliance HQ Map</h2>
-      <p style={{ color: "#6b6b6b", fontSize: 12 }}>
-        Role: <strong>{role}</strong> — HQs persist locally
-      </p>
+    <div className="hq-page">
+      <div className="hq-shell">
 
-      <div
-        className="hq-grid" style={{ display: "grid",
-          gridTemplateColumns: `repeat(${COLUMNS}, 1fr)`,
-          gap: 12,
-          marginTop: 20
-        }}
-      >
-        {cells.map((cell, i) => (
-          <div
-            key={i}
-            onClick={() => canEdit && setSelected(i)}
-            className={`hq-cell ${selected === i ? "hq-selected" : ""} ${cell.player_name ? "ally" : "empty"} ${selected === i ? "selected" : ""}`}
+        <div className="hq-top">
+          <div className="hq-title">HQ Map</div>
+
+          <button
+            type="button"
+            className={"hq-lock " + (locked ? "is-locked" : "is-unlocked")}
+            onClick={() => setLocked(v => !v)}
+            disabled={!canEditRole}
+            title={!canEditRole ? "Only owner/mod can edit" : (locked ? "Click to unlock" : "Click to lock")}
           >
-            <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>HQ {i + 1}</div>
-            <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>
-              {cell.player_name || "— empty —"}
+            <span className="dot" />
+            {locked ? "Locked (click to unlock)" : "Unlocked (click to lock)"}
+          </button>
+        </div>
+
+        <div className="hq-sub">
+          Drag to swap cells • Click a cell to edit
+        </div>
+
+        <div
+          className="hq-grid"
+          style={{ gridTemplateColumns: `repeat(${COLUMNS}, 1fr)` }}
+        >
+          {cells.map((cell, i) => {
+            const n = i + 1;
+            const has = !!(cell.player_name || cell.coords);
+            const isSel = selected === i;
+
+            return (
+              <button
+                type="button"
+                key={i}
+                className={[
+                  "hq-cell",
+                  has ? "ally" : "empty",
+                  isSel ? "selected" : ""
+                ].join(" ")}
+                onClick={() => {
+                  if (!canEditRole) return;
+                  setSelected(i);
+                }}
+              >
+                <div className="hq-cell-top">
+                  <div className="hq-num">#{n}</div>
+                </div>
+
+                <div className="hq-coords">
+                  {cell.coords ? cell.coords : "(no coords)"}
+                </div>
+
+                <div className="hq-name">
+                  {cell.player_name ? cell.player_name : "— empty —"}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Bottom editor */}
+        {canEditRole && selected !== null && (
+          <div className="hq-editor">
+            <div className="hq-editor-head">
+              <div className="hq-editor-title">Edit Cell #{selected + 1}</div>
+              <button
+                type="button"
+                className="hq-editor-close"
+                onClick={() => setSelected(null)}
+              >
+                Close
+              </button>
             </div>
-            <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>
-              {cell.coords || ""}
+
+            <div className="hq-editor-grid">
+              <div className="hq-field">
+                <label>Name</label>
+                <input
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  placeholder=""
+                  disabled={!canEdit}
+                />
+              </div>
+
+              <div className="hq-field">
+                <label>Coords</label>
+                <input
+                  value={draftCoords}
+                  onChange={(e) => setDraftCoords(e.target.value)}
+                  placeholder="e.g. S:789 Y:232 X:111"
+                  disabled={!canEdit}
+                />
+              </div>
+            </div>
+
+            <div className="hq-editor-actions">
+              <button type="button" className="hq-btn primary" onClick={applyDraft} disabled={!canEdit}>
+                Save
+              </button>
+              <button type="button" className="hq-btn danger" onClick={clearCell} disabled={!canEdit}>
+                Clear Cell
+              </button>
             </div>
           </div>
-        ))}
+        )}
+
       </div>
-
-      {canEdit && selected !== null && (
-        <div className="hq-map-vhs" style={{ position: "relative", padding: 24 }}>
-          <h4 style={{ color: "#9fef00" }}>
-            Editing HQ {selected + 1}
-          </h4>
-
-          <input
-            style={{
-              background: "#000",
-              color: "#9fef00",
-              border: "1px solid #333",
-              padding: 6,
-              width: 260,
-              marginBottom: 8
-            }}
-            placeholder="Player Game Name"
-            value={cells[selected]?.player_name || ""}
-            onChange={(e) =>
-              updateCell(selected, "player_name", e.target.value)
-            }
-          />
-
-          <br />
-
-          <input
-            style={{
-              background: "#000",
-              color: "#9fef00",
-              border: "1px solid #333",
-              padding: 6,
-              width: 260
-            }}
-            placeholder="Coordinates (e.g. S789 Y:342 X:212)"
-            value={cells[selected]?.coords || ""}
-            onChange={(e) =>
-              updateCell(selected, "coords", e.target.value)
-            }
-          />
-        </div>
-      )}
     </div>
   );
 }
-
-

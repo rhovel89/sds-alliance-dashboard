@@ -52,10 +52,12 @@ export default function Sidebar() {
         )}
 
         {hasPermission("hq:read") && (
-          <NavLink to="/hq-map" style={({ isActive }) => isActive ? { ...navItemStyle, ...activeStyle } : navItemStyle}>
+          <NavLink to="/dashboard/hq-map" style={({ isActive }) => isActive ? { ...navItemStyle, ...activeStyle } : navItemStyle}>
             HQ Map
           </NavLink>
-        )}
+        
+        <NavLink to="/dashboard/events">Events</NavLink>
+)}
 
         {hasPermission("permissions:admin") && (
           <NavLink to="/owner/permissions" style={({ isActive }) => isActive ? { ...navItemStyle, ...activeStyle } : navItemStyle}>
@@ -66,6 +68,8 @@ export default function Sidebar() {
     </aside>
   );
 }
+
+
 
 
 

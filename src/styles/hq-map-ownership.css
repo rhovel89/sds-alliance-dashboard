@@ -56,3 +56,21 @@
 .hq-vhs {
   animation: vhsFlicker 8s infinite;
 }
+.hq-cell {
+  cursor: grab;
+}
+
+.hq-cell:active {
+  cursor: grabbing;
+}
+.hq-cell {
+  touch-action: none;
+  user-select: none;
+}
+.hq-cell.drag-source {
+  opacity: 0.5;
+}
+
+.hq-cell.drag-target {
+  outline: 2px dashed #7aff7a;
+}

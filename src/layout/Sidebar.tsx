@@ -12,7 +12,9 @@ export default function Sidebar() {
         <NavLink to="/dashboard/hq-map" className="nav-item">
           HQ Map
         </NavLink>
-      </div>
+      
+        <NavLink to="/dashboard/events">Events</NavLink>
+</div>
 
       <div className="sidebar-section">
         <span className="sidebar-title">Account</span>
@@ -23,3 +25,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+
