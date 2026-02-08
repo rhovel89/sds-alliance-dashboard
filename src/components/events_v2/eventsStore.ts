@@ -278,3 +278,4 @@ export async function runEventTemplate(templateId: string) {
     throw error;
   }
 }
+
