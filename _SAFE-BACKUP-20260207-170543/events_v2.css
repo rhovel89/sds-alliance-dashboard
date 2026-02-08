@@ -1,0 +1,186 @@
+/* Events Calendar v2 (isolated styles) */
+
+.v2-planner {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  padding: 16px;
+}
+
+.v2-planner__main {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.v2-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+
+.v2-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.v2-monthlabel {
+  font-weight: 700;
+}
+
+.v2-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+
+.v2-weekday {
+  padding: 10px 8px;
+  font-size: 12px;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.v2-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.v2-day {
+  height: 92px;
+  padding: 8px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+}
+
+.v2-day:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.v2-day--out {
+  opacity: 0.45;
+}
+
+.v2-day--today {
+  outline: 2px solid rgba(255,255,255,0.20);
+  outline-offset: -2px;
+}
+
+.v2-day--selected {
+  background: rgba(255,255,255,0.08);
+}
+
+.v2-day__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.v2-day__num {
+  font-weight: 700;
+}
+
+.v2-day__badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.16);
+}
+
+.v2-day__hint {
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.v2-agenda {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 12px;
+  height: fit-content;
+}
+
+.v2-agenda__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+
+.v2-agenda__title {
+  font-weight: 800;
+}
+
+.v2-agenda__date {
+  opacity: 0.75;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.v2-btn {
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  background: transparent;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.v2-btn:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.v2-btn--primary {
+  background: rgba(255,255,255,0.12);
+}
+
+.v2-empty {
+  padding: 12px 4px;
+  opacity: 0.8;
+}
+
+.v2-eventlist {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0 0;
+  display: grid;
+  gap: 10px;
+}
+
+.v2-eventcard {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.v2-eventcard__title {
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.v2-eventcard__meta {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.v2-eventcard__desc {
+  margin-top: 8px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+/* Responsive */
+@media (max-width: 980px) {
+  .v2-planner {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,92 @@
+.planner-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+.month-block {
+  border: 1px solid #222;
+  border-radius: 10px;
+  padding: 14px;
+  background: #0b0b0b;
+  color: #eaeaea;
+}
+
+.month-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.dow-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+.dow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 8px;
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.day-cell {
+  min-height: 90px;
+  border: 1px solid #222;
+  border-radius: 10px;
+  background: #121212;
+}
+
+.day-empty {
+  background: transparent;
+  border: 1px dashed #222;
+}
+
+.day-btn {
+  cursor: pointer;
+  text-align: left;
+  padding: 10px;
+  color: inherit;
+}
+
+.day-btn:hover {
+  border-color: #555;
+  background: #171717;
+}
+
+.day-num {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.event-chip {
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: #1f1f1f;
+  border: 1px solid #333;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.event-more {
+  font-size: 12px;
+  opacity: 0.85;
+}

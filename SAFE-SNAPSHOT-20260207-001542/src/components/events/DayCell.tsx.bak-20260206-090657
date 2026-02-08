@@ -1,0 +1,29 @@
+export default function DayCell({ date, events, timezone, onClick }: any) {
+  if (!date) {
+    return <div className="day-cell empty"></div>;
+  }
+
+  const dayStart = new Date(date);
+  dayStart.setHours(0, 0, 0, 0);
+
+  const dayEnd = new Date(dayStart);
+  dayEnd.setHours(23, 59, 59, 999);
+
+  const dayEvents = events.filter((e: any) => {
+    if (!e.start_time_utc) return false;
+    const eventDate = new Date(e.start_time_utc);
+    return eventDate >= dayStart && eventDate <= dayEnd;
+  });
+
+  return (
+    <div className="day-cell" onClick={() => onClick?.(date.toISOString().slice(0,10))}>
+      <div className="day-number">{date.getDate()}</div>
+
+      {dayEvents.map((e: any) => (
+        <div key={e.id} className="event-block">
+          {e.title}
+        </div>
+      ))}
+    </div>
+  );
+}

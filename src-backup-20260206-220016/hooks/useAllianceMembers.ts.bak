@@ -1,0 +1,68 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
+
+export function useAllianceMembers(allianceId: string) {
+  const [members, setMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("alliance_members")
+      .select(`
+        id,
+        user_id,
+        role,
+        profiles (
+          game_name
+        )
+      `)
+      .eq("alliance_id", allianceId);
+
+    if (error) {
+      console.error("[useAllianceMembers]", error);
+      setMembers([]);
+    } else {
+      setMembers(data || []);
+    }
+
+    setLoading(false);
+  }
+
+  async function updateGameName(profileId: string, game_name: string) {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ game_name })
+      .eq("id", profileId);
+
+    if (error) {
+      alert("Failed to update game name");
+      console.error(error);
+      return;
+    }
+
+    await load();
+  }
+
+  async function setRole(memberId: string, role: "Owner" | "Mod" | "Member") {
+    const { error } = await supabase
+      .from("alliance_members")
+      .update({ role })
+      .eq("id", memberId);
+
+    if (error) {
+      alert("Failed to update role");
+      console.error(error);
+      return;
+    }
+
+    await load();
+  }
+
+  useEffect(() => {
+    if (allianceId) load();
+  }, [allianceId]);
+
+  return { members, loading, setRole, updateGameName };
+}

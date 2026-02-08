@@ -1,0 +1,111 @@
+import { useMemo, useState } from "react";
+import MonthBlock from "./MonthBlock";
+import EventModal from "./EventModal";
+import { supabase } from "../../lib/supabaseClient";
+
+type Props = {
+  events: any[];
+  allianceId: string;
+  onEventsChanged: () => Promise<void>;
+};
+
+function toISODateParts(dateISO: string, timeHHMM: string) {
+  // dateISO = YYYY-MM-DD
+  // timeHHMM = HH:MM
+  const dt = new Date(`${dateISO}T${timeHHMM}:00`);
+  if (Number.isNaN(dt.getTime())) {
+    throw new Error("Invalid date/time. Please check your Start/End time.");
+  }
+  return dt.toISOString(); // UTC timestamp
+}
+
+function minutesBetween(startHHMM: string, endHHMM: string) {
+  const [sh, sm] = startHHMM.split(":").map(Number);
+  const [eh, em] = endHHMM.split(":").map(Number);
+  const start = sh * 60 + sm;
+  const end = eh * 60 + em;
+  const diff = end - start;
+  return diff > 0 ? diff : 0;
+}
+
+export default function PlannerGrid({ events, allianceId, onEventsChanged }: Props) {
+  const now = new Date();
+
+  const months = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now);
+      d.setMonth(now.getMonth() + i);
+      d.setDate(1);
+      return d;
+    });
+  }, []);
+
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  function handleDayClick(dateISO: string) {
+    setSelectedDate(dateISO);
+    setModalOpen(true);
+  }
+
+  async function handleSave(payload: any) {
+    // payload from modal:
+    // { title, date, startTime, endTime, recurrence_type, days_of_week, scope }
+    console.log("💾 SAVING EVENT:", payload);
+
+    const startUtc = toISODateParts(payload.date, payload.startTime);
+    const duration = minutesBetween(payload.startTime, payload.endTime);
+    if (!duration) {
+      throw new Error("End time must be later than start time.");
+    }
+
+    // We store BOTH:
+    // - event_date (YYYY-MM-DD) for easy day matching
+    // - start_time_utc (timestamptz) for reminders + sorting
+    const row = {
+      alliance_id: allianceId,
+      title: payload.title,
+      description: payload.description ?? null,
+      event_date: payload.date,
+      start_time_utc: startUtc,
+      duration_minutes: duration,
+      recurrence_type: payload.recurrence_type, // enum: none/daily/weekly/biweekly/monthly
+      days_of_week: payload.days_of_week ?? [],
+      timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone || "local",
+      send_reminders: true,
+      discord_channel_id: null,
+    };
+
+    const { error } = await supabase.from("alliance_events").insert(row);
+    if (error) {
+      console.error("❌ Insert failed:", error);
+      throw new Error(error.message);
+    }
+
+    // Refresh list so the new event appears immediately
+    await onEventsChanged();
+
+    // close modal
+    setModalOpen(false);
+  }
+
+  return (
+    <div>
+      {months.map((m) => (
+        <MonthBlock
+          key={m.toISOString()}
+          month={m}
+          events={events}
+          onDayClick={handleDayClick}
+        />
+      ))}
+
+      <EventModal
+        open={modalOpen}
+        date={selectedDate}
+        onClose={() => setModalOpen(false)}
+        onSave={handleSave}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,33 @@
+.auth-shell {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: #121826;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.3),
+              0 12px 40px rgba(0,0,0,0.6);
+}
+
+.auth-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.auth-subtitle {
+  font-size: 14px;
+  color: #9aa4b2;
+  margin-bottom: 24px;
+}
+
+.auth-actions {
+  margin-top: 24px;
+}
