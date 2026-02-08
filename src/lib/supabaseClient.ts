@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 const safeStorage: Storage | undefined =
   typeof window === "undefined"
     ? undefined
@@ -32,6 +33,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: safeStorage
   }
 });
+
 
 
 

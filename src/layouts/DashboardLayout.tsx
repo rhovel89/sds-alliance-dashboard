@@ -8,8 +8,10 @@ export default function DashboardLayout() {
         <h2 className='sidebar-title'>🧟 State 789</h2>
         <nav>
           <a href='/dashboard'>Dashboard</a>
-          <a href='/hq-map'>HQ Map</a>
-        </nav>
+          <a href='/dashboard/hq-map'>HQ Map</a>
+        
+        <a href="/dashboard/events">Events</a>
+</nav>
       </aside>
 
       <main className='dashboard-main'>
@@ -18,3 +20,5 @@ export default function DashboardLayout() {
     </div>
   );
 }
+
+

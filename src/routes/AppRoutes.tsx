@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route , Navigate } from "react-router-dom";
 import LandingPage from "../pages/LandingPage";
 import AuthCallback from "../pages/AuthCallback";
 import AllianceDashboard from "../pages/AllianceDashboard";
@@ -21,7 +21,9 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      <Route path="*" element={<div style={{ padding: 40 }}>Not Found</div>} />
+      <Route path="/hq-map" element={<Navigate to="/dashboard/hq-map" replace />} />
+<Route path="*" element={<div style={{ padding: 40 }}>Not Found</div>} />
     </Routes>
   );
 }
+

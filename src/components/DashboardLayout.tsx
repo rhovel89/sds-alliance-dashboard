@@ -18,7 +18,7 @@ export default function DashboardLayout() {
           </Link>
 
           <Link
-            to="/hq-map"
+            to="/dashboard/hq-map"
             className={location.pathname === "/hq-map" ? "active" : ""}
           >
             HQ Map
@@ -32,3 +32,4 @@ export default function DashboardLayout() {
     </div>
   );
 }
+
