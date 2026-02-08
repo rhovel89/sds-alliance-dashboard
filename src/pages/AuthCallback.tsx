@@ -7,55 +7,51 @@ export default function AuthCallback() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    let done = false;
+    let cancelled = false;
 
-    // 1) In PKCE + detectSessionInUrl:true mode, Supabase will exchange the code automatically.
-    //    So we DO NOT call exchangeCodeForSession here.
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (done) return;
-      if (session) {
-        done = true;
-        navigate("/dashboard", { replace: true });
-      }
-    });
-
-    // 2) Also do an immediate check (in case session already exists by the time this page renders)
     (async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
-        if (done) return;
+        // With detectSessionInUrl: true, Supabase exchanges automatically.
+        // We just wait for the session to exist.
+        const { data: initial } = await supabase.auth.getSession();
+        if (cancelled) return;
 
-        if (error) {
-          setErrorMsg(error.message);
+        if (initial.session) {
+          navigate("/dashboard", { replace: true });
           return;
         }
 
-        if (data.session) {
-          done = true;
-          navigate("/dashboard", { replace: true });
-        } else {
-          setErrorMsg("No session found after OAuth callback. Please try logging in again.");
-        }
+        // If not ready yet, listen for the sign-in event
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (cancelled) return;
+          if (session) navigate("/dashboard", { replace: true });
+        });
+
+        // If nothing happens shortly, show a helpful error
+        setTimeout(async () => {
+          if (cancelled) return;
+          const { data } = await supabase.auth.getSession();
+          if (!data.session) {
+            setErrorMsg("Auth session not detected. Try logging in again from the home page.");
+          }
+        }, 1500);
+
+        return () => sub.subscription.unsubscribe();
       } catch (e: any) {
-        if (done) return;
+        if (cancelled) return;
         setErrorMsg(e?.message ?? String(e));
       }
     })();
 
     return () => {
-      done = true;
-      sub.subscription.unsubscribe();
+      cancelled = true;
     };
   }, [navigate]);
 
   return (
     <div style={{ padding: "2rem" }}>
       <h2>Completing authentication…</h2>
-      {errorMsg ? (
-        <pre style={{ whiteSpace: "pre-wrap" }}>{errorMsg}</pre>
-      ) : (
-        <p>Please wait…</p>
-      )}
+      {errorMsg ? <pre style={{ whiteSpace: "pre-wrap" }}>{errorMsg}</pre> : null}
     </div>
   );
 }
