@@ -20,7 +20,7 @@ export default function LandingPage() {
     if (busy) return;
     setBusy(true);
 
-    const redirectTo = ${window.location.origin}/auth/callback;
+    const redirectTo = `${window.location.origin}/auth/callback`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
