@@ -1,1 +1,5 @@
+# State Dashboard routes
+/state/* /index.html 200
+
+# Alliance / owner / everything else
 /* /index.html 200
