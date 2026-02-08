@@ -10,3 +10,7 @@ discord-service/.env*
 SAFE-WORKING-*
 _SAFE-BACKUP-*
 SAFE-SNAPSHOT-*
+
+# local debug backups
+*.bak_*
+
