@@ -1,0 +1,47 @@
+import { useMemo, useState } from "react";
+import MonthBlock from "./MonthBlock";
+import EventModal from "./EventModal";
+
+export default function PlannerGrid({ events, allianceId, onEventsChanged }: any) {
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // Anchor month: if events exist, anchor to first event; else current month
+  const monthAnchor = useMemo(() => {
+    const first = (events || [])[0]?.startDate;
+    return first instanceof Date && !isNaN(first.getTime()) ? first : new Date();
+  }, [events]);
+
+  function handleDayCreate(dateStr: string) {
+    setSelectedDate(dateStr);
+    setEditingEvent(null);
+    setModalOpen(true);
+  }
+
+  function handleEventEdit(event: any) {
+    setSelectedDate(event?.event_date || null);
+    setEditingEvent(event);
+    setModalOpen(true);
+  }
+
+  return (
+    <>
+      <MonthBlock
+        date={monthAnchor}
+        events={events}
+        onCreate={handleDayCreate}
+        onEventClick={handleEventEdit}
+      />
+
+      <EventModal
+        open={modalOpen}
+        date={selectedDate}
+        event={editingEvent}
+        allianceId={allianceId}
+        onClose={() => setModalOpen(false)}
+        onSaved={onEventsChanged}
+      />
+    </>
+  );
+}

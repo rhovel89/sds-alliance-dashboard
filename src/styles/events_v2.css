@@ -1,0 +1,470 @@
+/* Events Calendar v2 (isolated styles) */
+
+.v2-planner {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  padding: 16px;
+}
+
+.v2-planner__main {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.v2-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+
+.v2-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.v2-monthlabel {
+  font-weight: 700;
+}
+
+.v2-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+
+.v2-weekday {
+  padding: 10px 8px;
+  font-size: 12px;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.v2-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.v2-day {
+  height: 92px;
+  padding: 8px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+}
+
+.v2-day:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.v2-day--out {
+  opacity: 0.45;
+}
+
+.v2-day--today {
+  outline: 2px solid rgba(255,255,255,0.20);
+  outline-offset: -2px;
+}
+
+.v2-day--selected {
+  background: rgba(255,255,255,0.08);
+}
+
+.v2-day__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.v2-day__num {
+  font-weight: 700;
+}
+
+.v2-day__badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.16);
+}
+
+.v2-day__hint {
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.v2-agenda {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 12px;
+  height: fit-content;
+}
+
+.v2-agenda__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+
+.v2-agenda__title {
+  font-weight: 800;
+}
+
+.v2-agenda__date {
+  opacity: 0.75;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.v2-btn {
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  background: transparent;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.v2-btn:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.v2-btn--primary {
+  background: rgba(255,255,255,0.12);
+}
+
+.v2-empty {
+  padding: 12px 4px;
+  opacity: 0.8;
+}
+
+.v2-eventlist {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0 0;
+  display: grid;
+  gap: 10px;
+}
+
+.v2-eventcard {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.v2-eventcard__title {
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.v2-eventcard__meta {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.v2-eventcard__desc {
+  margin-top: 8px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+/* Responsive */
+@media (max-width: 980px) {
+  .v2-planner {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Modal (overlay) */
+.v2-modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+}
+
+.v2-modal {
+  width: min(720px, calc(100vw - 24px));
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 14px;
+  background: rgba(10,10,10,0.95);
+  box-shadow: 0 20px 70px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+
+.v2-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+
+.v2-modal__title {
+  font-weight: 900;
+}
+
+.v2-iconBtn {
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  background: transparent;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.v2-iconBtn:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.v2-modal__body {
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.v2-formRow {
+  display: grid;
+  gap: 6px;
+}
+
+.v2-label {
+  font-size: 12px;
+  opacity: 0.80;
+}
+
+.v2-input {
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  padding: 10px 10px;
+  color: inherit;
+}
+
+.v2-input:focus {
+  outline: 2px solid rgba(255,255,255,0.20);
+  outline-offset: 0;
+}
+
+.v2-textarea {
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  padding: 10px 10px;
+  color: inherit;
+  resize: vertical;
+}
+
+.v2-formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .v2-formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.v2-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px;
+  border-top: 1px solid rgba(255,255,255,0.10);
+}
+
+/* Zombie theme readability tweaks (text + contrast only) */
+.v2-monthlabel,
+.v2-agenda__title,
+.v2-modal__title {
+  color: rgba(210, 255, 210, 0.95);
+}
+
+.v2-weekday {
+  color: rgba(180, 240, 180, 0.80);
+}
+
+.v2-agenda__date,
+.v2-empty,
+.v2-eventcard__meta,
+.v2-day__hint,
+.v2-label {
+  color: rgba(190, 240, 190, 0.75);
+}
+
+.v2-day__num,
+.v2-eventcard__title {
+  color: rgba(230, 255, 230, 0.95);
+}
+
+.v2-input,
+.v2-textarea,
+.v2-btn,
+.v2-iconBtn {
+  color: rgba(230, 255, 230, 0.92);
+}
+
+.v2-btn--primary {
+  border-color: rgba(120, 220, 120, 0.35);
+  background: rgba(60, 140, 60, 0.18);
+}
+
+.v2-btn--primary:hover {
+  background: rgba(70, 160, 70, 0.22);
+}
+
+/* Repeat-on day-of-week selector */
+.v2-dowRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.v2-dowChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  user-select: none;
+}
+
+.v2-dowChip input {
+  width: 16px;
+  height: 16px;
+}
+
+/* Agenda item button (keeps same look, adds click) */
+.v2-eventcard__btn {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.v2-eventcard__btn:disabled {
+  cursor: default;
+}
+
+/* Agenda item becomes clickable (keeps same card look) */
+.v2-eventcard__btn {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.v2-eventcard__btn:disabled {
+  cursor: default;
+}
+
+/* Delete button (zombie-danger) */
+.v2-btn--danger {
+  border-color: rgba(255, 120, 120, 0.35);
+  background: rgba(160, 40, 40, 0.18);
+}
+
+.v2-btn--danger:hover {
+  background: rgba(190, 50, 50, 0.22);
+}
+
+/* Agenda row with chip */
+.v2-eventcard__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Chips */
+.v2-chip {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
+  white-space: nowrap;
+}
+
+.v2-chip--moved {
+  border-color: rgba(140, 220, 255, 0.25);
+  background: rgba(80, 160, 190, 0.14);
+}
+
+.v2-chip--skipped {
+  border-color: rgba(255, 120, 120, 0.28);
+  background: rgba(160, 40, 40, 0.14);
+}
+
+/* Marker-only cards (skipped lines) */
+.v2-eventcard--marker {
+  opacity: 0.85;
+}
+
+/* DayCell exception indicator */
+.v2-day__topRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.v2-day__ex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.06);
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* --- TUNING: soften exception visuals (no layout change) --- */
+.v2-chip {
+  font-size: 11px;
+  padding: 3px 7px;
+  opacity: 0.85;
+}
+
+.v2-chip--moved {
+  border-color: rgba(140, 220, 255, 0.18);
+  background: rgba(80, 160, 190, 0.10);
+}
+
+.v2-chip--skipped {
+  border-color: rgba(255, 120, 120, 0.20);
+  background: rgba(160, 40, 40, 0.10);
+}
+
+.v2-day__ex {
+  width: 16px;
+  height: 16px;
+  border-radius: 6px;
+  opacity: 0.75;
+  font-size: 11px;
+}

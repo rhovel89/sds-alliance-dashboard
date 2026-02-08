@@ -1,0 +1,32 @@
+.login-transition {
+  position: fixed;
+  inset: 0;
+  background: black;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  animation: fadeOut 1.8s ease forwards;
+}
+
+.login-transition__glitch {
+  font-family: monospace;
+  color: #ff3b3b;
+  font-size: 2rem;
+  letter-spacing: 4px;
+  animation: glitchText 1.2s infinite;
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+@keyframes glitchText {
+  0% { transform: translate(0); opacity: 1; }
+  20% { transform: translate(-2px, 1px); opacity: 0.8; }
+  40% { transform: translate(2px, -1px); opacity: 0.9; }
+  60% { transform: translate(-1px, 2px); }
+  80% { transform: translate(1px, -2px); }
+  100% { transform: translate(0); }
+}

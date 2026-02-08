@@ -1,0 +1,72 @@
+.event-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.event-modal {
+  background: #0b0b0b;
+  color: #fff;
+  padding: 32px;
+  width: 520px;
+  border-radius: 12px;
+  box-shadow: 0 0 40px rgba(0,255,0,0.15);
+}
+
+.event-modal h1 {
+  margin-bottom: 8px;
+}
+
+.event-date {
+  opacity: 0.8;
+  margin-bottom: 16px;
+}
+
+.event-modal label {
+  display: block;
+  margin-top: 16px;
+  margin-bottom: 6px;
+}
+
+.event-modal input,
+.event-modal select {
+  width: 100%;
+  padding: 10px;
+  background: #fff;
+  color: #000;
+  border-radius: 8px;
+  border: none;
+}
+
+.time-row {
+  display: flex;
+  gap: 12px;
+}
+
+.days-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+}
+
+.modal-actions button {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+}
+
+.modal-actions .save {
+  background: #3cff00;
+  color: #000;
+  font-weight: bold;
+}

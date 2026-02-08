@@ -1,0 +1,48 @@
+import { useState } from "react";
+import MonthBlock from "./MonthBlock";
+import EventModal from "./EventModal";
+
+export default function PlannerGrid({ events = [], timezone = "local" }) {
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Normalize events by local date
+  const eventsByDate: Record<string, any[]> = {};
+
+  events.forEach((e) => {
+    if (!e.start_time_utc) return;
+
+    const d = new Date(e.start_time_utc);
+    const key = d.getFullYear() + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0");
+
+    if (!eventsByDate[key]) eventsByDate[key] = [];
+    eventsByDate[key].push(e);
+  });
+
+  const now = new Date();
+  const months = Array.from({ length: 6 }, (_, i) =>
+    new Date(now.getFullYear(), now.getMonth() + i, 1)
+  );
+
+  return (
+    <div>
+      {months.map((month) => (
+        <MonthBlock
+          key={month.toISOString()}
+          month={month}
+          eventsByDate={eventsByDate}
+          onSelectDate={setSelectedDate}
+        />
+      ))}
+
+      {selectedDate && (
+        <EventModal
+          date={selectedDate}
+          onClose={() => setSelectedDate(null)}
+          onSaved={() => window.location.reload()}
+        />
+      )}
+    </div>
+  );
+}

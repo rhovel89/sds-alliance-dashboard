@@ -1,0 +1,36 @@
+export default function DayCell({ date, events = [], onClick }: any) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const key = `${y}-${m}-${d}`;
+
+  return (
+    <div
+      onClick={() => onClick(key)}
+      style={{
+        border: "1px solid #ddd",
+        minHeight: 80,
+        padding: 6,
+        cursor: "pointer"
+      }}
+    >
+      <div style={{ fontWeight: "bold" }}>{date.getDate()}</div>
+
+      {events.map((e) => (
+        <div
+          key={e.id}
+          style={{
+            background: "#222",
+            color: "#fff",
+            padding: "2px 4px",
+            marginTop: 4,
+            fontSize: 12,
+            borderRadius: 4
+          }}
+        >
+          {e.title}
+        </div>
+      ))}
+    </div>
+  );
+}

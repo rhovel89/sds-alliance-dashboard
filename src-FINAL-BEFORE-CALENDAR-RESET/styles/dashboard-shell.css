@@ -1,0 +1,38 @@
+.dashboard-shell {
+  display: flex;
+  min-height: 100vh;
+  background: #0b0f0d;
+  color: #e6ffe6;
+}
+
+.sidebar {
+  width: 220px;
+  background: #050806;
+  border-right: 1px solid #123;
+  padding: 20px;
+}
+
+.logo {
+  margin-bottom: 20px;
+  color: #7cff9e;
+}
+
+.sidebar nav a {
+  display: block;
+  padding: 10px;
+  color: #aaa;
+  text-decoration: none;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.sidebar nav a.active,
+.sidebar nav a:hover {
+  background: #0f1f14;
+  color: #7cff9e;
+}
+
+.dashboard-main {
+  flex: 1;
+  padding: 24px;
+}

@@ -1,0 +1,46 @@
+import { useState } from 'react';
+import MonthBlock from './MonthBlock';
+import EventModal from './EventModal';
+
+export default function PlannerGrid({ events, timezone }: any) {
+  const now = new Date();
+
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now);
+    d.setMonth(now.getMonth() + i);
+    return d;
+  });
+
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  function handleDayClick(date: string) {
+    setSelectedDate(date);
+    setModalOpen(true);
+  }
+
+  return (
+    <div className="planner-grid">
+      {months.map((month) => (
+        <MonthBlock
+          key={month.toISOString()}
+          month={month}
+          events={events}
+          timezone={timezone}
+          onDayClick={handleDayClick}
+        />
+      ))}
+
+      <EventModal
+        open={modalOpen}
+        date={selectedDate}
+        onClose={() => setModalOpen(false)}
+        onSave={(event) => {
+          console.log('EVENT SAVED (UI ONLY):', event);
+          setModalOpen(false);
+        }}
+      />
+    </div>
+  );
+}
+

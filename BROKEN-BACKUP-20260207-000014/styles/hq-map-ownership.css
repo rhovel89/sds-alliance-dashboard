@@ -1,0 +1,58 @@
+/* === HQ TILE BASE === */
+.hq-cell {
+  border: 2px solid #555;
+  padding: 10px;
+  min-height: 70px;
+  text-align: center;
+  background: #0b0b0b;
+  color: #e6ffe6;
+  font-family: monospace;
+}
+
+/* === OWNERSHIP STATES === */
+.hq-cell.empty {
+  border-color: #777;
+}
+
+.hq-cell.ally {
+  border-color: #4cff4c;
+}
+
+.hq-cell.danger {
+  border-color: #ff4c4c;
+}
+.hq-selected {
+  animation: hqPulse 1.6s infinite;
+}
+
+@keyframes hqPulse {
+  0%   { box-shadow: 0 0 4px #2cff7b; }
+  50%  { box-shadow: 0 0 18px #2cff7b; }
+  100% { box-shadow: 0 0 4px #2cff7b; }
+}
+.hq-fog {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    repeating-radial-gradient(circle at 20% 30%, rgba(255,255,255,0.03), transparent 80px),
+    repeating-radial-gradient(circle at 70% 60%, rgba(255,255,255,0.02), transparent 120px);
+  animation: fogDrift 40s linear infinite;
+}
+
+@keyframes fogDrift {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-200px); }
+}
+@keyframes vhsFlicker {
+  0%   { filter: none; }
+  97%  { filter: none; }
+  98%  { filter: contrast(1.05) saturate(1.1); }
+  99%  { filter: brightness(0.95); }
+  100% { filter: none; }
+}
+
+.hq-vhs {
+  animation: vhsFlicker 8s infinite;
+}
