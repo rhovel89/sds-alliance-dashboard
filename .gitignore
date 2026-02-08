@@ -5,3 +5,8 @@ dist
 .vite
 .DS_Store
 discord-service/.env*
+
+# local backups / snapshots
+SAFE-WORKING-*
+_SAFE-BACKUP-*
+SAFE-SNAPSHOT-*
