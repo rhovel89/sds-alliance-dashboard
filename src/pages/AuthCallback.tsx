@@ -7,39 +7,44 @@ export default function AuthCallback() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let done = false;
 
+    // 1) In PKCE + detectSessionInUrl:true mode, Supabase will exchange the code automatically.
+    //    So we DO NOT call exchangeCodeForSession here.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (done) return;
+      if (session) {
+        done = true;
+        navigate("/dashboard", { replace: true });
+      }
+    });
+
+    // 2) Also do an immediate check (in case session already exists by the time this page renders)
     (async () => {
       try {
-        console.info("[AuthCallback] exchanging OAuth code for session");
-
-        const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
-
-        if (cancelled) return;
+        const { data, error } = await supabase.auth.getSession();
+        if (done) return;
 
         if (error) {
-          console.error("[AuthCallback] exchange failed", error);
           setErrorMsg(error.message);
           return;
         }
 
-        if (!data?.session) {
-          console.error("[AuthCallback] no session returned");
-          setErrorMsg("No session returned from Supabase");
-          return;
+        if (data.session) {
+          done = true;
+          navigate("/dashboard", { replace: true });
+        } else {
+          setErrorMsg("No session found after OAuth callback. Please try logging in again.");
         }
-
-        console.info("[AuthCallback] session OK — redirecting to dashboard");
-        navigate("/dashboard", { replace: true });
       } catch (e: any) {
-        if (cancelled) return;
-        console.error("[AuthCallback] unexpected error", e);
+        if (done) return;
         setErrorMsg(e?.message ?? String(e));
       }
     })();
 
     return () => {
-      cancelled = true;
+      done = true;
+      sub.subscription.unsubscribe();
     };
   }, [navigate]);
 
@@ -54,4 +59,3 @@ export default function AuthCallback() {
     </div>
   );
 }
-
