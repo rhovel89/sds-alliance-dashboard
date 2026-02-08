@@ -24,7 +24,7 @@ export default function AuthCallback() {
       );
       setLsDump(interesting.length ? interesting : keys.slice(0, 50));
     } catch (e) {
-      setLsDump([\"<localStorage not accessible>\"]);
+      setLsDump(["<localStorage not accessible>"]);
     }
   }, []);
 
