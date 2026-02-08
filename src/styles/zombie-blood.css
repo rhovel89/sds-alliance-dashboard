@@ -1,0 +1,23 @@
+@keyframes bloodDrip {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(0); }
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 90px;
+  background: linear-gradient(
+    to bottom,
+    rgba(140, 20, 20, 0.55),
+    rgba(140, 20, 20, 0.28),
+    rgba(140, 20, 20, 0.12),
+    transparent
+  );
+  animation: bloodDrip 2.2s ease-out forwards;
+  pointer-events: none;
+  z-index: 2147483647;
+}

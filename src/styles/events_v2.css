@@ -468,3 +468,12 @@
   opacity: 0.75;
   font-size: 11px;
 }
+.v2-planner {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.v2-planner__main {
+  flex: 1;
+  min-width: 0;
+}

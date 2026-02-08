@@ -1,8 +1,7 @@
 import { useParams } from 'react-router-dom';
-import { PlannerMonth } from '../components/events_v2/PlannerMonth';
-import '../styles/events_v2.css';
+import TemplateList from '../components/templates/TemplateList';
 
-export default function EventsPage() {
+export default function EventTemplates() {
   const { allianceId } = useParams<{ allianceId: string }>();
 
   if (!allianceId) {
@@ -10,8 +9,9 @@ export default function EventsPage() {
   }
 
   return (
-    <div style={{ width: '100%' }}>
-      <PlannerMonth allianceId={allianceId} />
+    <div className='panel scanner'>
+      <h2>🧪 Event Templates</h2>
+      <TemplateList allianceId={allianceId} />
     </div>
   );
 }

@@ -1,37 +1,65 @@
-.sidebar {
-  width: 220px;
-  background: #0f1522;
-  border-right: 1px solid rgba(255,255,255,0.05);
-  padding: 16px;
+/* --- Dashboard Layout --- */
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+  background: transparent !important;
 }
 
-.sidebar-section {
-  margin-bottom: 24px;
+.dashboard-sidebar {
+  width: 280px;
+  padding: 16px 14px;
+  background: rgba(10, 14, 12, 0.65);
+  border-right: 1px solid rgba(76, 255, 76, 0.15);
+  backdrop-filter: blur(8px);
 }
 
 .sidebar-title {
-  display: block;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  color: #9aa4b2;
-  margin-bottom: 10px;
+  margin: 0 0 14px 0;
+  font-size: 24px;
+  color: rgba(230, 242, 234, 0.95);
+  text-shadow: 0 0 8px rgba(76, 255, 76, 0.35);
 }
 
-.nav-item {
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sidebar-section h4 {
+  margin: 12px 0 8px 0;
+  font-size: 14px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(155, 179, 165, 0.9);
+}
+
+/* Make links stacked + clickable */
+.sidebar-nav a {
   display: block;
-  padding: 10px 12px;
-  border-radius: 6px;
-  color: #e6e9ef;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(76, 255, 76, 0.10);
+  background: rgba(17, 24, 20, 0.55);
+  color: rgba(230, 242, 234, 0.92);
   text-decoration: none;
-  margin-bottom: 6px;
-  transition: background 0.15s ease;
+  margin-bottom: 8px;
 }
 
-.nav-item:hover {
-  background: rgba(107,92,255,0.12);
+.sidebar-nav a:hover {
+  border-color: rgba(76, 255, 76, 0.55);
+  box-shadow: 0 0 10px rgba(76, 255, 76, 0.25);
 }
 
-.nav-item.active {
-  background: rgba(107,92,255,0.25);
-  color: #ffffff;
+/* NavLink active class (React Router adds "active" in v5; in v6 it uses aria-current) */
+.sidebar-nav a[aria-current='page'] {
+  border-color: rgba(76, 255, 76, 0.8);
+  box-shadow: 0 0 14px rgba(76, 255, 76, 0.35);
+}
+
+/* Main content */
+.dashboard-main {
+  flex: 1;
+  padding: 18px;
+  background: transparent !important;
 }

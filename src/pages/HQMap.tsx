@@ -1,6 +1,7 @@
 import "../styles/hq-map.css";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from '../lib/supabaseClient';
+import { useParams } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
 
 type Cell = {
   player_name?: string;
@@ -9,28 +10,62 @@ type Cell = {
 
 const TOTAL_HQ = 120;
 const COLUMNS = 6;
-const STORAGE_KEY = "hqmap:data:v1";
 
-// 🔐 TEMP ROLE SIMULATION (replace later with real auth/roles)
+// TEMP role flag (kept exactly as-is)
 const role: "owner" | "mod" | "member" = "owner";
 
-function normalizeCoords(s: string) {
-  return (s || "").trim();
-}
-
-function normalizeName(s: string) {
+function normalize(s: string) {
   return (s || "").trim();
 }
 
 export default function HQMap() {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const [cells, setCells] = useState<Cell[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const canEditRole = role === "owner" || role === "mod";
   const canEdit = canEditRole && !locked;
 
-  // editor draft
+  // Load HQ data (ALLIANCE-SCOPED)
+  useEffect(() => {
+    if (!allianceId) return;
+
+    const load = async () => {
+      setLoading(true);
+
+      const { data, error } = await supabase
+        .from("alliance_hq_map")
+        .select("slot_x, slot_y, label")
+        .eq("alliance_id", allianceId);
+
+      if (error) {
+        console.error("HQ load failed:", error);
+        setCells(Array.from({ length: TOTAL_HQ }, () => ({})));
+        setLoading(false);
+        return;
+      }
+
+      const next: Cell[] = Array.from({ length: TOTAL_HQ }, () => ({}));
+
+      data.forEach(row => {
+        const index = row.slot_y * COLUMNS + row.slot_x;
+        if (index >= 0 && index < TOTAL_HQ) {
+          next[index] = {
+            player_name: row.label || undefined,
+            coords: undefined
+          };
+        }
+      });
+
+      setCells(next);
+      setLoading(false);
+    };
+
+    load();
+  }, [allianceId]);
+
   const selectedCell = useMemo(() => {
     if (selected === null) return null;
     return cells[selected] ?? {};
@@ -39,32 +74,6 @@ export default function HQMap() {
   const [draftName, setDraftName] = useState("");
   const [draftCoords, setDraftCoords] = useState("");
 
-  // 🔄 Load saved HQ data
-  useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          // pad/truncate to TOTAL_HQ
-          const fixed = parsed.slice(0, TOTAL_HQ);
-          while (fixed.length < TOTAL_HQ) fixed.push({});
-          setCells(fixed);
-          return;
-        }
-      } catch {}
-    }
-    setCells(Array.from({ length: TOTAL_HQ }, () => ({})));
-  }, []);
-
-  // 💾 Persist on change
-  useEffect(() => {
-    if (cells.length === TOTAL_HQ) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cells));
-    }
-  }, [cells]);
-
-  // keep draft in sync when selecting a cell
   useEffect(() => {
     if (selected === null) return;
     const c = cells[selected] ?? {};
@@ -72,35 +81,64 @@ export default function HQMap() {
     setDraftCoords(c.coords ?? "");
   }, [selected, cells]);
 
-  function applyDraft() {
-    if (!canEdit || selected === null) return;
+  async function saveCell() {
+    if (!canEdit || selected === null || !allianceId) return;
 
-    const name = normalizeName(draftName);
-    const coords = normalizeCoords(draftCoords);
+    const name = normalize(draftName);
+
+    const x = selected % COLUMNS;
+    const y = Math.floor(selected / COLUMNS);
+
+    const { error } = await supabase
+      .from("alliance_hq_map")
+      .upsert({
+        alliance_id: allianceId,
+        slot_x: x,
+        slot_y: y,
+        label: name || null
+      });
+
+    if (error) {
+      console.error("HQ save failed:", error);
+      return;
+    }
 
     setCells(prev => {
       const next = [...prev];
-      next[selected] = {
-        player_name: name || undefined,
-        coords: coords || undefined
-      };
+      next[selected] = { player_name: name || undefined };
       return next;
     });
   }
 
-  function clearCell() {
-    if (!canEdit || selected === null) return;
+  async function clearCell() {
+    if (!canEdit || selected === null || !allianceId) return;
+
+    const x = selected % COLUMNS;
+    const y = Math.floor(selected / COLUMNS);
+
+    const { error } = await supabase
+      .from("alliance_hq_map")
+      .delete()
+      .eq("alliance_id", allianceId)
+      .eq("slot_x", x)
+      .eq("slot_y", y);
+
+    if (error) {
+      console.error("HQ delete failed:", error);
+      return;
+    }
 
     setCells(prev => {
       const next = [...prev];
       next[selected] = {};
       return next;
     });
+
     setDraftName("");
     setDraftCoords("");
   }
 
-  if (cells.length !== TOTAL_HQ) {
+  if (loading) {
     return <div className="hq-page"><div className="hq-shell">Loading HQ Map…</div></div>;
   }
 
@@ -116,15 +154,9 @@ export default function HQMap() {
             className={"hq-lock " + (locked ? "is-locked" : "is-unlocked")}
             onClick={() => setLocked(v => !v)}
             disabled={!canEditRole}
-            title={!canEditRole ? "Only owner/mod can edit" : (locked ? "Click to unlock" : "Click to lock")}
           >
-            <span className="dot" />
-            {locked ? "Locked (click to unlock)" : "Unlocked (click to lock)"}
+            {locked ? "Locked" : "Unlocked"}
           </button>
-        </div>
-
-        <div className="hq-sub">
-          Drag to swap cells • Click a cell to edit
         </div>
 
         <div
@@ -132,83 +164,33 @@ export default function HQMap() {
           style={{ gridTemplateColumns: `repeat(${COLUMNS}, 1fr)` }}
         >
           {cells.map((cell, i) => {
-            const n = i + 1;
-            const has = !!(cell.player_name || cell.coords);
             const isSel = selected === i;
-
             return (
               <button
-                type="button"
                 key={i}
-                className={[
-                  "hq-cell",
-                  has ? "ally" : "empty",
-                  isSel ? "selected" : ""
-                ].join(" ")}
-                onClick={() => {
-                  if (!canEditRole) return;
-                  setSelected(i);
-                }}
+                type="button"
+                className={["hq-cell", isSel ? "selected" : ""].join(" ")}
+                onClick={() => canEditRole && setSelected(i)}
               >
-                <div className="hq-cell-top">
-                  <div className="hq-num">#{n}</div>
-                </div>
-
-                <div className="hq-coords">
-                  {cell.coords ? cell.coords : "(no coords)"}
-                </div>
-
+                <div className="hq-num">#{i + 1}</div>
                 <div className="hq-name">
-                  {cell.player_name ? cell.player_name : "— empty —"}
+                  {cell.player_name || "— empty —"}
                 </div>
               </button>
             );
           })}
         </div>
 
-        {/* Bottom editor */}
         {canEditRole && selected !== null && (
           <div className="hq-editor">
-            <div className="hq-editor-head">
-              <div className="hq-editor-title">Edit Cell #{selected + 1}</div>
-              <button
-                type="button"
-                className="hq-editor-close"
-                onClick={() => setSelected(null)}
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="hq-editor-grid">
-              <div className="hq-field">
-                <label>Name</label>
-                <input
-                  value={draftName}
-                  onChange={(e) => setDraftName(e.target.value)}
-                  placeholder=""
-                  disabled={!canEdit}
-                />
-              </div>
-
-              <div className="hq-field">
-                <label>Coords</label>
-                <input
-                  value={draftCoords}
-                  onChange={(e) => setDraftCoords(e.target.value)}
-                  placeholder="e.g. S:789 Y:232 X:111"
-                  disabled={!canEdit}
-                />
-              </div>
-            </div>
-
+            <input
+              value={draftName}
+              onChange={e => setDraftName(e.target.value)}
+              disabled={!canEdit}
+            />
             <div className="hq-editor-actions">
-              <button type="button" className="hq-btn primary" onClick={applyDraft} disabled={!canEdit}>
-                Save
-              </button>
-              <button type="button" className="hq-btn danger" onClick={clearCell} disabled={!canEdit}>
-                Clear Cell
-              </button>
+              <button onClick={saveCell} disabled={!canEdit}>Save</button>
+              <button onClick={clearCell} disabled={!canEdit}>Clear</button>
             </div>
           </div>
         )}

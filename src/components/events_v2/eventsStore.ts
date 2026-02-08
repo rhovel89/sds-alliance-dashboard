@@ -268,3 +268,13 @@ export async function deleteException(eventId: string, occurrenceDate: string): 
 }
 }
 
+export async function runEventTemplate(templateId: string) {
+  const { error } = await supabase.rpc("run_event_template", {
+    template_id: templateId,
+  });
+
+  if (error) {
+    console.error("Template run failed:", error);
+    throw error;
+  }
+}
