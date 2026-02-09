@@ -16,7 +16,7 @@ export function usePromoteDemote() {
       .select('role')
       .eq('alliance_id', allianceId)
       .eq('user_id', targetUserId)
-      .single();
+      .maybeSingle();
 
     if (!current) throw new Error('Member not found');
 

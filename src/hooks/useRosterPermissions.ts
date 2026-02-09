@@ -13,7 +13,7 @@ export function useRosterPermissions(allianceId: string, role: string) {
       .select("*")
       .eq("alliance_id", allianceId)
       .eq("role", role)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         setPermissions(data);
       });

@@ -9,7 +9,7 @@ export async function upsertEvent(event: CalendarEvent) {
     .from("alliance_events")
     .upsert(event)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data;
@@ -47,7 +47,7 @@ export async function upsertExceptionSkip(eventId: string, occurrenceDate: strin
       action: "skip",
     })
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data;
@@ -75,7 +75,7 @@ export async function upsertExceptionOverride(payload: {
       new_description: payload.newDescription,
     })
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data;

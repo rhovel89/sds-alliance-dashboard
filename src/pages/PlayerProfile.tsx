@@ -9,7 +9,7 @@ export default function PlayerProfile() {
       const { data } = await supabase
         .from('profiles')
         .select('*')
-        .single()
+        .maybeSingle()
       setProfile(data)
     })()
   }, [])

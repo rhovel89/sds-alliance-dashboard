@@ -28,7 +28,7 @@ export default function PlayerHQEditor({ profileId }: { profileId: string }) {
       .from("player_hqs")
       .insert({ profile_id: profileId })
       .select()
-      .single();
+      .maybeSingle();
     if (data) setHqs([...hqs, data]);
   };
 
