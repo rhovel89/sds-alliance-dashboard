@@ -47,7 +47,7 @@ export default function ProfileHQEditor() {
         lair_level: 0,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (data) setHqs([...hqs, data]);
   }

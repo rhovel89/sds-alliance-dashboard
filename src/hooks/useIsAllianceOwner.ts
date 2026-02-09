@@ -19,7 +19,7 @@ export function useIsAllianceOwner(allianceId: string | null) {
       .select("role")
       .eq("user_id", session.user.id)
       .eq("alliance_id", allianceId)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         setIsOwner(data?.role === "Owner");
         setLoading(false);

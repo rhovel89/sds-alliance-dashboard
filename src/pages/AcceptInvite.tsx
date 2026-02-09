@@ -10,7 +10,7 @@ export default function AcceptInvite() {
       .select("*")
       .eq("token", token)
       .eq("revoked", false)
-      .single();
+      .maybeSingle();
 
     if (!invite) return alert("Invalid invite");
 

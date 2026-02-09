@@ -33,7 +33,7 @@ export default function MyAlliance() {
         .select("role")
         .eq("alliance_id", allianceId)
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       if (me?.role) setRole(me.role);
 

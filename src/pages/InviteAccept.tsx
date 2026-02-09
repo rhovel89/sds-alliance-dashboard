@@ -14,7 +14,7 @@ export default function InviteAccept() {
         .from('alliance_invites')
         .select('*')
         .eq('token', token)
-        .single();
+        .maybeSingle();
 
       if (!data || data.used || data.revoked) {
         navigate('/login');

@@ -22,7 +22,7 @@ export default function PlayerProfilePage() {
         .select("*")
         .eq("user_id", user.id)
         .eq("alliance_id", allianceId)
-        .single();
+        .maybeSingle();
 
       const { data: h } = await supabase
         .from("player_hqs")
@@ -74,7 +74,7 @@ export default function PlayerProfilePage() {
         lair_level: 0
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (!error && data) {
       setHqs(prev => [...prev, data]);
@@ -117,7 +117,7 @@ export default function PlayerProfilePage() {
         lair_level: 0
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (!error && data) {
       setHqs(prev => [...prev, data]);

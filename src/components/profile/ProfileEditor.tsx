@@ -16,7 +16,7 @@ export default function ProfileEditor() {
   useEffect(() => {
     supabase.from("player_profiles")
       .select("id,in_game_name,discord_name,timezone")
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         setProfile(data);
         setLoading(false);

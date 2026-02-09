@@ -15,7 +15,7 @@ export function useUserProfile(userId?: string) {
       .from('users')
       .select('*')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         setUser(data);
         setLoading(false);
