@@ -6,8 +6,8 @@ import { supabase } from "../../lib/supabaseClient";
 import { useAlliance } from "../../context/AllianceContext";
 
 export default function PlannerGrid({ events }: any) {
-  const { allianceId } = useParams<{ alliance_id: string }>();
-  const { allianceId } = useAlliance();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useAlliance();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -24,7 +24,7 @@ export default function PlannerGrid({ events }: any) {
       event_date: event.date,
       start_time_utc: event.startTime,
       end_time_utc: event.endTime,
-      alliance_id: allianceId,
+      alliance_id: alliance_id,
       created_by: (await supabase.auth.getUser()).data.user?.id
     });
 

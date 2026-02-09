@@ -84,7 +84,7 @@ export function EventModal({
         : [selectedDow];
 
     const initialVisibility: Visibility = (initial?.visibility === 'alliance') ? 'alliance' : 'personal';
-    const firstAllianceId = alliances.length > 0 ? alliances[0].id : null;
+    const firstalliance_id = alliances.length > 0 ? alliances[0].id : null;
 
     return {
       title: initial?.title || '',
@@ -96,7 +96,7 @@ export function EventModal({
       daysOfWeek: defaultDays,
       visibility: initialVisibility,
       alliance_id: initialVisibility === 'alliance'
-        ? (initial?.alliance_id ?? firstAllianceId)
+        ? (initial?.alliance_id ?? firstalliance_id)
         : null,
     };
   }, [initial, selectedIso, alliances]);

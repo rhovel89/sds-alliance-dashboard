@@ -5,13 +5,13 @@ import { useAlliance } from "../context/AllianceContext";
 import { supabase } from "../lib/supabaseClient";
 
 export default function EventsPage() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
-  const { allianceId, loading } = useAlliance();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { alliance_id, loading } = useAlliance();
   const [events, setEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
 
   useEffect(() => {
-    if (!allianceId) return;
+    if (!alliance_id) return;
 
     async function loadEvents() {
       setLoadingEvents(true);
@@ -19,7 +19,7 @@ export default function EventsPage() {
       const { data, error } = await supabase
         .from("alliance_events")
         .select("*")
-        .eq("alliance_id", allianceId)
+        .eq("alliance_id", alliance_id)
         .order("start_time_utc", { ascending: true });
 
       if (error) {
@@ -32,13 +32,13 @@ export default function EventsPage() {
     }
 
     loadEvents();
-  }, [allianceId]);
+  }, [alliance_id]);
 
   if (loading || loadingEvents) {
     return <div style={{ padding: 20 }}>Loading events…</div>;
   }
 
-  if (!allianceId) {
+  if (!alliance_id) {
     return <div style={{ padding: 20 }}>No alliance selected</div>;
   }
 

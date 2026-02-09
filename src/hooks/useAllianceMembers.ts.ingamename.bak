@@ -2,12 +2,12 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-export function useAllianceMembers(allianceId?: string) {
+export function useAllianceMembers(alliance_id?: string) {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!allianceId) {
+    if (!alliance_id) {
       setLoading(false);
       return;
     }
@@ -15,12 +15,12 @@ export function useAllianceMembers(allianceId?: string) {
     supabase
       .from("alliance_members")
       .select("id, user_id, role")
-      .eq("alliance_id", allianceId)
+      .eq("alliance_id", alliance_id)
       .then(res => {
         setMembers(res.data || []);
         setLoading(false);
       });
-  }, [allianceId]);
+  }, [alliance_id]);
 
   return { members, loading };
 }

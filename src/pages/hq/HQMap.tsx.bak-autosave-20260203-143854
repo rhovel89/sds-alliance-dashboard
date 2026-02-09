@@ -14,7 +14,7 @@ const DEFAULT_SLOTS = 120;
 
 export default function HQMap() {
   const { alliances } = useMyAlliances();
-  const activeAllianceId = alliances?.[0]?.alliance_id ?? null;
+  const activealliance_id = alliances?.[0]?.alliance_id ?? null;
 
   const [hqSize, setHqSize] = useState(DEFAULT_SLOTS);
   const [cells, setCells] = useState<Record<number, HQCell>>({});
@@ -31,13 +31,13 @@ export default function HQMap() {
   // LOAD HQ FROM DB
   // -----------------------------
   useEffect(() => {
-    if (!activeAllianceId) return;
+    if (!activealliance_id) return;
 
     (async () => {
       const { data } = await supabase
         .from("hq_slots")
         .select("*")
-        .eq("alliance_id", activeAllianceId);
+        .eq("alliance_id", activealliance_id);
 
       if (!data) return;
 
@@ -51,13 +51,13 @@ export default function HQMap() {
 
       setCells(map);
     })();
-  }, [activeAllianceId]);
+  }, [activealliance_id]);
 
   // -----------------------------
   // AUTOSAVE (DEBOUNCED)
   // -----------------------------
   function queueSave(index: number, cell: HQCell) {
-    if (!activeAllianceId) return;
+    if (!activealliance_id) return;
 
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
@@ -65,7 +65,7 @@ export default function HQMap() {
 
     saveTimerRef.current = window.setTimeout(async () => {
       await supabase.from("hq_slots").upsert({
-        alliance_id: activeAllianceId,
+        alliance_id: activealliance_id,
         slot_index: index,
         player_name: cell.name,
         coords: cell.coords

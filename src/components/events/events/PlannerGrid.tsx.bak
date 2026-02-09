@@ -29,8 +29,8 @@ function minutesBetween(startHHMM: string, endHHMM: string) {
   return diff > 0 ? diff : 0;
 }
 
-export default function PlannerGrid({ events, allianceId, onEventsChanged }: Props) {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+export default function PlannerGrid({ events, alliance_id, onEventsChanged }: Props) {
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const now = new Date();
 
   const months = useMemo(() => {
@@ -65,7 +65,7 @@ export default function PlannerGrid({ events, allianceId, onEventsChanged }: Pro
     // - event_date (YYYY-MM-DD) for easy day matching
     // - start_time_utc (timestamptz) for reminders + sorting
     const row = {
-      alliance_id: allianceId,
+      alliance_id: alliance_id,
       title: payload.title,
       description: payload.description ?? null,
       event_date: payload.date,

@@ -19,7 +19,7 @@ export function useAllianceMembers(alliance_id: string) {
           game_name
         )
       `)
-      .eq("alliance_id", allianceId);
+      .eq("alliance_id", alliance_id);
 
     if (error) {
       console.error("[useAllianceMembers]", error);
@@ -62,8 +62,8 @@ export function useAllianceMembers(alliance_id: string) {
   }
 
   useEffect(() => {
-    if (allianceId) load();
-  }, [allianceId]);
+    if (alliance_id) load();
+  }, [alliance_id]);
 
   return { members, loading, setRole, updateGameName };
 }

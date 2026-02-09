@@ -13,7 +13,7 @@ const GRID_ROWS = 11;
 
 export default function HQMap() {
   const { alliances } = useMyAlliances();
-  const activeAllianceId = alliances?.[0]?.alliance_id || null;
+  const activealliance_id = alliances?.[0]?.alliance_id || null;
   const myRole = alliances?.[0]?.role_label || "Member";
   const canEdit = myRole === "Owner" || myRole === "Mod";
 
@@ -34,12 +34,12 @@ export default function HQMap() {
   // Load map state (size + lock)
   // ----------------------------
   useEffect(() => {
-    if (!activeAllianceId) return;
+    if (!activealliance_id) return;
 
     supabase
       .from("hq_map_state")
       .select("hq_size, edit_locked")
-      .eq("alliance_id", activeAllianceId)
+      .eq("alliance_id", activealliance_id)
       .maybeSingle()
       .then(({ data, error }) => {
         if (error) return;
@@ -47,34 +47,34 @@ export default function HQMap() {
         if (typeof data?.edit_locked === "boolean") setEditLocked(data.edit_locked);
       });
 
-  }, [activeAllianceId]);
+  }, [activealliance_id]);
 
   // Persist state (Owner only)
   useEffect(() => {
-    if (!activeAllianceId) return;
+    if (!activealliance_id) return;
     if (myRole !== "Owner") return;
 
     supabase
       .from("hq_map_state")
       .upsert({
-        alliance_id: activeAllianceId,
+        alliance_id: activealliance_id,
         hq_size: hqSize,
         edit_locked: editLocked,
         updated_at: new Date().toISOString()
       })
       .then(() => {});
-  }, [activeAllianceId, hqSize, editLocked, myRole]);
+  }, [activealliance_id, hqSize, editLocked, myRole]);
 
   // ----------------------------
   // Load cells from Supabase
   // ----------------------------
   useEffect(() => {
-    if (!activeAllianceId) return;
+    if (!activealliance_id) return;
 
     supabase
       .from("hq_map_cells")
       .select("slot_index, player_name, coords")
-      .eq("alliance_id", activeAllianceId)
+      .eq("alliance_id", activealliance_id)
       .then(({ data, error }) => {
         if (error) return;
 
@@ -88,7 +88,7 @@ export default function HQMap() {
 
         setCells(next);
       });
-  }, [activeAllianceId]);
+  }, [activealliance_id]);
 
   // ----------------------------
   // Open editor (loads drafts)
@@ -104,7 +104,7 @@ export default function HQMap() {
   // Debounced save of a cell
   // ----------------------------
   function queueSaveCell(index: number, nextCell: HQCell) {
-    if (!activeAllianceId) return;
+    if (!activealliance_id) return;
     if (!canEdit || editLocked) return;
 
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
@@ -113,7 +113,7 @@ export default function HQMap() {
       supabase
         .from("hq_map_cells")
         .upsert({
-          alliance_id: activeAllianceId,
+          alliance_id: activealliance_id,
           slot_index: index,
           player_name: nextCell.player_name || "",
           coords: nextCell.coords || "",

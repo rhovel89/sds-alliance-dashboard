@@ -14,13 +14,13 @@ import { usePermissions } from '../hooks/usePermissions';
 
 export default function AllianceRoster() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
-  const { activeAllianceId } = useMyAlliances();
-  const { members, loading } = useAllianceMembers(activeAllianceId);
+  const { activealliance_id } = useMyAlliances();
+  const { members, loading } = useAllianceMembers(activealliance_id);
   const { profiles } = useProfiles();
   const permissions = usePermissions();
   const { changeRole } = usePromoteDemote();
 
-  if (!activeAllianceId) {
+  if (!activealliance_id) {
     return <div style={{ padding: 24 }}>No alliance selected</div>;
   }
 
@@ -50,7 +50,7 @@ export default function AllianceRoster() {
                   <select
                     value={m.role}
                     onChange={(e) =>
-                      changeRole(activeAllianceId, m.user_id, e.target.value)
+                      changeRole(activealliance_id, m.user_id, e.target.value)
                     }
                   >
                     {ALLIANCE_ROLES.filter(r => !r.locked).map(r => (
@@ -90,14 +90,14 @@ const permissions = useAlliancePermissions();
 
 ----------------------------------------
 <RoleSelector
-  alliance_id={activeAllianceId}
+  alliance_id={activealliance_id}
   member={member}
   canManage={permissions.canManageRoles}
 />
 
 ----------------------------------------
 <InvitePanel
-  alliance_id={activeAllianceId}
+  alliance_id={activealliance_id}
   canInvite={permissions.canInvite}
 />
 

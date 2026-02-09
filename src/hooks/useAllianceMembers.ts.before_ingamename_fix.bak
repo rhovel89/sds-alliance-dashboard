@@ -2,12 +2,12 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-export function useAllianceMembers(allianceId?: string) {
+export function useAllianceMembers(alliance_id?: string) {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!allianceId) {
+    if (!alliance_id) {
       setMembers([]);
       setLoading(false);
       return;
@@ -24,7 +24,7 @@ export function useAllianceMembers(allianceId?: string) {
           game_name
         )
       `)
-      .eq("alliance_id", allianceId)
+      .eq("alliance_id", alliance_id)
       .then(({ data, error }) => {
         if (error) {
           console.error("[useAllianceMembers]", error);
@@ -34,7 +34,7 @@ export function useAllianceMembers(allianceId?: string) {
         }
         setLoading(false);
       });
-  }, [allianceId]);
+  }, [alliance_id]);
 
   return { members, loading };
 }

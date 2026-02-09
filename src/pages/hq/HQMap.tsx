@@ -23,7 +23,7 @@ export default function HQMap() {
   // Alliance context (REQUIRED)
   // ----------------------------------
   const { alliances } = useMyAlliances();
-  const activeAllianceId = alliances?.[0]?.alliance_id ?? null;
+  const activealliance_id = alliances?.[0]?.alliance_id ?? null;
 
   // ----------------------------------
   // State
@@ -44,15 +44,15 @@ export default function HQMap() {
   // LOAD HQ SLOTS (Supabase -> fallback localStorage)
   // ----------------------------------
   useEffect(() => {
-    if (!activeAllianceId) return;
+    if (!activealliance_id) return;
 
     (async () => {
-      console.info("[HQMap] load start", { activeAllianceId });
+      console.info("[HQMap] load start", { activealliance_id });
 
       const { data, error } = await supabase
         .from("hq_slots")
         .select("slot_index, player_name, coords")
-        .eq("alliance_id", activeAllianceId);
+        .eq("alliance_id", activealliance_id);
 
       if (error) {
         console.error("[HQMap] load error", error);
@@ -71,7 +71,7 @@ export default function HQMap() {
 
         // Cache to localStorage for safety
         try {
-          localStorage.setItem(storageKey(activeAllianceId), JSON.stringify(map));
+          localStorage.setItem(storageKey(activealliance_id), JSON.stringify(map));
         } catch {}
 
         console.info("[HQMap] load ok (db)", { rows: data.length });
@@ -80,7 +80,7 @@ export default function HQMap() {
 
       // Fallback: localStorage (prevents refresh wipeouts even if DB blocked)
       try {
-        const raw = localStorage.getItem(storageKey(activeAllianceId));
+        const raw = localStorage.getItem(storageKey(activealliance_id));
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed && typeof parsed === "object") {
@@ -93,7 +93,7 @@ export default function HQMap() {
 
       console.info("[HQMap] load ok (empty)");
     })();
-  }, [activeAllianceId]);
+  }, [activealliance_id]);
 
   // ----------------------------------
   // SAVE ONE CELL (debounced per-slot)
@@ -101,13 +101,13 @@ export default function HQMap() {
   // Also writes localStorage immediately
   // ----------------------------------
   function saveCell(index: number, cell: HQCell) {
-    if (!activeAllianceId) return;
+    if (!activealliance_id) return;
 
     // Always persist locally immediately (so refresh keeps it)
     setTimeout(() => {
       try {
         const nextAll = { ...cells, [index]: cell };
-        localStorage.setItem(storageKey(activeAllianceId), JSON.stringify(nextAll));
+        localStorage.setItem(storageKey(activealliance_id), JSON.stringify(nextAll));
       } catch {}
     }, 0);
 
@@ -118,7 +118,7 @@ export default function HQMap() {
     }
 
     timers[index] = window.setTimeout(async () => {
-      console.info("[HQMap] save firing", { activeAllianceId, index, cell });
+      console.info("[HQMap] save firing", { activealliance_id, index, cell });
 
       try {
         const { data: updated, error: updateError } = await supabase
@@ -127,7 +127,7 @@ export default function HQMap() {
             player_name: cell.player_name,
             coords: cell.coords
           })
-          .eq("alliance_id", activeAllianceId)
+          .eq("alliance_id", activealliance_id)
           .eq("slot_index", index)
           .select("slot_index");
 
@@ -139,7 +139,7 @@ export default function HQMap() {
           const { error: insertError } = await supabase
             .from("hq_slots")
             .insert({
-              alliance_id: activeAllianceId,
+              alliance_id: activealliance_id,
               slot_index: index,
               player_name: cell.player_name,
               coords: cell.coords
@@ -150,7 +150,7 @@ export default function HQMap() {
           }
         }
 
-        console.info("[HQMap] save done", { activeAllianceId, index });
+        console.info("[HQMap] save done", { activealliance_id, index });
       } catch (e) {
         console.error("[HQMap] save unexpected error", e);
       }
@@ -173,9 +173,9 @@ export default function HQMap() {
       const merged = { ...prev, [index]: next };
 
       // Keep localStorage in sync on every edit
-      if (activeAllianceId) {
+      if (activealliance_id) {
         try {
-          localStorage.setItem(storageKey(activeAllianceId), JSON.stringify(merged));
+          localStorage.setItem(storageKey(activealliance_id), JSON.stringify(merged));
         } catch {}
       }
 
@@ -190,7 +190,7 @@ export default function HQMap() {
   const autosaveTimerRef = useRef<number | null>(null);
 
   function autosaveSlot(index: number, cell: HQCell) {
-    if (!activeAllianceId) return;
+    if (!activealliance_id) return;
 
     if (autosaveTimerRef.current) {
       window.clearTimeout(autosaveTimerRef.current);
@@ -198,7 +198,7 @@ export default function HQMap() {
 
     autosaveTimerRef.current = window.setTimeout(async () => {
       await supabase.from("hq_slots").upsert({
-        alliance_id: activeAllianceId,
+        alliance_id: activealliance_id,
         slot_index: index,
         player_name: cell.player_name,
         coords: cell.coords

@@ -1,85 +1,48 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { useAlliance } from "../../context/AllianceContext";
 import MonthBlock from "./MonthBlock";
 import EventModal from "./EventModal";
 
-export default function PlannerGrid({ events, timezone }: any) {
-  const { alliance_id } = useAlliance();
-
-  const now = new Date();
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now);
-    d.setMonth(now.getMonth() + i);
-    return d;
-  });
-
+export default function PlannerGrid({ events, alliance_id, onEventsChanged }: any) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
 
   function handleDayClick(date: string) {
     setSelectedDate(date);
-    setModalOpen(true);
+    setEditingEvent(null);
   }
 
-  async function handleSave(event: any) {
-    console.log("SAVING EVENT:", event);
+  function handleSaved(event: any) {
+    onEventsChanged((prev: any[]) => {
+      const next = prev.filter(e => e.id !== event.id);
+      return [...next, event].sort(
+        (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+      );
+    });
+  }
 
-    if (!alliance_id) {
-      alert("Alliance not loaded yet.");
-      return;
-    }
-
-    const startLocal = new Date(`${event.date}T${event.startTime}`);
-    const endLocal = new Date(`${event.date}T${event.endTime}`);
-
-    const durationMinutes = Math.round(
-      (endLocal.getTime() - startLocal.getTime()) / 60000
-    );
-
-    const startUtc = new Date(startLocal.toISOString());
-
-    const { error } = await supabase
-      .from("alliance_events")
-      .insert({
-        title: event.title,
-        description: event.description ?? null,
-        alliance_id: alliance_id,
-        start_time_utc: startUtc.toISOString(),
-        duration_minutes: durationMinutes,
-        recurrence_type: event.frequency.toLowerCase(),
-        days_of_week: event.days ?? [],
-        timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        send_reminders: true
-      });
-
-    if (error) {
-      console.error("❌ Supabase insert failed:", error);
-      alert(error.message);
-    } else {
-      console.log("✅ Event saved");
-      setModalOpen(false);
-    }
+  function handleDeleted(id: string) {
+    onEventsChanged((prev: any[]) => prev.filter(e => e.id !== id));
   }
 
   return (
     <div className="planner-grid">
-      {months.map((month) => (
-        <MonthBlock
-          key={month.toISOString()}
-          month={month}
-          events={events}
-          timezone={timezone}
-          onDayClick={handleDayClick}
-        />
-      ))}
-
-      <EventModal
-        open={modalOpen}
-        date={selectedDate}
-        onClose={() => setModalOpen(false)}
-        onSave={handleSave}
+      <MonthBlock
+        events={events}
+        onDayClick={handleDayClick}
       />
+
+      {selectedDate && (
+        <EventModal
+          open={true}
+          date={selectedDate}
+          event={editingEvent}
+          alliance_id={alliance_id}
+          onClose={() => setSelectedDate(null)}
+          onSaved={handleSaved}
+          onDeleted={handleDeleted}
+        />
+      )}
     </div>
   );
 }
