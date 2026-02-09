@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useSession } from "../hooks/useSession";
 
-export function useIsAllianceOwner(allianceId: string | null) {
+export function useIsAllianceOwner(alliance_id: string | null) {
   const { session } = useSession();
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);

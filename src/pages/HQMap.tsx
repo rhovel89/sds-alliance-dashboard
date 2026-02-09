@@ -19,7 +19,7 @@ function normalize(s: string) {
 
 export default function HQMap() {
   const navigate = useNavigate();
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const [cells, setCells] = useState<Cell[]>([]);
   const [disabledSlots, setDisabledSlots] = useState<Set<number>>(new Set());
   const [selected, setSelected] = useState<number | null>(null);
@@ -225,7 +225,7 @@ export default function HQMap() {
 }
 
 import { logAllianceActivity } from '../lib/activityLogger';
-async function logHQSave(allianceId: string, slot: number, label: string) {
+async function logHQSave(alliance_id: string, slot: number, label: string) {
   try {
     await logAllianceActivity({
       allianceId,
@@ -235,7 +235,7 @@ async function logHQSave(allianceId: string, slot: number, label: string) {
     });
   } catch {}
 }
-async function logHQClear(allianceId: string, slot: number) {
+async function logHQClear(alliance_id: string, slot: number) {
   try {
     await logAllianceActivity({
       allianceId,

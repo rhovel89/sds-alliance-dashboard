@@ -6,7 +6,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useAlliance } from "../../context/AllianceContext";
 
 export default function PlannerGrid({ events }: any) {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const { allianceId } = useAlliance();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [open, setOpen] = useState(false);

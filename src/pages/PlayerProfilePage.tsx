@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useParams , useNavigate} from "react-router-dom";
 
 export default function PlayerProfilePage() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState<any>(null);

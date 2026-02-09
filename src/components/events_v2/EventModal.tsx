@@ -15,7 +15,7 @@ type Draft = {
   frequency: Frequency;
   daysOfWeek: number[];
   visibility: Visibility;
-  allianceId: string | null;
+  alliance_id: string | null;
 };
 
 type Props = {
@@ -95,7 +95,7 @@ export function EventModal({
       frequency: initialFreq,
       daysOfWeek: defaultDays,
       visibility: initialVisibility,
-      allianceId: initialVisibility === 'alliance'
+      alliance_id: initialVisibility === 'alliance'
         ? (initial?.allianceId ?? firstAllianceId)
         : null,
     };

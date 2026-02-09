@@ -4,7 +4,7 @@ import { useAllianceRoles } from "../../hooks/useAllianceRoles";
 import { useMyAllianceContext } from "../../contexts/AllianceContext";
 
 export default function OwnerPermissions() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const { allianceId, allianceName } = useMyAllianceContext();
   const { roles } = useAllianceRoles(allianceId);
   const [inviteRole, setInviteRole] = useState("Member");
@@ -45,7 +45,7 @@ import AllianceRoleManager from "../../components/roles/AllianceRoleManager";
 
 import { nanoid } from "nanoid";
 
-async function sendInvite(email: string, role: string, allianceId: string) {
+async function sendInvite(email: string, role: string, alliance_id: string) {
   const token = nanoid(32);
 
   await supabase.from("alliance_invites").insert({

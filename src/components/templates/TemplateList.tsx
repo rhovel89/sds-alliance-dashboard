@@ -11,7 +11,7 @@ type Template = {
 };
 
 export default function TemplateList() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<string | null>(null);

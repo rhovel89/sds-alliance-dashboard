@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
-export function useInvitePermissions(allianceId: string) {
+export function useInvitePermissions(alliance_id: string) {
 
   async function getPermissions() {
     const { data, error } = await supabase

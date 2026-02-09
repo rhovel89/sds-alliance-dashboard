@@ -39,7 +39,7 @@ import NotFound from "../pages/NotFound";
 
 import PlayerProfilePage from "../pages/PlayerProfilePage";
 export default function AppRoutes() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   return (
     <Routes>
 

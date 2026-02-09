@@ -4,7 +4,7 @@ import { useAllianceMembers } from "../../hooks/useAllianceMembers";
 import { useMyRole } from "../../hooks/useMyRole";
 
 export default function AllianceRoster() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const { members } = useAllianceMembers();
   const { role: myRole } = useMyRole();
   const permissions = usePermissions();

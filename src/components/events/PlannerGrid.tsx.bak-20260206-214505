@@ -4,7 +4,7 @@ import MonthBlock from './MonthBlock';
 import EventModal from './EventModal';
 
 export default function PlannerGrid({ events, allianceId, onEventsChanged }: any) {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
 

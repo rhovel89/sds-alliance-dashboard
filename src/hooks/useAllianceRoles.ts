@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-export function useAllianceRoles(allianceId: string) {
+export function useAllianceRoles(alliance_id: string) {
   const [roles, setRoles] = useState<any[]>([]);
 
   async function load() {

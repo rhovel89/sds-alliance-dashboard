@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { createInvite, revokeInvite } from '../services/invites';
 
 export default function InvitePanel({ allianceId, canInvite }) {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const [token, setToken] = useState(null);
 
   if (!canInvite) return null;

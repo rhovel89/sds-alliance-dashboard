@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
-export function useHQMap(allianceId: string) {
+export function useHQMap(alliance_id: string) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

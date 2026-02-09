@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { supabase } from '../lib/supabaseClient';
 
-export async function changeMemberRole(allianceId: string, userId: string, role: string) {
+export async function changeMemberRole(alliance_id: string, userId: string, role: string) {
   await supabase.from('alliance_members')
     .update({ role })
     .eq('alliance_id', allianceId)

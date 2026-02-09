@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 const GLOBAL_OWNER_ID = '1bf14480-765e-4704-89e6-63bfb02e1187';
 
 export default function RequireAlliance({ children }: { children: JSX.Element }) {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {

@@ -3,7 +3,7 @@ import { PlannerMonth } from '../components/events_v2/PlannerMonth';
 import '../styles/events_v2.css';
 
 export default function EventsPage() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
 
   if (!allianceId) {
     return <div style={{ padding: '2rem' }}>Missing alliance context.</div>;

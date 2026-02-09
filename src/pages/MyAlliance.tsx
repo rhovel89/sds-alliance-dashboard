@@ -9,7 +9,7 @@ import "../styles/command-center.css";
 type Role = "Member" | "R4" | "R5" | "Mod" | "Owner";
 
 export default function MyAlliance() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const navigate = useNavigate();
 
   const [role, setRole] = useState<Role>("Member");

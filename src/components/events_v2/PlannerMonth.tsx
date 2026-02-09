@@ -15,7 +15,7 @@ import {
 } from "./eventsStore";
 
 type Props = {
-  allianceId: string;
+  alliance_id: string;
 };
 
 function isUuid(v: string): boolean {
