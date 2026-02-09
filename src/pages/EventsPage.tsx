@@ -1,44 +1,38 @@
-import { useParams } from "react-router-dom";
-
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import PlannerGrid from "../components/events/PlannerGrid";
-import { useAlliance } from "../context/AllianceContext";
 import { supabase } from "../lib/supabaseClient";
-import { normalizeEvents } from "../components/events/normalizeEvents";
-import "../styles/events-calendar.css";
 
 export default function EventsPage() {
-    const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const [events, setEvents] = useState<any[]>([]);
-  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  async function loadEvents() {
-    if (!alliance_id) {  return;
-}
+  useEffect(() => {
+    if (!alliance_id) {
+      setLoading(false);
+      return;
+    }
 
-    setLoadingEvents(true);
+    setLoading(true);
 
-    const { data, error } = await supabase
+    supabase
       .from("alliance_events")
       .select("*")
       .eq("alliance_id", alliance_id)
-      .order("start_time_utc", { ascending: true });
-
-    if (error) {
-      console.error("❌ Failed to load events:", error);
-      setEvents([]);
-    } else {
-      setEvents(normalizeEvents(data ?? []));
-    }
-
-    setLoadingEvents(false);
-  }
-
-  useEffect(() => {
-    loadEvents();
+      .order("start_time", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Failed to load events:", error);
+          setEvents([]);
+        } else {
+          setEvents(data || []);
+        }
+        setLoading(false);
+      });
   }, [alliance_id]);
 
-  if (loadingEvents) {
+  if (loading) {
     return <div className="events-page">Loading events…</div>;
   }
 
@@ -46,10 +40,9 @@ export default function EventsPage() {
     <div className="events-page">
       <PlannerGrid
         events={events}
-        alliance_id={ alliance_id }
-        onEventsChanged={loadEvents}
+        alliance_id={alliance_id}
+        onEventsChanged={setEvents}
       />
     </div>
   );
 }
-
