@@ -27,7 +27,7 @@ export default function PlayerProfilePage() {
       const { data: h } = await supabase
         .from("player_hqs")
         .select("*")
-        .eq("profile_user_id", user.id)
+        .eq("user_id", user.id)
         .eq("alliance_id", allianceId);
 
       setProfile(p);
@@ -63,7 +63,7 @@ export default function PlayerProfilePage() {
     const { data, error } = await supabase
       .from("player_hqs")
       .insert({
-        profile_user_id: profile.user_id,
+        user_id: profile.user_id,
         alliance_id: profile.alliance_id,
         hq_name: "New HQ",
         hq_level: 1,
@@ -106,7 +106,7 @@ export default function PlayerProfilePage() {
     const { data, error } = await supabase
       .from("player_hqs")
       .insert({
-        profile_user_id: profile.user_id,
+        user_id: profile.user_id,
         alliance_id: profile.alliance_id,
         hq_name: "New HQ",
         hq_level: 1,
