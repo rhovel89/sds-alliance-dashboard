@@ -2,6 +2,7 @@ import "../styles/hq-map.css";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
+import { isAppOwner } from '../lib/isAppOwner';
 
 type Cell = {
   player_name?: string;
@@ -24,6 +25,7 @@ export default function HQMap() {
   const [selected, setSelected] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
 
     const canEdit = canEditRole && !locked;
 
