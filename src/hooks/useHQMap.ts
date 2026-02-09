@@ -10,14 +10,14 @@ export function useHQMap(alliance_id: string) {
     load();
 
     const channel = supabase
-      .channel('hq-map-' + allianceId)
+      .channel('hq-map-' + alliance_id)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'hq_map',
-          filter: 'alliance_id=eq.' + allianceId,
+          filter: 'alliance_id=eq.' + alliance_id,
         },
         payload => {
           load();
@@ -28,14 +28,14 @@ export function useHQMap(alliance_id: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [allianceId]);
+  }, [alliance_id]);
 
   async function load() {
     setLoading(true);
     const { data } = await supabase
       .from('hq_map')
       .select('*')
-      .eq('alliance_id', allianceId)
+      .eq('alliance_id', alliance_id)
       .order('created_at');
     setItems(data || []);
     setLoading(false);

@@ -2,19 +2,19 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-export default function AllianceIntelFeed({ allianceId }: { alliance_id: string }) {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+export default function AllianceIntelFeed({ alliance_id }: { alliance_id: string }) {
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const [items, setItems] = useState<any[]>([]);
 
   useEffect(() => {
     supabase
       .from("alliance_activity_log")
       .select("action_label, action_type, created_at")
-      .eq("alliance_id", allianceId)
+      .eq("alliance_id", alliance_id)
       .order("created_at", { ascending: false })
       .limit(25)
       .then(({ data }) => setItems(data ?? []));
-  }, [allianceId]);
+  }, [alliance_id]);
 
   return (
     <div className="command-card">

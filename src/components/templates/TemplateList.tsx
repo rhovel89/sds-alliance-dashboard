@@ -11,7 +11,7 @@ type Template = {
 };
 
 export default function TemplateList() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export default function TemplateList() {
     const { data } = await supabase
       .from('alliance_event_templates')
       .select('id,title,recurrence_type,created_at')
-      .eq('alliance_id', allianceId)
+      .eq('alliance_id', alliance_id)
       .order('created_at', { ascending: false });
 
     setTemplates(data ?? []);
@@ -31,7 +31,7 @@ export default function TemplateList() {
 
   useEffect(() => {
     load();
-  }, [allianceId]);
+  }, [alliance_id]);
 
   async function run(id: string) {
     setRunning(id);
@@ -47,7 +47,7 @@ export default function TemplateList() {
 
   return (
     <div>
-      <TemplateEditor allianceId={allianceId} onCreated={load} />
+      <TemplateEditor alliance_id={alliance_id} onCreated={load} />
 
       {loading && <div>Loading templates…</div>}
 

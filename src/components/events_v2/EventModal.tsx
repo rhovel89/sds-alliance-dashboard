@@ -96,7 +96,7 @@ export function EventModal({
       daysOfWeek: defaultDays,
       visibility: initialVisibility,
       alliance_id: initialVisibility === 'alliance'
-        ? (initial?.allianceId ?? firstAllianceId)
+        ? (initial?.alliance_id ?? firstAllianceId)
         : null,
     };
   }, [initial, selectedIso, alliances]);
@@ -155,10 +155,10 @@ export function EventModal({
   function handleVisibilityChange(v: Visibility) {
     update('visibility', v);
     if (v === 'personal') {
-      update('allianceId', null);
+      update('alliance_id', null);
     } else {
       const first = alliances.length > 0 ? alliances[0].id : null;
-      update('allianceId', first);
+      update('alliance_id', first);
     }
   }
 
@@ -172,16 +172,16 @@ export function EventModal({
       : [];
 
     const vis: Visibility = draft.visibility;
-    const allianceId = vis === 'alliance' ? (draft.allianceId || null) : null;
+    const alliance_id = vis === 'alliance' ? (draft.alliance_id || null) : null;
 
-    if (vis === 'alliance' && !allianceId) return;
+    if (vis === 'alliance' && !alliance_id) return;
 
     onSave({
       ...draft,
       title: trimmedTitle,
       daysOfWeek: safeDays,
       visibility: vis,
-      allianceId,
+      alliance_id,
     });
   }
 
@@ -250,7 +250,7 @@ export function EventModal({
             {draft.visibility === 'alliance' ? (
               <div className="v2-formRow">
                 <label className="v2-label">Alliance</label>
-                <select className="v2-input" value={draft.allianceId || ''} onChange={(e) => update('allianceId', e.target.value)}>
+                <select className="v2-input" value={draft.alliance_id || ''} onChange={(e) => update('alliance_id', e.target.value)}>
                   {alliances.map((a) => (
                     <option key={a.id} value={a.id}>{a.label}</option>
                   ))}

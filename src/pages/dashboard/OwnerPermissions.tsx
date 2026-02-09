@@ -4,9 +4,9 @@ import { useAllianceRoles } from "../../hooks/useAllianceRoles";
 import { useMyAllianceContext } from "../../contexts/AllianceContext";
 
 export default function OwnerPermissions() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
-  const { allianceId, allianceName } = useMyAllianceContext();
-  const { roles } = useAllianceRoles(allianceId);
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { alliance_id, allianceName } = useMyAllianceContext();
+  const { roles } = useAllianceRoles(alliance_id);
   const [inviteRole, setInviteRole] = useState("Member");
   const [email, setEmail] = useState("");
 
@@ -51,14 +51,14 @@ async function sendInvite(email: string, role: string, alliance_id: string) {
   await supabase.from("alliance_invites").insert({
     email,
     role,
-    alliance_id: allianceId,
+    alliance_id: alliance_id,
     token
   });
 
   alert("Invite sent!");
 }
 
-<button onClick={() => sendInvite(email, inviteRole, allianceId)}>
+<button onClick={() => sendInvite(email, inviteRole, alliance_id)}>
   Send Invite
 </button>
 

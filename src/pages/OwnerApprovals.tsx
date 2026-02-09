@@ -10,7 +10,7 @@ type Request = {
 };
 
 export default function OwnerApprovals() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,7 +66,7 @@ import { logAllianceActivity } from '../lib/activityLogger';
 async function logApproval(alliance_id: string, userId: string) {
   try {
     await logAllianceActivity({
-      allianceId,
+      alliance_id,
       actionType: "member_approved",
       actionLabel: "Member approved",
       metadata: { userId }

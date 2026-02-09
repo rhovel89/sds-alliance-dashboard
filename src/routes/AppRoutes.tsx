@@ -16,7 +16,7 @@ export default function AppRoutes() {
     <Routes>
 
       <Route
-        path="/dashboard/:allianceId"
+        path="/dashboard/:alliance_id"
         element={
           <RequireAlliance>
             <DashboardLayout />

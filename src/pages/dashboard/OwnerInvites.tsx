@@ -2,9 +2,9 @@ import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { useAllianceInvites } from "../../hooks/useAllianceInvites";
 
-export default function OwnerInvites({ allianceId }: { alliance_id: string }) {
-  const { allianceId } = useParams<{ alliance_id: string }>();
-  const { createInvite, getInvites } = useAllianceInvites(allianceId);
+export default function OwnerInvites({ alliance_id }: { alliance_id: string }) {
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { createInvite, getInvites } = useAllianceInvites(alliance_id);
   const [link, setLink] = useState("");
 
   async function handleCreate() {

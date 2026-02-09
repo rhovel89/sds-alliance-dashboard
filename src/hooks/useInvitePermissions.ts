@@ -7,7 +7,7 @@ export function useInvitePermissions(alliance_id: string) {
     const { data, error } = await supabase
       .from("alliance_invite_permissions")
       .select("*")
-      .eq("alliance_id", allianceId);
+      .eq("alliance_id", alliance_id);
 
     if (error) throw error;
     return data;
@@ -16,7 +16,7 @@ export function useInvitePermissions(alliance_id: string) {
   async function setPermission(role: string, can_invite: boolean) {
     const { error } = await supabase
       .from("alliance_invite_permissions")
-      .upsert({ alliance_id: allianceId, role, can_invite });
+      .upsert({ alliance_id: alliance_id, role, can_invite });
 
     if (error) throw error;
   }

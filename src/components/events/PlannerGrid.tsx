@@ -1,11 +1,9 @@
-import { useParams } from "react-router-dom";
 import { useState } from "react";
 import MonthBlock from "./MonthBlock";
 import EventModal from "./EventModal";
 
-export default function PlannerGrid({ events, allianceId, onEventsChanged }: any) {
-  const { allianceId } = useParams<{ alliance_id: string }>();
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+export default function PlannerGrid({ events, alliance_id, onEventsChanged }: any) {
+const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -33,7 +31,7 @@ export default function PlannerGrid({ events, allianceId, onEventsChanged }: any
         open={modalOpen}
         date={selectedDate}
         event={editingEvent}
-        allianceId={allianceId}
+        alliance_id={alliance_id}
         onClose={() => setModalOpen(false)}
         onSaved={onEventsChanged}
       />

@@ -9,7 +9,7 @@ export function useIsAllianceOwner(alliance_id: string | null) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!session || !allianceId) {
+    if (!session || !alliance_id) {
       setLoading(false);
       return;
     }
@@ -18,13 +18,13 @@ export function useIsAllianceOwner(alliance_id: string | null) {
       .from("alliance_members")
       .select("role")
       .eq("user_id", session.user.id)
-      .eq("alliance_id", allianceId)
+      .eq("alliance_id", alliance_id)
       .maybeSingle()
       .then(({ data }) => {
         setIsOwner(data?.role === "Owner");
         setLoading(false);
       });
-  }, [session, allianceId]);
+  }, [session, alliance_id]);
 
   return { isOwner, loading };
 }

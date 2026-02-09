@@ -19,13 +19,13 @@ function normalize(s: string) {
 
 export default function HQMap() {
   const navigate = useNavigate();
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const [cells, setCells] = useState<Cell[]>([]);
   const [disabledSlots, setDisabledSlots] = useState<Set<number>>(new Set());
   const [selected, setSelected] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
-  const role = useAllianceRole(allianceId);
+  const role = useAllianceRole(alliance_id);
 
   const isAppOwner = role === 'owner';
   const canEditRole = isAppOwner || role === 'R5' || role === 'R4';
@@ -33,7 +33,7 @@ export default function HQMap() {
   
       // Load HQ data (ALLIANCE-SCOPED)
   useEffect(() => {
-    if (!allianceId) return;
+    if (!alliance_id) return;
 
     const load = async () => {
       setLoading(true);
@@ -41,7 +41,7 @@ export default function HQMap() {
       const { data, error } = await supabase
         .from("alliance_hq_map")
         .select("slot_x, slot_y, label")
-        .eq("alliance_id", allianceId);
+        .eq("alliance_id", alliance_id);
 
       if (error) {
         console.error("HQ load failed:", error);
@@ -67,7 +67,7 @@ export default function HQMap() {
     };
 
     load();
-  }, [allianceId]);
+  }, [alliance_id]);
 
   const selectedCell = useMemo(() => {
     if (selected === null) return null;
@@ -85,7 +85,7 @@ export default function HQMap() {
   }, [selected, cells]);
 
   async function saveCell() {
-    if (!canEdit || selected === null || !allianceId) return;
+    if (!canEdit || selected === null || !alliance_id) return;
 
     const name = normalize(draftName);
 
@@ -95,7 +95,7 @@ export default function HQMap() {
     const { error } = await supabase
       .from("alliance_hq_map")
       .upsert({
-        alliance_id: allianceId,
+        alliance_id: alliance_id,
         slot_x: x,
         slot_y: y,
         label: name || null
@@ -114,7 +114,7 @@ export default function HQMap() {
   }
 
   async function clearCell() {
-    if (!canEdit || selected === null || !allianceId) return;
+    if (!canEdit || selected === null || !alliance_id) return;
 
     const x = selected % COLUMNS;
     const y = Math.floor(selected / COLUMNS);
@@ -122,7 +122,7 @@ export default function HQMap() {
     const { error } = await supabase
       .from("alliance_hq_map")
       .delete()
-      .eq("alliance_id", allianceId)
+      .eq("alliance_id", alliance_id)
       .eq("slot_x", x)
       .eq("slot_y", y);
 
@@ -228,7 +228,7 @@ import { logAllianceActivity } from '../lib/activityLogger';
 async function logHQSave(alliance_id: string, slot: number, label: string) {
   try {
     await logAllianceActivity({
-      allianceId,
+      alliance_id,
       actionType: "hq_update",
       actionLabel: "HQ cell updated",
       metadata: { slot, label }
@@ -238,7 +238,7 @@ async function logHQSave(alliance_id: string, slot: number, label: string) {
 async function logHQClear(alliance_id: string, slot: number) {
   try {
     await logAllianceActivity({
-      allianceId,
+      alliance_id,
       actionType: "hq_clear",
       actionLabel: "HQ cell cleared",
       metadata: { slot }

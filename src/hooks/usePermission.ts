@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-export function usePermission(permissionKey: string, allianceId?: string) {
+export function usePermission(permissionKey: string, alliance_id?: string) {
   const [allowed, setAllowed] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -20,8 +20,8 @@ export function usePermission(permissionKey: string, allianceId?: string) {
         .eq("user_id", data.user.id)
         .eq("permission_id", permissionKey)
         .or(
-          allianceId
-            ? `alliance_id.eq.${allianceId},alliance_id.is.null`
+          alliance_id
+            ? `alliance_id.eq.${alliance_id},alliance_id.is.null`
             : "alliance_id.is.null"
         )
         .limit(1)
@@ -30,7 +30,7 @@ export function usePermission(permissionKey: string, allianceId?: string) {
           setLoading(false);
         });
     });
-  }, [permissionKey, allianceId]);
+  }, [permissionKey, alliance_id]);
 
   return { allowed, loading };
 }

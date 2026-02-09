@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
-export function useAllianceRole(allianceId?: string) {
+export function useAllianceRole(alliance_id?: string) {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!allianceId) return;
+    if (!alliance_id) return;
 
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) return;
@@ -14,7 +14,7 @@ export function useAllianceRole(allianceId?: string) {
       supabase
         .from('alliance_members')
         .select('role')
-        .eq('alliance_id', allianceId)
+        .eq('alliance_id', alliance_id)
         .eq('user_id', data.user.id)
         .maybeSingle()
         .then(({ data }) => {
@@ -22,7 +22,7 @@ export function useAllianceRole(allianceId?: string) {
           setLoading(false);
         });
     });
-  }, [allianceId]);
+  }, [alliance_id]);
 
   return { role, loading };
 }
