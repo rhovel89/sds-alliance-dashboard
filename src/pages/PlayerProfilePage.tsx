@@ -1,7 +1,7 @@
 import type { PlayerHQ } from '../types/playerHQ';
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { useParams } from "react-router-dom";
+import { useParams , useNavigate} from "react-router-dom";
 
 export default function PlayerProfilePage() {
   const navigate = useNavigate();
