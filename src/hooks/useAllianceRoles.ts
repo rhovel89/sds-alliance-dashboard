@@ -9,7 +9,7 @@ export function useAllianceRoles(alliance_id: string) {
     const { data } = await supabase
       .from("alliance_roles")
       .select("*")
-      .eq("alliance_id", allianceId)
+      .eq("alliance_id", alliance_id)
       .order("rank");
 
     setRoles(data || []);
@@ -17,7 +17,7 @@ export function useAllianceRoles(alliance_id: string) {
 
   async function addRole(name: string, rank: number) {
     await supabase.from("alliance_roles").insert({
-      alliance_id: allianceId,
+      alliance_id: alliance_id,
       name,
       rank
     });
@@ -37,8 +37,8 @@ export function useAllianceRoles(alliance_id: string) {
   }
 
   useEffect(() => {
-    if (allianceId) load();
-  }, [allianceId]);
+    if (alliance_id) load();
+  }, [alliance_id]);
 
   return { roles, addRole, updateRole, deleteRole };
 }

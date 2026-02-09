@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 export async function createInvite(alliance_id: string) {
   const token = crypto.randomUUID();
   await supabase.from('alliance_invites').insert({
-    alliance_id: allianceId,
+    alliance_id: alliance_id,
     token,
   });
   return token;

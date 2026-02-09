@@ -1,11 +1,11 @@
 import { useParams } from "react-router-dom";
 import { supabase } from '../lib/supabaseClient';
 
-export async function saveHQPosition(allianceId, userId, x, y) {
+export async function saveHQPosition(alliance_id, userId, x, y) {
   await supabase
     .from('alliance_hq_positions')
     .upsert({
-      alliance_id: allianceId,
+      alliance_id: alliance_id,
       user_id: userId,
       x,
       y,

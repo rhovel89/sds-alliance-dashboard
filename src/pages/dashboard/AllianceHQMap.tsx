@@ -5,21 +5,21 @@ import { useMyAlliances } from '../../hooks/useMyAlliances';
 import { usePermissions } from '../../hooks/usePermissions';
 
 export default function AllianceHQMap() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const { alliances } = useMyAlliances();
   const permissions = usePermissions();
-  const allianceId = alliances?.[0]?.alliance_id;
+  const alliance_id = alliances?.[0]?.alliance_id;
 
   const [slots, setSlots] = useState([]);
 
   useEffect(() => {
-    if (!allianceId) return;
+    if (!alliance_id) return;
     supabase
       .from('alliance_hq_map')
       .select('*')
-      .eq('alliance_id', allianceId)
+      .eq('alliance_id', alliance_id)
       .then(res => setSlots(res.data || []));
-  }, [allianceId]);
+  }, [alliance_id]);
 
   return (
     <div style={{ padding: 24 }}>

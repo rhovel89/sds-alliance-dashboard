@@ -5,9 +5,9 @@ import { useMyAllianceContext } from "../../contexts/AllianceContext";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function AllianceRoleManager() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
-  const { allianceId } = useMyAllianceContext();
-  const { roles, addRole, updateRole, deleteRole } = useAllianceRoles(allianceId);
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useMyAllianceContext();
+  const { roles, addRole, updateRole, deleteRole } = useAllianceRoles(alliance_id);
   const [name, setName] = useState("");
   const [rank, setRank] = useState(1);
 
@@ -17,7 +17,7 @@ export default function AllianceRoleManager() {
       .from("alliance_members")
       .update({ role: "Member" })
       .eq("role", roleName)
-      .eq("alliance_id", allianceId);
+      .eq("alliance_id", alliance_id);
 
     await deleteRole(roleId);
   }

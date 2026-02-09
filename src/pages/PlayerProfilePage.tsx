@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useParams , useNavigate} from "react-router-dom";
 
 export default function PlayerProfilePage() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState<any>(null);
@@ -15,20 +15,20 @@ export default function PlayerProfilePage() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !allianceId) return;
+      if (!user || !alliance_id) return;
 
       const { data: p } = await supabase
         .from("player_profiles")
         .select("*")
         .eq("user_id", user.id)
-        .eq("alliance_id", allianceId)
+        .eq("alliance_id", alliance_id)
         .maybeSingle();
 
       const { data: h } = await supabase
         .from("player_hqs")
         .select("*")
         .eq("user_id", user.id)
-        .eq("alliance_id", allianceId);
+        .eq("alliance_id", alliance_id);
 
       setProfile(p);
       setHqs(h || []);
@@ -36,7 +36,7 @@ export default function PlayerProfilePage() {
     }
 
     load();
-  }, [allianceId]);
+  }, [alliance_id]);
 
   async function updateProfile(field: string, value: any) {
     if (!profile) return;

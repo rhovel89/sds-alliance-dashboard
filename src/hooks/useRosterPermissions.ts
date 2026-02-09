@@ -6,18 +6,18 @@ export function useRosterPermissions(alliance_id: string, role: string) {
   const [permissions, setPermissions] = useState<any>(null);
 
   useEffect(() => {
-    if (!allianceId || !role) return;
+    if (!alliance_id || !role) return;
 
     supabase
       .from("alliance_permissions")
       .select("*")
-      .eq("alliance_id", allianceId)
+      .eq("alliance_id", alliance_id)
       .eq("role", role)
       .maybeSingle()
       .then(({ data }) => {
         setPermissions(data);
       });
-  }, [allianceId, role]);
+  }, [alliance_id, role]);
 
   return permissions;
 }

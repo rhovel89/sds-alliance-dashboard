@@ -8,7 +8,7 @@ type Props = {
 };
 
 export default function TemplateEditor({ onCreated }: Props) {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const [title, setTitle] = useState('');
   const [recurrence, setRecurrence] = useState('weekly');
   const [saving, setSaving] = useState(false);
@@ -31,7 +31,7 @@ export default function TemplateEditor({ onCreated }: Props) {
       .from('alliance_event_templates')
       .insert({
       duration_minutes: 60, name: title,
-        alliance_id: allianceId,
+        alliance_id: alliance_id,
         title: title.trim(),
         recurrence_type: recurrence,
         created_by: user.id

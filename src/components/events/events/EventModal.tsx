@@ -16,11 +16,11 @@ export default function EventModal({
   open,
   date,
   event,
-  allianceId,
+  alliance_id,
   onClose,
   onSaved
 }: Props) {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const [name, setName] = useState("");
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("13:00");
@@ -43,7 +43,7 @@ export default function EventModal({
 
   async function handleSave() {
     const payload = {
-      alliance_id: allianceId,
+      alliance_id: alliance_id,
       name,
       event_date: date,
       start_time: startTime,

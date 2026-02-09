@@ -9,7 +9,7 @@ import "../styles/command-center.css";
 type Role = "Member" | "R4" | "R5" | "Mod" | "Owner";
 
 export default function MyAlliance() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const navigate = useNavigate();
 
   const [role, setRole] = useState<Role>("Member");
@@ -24,7 +24,7 @@ export default function MyAlliance() {
   const isLeader = ["R4", "R5", "Mod", "Owner"].includes(role);
 
   useEffect(() => {
-    if (!allianceId) return;
+    if (!alliance_id) return;
 
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -34,7 +34,7 @@ export default function MyAlliance() {
       const { data: me } = await supabase
         .from("alliance_members")
         .select("role")
-        .eq("alliance_id", allianceId)
+        .eq("alliance_id", alliance_id)
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -44,7 +44,7 @@ export default function MyAlliance() {
       const { data: members } = await supabase
         .from("alliance_members")
         .select("role")
-        .eq("alliance_id", allianceId);
+        .eq("alliance_id", alliance_id);
 
       setMemberCount(members?.length ?? 0);
 
@@ -59,7 +59,7 @@ export default function MyAlliance() {
         const { count } = await supabase
           .from("alliance_join_requests")
           .select("*", { count: "exact", head: true })
-          .eq("alliance_name", allianceId)
+          .eq("alliance_name", alliance_id)
           .eq("status", "pending");
 
         setPendingCount(count ?? 0);
@@ -69,14 +69,14 @@ export default function MyAlliance() {
       const { data: hq } = await supabase
         .from("alliance_hq_map")
         .select("id")
-        .eq("alliance_id", allianceId);
+        .eq("alliance_id", alliance_id);
 
       setHqFilled(hq?.length ?? 0);
 
       const { data: lock } = await supabase
         .from("alliance_settings")
         .select("hq_locked")
-        .eq("alliance_id", allianceId)
+        .eq("alliance_id", alliance_id)
         .maybeSingle();
 
       setHqLocked(lock?.hq_locked ?? true);
@@ -88,7 +88,7 @@ export default function MyAlliance() {
       const { data: events } = await supabase
         .from("alliance_events")
         .select("id")
-        .eq("alliance_id", allianceId)
+        .eq("alliance_id", alliance_id)
         .gte("event_date", today)
         .lte("event_date", future);
 
@@ -99,7 +99,7 @@ export default function MyAlliance() {
         const { data: run } = await supabase
           .from("alliance_event_template_runs")
           .select("created_at")
-          .eq("alliance_id", allianceId)
+          .eq("alliance_id", alliance_id)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -107,7 +107,7 @@ export default function MyAlliance() {
         setTemplateLastRun(run?.created_at ?? null);
       }
     })();
-  }, [allianceId]);
+  }, [alliance_id]);
 
   return (
     <div className="panel scanner">
@@ -123,7 +123,7 @@ export default function MyAlliance() {
         <div className="command-card">
           <h3>🗺️ HQ Map</h3>
           <div className="command-metric">{hqFilled} / 120</div>
-          <button onClick={() => navigate(`/dashboard/${allianceId}/hq-map`)}>
+          <button onClick={() => navigate(`/dashboard/${alliance_id}/hq-map`)}>
             Open HQ Map
           </button>
           <div className="hq-preview">

@@ -14,7 +14,7 @@ export function usePromoteDemote() {
     const { data: current } = await supabase
       .from('alliance_members')
       .select('role')
-      .eq('alliance_id', allianceId)
+      .eq('alliance_id', alliance_id)
       .eq('user_id', targetUserId)
       .maybeSingle();
 
@@ -24,7 +24,7 @@ export function usePromoteDemote() {
     const { error: updateError } = await supabase
       .from('alliance_members')
       .update({ role: newRole })
-      .eq('alliance_id', allianceId)
+      .eq('alliance_id', alliance_id)
       .eq('user_id', targetUserId);
 
     if (updateError) throw updateError;
@@ -33,7 +33,7 @@ export function usePromoteDemote() {
     const { error: auditError } = await supabase
       .from('alliance_role_audit')
       .insert({
-        alliance_id: allianceId,
+        alliance_id: alliance_id,
         target_user_id: targetUserId,
         old_role: current.role,
         new_role: newRole,

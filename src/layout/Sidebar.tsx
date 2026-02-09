@@ -2,7 +2,7 @@ import { NavLink , useParams} from "react-router-dom";
 import "../styles/sidebar.css";
 
 export default function Sidebar() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   return (
     <aside className="sidebar">
       <div className="sidebar-section">
@@ -19,7 +19,7 @@ export default function Sidebar() {
 
       <div className="sidebar-section">
         <span className="sidebar-title">Account</span>
-        <NavLink to={`/dashboard/${allianceId}/profile`}>🧍 My Profile</NavLink>
+        <NavLink to={`/dashboard/${alliance_id}/profile`}>🧍 My Profile</NavLink>
         <NavLink to="/onboarding" className="nav-item">
           Onboarding
         </NavLink>

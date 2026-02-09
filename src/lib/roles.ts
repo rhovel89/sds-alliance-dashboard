@@ -6,5 +6,5 @@ export async function changeMemberRole(userId: string, alliance_id: string, role
     .from('alliance_members')
     .update({ role })
     .eq('user_id', userId)
-    .eq('alliance_id', allianceId);
+    .eq('alliance_id', alliance_id);
 }

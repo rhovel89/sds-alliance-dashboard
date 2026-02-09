@@ -13,7 +13,7 @@ import { useProfiles } from '../hooks/useProfiles';
 import { usePermissions } from '../hooks/usePermissions';
 
 export default function AllianceRoster() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const { activeAllianceId } = useMyAlliances();
   const { members, loading } = useAllianceMembers(activeAllianceId);
   const { profiles } = useProfiles();
@@ -90,14 +90,14 @@ const permissions = useAlliancePermissions();
 
 ----------------------------------------
 <RoleSelector
-  allianceId={activeAllianceId}
+  alliance_id={activeAllianceId}
   member={member}
   canManage={permissions.canManageRoles}
 />
 
 ----------------------------------------
 <InvitePanel
-  allianceId={activeAllianceId}
+  alliance_id={activeAllianceId}
   canInvite={permissions.canInvite}
 />
 

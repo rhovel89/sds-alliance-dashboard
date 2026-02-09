@@ -1,13 +1,13 @@
 import { Outlet, NavLink, useParams } from "react-router-dom";
 
 export default function DashboardLayout() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
-  const base = allianceId ? `/dashboard/${allianceId}` : "";
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const base = alliance_id ? `/dashboard/${alliance_id}` : "";
 
   return (
     <div className="dashboard-container">
       <aside className="dashboard-sidebar">
-        <h2 className="sidebar-title">🧟 {allianceId?.toUpperCase()}</h2>
+        <h2 className="sidebar-title">🧟 {alliance_id?.toUpperCase()}</h2>
 
         <nav className="sidebar-nav">
           <div className="sidebar-section">

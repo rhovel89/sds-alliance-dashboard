@@ -30,7 +30,7 @@ import { logAllianceActivity } from '../../lib/activityLogger';
 async function logTemplateRun(alliance_id: string, templateId: string) {
   try {
     await logAllianceActivity({
-      allianceId,
+      alliance_id,
       actionType: "template_run",
       actionLabel: "Event template executed",
       metadata: { templateId }

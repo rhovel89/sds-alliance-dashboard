@@ -4,7 +4,7 @@ import { useAllianceMembers } from "../../hooks/useAllianceMembers";
 import { useMyRole } from "../../hooks/useMyRole";
 
 export default function AllianceRoster() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const { members } = useAllianceMembers();
   const { role: myRole } = useMyRole();
   const permissions = usePermissions();
@@ -73,7 +73,7 @@ async function updateGameName(userId: string, name: string) {
 
 async function logRoleChange(userId, oldRole, newRole) {
   await supabase.from("alliance_role_audit").insert({
-    alliance_id: allianceId,
+    alliance_id: alliance_id,
     target_user: userId,
     old_role: oldRole,
     new_role: newRole,

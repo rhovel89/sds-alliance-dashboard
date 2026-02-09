@@ -10,7 +10,7 @@ export type CalendarEvent = {
   daysOfWeek?: number[]; // 0=Sun..6=Sat
 
   visibility?: 'personal' | 'alliance';
-  allianceId?: string | null; // TEXT to match your DB
+  alliance_id?: string | null; // TEXT to match your DB
 
   // Render-only (not stored in Supabase)
   renderHint?: 'moved' | 'skipped';

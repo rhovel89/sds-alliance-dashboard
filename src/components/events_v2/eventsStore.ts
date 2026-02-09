@@ -107,7 +107,7 @@ import { logAllianceActivity } from '../../lib/activityLogger';
 export async function logEventCreated(alliance_id: string, title: string) {
   try {
     await logAllianceActivity({
-      allianceId,
+      alliance_id,
       actionType: "event_created",
       actionLabel: title
     });
@@ -117,7 +117,7 @@ export async function logEventCreated(alliance_id: string, title: string) {
 export async function logEventDeleted(alliance_id: string, title: string) {
   try {
     await logAllianceActivity({
-      allianceId,
+      alliance_id,
       actionType: "event_deleted",
       actionLabel: title
     });

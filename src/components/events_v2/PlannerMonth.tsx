@@ -61,7 +61,7 @@ function buildExpanded(
 }
 /* =============================== */
 
-export function PlannerMonth({ allianceId }: Props) {
+export function PlannerMonth({ alliance_id }: Props) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [monthIndex0, setMonthIndex0] = useState(now.getMonth());
@@ -78,7 +78,7 @@ export function PlannerMonth({ allianceId }: Props) {
       const { data, error } = await supabase
         .from("alliance_events")
         .select("*")
-        .eq("alliance_id", allianceId);
+        .eq("alliance_id", alliance_id);
 
       if (error) {
         console.error("Event load failed:", error);
@@ -88,7 +88,7 @@ export function PlannerMonth({ allianceId }: Props) {
 
       setEvents(data ?? []);
     })();
-  }, [allianceId]);
+  }, [alliance_id]);
 
   useEffect(() => {
     (async () => {
@@ -194,7 +194,7 @@ export function PlannerMonth({ allianceId }: Props) {
             endTime: draft.endTime,
             frequency: draft.frequency,
             daysOfWeek: draft.daysOfWeek,
-            allianceId,
+            alliance_id,
           };
 
           const saved = await upsertEvent(next);

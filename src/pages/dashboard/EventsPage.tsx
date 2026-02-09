@@ -8,20 +8,20 @@ import { normalizeEvents } from "../components/events/normalizeEvents";
 import "../styles/events-calendar.css";
 
 export default function EventsPage() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
-  const { allianceId, loading } = useAlliance();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { alliance_id, loading } = useAlliance();
   const [events, setEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
 
   async function loadEvents() {
-    if (!allianceId) return;
+    if (!alliance_id) return;
 
     setLoadingEvents(true);
 
     const { data, error } = await supabase
       .from("alliance_events")
       .select("*")
-      .eq("alliance_id", allianceId)
+      .eq("alliance_id", alliance_id)
       .order("start_time_utc", { ascending: true });
 
     if (error) {
@@ -36,7 +36,7 @@ export default function EventsPage() {
 
   useEffect(() => {
     loadEvents();
-  }, [allianceId]);
+  }, [alliance_id]);
 
   if (loading || loadingEvents) {
     return <div className="events-page">Loading events…</div>;
@@ -46,7 +46,7 @@ export default function EventsPage() {
     <div className="events-page">
       <PlannerGrid
         events={events}
-        allianceId={allianceId}
+        alliance_id={alliance_id}
         onEventsChanged={loadEvents}
       />
     </div>

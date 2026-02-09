@@ -6,8 +6,8 @@ import MonthBlock from "./MonthBlock";
 import EventModal from "./EventModal";
 
 export default function PlannerGrid({ events, timezone }: any) {
-  const { allianceId } = useParams<{ alliance_id: string }>();
-  const { allianceId } = useAlliance();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useAlliance();
 
   const now = new Date();
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -27,7 +27,7 @@ export default function PlannerGrid({ events, timezone }: any) {
   async function handleSave(event: any) {
     console.log("SAVING EVENT:", event);
 
-    if (!allianceId) {
+    if (!alliance_id) {
       alert("Alliance not loaded yet.");
       return;
     }
@@ -46,7 +46,7 @@ export default function PlannerGrid({ events, timezone }: any) {
       .insert({
         title: event.title,
         description: event.description ?? null,
-        alliance_id: allianceId,
+        alliance_id: alliance_id,
         start_time_utc: startUtc.toISOString(),
         duration_minutes: durationMinutes,
         recurrence_type: event.frequency.toLowerCase(),
