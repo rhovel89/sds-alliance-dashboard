@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { isAppOwner } from '../lib/isAppOwner';
+import { useAllianceRole } from '../hooks/useAllianceRole';
 
 type Cell = {
   player_name?: string;
@@ -12,7 +13,7 @@ type Cell = {
 const TOTAL_HQ = 400;
 const COLUMNS = 20;
 // Role derived from real permissions
-const canEditRole = isLeader();
+const canEditRole = role === 'owner' || role === 'R5' || role === 'R4';
 function normalize(s: string) {
   return (s || "").trim();
 }
@@ -25,9 +26,10 @@ export default function HQMap() {
   const [selected, setSelected] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isOwner, setIsOwner] = useState(false);
 
-    const canEdit = canEditRole && !locked;
+  const isOwner = role === 'owner';
+  const canEditRole = isOwner || role === 'R5' || role === 'R4';
+const canEdit = (isOwner || canEditRole) && !locked;
 
   // Load HQ data (ALLIANCE-SCOPED)
   useEffect(() => {
