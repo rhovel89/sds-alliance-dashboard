@@ -1,0 +1,107 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
+
+export default function EventModal({
+  open,
+  date,
+  event,
+  allianceId,
+  onClose,
+  onSaved,
+}: any) {
+  const isEdit = Boolean(event);
+
+  const [title, setTitle] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+
+  useEffect(() => {
+    if (event) {
+      setTitle(event.title);
+      setStartTime(event.start_time_utc?.slice(11, 16));
+      setEndTime(event.end_time_utc?.slice(11, 16));
+    } else {
+      setTitle("");
+      setStartTime("");
+      setEndTime("");
+    }
+  }, [event]);
+
+  if (!open) return null;
+
+  async function handleSave() {
+    if (!title || !startTime || !endTime) return;
+
+    const payload = {
+      title,
+      event_date: date,
+      alliance_id: allianceId,
+      start_time_utc: `${date}T${startTime}:00Z`,
+      end_time_utc: `${date}T${endTime}:00Z`,
+    };
+
+    if (isEdit) {
+      await supabase
+        .from("alliance_events")
+        .update(payload)
+        .eq("id", event.id);
+    } else {
+      await supabase.from("alliance_events").insert(payload);
+    }
+
+    onSaved();
+    onClose();
+  }
+
+  async function handleDelete() {
+    if (!confirm("Delete this event?")) return;
+
+    await supabase
+      .from("alliance_events")
+      .delete()
+      .eq("id", event.id);
+
+    onSaved();
+    onClose();
+  }
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal">
+        <h3>{isEdit ? "Edit Event" : "Create Event"}</h3>
+
+        <input
+          placeholder="Event title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+
+        <input
+          type="time"
+          value={startTime}
+          onChange={(e) => setStartTime(e.target.value)}
+        />
+
+        <input
+          type="time"
+          value={endTime}
+          onChange={(e) => setEndTime(e.target.value)}
+        />
+
+        <div className="modal-actions">
+          <button onClick={handleSave}>
+            {isEdit ? "Save Changes" : "Create Event"}
+          </button>
+
+          {isEdit && (
+            <button className="danger" onClick={handleDelete}>
+              Delete Event
+            </button>
+          )}
+
+          <button onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}

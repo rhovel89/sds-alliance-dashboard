@@ -1,0 +1,36 @@
+type Props = {
+  date: Date | null;
+  events: any[];
+  onCreate?: (date: string) => void;
+  onEventClick?: (event: any) => void;
+};
+
+export default function DayCell({ date, events, onCreate, onEventClick }: Props) {
+  if (!date) return <div className="day-cell empty" />;
+
+  const dayEvents = events.filter(
+    e => e.startDate?.toDateString() === date.toDateString()
+  );
+
+  return (
+    <div
+      className="day-cell"
+      onClick={() => onCreate?.(date.toISOString())}
+    >
+      <div className="day-number">{date.getDate()}</div>
+
+      {dayEvents.map(ev => (
+        <div
+          key={ev.id}
+          className="event-chip"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEventClick?.(ev);
+          }}
+        >
+          {ev.title}
+        </div>
+      ))}
+    </div>
+  );
+}
