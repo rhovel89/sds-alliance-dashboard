@@ -27,12 +27,15 @@ export default function HQMap() {
 
   // 🔒 Load lock state
   useEffect(() => {
-    if (!allianceId) return;
+    if (!allianceId) {
+  setLoading(false);
+  return;
+}
 
     supabase
       .from("alliance_settings")
       .select("hq_locked")
-      .eq("alliance_id", allianceId)
+      .eq("allianceId", allianceId)
       .maybeSingle()
       .then(({ data }) => {
         if (data) setLocked(!!data.hq_locked);
@@ -41,7 +44,10 @@ export default function HQMap() {
 
   // 🗺️ Load HQ map
   useEffect(() => {
-    if (!allianceId) return;
+    if (!allianceId) {
+  setLoading(false);
+  return;
+}
 
     const load = async () => {
       setLoading(true);
@@ -49,7 +55,7 @@ export default function HQMap() {
       const { data, error } = await supabase
         .from("alliance_hq_map")
         .select("slot_x, slot_y, label")
-        .eq("alliance_id", allianceId);
+        .eq("allianceId", allianceId);
 
       const next: Cell[] = Array.from({ length: TOTAL_HQ }, () => ({}));
 
@@ -85,7 +91,7 @@ export default function HQMap() {
     const name = cells[selected]?.player_name ?? null;
 
     await supabase.from("alliance_hq_map").upsert({
-      alliance_id: allianceId,
+      allianceId: allianceId,
       slot_x: x,
       slot_y: y,
       label: name
@@ -101,7 +107,7 @@ export default function HQMap() {
     await supabase
       .from("alliance_hq_map")
       .delete()
-      .eq("alliance_id", allianceId)
+      .eq("allianceId", allianceId)
       .eq("slot_x", x)
       .eq("slot_y", y);
 
