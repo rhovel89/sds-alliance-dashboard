@@ -8,6 +8,7 @@ import { normalizeEvents } from "../components/events/normalizeEvents";
 import "../styles/events-calendar.css";
 
 export default function EventsPage() {
+  const [loading, setLoading] = useState(true);
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const [events, setEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
