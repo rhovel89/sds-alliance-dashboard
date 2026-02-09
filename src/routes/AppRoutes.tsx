@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route , useParams} from "react-router-dom";
 import PlayerProfilePage from "../pages/PlayerProfilePage";
 
 import LandingPage from "../pages/LandingPage";
@@ -23,6 +23,7 @@ import StateDashboard from "../pages/state/StateDashboard";
 import NotFound from "../pages/NotFound";
 
 export default function AppRoutes() {
+  const { allianceId } = useParams<{ allianceId: string }>();
   return (
     <Routes>
 

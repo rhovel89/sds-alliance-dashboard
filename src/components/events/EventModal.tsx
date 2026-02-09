@@ -1,7 +1,9 @@
+import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function EventModal({ open, date, event, allianceId, onClose, onSaved }: any) {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const [title, setTitle] = useState("");
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("13:00");

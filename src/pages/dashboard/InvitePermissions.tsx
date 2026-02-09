@@ -1,9 +1,11 @@
+import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useInvitePermissions } from "../../hooks/useInvitePermissions";
 
 const ROLES = ["Owner", "Admin", "Moderator"];
 
 export default function InvitePermissions({ allianceId }: { allianceId: string }) {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const { getPermissions, setPermission } = useInvitePermissions(allianceId);
   const [rows, setRows] = useState<any[]>([]);
 

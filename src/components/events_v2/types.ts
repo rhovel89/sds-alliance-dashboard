@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 export type CalendarEvent = {
   id: string;
   title: string;

@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -9,6 +10,7 @@ type Request = {
 };
 
 export default function OwnerApprovals() {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
 

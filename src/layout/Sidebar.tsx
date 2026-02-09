@@ -1,7 +1,8 @@
-import { NavLink } from "react-router-dom";
+import { NavLink , useParams} from "react-router-dom";
 import "../styles/sidebar.css";
 
 export default function Sidebar() {
+  const { allianceId } = useParams<{ allianceId: string }>();
   return (
     <aside className="sidebar">
       <div className="sidebar-section">

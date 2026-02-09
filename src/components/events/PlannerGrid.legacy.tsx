@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useAlliance } from "../../context/AllianceContext";
@@ -5,6 +6,7 @@ import MonthBlock from "./MonthBlock";
 import EventModal from "./EventModal";
 
 export default function PlannerGrid({ events, timezone }: any) {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const { allianceId } = useAlliance();
 
   const now = new Date();

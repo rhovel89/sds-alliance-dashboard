@@ -1,8 +1,10 @@
+import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { useAllianceRoles } from "../../hooks/useAllianceRoles";
 import { useMyAllianceContext } from "../../contexts/AllianceContext";
 
 export default function OwnerPermissions() {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const { allianceId, allianceName } = useMyAllianceContext();
   const { roles } = useAllianceRoles(allianceId);
   const [inviteRole, setInviteRole] = useState("Member");

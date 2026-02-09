@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useMyAlliances } from "../../hooks/useMyAlliances";
@@ -17,6 +18,7 @@ function storageKey(allianceId: string) {
 }
 
 export default function HQMap() {
+  const { allianceId } = useParams<{ allianceId: string }>();
   // ----------------------------------
   // Alliance context (REQUIRED)
   // ----------------------------------

@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { createDiscordInvite } from "../utils/discordInvites.js";
 import { supabase } from "../supabaseClient.js";
 

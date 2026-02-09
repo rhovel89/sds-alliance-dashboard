@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import type { CalendarEvent, EventException } from "./types";
 

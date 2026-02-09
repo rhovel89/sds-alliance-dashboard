@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { useAlliancePermissions } from '../hooks/useAlliancePermissions';
 import InvitePanel from '../components/InvitePanel';
 import RoleSelector from '../components/RoleSelector';
@@ -12,6 +13,7 @@ import { useProfiles } from '../hooks/useProfiles';
 import { usePermissions } from '../hooks/usePermissions';
 
 export default function AllianceRoster() {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const { activeAllianceId } = useMyAlliances();
   const { members, loading } = useAllianceMembers(activeAllianceId);
   const { profiles } = useProfiles();

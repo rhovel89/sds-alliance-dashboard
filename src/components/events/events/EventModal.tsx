@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import "./event-modal.css";
@@ -19,6 +20,7 @@ export default function EventModal({
   onClose,
   onSaved
 }: Props) {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const [name, setName] = useState("");
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("13:00");

@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -7,6 +8,7 @@ type Props = {
 };
 
 export default function TemplateEditor({ allianceId, onCreated }: Props) {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const [title, setTitle] = useState('');
   const [recurrence, setRecurrence] = useState('weekly');
   const [saving, setSaving] = useState(false);

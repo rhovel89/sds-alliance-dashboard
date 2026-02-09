@@ -1,7 +1,9 @@
+import { useParams } from "react-router-dom";
 import { useState } from 'react';
 import { createInvite, revokeInvite } from '../services/invites';
 
 export default function InvitePanel({ allianceId, canInvite }) {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const [token, setToken] = useState(null);
 
   if (!canInvite) return null;
