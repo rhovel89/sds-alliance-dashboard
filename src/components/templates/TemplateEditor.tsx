@@ -7,7 +7,7 @@ type Props = {
   onCreated: () => void;
 };
 
-export default function TemplateEditor({ allianceId, onCreated }: Props) {
+export default function TemplateEditor({ onCreated }: Props) {
   const { allianceId } = useParams<{ allianceId: string }>();
   const [title, setTitle] = useState('');
   const [recurrence, setRecurrence] = useState('weekly');

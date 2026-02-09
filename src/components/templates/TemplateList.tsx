@@ -10,7 +10,7 @@ type Template = {
   recurrence_type: string;
 };
 
-export default function TemplateList({ allianceId }: { allianceId: string }) {
+export default function TemplateList() {
   const { allianceId } = useParams<{ allianceId: string }>();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
