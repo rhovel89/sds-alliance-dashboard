@@ -20,13 +20,13 @@ export default function EventsPage() {
       .from("alliance_events")
       .select("*")
       .eq("alliance_id", alliance_id)
-      .order("start_time", { ascending: true })
+      .order("date", { ascending: true })
       .then(({ data, error }) => {
         if (error) {
           console.error("Failed to load events:", error);
           setEvents([]);
         } else {
-          setEvents(data || []);
+          setEvents((data || []).filter(e => e.date));
         }
         setLoading(false);
       });

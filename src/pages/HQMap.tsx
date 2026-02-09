@@ -14,11 +14,6 @@ const COLUMNS = 20;
 export default function HQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const role = useAllianceRole(alliance_id);
-  const canEdit = role === "owner" || role === "R5" || role === "R4";
-
-  
-  
-
   const [cells, setCells] = useState<Cell[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
