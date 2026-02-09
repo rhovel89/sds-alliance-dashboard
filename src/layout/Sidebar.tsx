@@ -18,6 +18,7 @@ export default function Sidebar() {
 
       <div className="sidebar-section">
         <span className="sidebar-title">Account</span>
+        <NavLink to={`/dashboard/${allianceId}/profile`}>🧍 My Profile</NavLink>
         <NavLink to="/onboarding" className="nav-item">
           Onboarding
         </NavLink>
