@@ -1,0 +1,215 @@
+/* HQ Map look + layout (grid + neon + bottom editor) */
+
+.hq-page {
+  min-height: 100vh;
+  background: #070807;
+  color: #d7ffd7;
+  padding: 28px 18px;
+}
+
+.hq-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.hq-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.hq-title {
+  font-size: 28px;
+  letter-spacing: 0.5px;
+  color: #b7ff7a;
+  text-shadow: 0 0 12px rgba(159, 239, 0, 0.18);
+}
+
+.hq-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(159, 239, 0, 0.35);
+  background: rgba(10, 12, 10, 0.8);
+  color: #d7ffd7;
+  cursor: pointer;
+}
+
+.hq-lock .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #9fef00;
+  box-shadow: 0 0 10px rgba(159, 239, 0, 0.45);
+}
+
+.hq-lock.is-locked .dot {
+  background: #ffd54a;
+  box-shadow: 0 0 10px rgba(255, 213, 74, 0.35);
+}
+
+.hq-lock:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hq-sub {
+  color: rgba(215, 255, 215, 0.75);
+  margin-bottom: 14px;
+}
+
+.hq-grid {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0,0,0,0.25);
+  box-shadow: 0 0 28px rgba(0,0,0,0.6);
+}
+
+.hq-cell {
+  text-align: left;
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(8, 10, 8, 0.75);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.65);
+  cursor: pointer;
+  color: #d7ffd7;
+}
+
+.hq-cell:hover {
+  border-color: rgba(159, 239, 0, 0.35);
+  box-shadow: 0 0 0 1px rgba(159, 239, 0, 0.12), inset 0 0 0 1px rgba(0,0,0,0.7);
+}
+
+.hq-cell.selected {
+  border-color: rgba(159, 239, 0, 0.65);
+  box-shadow: 0 0 0 2px rgba(159, 239, 0, 0.18), inset 0 0 0 1px rgba(0,0,0,0.7);
+}
+
+.hq-cell-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.hq-num {
+  font-weight: 800;
+  color: #b7ff7a;
+}
+
+.hq-coords {
+  color: rgba(215, 255, 215, 0.70);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.hq-name {
+  font-size: 14px;
+  color: rgba(215, 255, 215, 0.95);
+}
+
+.hq-cell.empty .hq-name {
+  color: rgba(215, 255, 215, 0.55);
+}
+
+.hq-editor {
+  margin-top: 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.35);
+  padding: 14px;
+}
+
+.hq-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.hq-editor-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #b7ff7a;
+}
+
+.hq-editor-close {
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(159, 239, 0, 0.35);
+  background: rgba(10, 12, 10, 0.8);
+  color: #d7ffd7;
+  cursor: pointer;
+}
+
+.hq-editor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.hq-field label {
+  display: block;
+  font-size: 12px;
+  color: rgba(215, 255, 215, 0.75);
+  margin-bottom: 6px;
+}
+
+.hq-field input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(8, 10, 8, 0.75);
+  color: #d7ffd7;
+  padding: 10px 10px;
+  outline: none;
+}
+
+.hq-field input:focus {
+  border-color: rgba(159, 239, 0, 0.45);
+  box-shadow: 0 0 0 2px rgba(159, 239, 0, 0.12);
+}
+
+.hq-editor-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.hq-btn {
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(10, 12, 10, 0.85);
+  color: #d7ffd7;
+  cursor: pointer;
+}
+
+.hq-btn.primary {
+  border-color: rgba(159, 239, 0, 0.45);
+}
+
+.hq-btn.danger {
+  border-color: rgba(255, 90, 90, 0.45);
+}
+
+.hq-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Dragging visual */
+.hq-cell.dragging {
+  opacity: 0.65;
+  border-color: rgba(159, 239, 0, 0.75);
+  box-shadow: 0 0 0 2px rgba(159, 239, 0, 0.18), inset 0 0 0 1px rgba(0,0,0,0.7);
+}

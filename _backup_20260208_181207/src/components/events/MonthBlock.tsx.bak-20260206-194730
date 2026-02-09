@@ -1,0 +1,52 @@
+import DayCell from "./DayCell";
+
+type Props = {
+  date?: Date;
+  events?: any[];
+  onDayClick?: (day: Date) => void;
+};
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+export default function MonthBlock({ date, events = [], onDayClick }: Props) {
+  const safeDate = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+
+  const year = safeDate.getFullYear();
+  const monthIndex = safeDate.getMonth();
+
+  const firstOfMonth = new Date(year, monthIndex, 1);
+  const firstDow = firstOfMonth.getDay(); // 0..6
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+  // Build cells with leading blanks so it aligns by weekday
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, monthIndex, d));
+
+  const monthLabel = safeDate.toLocaleString("default", { month: "long" });
+
+  return (
+    <div className="month-block">
+      <div className="month-title">
+        {monthLabel} {year}
+      </div>
+
+      <div className="weekday-row">
+        {WEEKDAYS.map((w) => (
+          <div key={w} className="weekday">{w}</div>
+        ))}
+      </div>
+
+      <div className="month-grid">
+        {cells.map((cell, idx) => (
+          <DayCell
+            key={idx}
+            date={cell}
+            events={events}
+            onClick={cell ? () => onDayClick?.(cell) : undefined}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}

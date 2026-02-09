@@ -1,0 +1,63 @@
+:root {
+  --bg-main: transparent;
+  --bg-panel: rgba(17, 24, 20, 0.92);
+  --bg-panel-alt: rgba(22, 31, 25, 0.92);
+
+  --border-muted: #1f2a22;
+
+  --text-primary: #e6f2ea;
+  --text-muted: #9bb3a5;
+
+  --accent-toxic: #4cff4c;
+  --accent-blood: #b11226;
+  --accent-warning: #ffb020;
+
+  --glow-toxic: 0 0 8px rgba(76, 255, 76, 0.6);
+  --glow-blood: 0 0 8px rgba(177, 18, 38, 0.6);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+
+  --font-main: 'Inter', system-ui, sans-serif;
+}
+
+/* RESET */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  color: var(--text-primary);
+  font-family: var(--font-main);
+}
+
+/* 🧟 ZOMBIE BACKGROUND — BULLETPROOF */
+html::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url('/zombie-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(4px) brightness(0.45) contrast(1.1);
+  opacity: 1;
+  z-index: -10;
+  pointer-events: none;
+}
+
+/* PANELS FLOAT ABOVE */
+.panel {
+  background: rgba(17, 24, 20, 0.68);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+/* --- Make panels slightly transparent so background shows --- */
+.panel {
+  background: rgba(17, 24, 20, 0.68) !important;
+}

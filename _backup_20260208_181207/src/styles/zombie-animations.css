@@ -1,0 +1,31 @@
+@keyframes scannerSweep {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes quarantinePulse {
+  0% {
+    box-shadow: 0 0 0 rgba(255, 176, 32, 0.0);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(255, 176, 32, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(255, 176, 32, 0.0);
+  }
+}
+
+@keyframes toxicSpin {
+  0% {
+    transform: rotate(0deg);
+    box-shadow: 0 0 6px rgba(76,255,76,0.4);
+  }
+  100% {
+    transform: rotate(360deg);
+    box-shadow: 0 0 14px rgba(76,255,76,0.8);
+  }
+}

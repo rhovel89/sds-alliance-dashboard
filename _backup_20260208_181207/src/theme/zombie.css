@@ -1,0 +1,14 @@
+:root {
+  --bg: #0b0f0d;
+  --panel: #121917;
+  --accent: #5aff7d;
+  --danger: #ff4d4d;
+  --text: #d7ffe1;
+  --muted: #6b8f7a;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
