@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
+import OwnerOnly from '../components/OwnerOnly';
 import { useParams, useNavigate } from "react-router-dom";
+import OwnerOnly from '../components/OwnerOnly';
 import { supabase } from "../lib/supabaseClient";
+import OwnerOnly from '../components/OwnerOnly';
 import "../styles/command-center.css";
 
 type Role = "Member" | "R4" | "R5" | "Mod" | "Owner";
@@ -175,3 +178,4 @@ export default function MyAlliance() {
 }
 
 import AllianceIntelFeed from '../components/AllianceIntelFeed';
+import OwnerOnly from '../components/OwnerOnly';
