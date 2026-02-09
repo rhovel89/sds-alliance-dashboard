@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { createContext, useContext } from "react";
 
 type AllianceContextType = {

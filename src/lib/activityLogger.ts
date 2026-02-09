@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 
 export async function logAllianceActivity(args: {

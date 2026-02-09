@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import '../styles/hq-map-zombie.css';
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -18,6 +19,7 @@ function storageKey(allianceId: string) {
   return 'hqmap:' + allianceId;
 }
 export default function HQMap() {
+  const { allianceId } = useParams<{ allianceId: string }>();
   // ----------------------------------
   // Alliance context (REQUIRED)
   // ----------------------------------

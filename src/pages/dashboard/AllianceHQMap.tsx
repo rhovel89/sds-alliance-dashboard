@@ -1,9 +1,11 @@
+import { useParams } from "react-router-dom";
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useMyAlliances } from '../../hooks/useMyAlliances';
 import { usePermissions } from '../../hooks/usePermissions';
 
 export default function AllianceHQMap() {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const { alliances } = useMyAlliances();
   const permissions = usePermissions();
   const allianceId = alliances?.[0]?.alliance_id;

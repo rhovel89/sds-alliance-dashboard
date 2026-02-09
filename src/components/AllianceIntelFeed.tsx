@@ -1,7 +1,9 @@
+import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 export default function AllianceIntelFeed({ allianceId }: { allianceId: string }) {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const [items, setItems] = useState<any[]>([]);
 
   useEffect(() => {

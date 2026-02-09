@@ -1,7 +1,9 @@
+import { useParams } from "react-router-dom";
 import { ALLIANCE_ROLES } from '../constants/roles';
 import { changeMemberRole } from '../services/roles';
 
 export default function RoleSelector({ allianceId, member, canManage }) {
+  const { allianceId } = useParams<{ allianceId: string }>();
   if (!canManage || member.role === 'Owner') return <span>{member.role}</span>;
 
   return (

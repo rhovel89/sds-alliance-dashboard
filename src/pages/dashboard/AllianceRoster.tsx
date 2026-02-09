@@ -1,8 +1,10 @@
+import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useAllianceMembers } from "../../hooks/useAllianceMembers";
 import { useMyRole } from "../../hooks/useMyRole";
 
 export default function AllianceRoster() {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const { members } = useAllianceMembers();
   const { role: myRole } = useMyRole();
   const permissions = usePermissions();

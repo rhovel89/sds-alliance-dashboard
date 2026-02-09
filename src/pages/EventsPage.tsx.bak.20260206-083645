@@ -1,9 +1,11 @@
+import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import PlannerGrid from "../components/events/PlannerGrid";
 import { useAlliance } from "../context/AllianceContext";
 import { supabase } from "../lib/supabaseClient";
 
 export default function EventsPage() {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const { allianceId, loading } = useAlliance();
   const [events, setEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);

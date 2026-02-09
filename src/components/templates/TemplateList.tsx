@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import TemplateEditor from './TemplateEditor';
@@ -10,6 +11,7 @@ type Template = {
 };
 
 export default function TemplateList({ allianceId }: { allianceId: string }) {
+  const { allianceId } = useParams<{ allianceId: string }>();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<string | null>(null);
