@@ -5,7 +5,7 @@ import { useMyAlliances } from '../../hooks/useMyAlliances';
 import { usePermissions } from '../../hooks/usePermissions';
 
 export default function AllianceHQMap() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const { alliances } = useMyAlliances();
   const permissions = usePermissions();
   const allianceId = alliances?.[0]?.alliance_id;

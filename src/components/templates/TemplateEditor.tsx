@@ -3,12 +3,12 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
 type Props = {
-  allianceId: string;
+  alliance_id: string;
   onCreated: () => void;
 };
 
 export default function TemplateEditor({ onCreated }: Props) {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const [title, setTitle] = useState('');
   const [recurrence, setRecurrence] = useState('weekly');
   const [saving, setSaving] = useState(false);

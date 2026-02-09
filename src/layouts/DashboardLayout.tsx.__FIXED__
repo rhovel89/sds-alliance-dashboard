@@ -2,7 +2,7 @@ import { Outlet, NavLink, useParams } from 'react-router-dom';
 import '../styles/dashboard-zombie.css';
 
 export default function DashboardLayout() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
 
   if (!allianceId) {
     return <div style={{ padding: 20 }}>No alliance selected.</div>;

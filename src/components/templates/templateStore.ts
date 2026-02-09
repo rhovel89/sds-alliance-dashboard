@@ -27,7 +27,7 @@ export async function runTemplate(templateId: string, runDate?: string) {
 }
 
 import { logAllianceActivity } from '../../lib/activityLogger';
-async function logTemplateRun(allianceId: string, templateId: string) {
+async function logTemplateRun(alliance_id: string, templateId: string) {
   try {
     await logAllianceActivity({
       allianceId,

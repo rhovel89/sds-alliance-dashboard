@@ -3,7 +3,7 @@ import { ALLIANCE_ROLES } from '../constants/roles';
 import { changeMemberRole } from '../services/roles';
 
 export default function RoleSelector({ allianceId, member, canManage }) {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   if (!canManage || member.role === 'Owner') return <span>{member.role}</span>;
 
   return (

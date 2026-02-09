@@ -6,7 +6,7 @@ import MonthBlock from "./MonthBlock";
 import EventModal from "./EventModal";
 
 export default function PlannerGrid({ events, timezone }: any) {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const { allianceId } = useAlliance();
 
   const now = new Date();

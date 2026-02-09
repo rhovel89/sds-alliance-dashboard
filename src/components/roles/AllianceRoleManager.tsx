@@ -5,7 +5,7 @@ import { useMyAllianceContext } from "../../contexts/AllianceContext";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function AllianceRoleManager() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const { allianceId } = useMyAllianceContext();
   const { roles, addRole, updateRole, deleteRole } = useAllianceRoles(allianceId);
   const [name, setName] = useState("");

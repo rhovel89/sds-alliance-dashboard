@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useParams } from "react-router-dom";
 
 export default function DashboardLayout() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const base = allianceId ? `/dashboard/${allianceId}` : "";
 
   return (

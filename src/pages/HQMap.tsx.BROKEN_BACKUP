@@ -15,11 +15,11 @@ const COLUMNS = 13;
 const ROWS = 11;
 const DEFAULT_SLOTS = 120;
 
-function storageKey(allianceId: string) {
+function storageKey(alliance_id: string) {
   return 'hqmap:' + allianceId;
 }
 export default function HQMap() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   // ----------------------------------
   // Alliance context (REQUIRED)
   // ----------------------------------

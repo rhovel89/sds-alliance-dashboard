@@ -4,8 +4,8 @@ import { useInvitePermissions } from "../../hooks/useInvitePermissions";
 
 const ROLES = ["Owner", "Admin", "Moderator"];
 
-export default function InvitePermissions({ allianceId }: { allianceId: string }) {
-  const { allianceId } = useParams<{ allianceId: string }>();
+export default function InvitePermissions({ allianceId }: { alliance_id: string }) {
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const { getPermissions, setPermission } = useInvitePermissions(allianceId);
   const [rows, setRows] = useState<any[]>([]);
 

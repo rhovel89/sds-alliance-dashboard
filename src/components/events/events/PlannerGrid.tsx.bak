@@ -6,7 +6,7 @@ import { supabase } from "../../lib/supabaseClient";
 
 type Props = {
   events: any[];
-  allianceId: string;
+  alliance_id: string;
   onEventsChanged: () => Promise<void>;
 };
 
@@ -30,7 +30,7 @@ function minutesBetween(startHHMM: string, endHHMM: string) {
 }
 
 export default function PlannerGrid({ events, allianceId, onEventsChanged }: Props) {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const now = new Date();
 
   const months = useMemo(() => {

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 
 export function usePromoteDemote() {
   async function changeRole(
-    allianceId: string,
+    alliance_id: string,
     targetUserId: string,
     newRole: string
   ) {

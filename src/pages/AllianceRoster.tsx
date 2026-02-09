@@ -13,7 +13,7 @@ import { useProfiles } from '../hooks/useProfiles';
 import { usePermissions } from '../hooks/usePermissions';
 
 export default function AllianceRoster() {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const { activeAllianceId } = useMyAlliances();
   const { members, loading } = useAllianceMembers(activeAllianceId);
   const { profiles } = useProfiles();

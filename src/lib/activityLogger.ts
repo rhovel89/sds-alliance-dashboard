@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 
 export async function logAllianceActivity(args: {
-  allianceId: string;
+  alliance_id: string;
   actionType: string;
   actionLabel: string;
   metadata?: any;

@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { supabase } from '../lib/supabaseClient';
 
-export async function createInvite(allianceId: string) {
+export async function createInvite(alliance_id: string) {
   const token = crypto.randomUUID();
   await supabase.from('alliance_invites').insert({
     alliance_id: allianceId,

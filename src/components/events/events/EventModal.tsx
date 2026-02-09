@@ -7,7 +7,7 @@ type Props = {
   open: boolean;
   date: string | null;
   event?: any;
-  allianceId: string;
+  alliance_id: string;
   onClose: () => void;
   onSaved: () => void;
 };
@@ -20,7 +20,7 @@ export default function EventModal({
   onClose,
   onSaved
 }: Props) {
-  const { allianceId } = useParams<{ allianceId: string }>();
+  const { allianceId } = useParams<{ alliance_id: string }>();
   const [name, setName] = useState("");
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("13:00");
