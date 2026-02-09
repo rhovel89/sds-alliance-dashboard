@@ -12,7 +12,9 @@ export default function DashboardLayout() {
         <nav className="sidebar-nav">
           <div className="sidebar-section">
             <h4>🧠 Alliance</h4>
+            
             <NavLink to={base}>Command Center</NavLink>
+            <NavLink to={`${base}/profile`}>🧍 My Profile</NavLink>
             <NavLink to={`${base}/hq-map`}>HQ Map</NavLink>
             <NavLink to={`${base}/events`}>Events</NavLink>
             <NavLink to={`${base}/event-templates`}>Event Templates</NavLink>
