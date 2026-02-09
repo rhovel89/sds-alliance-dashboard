@@ -1,27 +1,43 @@
 import { Routes, Route } from "react-router-dom";
-import PlayerProfilePage from "../pages/PlayerProfilePage";
 
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import LandingPage from "../pages/LandingPage";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import Login from "../pages/Login";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import AuthCallback from "../pages/AuthCallback";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import Onboarding from "../pages/Onboarding";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import PendingApproval from "../pages/PendingApproval";
 
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import DashboardLayout from "../layouts/DashboardLayout";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import RequireAlliance from "../components/RequireAlliance";
 
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import MyAlliance from "../pages/MyAlliance";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import HQMap from "../pages/HQMap";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import EventsPage from "../pages/EventsPage";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import EventTemplates from "../pages/EventTemplates";
 
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import OwnerDashboard from "../pages/OwnerDashboard";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import OwnerApprovals from "../pages/OwnerApprovals";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import OwnerControlPanel from "../pages/OwnerControlPanel";
 
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import StateDashboard from "../pages/state/StateDashboard";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 import NotFound from "../pages/NotFound";
 
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -36,21 +52,24 @@ export default function AppRoutes() {
       <Route path="/pending-approval" element={<PendingApproval />} />
 
       {/* Alliance Dashboard */}
-      
-
-      {/* State */}
-            <Route
+      <Route
         path="/dashboard/:allianceId"
         element={
           <RequireAlliance>
             <DashboardLayout />
           </RequireAlliance>
+  <Route index element={<MyAlliance />} />
+  <Route path="profile" element={<PlayerProfilePage />} />
         }
-      >
+>
         <Route index element={<MyAlliance />} />
-        <Route path="profile" element={<PlayerProfilePage />} />
+        <Route path="hq-map" element={<HQMap />} />
+        <Route path="events" element={<EventsPage />} />
+        <Route path="event-templates" element={<EventTemplates />} />
       </Route>
-<Route path="/state/1" element={<StateDashboard />} />
+
+      {/* State */}
+      <Route path="/state/1" element={<StateDashboard />} />
 
       {/* Owner */}
       <Route path="/owner" element={<OwnerDashboard />} />

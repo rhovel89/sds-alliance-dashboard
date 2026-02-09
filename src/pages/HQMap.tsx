@@ -1,6 +1,6 @@
 import "../styles/hq-map.css";
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
 type Cell = {
@@ -10,23 +10,22 @@ type Cell = {
 
 const TOTAL_HQ = 400;
 const COLUMNS = 20;
-
-// TEMP role flag (kept exactly as-is)
-const role: "owner" | "mod" | "member" = "owner";
-
+// Role derived from real permissions
+const canEditRole = isLeader();
 function normalize(s: string) {
   return (s || "").trim();
 }
 
 export default function HQMap() {
+  const navigate = useNavigate();
   const { allianceId } = useParams<{ allianceId: string }>();
   const [cells, setCells] = useState<Cell[]>([]);
+  const [disabledSlots, setDisabledSlots] = useState<Set<number>>(new Set());
   const [selected, setSelected] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const canEditRole = role === "owner" || role === "mod" || role === "R5" || role === "R4";
-  const canEdit = canEditRole && !locked;
+    const canEdit = canEditRole && !locked;
 
   // Load HQ data (ALLIANCE-SCOPED)
   useEffect(() => {
@@ -169,8 +168,8 @@ export default function HQMap() {
               <button
                 key={i}
                 type="button"
-                className={["hq-cell", isSel ? "selected" : ""].join(" ")}
-                onClick={() => canEditRole && setSelected(i)}
+                className={["hq-cell", isSel ? "selected" : "", disabledSlots.has(i) ? "disabled" : ""].join(" ")}
+                onClick={() => canEditRole && !disabledSlots.has(i) && setSelected(i)}
               >
                 <div className="hq-num">#{i + 1}</div>
                 <div className="hq-name">
@@ -188,9 +187,30 @@ export default function HQMap() {
               onChange={e => setDraftName(e.target.value)}
               disabled={!canEdit}
             />
-            <div className="hq-editor-actions">
+                        <div className="hq-editor-actions">
               <button onClick={saveCell} disabled={!canEdit}>Save</button>
               <button onClick={clearCell} disabled={!canEdit}>Clear</button>
+              <button
+                onClick={() => {
+                  setDisabledSlots(prev => new Set(prev).add(selected));
+                  setSelected(null);
+                }}
+                disabled={!canEdit}
+              >
+                Remove Slot
+              </button>
+              <button
+                onClick={() => {
+                  setDisabledSlots(prev => {
+                    const next = new Set(prev);
+                    next.delete(selected);
+                    return next;
+                  });
+                }}
+                disabled={!canEdit}
+              >
+                Restore Slot
+              </button>
             </div>
           </div>
         )}
