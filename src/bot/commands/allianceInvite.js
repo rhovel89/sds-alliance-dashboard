@@ -8,7 +8,7 @@ export default {
 
   async execute(interaction, client) {
     try {
-      const allianceId = interaction.options.getString("alliance");
+      const alliance_id = interaction.options.getString("alliance");
       const role = interaction.options.getString("role") || "Member";
 
       const discordInviteUrl = await createDiscordInvite(
@@ -20,7 +20,7 @@ export default {
       const { error } = await supabase
         .from("alliance_invites")
         .insert({
-          alliance_id: allianceId,
+          alliance_id: alliance_id,
           role,
           invited_by: interaction.user.id,
           discord_invite_url: discordInviteUrl

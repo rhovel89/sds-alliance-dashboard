@@ -4,9 +4,9 @@ import { useAllianceRoles } from "../../hooks/useAllianceRoles";
 import { useMyAllianceContext } from "../../contexts/AllianceContext";
 
 export default function OwnerPermissions() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
-  const { allianceId, allianceName } = useMyAllianceContext();
-  const { roles } = useAllianceRoles(allianceId);
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { alliance_id, allianceName } = useMyAllianceContext();
+  const { roles } = useAllianceRoles(alliance_id);
   const [inviteRole, setInviteRole] = useState("Member");
   const [email, setEmail] = useState("");
 

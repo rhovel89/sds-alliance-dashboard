@@ -3,8 +3,8 @@ import { useState } from 'react';
 import MonthBlock from './MonthBlock';
 import EventModal from './EventModal';
 
-export default function PlannerGrid({ events, allianceId, onEventsChanged }: any) {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+export default function PlannerGrid({ events, alliance_id, onEventsChanged }: any) {
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
 
@@ -30,7 +30,7 @@ export default function PlannerGrid({ events, allianceId, onEventsChanged }: any
         open={!!selectedDate}
         date={selectedDate}
         event={editingEvent}
-        allianceId={allianceId}
+        alliance_id={alliance_id}
         onClose={() => setSelectedDate(null)}
         onSaved={onEventsChanged}
       />

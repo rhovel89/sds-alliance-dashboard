@@ -15,8 +15,8 @@ export default function HQMap() {
   
 
   const { alliances } = useMyAlliances();
-  const activeAllianceId = alliances?.[0]?.alliance_id || null;
-const isReady = Boolean(activeAllianceId);
+  const activealliance_id = alliances?.[0]?.alliance_id || null;
+const isReady = Boolean(activealliance_id);
 
 
   const myRole = alliances?.[0]?.role_label || "Member";
@@ -32,11 +32,11 @@ const isReady = Boolean(activeAllianceId);
   // ================================
   useEffect(() => {
   // (intentionally left blank – placeholder restored)
-}, [activeAllianceId]);
+}, [activealliance_id]);
 
   useEffect(() => {
   // repaired empty effect (no-op)
-}, [cells, activeAllianceId]);
+}, [cells, activealliance_id]);
 
   const [draftName, setDraftName] = useState("");
   const [draftCoords, setDraftCoords] = useState("");
@@ -50,7 +50,7 @@ const isReady = Boolean(activeAllianceId);
   // ----------------------------
   useEffect(() => {
   (async () => {
-    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activeAllianceId);
+    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activealliance_id);
     if (data) {
       const map = {};
       data.forEach(r => {
@@ -66,12 +66,12 @@ const isReady = Boolean(activeAllianceId);
 
 useEffect(() => {
   // (intentionally left blank – placeholder restored)
-}, [activeAllianceId]);
+}, [activealliance_id]);
 
   // Persist state (Owner only)
   useEffect(() => {
   (async () => {
-    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activeAllianceId);
+    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activealliance_id);
     if (data) {
       const map = {};
       data.forEach(r => {
@@ -87,14 +87,14 @@ useEffect(() => {
 
 useEffect(() => {
   // repaired empty effect (no-op)
-}, [activeAllianceId, hqSize, editLocked, myRole]);
+}, [activealliance_id, hqSize, editLocked, myRole]);
 
   // ----------------------------
   // Load cells from Supabase
   // ----------------------------
   useEffect(() => {
   (async () => {
-    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activeAllianceId);
+    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activealliance_id);
     if (data) {
       const map = {};
       data.forEach(r => {
@@ -110,7 +110,7 @@ useEffect(() => {
 
 useEffect(() => {
   // (intentionally left blank – placeholder restored)
-}, [activeAllianceId]);
+}, [activealliance_id]);
 
   // ----------------------------
   // Open editor (loads drafts)

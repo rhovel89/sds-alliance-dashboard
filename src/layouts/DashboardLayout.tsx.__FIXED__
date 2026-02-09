@@ -2,9 +2,9 @@ import { Outlet, NavLink, useParams } from 'react-router-dom';
 import '../styles/dashboard-zombie.css';
 
 export default function DashboardLayout() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
 
-  if (!allianceId) {
+  if (!alliance_id) {
     return <div style={{ padding: 20 }}>No alliance selected.</div>;
   }
 
@@ -13,7 +13,7 @@ export default function DashboardLayout() {
   return (
     <div className='dashboard-root'>
       <aside className='dashboard-sidebar'>
-        <h2 className='sidebar-title'>🧟 {allianceId.toUpperCase()}</h2>
+        <h2 className='sidebar-title'>🧟 {alliance_id.toUpperCase()}</h2>
         <nav>
           <NavLink to={base}>Dashboard</NavLink>
           <NavLink to={${base}/hq-map}>HQ Map</NavLink>

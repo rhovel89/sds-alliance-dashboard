@@ -20,7 +20,7 @@ export default function HQMap() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [editLocked, setEditLocked] = useState(true);
 useEffect(() => {
-  ensureHQPositions(activeAllianceId, members);
+  ensureHQPositions(activealliance_id, members);
 }, [members]);
 
 useEffect(() => {

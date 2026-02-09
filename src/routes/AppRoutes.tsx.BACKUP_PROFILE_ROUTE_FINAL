@@ -39,7 +39,7 @@ import NotFound from "../pages/NotFound";
 
 import PlayerProfilePage from "../pages/PlayerProfilePage";
 export default function AppRoutes() {
-  const { allianceId } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   return (
     <Routes>
 
@@ -54,7 +54,7 @@ export default function AppRoutes() {
 
       {/* Alliance Dashboard */}
       <Route
-        path="/dashboard/:allianceId"
+        path="/dashboard/:alliance_id"
         element={
           <RequireAlliance>
             <DashboardLayout />

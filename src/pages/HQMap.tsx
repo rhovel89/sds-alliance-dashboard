@@ -12,8 +12,8 @@ const TOTAL_HQ = 400;
 const COLUMNS = 20;
 
 export default function HQMap() {
-  const { allianceId } = useParams<{ allianceId: string }>();
-  const role = useAllianceRole(allianceId);
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const role = useAllianceRole(alliance_id);
   const canEdit = role === "owner" || role === "R5" || role === "R4";
 
   
@@ -28,7 +28,7 @@ export default function HQMap() {
 
   // 🔒 Load lock state
   useEffect(() => {
-    if (!allianceId) {
+    if (!alliance_id) {
   if (!Array.isArray(next) || next.length !== TOTAL_HQ) {
     setCells(Array.from({ length: TOTAL_HQ }, () => ({})));
 }
@@ -39,16 +39,16 @@ setLoading(false);
     supabase
       .from("alliance_settings")
       .select("hq_locked")
-      .eq("allianceId", allianceId)
+      .eq("alliance_id", alliance_id)
       .maybeSingle()
       .then(({ data }) => {
         if (data) setLocked(!!data.hq_locked);
       });
-  }, [allianceId]);
+  }, [alliance_id]);
 
   // 🗺️ Load HQ map
   useEffect(() => {
-    if (!allianceId) {
+    if (!alliance_id) {
   if (!Array.isArray(next) || next.length !== TOTAL_HQ) {
     setCells(Array.from({ length: TOTAL_HQ }, () => ({})));
 }
@@ -62,7 +62,7 @@ setLoading(false);
       const { data, error } = await supabase
         .from("alliance_hq_map")
         .select("slot_x, slot_y, label")
-        .eq("allianceId", allianceId);
+        .eq("alliance_id", alliance_id);
 
       const next: Cell[] = Array.from({ length: TOTAL_HQ }, () => ({}));
 
@@ -83,7 +83,7 @@ setLoading(false);
     };
 
     load();
-  }, [allianceId]);
+  }, [alliance_id]);
 
   if (cells.length !== TOTAL_HQ) {
     setCells(Array.from({ length: TOTAL_HQ }, () => ({})));
@@ -98,14 +98,14 @@ setLoading(false);
   }
 
   async function saveCell() {
-    if (!canEdit || selected === null || !allianceId) return;
+    if (!canEdit || selected === null || !alliance_id) return;
 
     const x = selected % COLUMNS;
     const y = Math.floor(selected / COLUMNS);
     const name = cells[selected]?.player_name ?? null;
 
     await supabase.from("alliance_hq_map").upsert({
-      allianceId: allianceId,
+      alliance_id: alliance_id,
       slot_x: x,
       slot_y: y,
       label: name
@@ -113,7 +113,7 @@ setLoading(false);
   }
 
   async function clearCell() {
-    if (!canEdit || selected === null || !allianceId) return;
+    if (!canEdit || selected === null || !alliance_id) return;
 
     const x = selected % COLUMNS;
     const y = Math.floor(selected / COLUMNS);
@@ -121,7 +121,7 @@ setLoading(false);
     await supabase
       .from("alliance_hq_map")
       .delete()
-      .eq("allianceId", allianceId)
+      .eq("alliance_id", alliance_id)
       .eq("slot_x", x)
       .eq("slot_y", y);
 

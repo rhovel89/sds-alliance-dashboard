@@ -6,7 +6,7 @@ export function useCreateInvite() {
     const token = crypto.randomUUID();
 
     await supabase.from('alliance_invites').insert({
-      alliance_id: allianceId,
+      alliance_id: alliance_id,
       token,
       role
     });
