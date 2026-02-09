@@ -1,45 +1,27 @@
-import DayCell from "./DayCell";
+import DayCell from './DayCell';
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-export default function MonthBlock({ events = [], onCreate, onEventClick }: any) {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-
-  const firstDow = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const cells: (Date | null)[] = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push(new Date(year, month, d));
-  }
+export default function MonthBlock({ month, events, timezone, onDayClick }: any) {
+  const year = month.getFullYear();
+  const monthIndex = month.getMonth();
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
 
   return (
-    <div className="month-block">
-      <h2>
-        {today.toLocaleString("default", { month: "long" })} {year}
-      </h2>
-
-      <div className="weekday-row">
-        {WEEKDAYS.map(w => (
-          <div key={w} className="weekday">{w}</div>
-        ))}
+    <div className='month-block'>
+      <div className='month-title'>
+        {month.toLocaleString('default', { month: 'long' })} {year}
       </div>
 
-      <div className="month-grid">
-        {cells.map((date, idx) => (
+      <div className='month-grid'>
+        {Array.from({ length: daysInMonth }, (_, i) => (
           <DayCell
-            key={idx}
-            date={date}
+            key={i}
+            date={new Date(year, monthIndex, i + 1)}
             events={events}
-            onCreate={onCreate}
-            onEventClick={onEventClick}
+            timezone={timezone}
+            onDayClick={onDayClick}
           />
         ))}
       </div>
     </div>
   );
 }
-

@@ -14,21 +14,25 @@ const COLUMNS = 20;
 export default function HQMap() {
   const { allianceId } = useParams<{ allianceId: string }>();
   const role = useAllianceRole(allianceId);
+  const canEdit = role === "owner" || role === "R5" || role === "R4";
 
-  const isOwner = role === "owner";
-  const canEditRole = isOwner || role === "R5" || role === "R4";
+  
+  
 
   const [cells, setCells] = useState<Cell[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const canEdit = canEditRole && !locked;
+  
 
   // 🔒 Load lock state
   useEffect(() => {
     if (!allianceId) {
-  setLoading(false);
+  if (!Array.isArray(next) || next.length !== TOTAL_HQ) {
+    setCells(Array.from({ length: TOTAL_HQ }, () => ({})));
+}
+setLoading(false);
   return;
 }
 
@@ -45,7 +49,10 @@ export default function HQMap() {
   // 🗺️ Load HQ map
   useEffect(() => {
     if (!allianceId) {
-  setLoading(false);
+  if (!Array.isArray(next) || next.length !== TOTAL_HQ) {
+    setCells(Array.from({ length: TOTAL_HQ }, () => ({})));
+}
+setLoading(false);
   return;
 }
 
@@ -69,11 +76,18 @@ export default function HQMap() {
       }
 
       setCells(next);
-      setLoading(false);
+      if (!Array.isArray(next) || next.length !== TOTAL_HQ) {
+    setCells(Array.from({ length: TOTAL_HQ }, () => ({})));
+}
+setLoading(false);
     };
 
     load();
   }, [allianceId]);
+
+  if (cells.length !== TOTAL_HQ) {
+    setCells(Array.from({ length: TOTAL_HQ }, () => ({})));
+  }
 
   if (loading) {
     return (
