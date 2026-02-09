@@ -26,12 +26,12 @@ export default function HQMap() {
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const role = useAllianceRole(allianceId);
+
+  const isAppOwner = role === 'owner';
+  const canEditRole = isAppOwner || role === 'R5' || role === 'R4';
+  const canEdit = (isAppOwner || canEditRole) && !locked;  
   
-  
-  const isOwner = role === 'owner';
-  const canEditRole = isOwner || role === 'R5' || role === 'R4';
-  const canEdit = canEditRole && !locked;
-// Load HQ data (ALLIANCE-SCOPED)
+      // Load HQ data (ALLIANCE-SCOPED)
   useEffect(() => {
     if (!allianceId) return;
 
