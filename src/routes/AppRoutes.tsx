@@ -1,51 +1,36 @@
 import { Routes, Route } from "react-router-dom";
-import DashboardLayout from "../layouts/DashboardLayout";
-import RequireAlliance from "../components/RequireAlliance";
 
 import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
+
+import DashboardLayout from "../layouts/DashboardLayout";
+import RequireAlliance from "../components/RequireAlliance";
+
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
+import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
+
 import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
-import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* Public */}
       <Route path="/" element={<Login />} />
       <Route path="/dashboard" element={<AuthCallback />} />
 
+      {/* Alliance Dashboard Layout */}
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
-        <Route
-          index
-          element={
-            <RequireAlliance>
-              <MyAlliance />
-            </RequireAlliance>
-          }
-        />
-
-        <Route
-          path="hq-map"
-          element={
-            <RequireAlliance>
-              <AllianceHQMap />
-            </RequireAlliance>
-          }
-        />
-
-        <Route
-          path="events"
-          element={
-            <RequireAlliance>
-              <EventsPage />
-            </RequireAlliance>
-          }
-        />
+        <Route element={<RequireAlliance />}>
+          <Route index element={<MyAlliance />} />
+          <Route path="hq-map" element={<AllianceHQMap />} />
+          <Route path="events" element={<EventsPage />} />
+        </Route>
       </Route>
 
+      {/* Owner / State */}
       <Route path="/state/1" element={<StateDashboard />} />
       <Route path="/owner" element={<OwnerDashboard />} />
       <Route path="/owner/select" element={<OwnerDashboardSelect />} />
