@@ -9,31 +9,31 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const run = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (!user) {
+      if (!session || !session.user) {
         navigate("/", { replace: true });
         return;
       }
 
-      if (user.id === OWNER_ID) {
-        navigate("/select-dashboard", { replace: true });
+      // 🧠 OWNER OVERRIDE — ALWAYS SHOW PICKER
+      if (session.user.id === OWNER_ID) {
+        navigate("/owner/select", { replace: true });
         return;
       }
 
-      const { data: membership } = await supabase
+      // Normal alliance membership check
+      const { data: memberships, error } = await supabase
         .from("alliance_members")
         .select("alliance_id")
-        .eq("user_id", user.id)
-        .limit(1)
-        .single();
+        .limit(1);
 
-      if (membership?.alliance_id) {
-        navigate(`/dashboard/${membership.alliance_id}`, { replace: true });
+      if (error || !memberships || memberships.length === 0) {
+        navigate("/onboarding", { replace: true });
         return;
       }
 
-      navigate("/onboarding", { replace: true });
+      navigate(`/dashboard/${memberships[0].alliance_id}`, { replace: true });
     };
 
     run();
