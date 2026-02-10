@@ -6,17 +6,21 @@ import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
-import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
 
+// ✅ CORRECT HQ MAP IMPORT
+import HQMap from "../pages/hq/HQMap";
+
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* Public */}
       <Route path="/" element={<Login />} />
       <Route path="/dashboard" element={<AuthCallback />} />
 
+      {/* Alliance Dashboard */}
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
         <Route
           index
@@ -31,7 +35,7 @@ export default function AppRoutes() {
           path="hq-map"
           element={
             <RequireAlliance>
-              <AllianceHQMap />
+              <HQMap />
             </RequireAlliance>
           }
         />
@@ -46,9 +50,11 @@ export default function AppRoutes() {
         />
       </Route>
 
+      {/* Other */}
       <Route path="/state/1" element={<StateDashboard />} />
       <Route path="/owner" element={<OwnerDashboard />} />
       <Route path="/owner/select" element={<OwnerDashboardSelect />} />
+      <Route path="/select-dashboard" element={<OwnerDashboardSelect />} />
     </Routes>
   );
 }
