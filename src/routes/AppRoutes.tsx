@@ -1,15 +1,14 @@
 import { Routes, Route } from "react-router-dom";
-import DashboardLayout from "../layouts/DashboardLayout";
-import RequireAlliance from "../components/RequireAlliance";
 
 import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
 import MyAlliance from "../pages/MyAlliance";
-import StateDashboard from "../pages/StateDashboard";
-import OwnerDashboard from "../pages/OwnerDashboard";
+import EventsPage from "../pages/EventsPage";
 
-// HQ MAP — SINGLE SOURCE OF TRUTH
-import HQMap from "../pages/hq/HQMap";
+import DashboardLayout from "../layouts/DashboardLayout";
+import RequireAlliance from "../components/RequireAlliance";
+
+import AllianceHQMap from "../pages/hq/HQMap";
 
 export default function AppRoutes() {
   return (
@@ -33,15 +32,20 @@ export default function AppRoutes() {
           path="hq-map"
           element={
             <RequireAlliance>
-              <HQMap />
+              <AllianceHQMap />
+            </RequireAlliance>
+          }
+        />
+
+        <Route
+          path="events"
+          element={
+            <RequireAlliance>
+              <EventsPage />
             </RequireAlliance>
           }
         />
       </Route>
-
-      {/* Other */}
-      <Route path="/state/1" element={<StateDashboard />} />
-      <Route path="/owner" element={<OwnerDashboard />} />
     </Routes>
   );
 }
