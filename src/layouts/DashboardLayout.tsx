@@ -1,5 +1,4 @@
 import { Outlet, useParams, Link } from "react-router-dom";
-import LogoutButton from "../components/LogoutButton";
 
 export default function DashboardLayout() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
@@ -17,7 +16,6 @@ export default function DashboardLayout() {
             </>
           )}
         </nav>
-        <LogoutButton />
       </header>
 
       <main className="dashboard-content">
