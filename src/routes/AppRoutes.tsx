@@ -4,6 +4,7 @@ import RequireAlliance from "../components/RequireAlliance";
 import LogoutButton from "../components/LogoutButton";
 
 import Login from "../pages/Login";
+import AuthCallback from "../pages/AuthCallback";
 import MyAlliance from "../pages/MyAlliance";
 import HQMap from "../pages/HQMap";
 import EventsPage from "../pages/EventsPage";
@@ -17,6 +18,9 @@ export default function AppRoutes() {
 
       <Routes>
         <Route path="/" element={<Login />} />
+
+        {/* OAuth landing / router handoff */}
+        <Route path="/dashboard" element={<AuthCallback />} />
 
         <Route element={<DashboardLayout />}>
           <Route
