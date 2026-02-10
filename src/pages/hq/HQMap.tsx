@@ -1,265 +1,374 @@
-import { useParams } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useMyAlliances } from "../../hooks/useMyAlliances";
-import "../../styles/hq-map.css";
 
 type HQCell = {
   player_name: string;
   coords: string;
 };
 
-const COLUMNS = 13;
-const ROWS = 11;
-const DEFAULT_SLOTS = 120;
-
-function storageKey(alliance_id: string) {
-  return `hqmap:${alliance_id}`;
-}
+const DEFAULT_SIZE = 120;
+const GRID_COLS = 13;
+const GRID_ROWS = 11;
 
 export default function HQMap() {
-  const { alliance_id } = useParams<{ alliance_id: string }>();
-  // ----------------------------------
-  // Alliance context (REQUIRED)
-  // ----------------------------------
   const { alliances } = useMyAlliances();
-  const activealliance_id = alliances?.[0]?.alliance_id ?? null;
+  const activealliance_id = alliances?.[0]?.alliance_id || null;
+  const myRole = alliances?.[0]?.role_label || "Member";
+  const canEdit = myRole === "Owner" || myRole === "Mod";
 
-  // ----------------------------------
-  // State
-  // ----------------------------------
-  const [hqSize, setHqSize] = useState(DEFAULT_SLOTS);
-  const [cells, setCells] = useState<Record<number, HQCell>>({});
+  const [hqSize, setHqSize] = useState<number>(DEFAULT_SIZE);
+  const [editLocked, setEditLocked] = useState<boolean>(false);
+
   const [selected, setSelected] = useState<number | null>(null);
+  const [cells, setCells] = useState<Record<number, HQCell>>({});
 
-  // One timer per slot (prevents edits in one slot canceling another)
-  const timersRef = useRef<Record<number, number>>({});
+  const [draftName, setDraftName] = useState("");
+  const [draftCoords, setDraftCoords] = useState("");
 
-  const indices = useMemo(
-    () => Array.from({ length: hqSize }, (_, i) => i),
-    [hqSize]
-  );
+  const saveTimer = useRef<number | null>(null);
 
-  // ----------------------------------
-  // LOAD HQ SLOTS (Supabase -> fallback localStorage)
-  // ----------------------------------
+  const indices = useMemo(() => Array.from({ length: hqSize }, (_, i) => i), [hqSize]);
+
+  // ----------------------------
+  // Load map state (size + lock)
+  // ----------------------------
   useEffect(() => {
+  (async () => {
+    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activealliance_id);
+    if (data) {
+      const map = {};
+      data.forEach(r => {
+        map[r.slot_index] = {
+          name: r.player_name,
+          coords: r.coords
+        };
+      });
+      setCells(map);
+    }
+  })();
+}, []);
+
+useEffect(() => {
     if (!activealliance_id) return;
 
-    (async () => {
-      console.info("[HQMap] load start", { activealliance_id });
+    supabase
+      .from("hq_map_state")
+      .select("hq_size, edit_locked")
+      .eq("alliance_id", activealliance_id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) return;
+        if (data?.hq_size) setHqSize(data.hq_size);
+        if (typeof data?.edit_locked === "boolean") setEditLocked(data.edit_locked);
+      });
 
-      const { data, error } = await supabase
-        .from("hq_slots")
-        .select("slot_index, player_name, coords")
-        .eq("alliance_id", activealliance_id);
-
-      if (error) {
-        console.error("[HQMap] load error", error);
-      }
-
-      // If Supabase returned rows, use them
-      if (data && data.length > 0) {
-        const map: Record<number, HQCell> = {};
-        data.forEach((r: any) => {
-          map[r.slot_index] = {
-            player_name: r.player_name ?? "",
-            coords: r.coords ?? ""
-          };
-        });
-        setCells(map);
-
-        // Cache to localStorage for safety
-        try {
-          localStorage.setItem(storageKey(activealliance_id), JSON.stringify(map));
-        } catch {}
-
-        console.info("[HQMap] load ok (db)", { rows: data.length });
-        return;
-      }
-
-      // Fallback: localStorage (prevents refresh wipeouts even if DB blocked)
-      try {
-        const raw = localStorage.getItem(storageKey(activealliance_id));
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && typeof parsed === "object") {
-            setCells(parsed);
-            console.info("[HQMap] load fallback (localStorage)");
-            return;
-          }
-        }
-      } catch {}
-
-      console.info("[HQMap] load ok (empty)");
-    })();
   }, [activealliance_id]);
 
-  // ----------------------------------
-  // SAVE ONE CELL (debounced per-slot)
-  // UPDATE -> INSERT fallback (no unique constraint required)
-  // Also writes localStorage immediately
-  // ----------------------------------
-  function saveCell(index: number, cell: HQCell) {
+  // Persist state (Owner only)
+  useEffect(() => {
+  (async () => {
+    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activealliance_id);
+    if (data) {
+      const map = {};
+      data.forEach(r => {
+        map[r.slot_index] = {
+          name: r.player_name,
+          coords: r.coords
+        };
+      });
+      setCells(map);
+    }
+  })();
+}, []);
+
+useEffect(() => {
+    if (!activealliance_id) return;
+    if (myRole !== "Owner") return;
+
+    supabase
+      .from("hq_map_state")
+      .upsert({
+        alliance_id: activealliance_id,
+        hq_size: hqSize,
+        edit_locked: editLocked,
+        updated_at: new Date().toISOString()
+      })
+      .then(() => {});
+  }, [activealliance_id, hqSize, editLocked, myRole]);
+
+  // ----------------------------
+  // Load cells from Supabase
+  // ----------------------------
+  useEffect(() => {
+  (async () => {
+    const { data } = await supabase.from('hq_slots').select('*').eq('alliance_id', activealliance_id);
+    if (data) {
+      const map = {};
+      data.forEach(r => {
+        map[r.slot_index] = {
+          name: r.player_name,
+          coords: r.coords
+        };
+      });
+      setCells(map);
+    }
+  })();
+}, []);
+
+useEffect(() => {
     if (!activealliance_id) return;
 
-    // Always persist locally immediately (so refresh keeps it)
-    setTimeout(() => {
-      try {
-        const nextAll = { ...cells, [index]: cell };
-        localStorage.setItem(storageKey(activealliance_id), JSON.stringify(nextAll));
-      } catch {}
-    }, 0);
+    supabase
+      .from("hq_map_cells")
+      .select("slot_index, player_name, coords")
+      .eq("alliance_id", activealliance_id)
+      .then(({ data, error }) => {
+        if (error) return;
 
-    const timers = timersRef.current;
+        const next: Record<number, HQCell> = {};
+        (data || []).forEach((row: any) => {
+          next[row.slot_index] = {
+            player_name: row.player_name || "",
+            coords: row.coords || ""
+          };
+        });
 
-    if (timers[index]) {
-      window.clearTimeout(timers[index]);
-    }
+        setCells(next);
+      });
+  }, [activealliance_id]);
 
-    timers[index] = window.setTimeout(async () => {
-      console.info("[HQMap] save firing", { activealliance_id, index, cell });
-
-      try {
-        const { data: updated, error: updateError } = await supabase
-          .from("hq_slots")
-          .update({
-            player_name: cell.player_name,
-            coords: cell.coords
-          })
-          .eq("alliance_id", activealliance_id)
-          .eq("slot_index", index)
-          .select("slot_index");
-
-        if (updateError) {
-          console.error("[HQMap] save UPDATE error", updateError);
-        }
-
-        if (!updated || updated.length === 0) {
-          const { error: insertError } = await supabase
-            .from("hq_slots")
-            .insert({
-              alliance_id: activealliance_id,
-              slot_index: index,
-              player_name: cell.player_name,
-              coords: cell.coords
-            });
-
-          if (insertError) {
-            console.error("[HQMap] save INSERT error", insertError);
-          }
-        }
-
-        console.info("[HQMap] save done", { activealliance_id, index });
-      } catch (e) {
-        console.error("[HQMap] save unexpected error", e);
-      }
-    }, 300);
+  // ----------------------------
+  // Open editor (loads drafts)
+  // ----------------------------
+  function openEditor(index: number) {
+    setSelected(index);
+    const c = cells[index] || { player_name: "", coords: "" };
+    setDraftName(c.player_name || "");
+    setDraftCoords(c.coords || "");
   }
 
-  function updateCell(index: number, field: keyof HQCell, value: string) {
-    setCells((prev) => {
-      const current: HQCell = prev[index] ?? { player_name: "", coords: "" };
+  // ----------------------------
+  // Debounced save of a cell
+  // ----------------------------
+  function queueSaveCell(index: number, nextCell: HQCell) {
+    if (!activealliance_id) return;
+    if (!canEdit || editLocked) return;
 
-      // no-op if unchanged
-      if ((current as any)[field] === value) return prev;
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
 
-      const next: HQCell = {
-        player_name: current.player_name ?? "",
-        coords: current.coords ?? "",
-        [field]: value
-      } as HQCell;
+    saveTimer.current = window.setTimeout(() => {
+      supabase
+        .from("hq_map_cells")
+        .upsert({
+          alliance_id: activealliance_id,
+          slot_index: index,
+          player_name: nextCell.player_name || "",
+          coords: nextCell.coords || "",
+          updated_at: new Date().toISOString()
+        })
+        .then(() => {});
+    }, 250);
+  }
 
-      const merged = { ...prev, [index]: next };
+  // ----------------------------
+  // Live update drafts + tile + persist
+  // (THIS is what fixes your issue)
+  // ----------------------------
+  function onChangeName(v: string) {
+    setDraftName(v);
 
-      // Keep localStorage in sync on every edit
-      if (activealliance_id) {
-        try {
-          localStorage.setItem(storageKey(activealliance_id), JSON.stringify(merged));
-        } catch {}
-      }
+    if (selected === null) return;
 
-      saveCell(index, next);
-      return merged;
+    setCells(prev => {
+      const nextCell: HQCell = {
+        player_name: v,
+        coords: prev[selected]?.coords ?? draftCoords ?? ""
+      };
+      const copy = { ...prev, [selected]: nextCell };
+      queueSaveCell(selected, nextCell);
+      return copy;
     });
   }
 
-    // ================================
-  // HQ AUTOSAVE (DEBOUNCED)
-  // ================================
-  const autosaveTimerRef = useRef<number | null>(null);
+  function onChangeCoords(v: string) {
+    setDraftCoords(v);
 
-  function autosaveSlot(index: number, cell: HQCell) {
-    if (!activealliance_id) return;
+    if (selected === null) return;
 
-    if (autosaveTimerRef.current) {
-      window.clearTimeout(autosaveTimerRef.current);
-    }
-
-    autosaveTimerRef.current = window.setTimeout(async () => {
-      await supabase.from("hq_slots").upsert({
-        alliance_id: activealliance_id,
-        slot_index: index,
-        player_name: cell.player_name,
-        coords: cell.coords
-      });
-    }, 300);
+    setCells(prev => {
+      const nextCell: HQCell = {
+        player_name: prev[selected]?.player_name ?? draftName ?? "",
+        coords: v
+      };
+      const copy = { ...prev, [selected]: nextCell };
+      queueSaveCell(selected, nextCell);
+      return copy;
+    });
   }
-  // HQ_AUTOSAVE_V1
 
-  // ----------------------------------
-  // RENDER
-  // ----------------------------------
+  // ----------------------------
+  // Owner add/remove HQ spots
+  // ----------------------------
+  function addSpot() {
+    if (myRole !== "Owner") return;
+    setHqSize(v => v + 1);
+  }
+
+  function removeSpot() {
+    if (myRole !== "Owner") return;
+    setCells(prev => {
+      const copy = { ...prev };
+      delete copy[hqSize - 1];
+      return copy;
+    });
+    setHqSize(v => Math.max(1, v - 1));
+  }
+
+  // ----------------------------
+  // Minimal style matching your screenshot vibe
+  // (kept simple; does not change behavior)
+  // ----------------------------
+  const pageStyle: React.CSSProperties = {
+    padding: 16
+  };
+
+  const headerStyle: React.CSSProperties = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12
+  };
+
+  const controlsStyle: React.CSSProperties = {
+    display: "flex",
+    gap: 8,
+    alignItems: "center"
+  };
+
+  const gridStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`,
+    gap: 8,
+    width: "min(1100px, 100%)"
+  };
+
+  const tileBase: React.CSSProperties = {
+    borderRadius: 10,
+    padding: 10,
+    minHeight: 58,
+    cursor: "pointer",
+    userSelect: "none"
+  };
+
+  const editorWrap: React.CSSProperties = {
+    marginTop: 16,
+    width: "min(1100px, 100%)",
+    borderRadius: 10,
+    padding: 12
+  };
+
   return (
-    <div className="hq-map-wrapper">
-      <div className="hq-map-controls">
-        <button onClick={() => setHqSize((v) => v + 1)}>➕ Add HQ Spot</button>
-        <button onClick={() => setHqSize((v) => (v > 1 ? v - 1 : v))}>
-          ➖ Remove HQ Spot
-        </button>
-        <span>
-          {hqSize} / {COLUMNS * ROWS} slots
-        </span>
+    <div style={pageStyle}>
+      <div style={headerStyle}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>HQ Map</div>
+          <div style={{ opacity: 0.8, fontSize: 12 }}>
+            Grid: {GRID_COLS}×{GRID_ROWS} • Spots: {hqSize}
+          </div>
+        </div>
+
+        <div style={controlsStyle}>
+          {myRole === "Owner" && (
+            <>
+              <button onClick={addSpot}>➕ Add HQ Spot</button>
+              <button onClick={removeSpot}>➖ Remove HQ Spot</button>
+              <button onClick={() => setEditLocked(v => !v)}>
+                {editLocked ? "🔒 Unlock HQ Edit" : "🔓 Lock HQ Edit"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={gridStyle}>
+        {indices.map(i => {
+          const c = cells[i];
+          const isSelected = selected === i;
+
+          return (
+            <div
+              key={i}
+              onClick={() => openEditor(i)}
+              style={{
+                ...tileBase,
+                border: isSelected ? "2px solid #a855f7" : "1px solid rgba(255,255,255,0.18)",
+                background: isSelected ? "rgba(168,85,247,0.14)" : "rgba(0,0,0,0.24)"
+              }}
+              title={"Slot"}
+            >
+              <div style={{ fontWeight: 650, fontSize: 12, marginBottom: 2 }}>
+                {c?.player_name || ""}
+              </div>
+              <div style={{ fontSize: 11, opacity: 0.85 }}>
+                {c?.coords || ""}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div
-        className="hq-map-grid"
         style={{
-          gridTemplateColumns: `repeat(${COLUMNS}, 1fr)`
+          ...editorWrap,
+          border: "1px solid rgba(255,255,255,0.18)",
+          background: "rgba(0,0,0,0.22)"
         }}
       >
-        {indices.map((i) => (
-          <div
-            key={i}
-            className="hq-cell"
-            onClick={() => setSelected(i)}
-          >
-            <div className="hq-title">{cells[i]?.player_name || ""}</div>
-            <div className="hq-coords">{cells[i]?.coords || "—"}</div>
-          </div>
-        ))}
-      </div>
-
-      {selected !== null && (
-        <div className="hq-editor">
-          <h4>HQ {selected + 1}</h4>
-
-          <input
-            placeholder="Player Game Name"
-            value={cells[selected]?.player_name || ""}
-            onChange={(e) => updateCell(selected, "player_name", e.target.value)}
-          />
-
-          <input
-            placeholder="Coordinates (e.g. X:123 Y:456)"
-            value={cells[selected]?.coords || ""}
-            onChange={(e) => updateCell(selected, "coords", e.target.value)}
-          />
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>
+          {selected === null ? "Select a slot" : "Editing Slot"}
         </div>
-      )}
+
+        {selected !== null && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "" + 'repeat(, 1fr)' + "", gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 12, marginBottom: 6, opacity: 0.85 }}>Player Name</div>
+                <input
+                  value={draftName}
+                  onChange={(e) => onChangeName(e.target.value)}
+                  disabled={!canEdit || editLocked}
+                  style={{ width: "100%", padding: 10, borderRadius: 8 }}
+                  placeholder="Type player name…"
+                />
+              </div>
+
+              <div>
+                <div style={{ fontSize: 12, marginBottom: 6, opacity: 0.85 }}>Coordinates</div>
+                <input
+                  value={draftCoords}
+                  onChange={(e) => onChangeCoords(e.target.value)}
+                  disabled={!canEdit || editLocked}
+                  style={{ width: "100%", padding: 10, borderRadius: 8 }}
+                  placeholder="Example: D7 / C-12 …"
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: 10, opacity: 0.85, fontSize: 12 }}>
+              Autosaves while typing • {canEdit ? (editLocked ? "Edits locked" : "Edits enabled") : "Read-only"}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
+
+
+
+
+
 
 
 
