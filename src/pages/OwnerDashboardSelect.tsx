@@ -6,45 +6,44 @@ const OWNER_ID = "775966588200943616";
 
 export default function OwnerDashboardSelect() {
   const navigate = useNavigate();
-  const [alliances, setAlliances] = useState<string[]>([]);
+  const [alliances, setAlliances] = useState<any[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
-      const user = data.user;
-
-      if (!user || user.id !== OWNER_ID) {
-        navigate("/", { replace: true });
-        return;
-      }
+      if (!data.user || data.user.id !== OWNER_ID) return;
 
       const { data: rows } = await supabase
         .from("alliances")
-        .select("code");
+        .select("id, short_code")
+        .order("short_code");
 
-      setAlliances(rows?.map(a => a.code) || []);
+      setAlliances(rows || []);
     });
-  }, [navigate]);
+  }, []);
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <h1>🧟 Select Dashboard</h1>
-
-      {alliances.map(code => (
-        <button
-          key={code}
-          style={{ display: "block", margin: "1rem 0" }}
-          onClick={() => navigate(`/dashboard/${code}`)}
-        >
-          {code}
-        </button>
-      ))}
+    <div className="zombie-card">
+      <h2>🧟 Select Dashboard</h2>
 
       <button
-        style={{ display: "block", marginTop: "2rem" }}
-        onClick={() => navigate("/state/789")}
+        className="zombie-btn"
+        onClick={() => navigate("/state/1")}
       >
-        State Dashboard
+        State 789 Dashboard
       </button>
+
+      <div style={{ marginTop: 20 }}>
+        {alliances.map(a => (
+          <button
+            key={a.id}
+            className="zombie-btn"
+            style={{ display: "block", marginTop: 10 }}
+            onClick={() => navigate(`/dashboard/${a.short_code}`)}
+          >
+            {a.short_code} Alliance
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

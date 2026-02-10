@@ -9,6 +9,7 @@ import HQMap from "../pages/HQMap";
 import EventsPage from "../pages/EventsPage";
 import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
+import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
 
 export default function AppRoutes() {
   return (
@@ -47,9 +48,10 @@ export default function AppRoutes() {
         />
       </Route>
 
-      {/* Other */}
+      {/* Owner / State */}
       <Route path="/state/1" element={<StateDashboard />} />
       <Route path="/owner" element={<OwnerDashboard />} />
-      <Route path="/select-dashboard" element={<OwnerDashboardSelect />} />`n</Routes>
+      <Route path="/owner/select" element={<OwnerDashboardSelect />} />
+    </Routes>
   );
 }
