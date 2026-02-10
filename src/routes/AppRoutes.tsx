@@ -50,6 +50,6 @@ export default function AppRoutes() {
       {/* Other */}
       <Route path="/state/1" element={<StateDashboard />} />
       <Route path="/owner" element={<OwnerDashboard />} />
-    </Routes>
+      <Route path="/select-dashboard" element={<OwnerDashboardSelect />} />`n</Routes>
   );
 }
