@@ -1,6 +1,4 @@
 import { Routes, Route } from "react-router-dom";
-import DashboardLayout from "../layouts/DashboardLayout";
-import RequireAlliance from "../components/RequireAlliance";
 
 import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
@@ -10,7 +8,9 @@ import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
 
-// ✅ CORRECT HQ MAP IMPORT
+import DashboardLayout from "../layouts/DashboardLayout";
+import RequireAlliance from "../components/RequireAlliance";
+
 import HQMap from "../pages/hq/HQMap";
 
 export default function AppRoutes() {
@@ -54,7 +54,6 @@ export default function AppRoutes() {
       <Route path="/state/1" element={<StateDashboard />} />
       <Route path="/owner" element={<OwnerDashboard />} />
       <Route path="/owner/select" element={<OwnerDashboardSelect />} />
-      <Route path="/select-dashboard" element={<OwnerDashboardSelect />} />
     </Routes>
   );
 }
