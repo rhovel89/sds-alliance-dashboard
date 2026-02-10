@@ -3,46 +3,51 @@ import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useAllianceRole } from "../hooks/useAllianceRole";
 
-type HQCell = {
-  id: string;
-  hq_name: string;
-  coord_x: number;
-  coord_y: number;
-  hq_map_slot: number;
-};
-
 const COLUMNS = 10;
-const TOTAL_SLOTS = 100;
+const TOTAL_CELLS = 100;
 
 export default function HQMap() {
-  const { alliance_id } = useParams<{ alliance_id: string }>();
-  const role = useAllianceRole(alliance_id);
+  const { allianceId } = useParams<{ allianceId: string }>();
+  const role = useAllianceRole(allianceId);
+
   const canEdit = role === "owner" || role === "R5" || role === "R4";
 
-  const [cells, setCells] = useState<(HQCell | null)[]>(Array(TOTAL_SLOTS).fill(null));
+  const [cells, setCells] = useState<any[]>([]);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [playerName, setPlayerName] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!alliance_id) return;
+    if (!allianceId) return;
 
-    setLoading(true);
     supabase
-      .from("player_hqs")
+      .from("hq_cells")
       .select("*")
-      .eq("alliance_id", alliance_id)
+      .eq("alliance_id", allianceId)
       .then(({ data }) => {
-        const next = Array(TOTAL_SLOTS).fill(null);
-        data?.forEach((hq: HQCell) => {
-          next[hq.hq_map_slot] = hq;
+        const map = Array(TOTAL_CELLS).fill(null);
+        data?.forEach((c: any) => {
+          map[c.cell_index] = c;
         });
-        setCells(next);
+        setCells(map);
         setLoading(false);
       });
-  }, [alliance_id]);
+  }, [allianceId]);
 
-  if (loading) {
-    return <div className="hq-page">Loading HQ Map…</div>;
-  }
+  const saveCell = async () => {
+    if (selected === null || !allianceId) return;
+
+    await supabase.from("hq_cells").upsert({
+      alliance_id: allianceId,
+      cell_index: selected,
+      player_name: playerName
+    });
+
+    setPlayerName("");
+    setSelected(null);
+  };
+
+  if (loading) return <div>Loading HQ Map…</div>;
 
   return (
     <div className="hq-page">
@@ -54,12 +59,26 @@ export default function HQMap() {
           <button
             key={i}
             disabled={!canEdit}
-            className="hq-cell"
+            onClick={() => {
+              setSelected(i);
+              setPlayerName(cell?.player_name || "");
+            }}
           >
-            {cell ? cell.hq_name : "+"}
+            {cell?.player_name || "—"}
           </button>
         ))}
       </div>
+
+      {canEdit && selected !== null && (
+        <div className="hq-editor">
+          <input
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            placeholder="Player name"
+          />
+          <button onClick={saveCell}>Save</button>
+        </div>
+      )}
     </div>
   );
 }

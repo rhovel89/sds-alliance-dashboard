@@ -4,32 +4,30 @@ import { supabase } from "../lib/supabaseClient";
 import PlannerGrid from "../components/events/PlannerGrid";
 
 export default function EventsPage() {
-  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { allianceId } = useParams<{ allianceId: string }>();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!alliance_id) return;
+    if (!allianceId) return;
 
-    setLoading(true);
     supabase
       .from("alliance_events")
       .select("*")
-      .eq("alliance_id", alliance_id)
-      .order("date", { ascending: true })
+      .eq("alliance_id", allianceId)
       .then(({ data }) => {
         setEvents(data || []);
         setLoading(false);
       });
-  }, [alliance_id]);
+  }, [allianceId]);
 
-  if (loading) {
-    return <div className="events-page">Loading events…</div>;
-  }
+  if (loading) return <div>Loading events…</div>;
 
   return (
-    <div className="events-page">
-      <PlannerGrid events={events} alliance_id={alliance_id} />
-    </div>
+    <PlannerGrid
+      events={events}
+      alliance_id={allianceId}
+      onEventsChanged={setEvents}
+    />
   );
 }
