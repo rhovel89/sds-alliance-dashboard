@@ -1,54 +1,66 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
-import "../../styles/hq-map.css";
 
 type HQSlot = {
   id: string;
-  label: string | null;
+  alliance_id: string;
   slot_x: number;
   slot_y: number;
+  label: string | null;
 };
 
 export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
+  const normalizedAllianceId = alliance_id?.toUpperCase();
+
   const [slots, setSlots] = useState<HQSlot[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!alliance_id) return;
+    if (!normalizedAllianceId) return;
+
+    console.log("HQ MAP QUERY ALLIANCE:", normalizedAllianceId);
 
     supabase
       .from("alliance_hq_map")
       .select("*")
-      .eq("alliance_id", alliance_id)
-      .then(({ data }) => {
-        setSlots(data || []);
+      .eq("alliance_id", normalizedAllianceId)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("HQ MAP ERROR:", error);
+        }
+        setSlots(data ?? []);
         setLoading(false);
       });
-  }, [alliance_id]);
+  }, [normalizedAllianceId]);
 
   return (
     <div style={{ padding: 24 }}>
-      <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {alliance_id?.toUpperCase()}</h1>
+      <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {normalizedAllianceId}</h1>
 
-      {loading && <p>Loading HQ map…</p>}
+      {loading && <p>Loading HQ slots…</p>}
 
       {!loading && slots.length === 0 && (
-        <p style={{ opacity: 0.7 }}>No HQ slots found.</p>
+        <p>No HQ slots found.</p>
       )}
 
-      <div className="hq-map-canvas">
+      <div style={{ position: "relative", width: 1024, height: 1024, border: "1px solid #0f0" }}>
         {slots.map(slot => (
           <div
             key={slot.id}
-            className="hq-slot"
             style={{
+              position: "absolute",
               left: slot.slot_x,
-              top: slot.slot_y
+              top: slot.slot_y,
+              padding: "6px 10px",
+              background: "#0f0",
+              color: "#000",
+              borderRadius: 4,
+              fontSize: 12,
             }}
           >
-            <strong>{slot.label || "Empty"}</strong>
+            <strong>{slot.label ?? "Empty"}</strong>
             <div>X:{slot.slot_x} Y:{slot.slot_y}</div>
           </div>
         ))}
@@ -57,4 +69,4 @@ export default function AllianceHQMap() {
   );
 }
 
-// deploy-touch 2026-02-10T08:37:28.5178450-06:00
+// deploy tick 2026-02-10 08:44:56Z
