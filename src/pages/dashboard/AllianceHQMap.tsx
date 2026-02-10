@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
-type HQSlot = {
+type Slot = {
   id: string;
   alliance_id: string;
   slot_x: number;
@@ -14,38 +14,41 @@ export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const normalizedAllianceId = alliance_id?.toUpperCase();
 
-  const [slots, setSlots] = useState<HQSlot[]>([]);
+  const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!normalizedAllianceId) return;
 
-    console.log("HQ MAP QUERY ALLIANCE:", normalizedAllianceId);
-
     supabase
       .from("alliance_hq_map")
       .select("*")
       .eq("alliance_id", normalizedAllianceId)
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("HQ MAP ERROR:", error);
-        }
-        setSlots(data ?? []);
+      .then(({ data }) => {
+        setSlots(data || []);
         setLoading(false);
       });
   }, [normalizedAllianceId]);
+
+  if (loading) {
+    return <div style={{ padding: 24 }}>Loading HQ Map…</div>;
+  }
 
   return (
     <div style={{ padding: 24 }}>
       <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {normalizedAllianceId}</h1>
 
-      {loading && <p>Loading HQ slots…</p>}
+      {slots.length === 0 && <p>No HQ slots found.</p>}
 
-      {!loading && slots.length === 0 && (
-        <p>No HQ slots found.</p>
-      )}
-
-      <div style={{ position: "relative", width: 1024, height: 1024, border: "1px solid #0f0" }}>
+      <div
+        style={{
+          position: "relative",
+          width: 600,
+          height: 600,
+          border: "2px solid #2aff2a",
+          marginTop: 24,
+        }}
+      >
         {slots.map(slot => (
           <div
             key={slot.id}
@@ -53,20 +56,20 @@ export default function AllianceHQMap() {
               position: "absolute",
               left: slot.slot_x,
               top: slot.slot_y,
-              padding: "6px 10px",
-              background: "#0f0",
+              background: "#2aff2a",
               color: "#000",
-              borderRadius: 4,
+              padding: "6px 8px",
+              borderRadius: 6,
               fontSize: 12,
+              fontWeight: 700,
             }}
           >
-            <strong>{slot.label ?? "Empty"}</strong>
-            <div>X:{slot.slot_x} Y:{slot.slot_y}</div>
+            {slot.label ?? "Empty"}
+            <br />
+            X:{slot.slot_x} Y:{slot.slot_y}
           </div>
         ))}
       </div>
     </div>
   );
 }
-
-// deploy tick 2026-02-10 08:44:56Z
