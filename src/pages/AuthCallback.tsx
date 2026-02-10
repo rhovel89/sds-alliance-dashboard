@@ -16,19 +16,18 @@ export default function AuthCallback() {
         return;
       }
 
-      // 🧠 OWNER OVERRIDE — ALWAYS SHOW PICKER
+      // OWNER ALWAYS SEES PICKER
       if (session.user.id === OWNER_ID) {
         navigate("/owner/select", { replace: true });
         return;
       }
 
-      // Normal alliance membership check
-      const { data: memberships, error } = await supabase
+      const { data: memberships } = await supabase
         .from("alliance_members")
         .select("alliance_id")
         .limit(1);
 
-      if (error || !memberships || memberships.length === 0) {
+      if (!memberships || memberships.length === 0) {
         navigate("/onboarding", { replace: true });
         return;
       }
