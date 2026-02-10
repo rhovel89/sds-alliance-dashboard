@@ -5,18 +5,20 @@ import RequireAlliance from "../components/RequireAlliance";
 import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
 import MyAlliance from "../pages/MyAlliance";
-import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 import EventsPage from "../pages/EventsPage";
 import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
+import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* Public */}
       <Route path="/" element={<Login />} />
       <Route path="/dashboard" element={<AuthCallback />} />
 
+      {/* Alliance Dashboard */}
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
         <Route
           index
@@ -46,6 +48,7 @@ export default function AppRoutes() {
         />
       </Route>
 
+      {/* Owner / State */}
       <Route path="/state/1" element={<StateDashboard />} />
       <Route path="/owner" element={<OwnerDashboard />} />
       <Route path="/owner/select" element={<OwnerDashboardSelect />} />
