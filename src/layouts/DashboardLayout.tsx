@@ -1,40 +1,26 @@
-import { Outlet, NavLink, useParams } from "react-router-dom";
+import { Outlet, useParams, Link } from "react-router-dom";
+import LogoutButton from "../components/LogoutButton";
 
 export default function DashboardLayout() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const base = alliance_id ? `/dashboard/${alliance_id}` : "";
 
   return (
-    <div className="dashboard-container">
-      <aside className="dashboard-sidebar">
-        <h2 className="sidebar-title">🧟 {alliance_id?.toUpperCase()}</h2>
-
-        <nav className="sidebar-nav">
-          <div className="sidebar-section">
-            <h4>🧠 Alliance</h4>
-            
-            <NavLink to={base}>Command Center</NavLink>
-            <NavLink to={`${base}/profile`}>🧍 My Profile</NavLink>
-            <NavLink to={`${base}/hq-map`}>HQ Map</NavLink>
-            <NavLink to={`${base}/events`}>Events</NavLink>
-            <NavLink to={`${base}/event-templates`}>Event Templates</NavLink>
-          </div>
-
-          <div className="sidebar-section">
-            <h4>📡 State</h4>
-            <NavLink to="/state/1">State Dashboard</NavLink>
-          </div>
-
-          <div className="sidebar-section">
-            <h4>👑 Overseer</h4>
-            <NavLink to="/owner">Overseer Dashboard</NavLink>
-            <NavLink to="/owner/approvals">Approvals</NavLink>
-            <NavLink to="/owner/control">Control Panel</NavLink>
-          </div>
+    <div className="dashboard-layout">
+      <header className="dashboard-header">
+        <nav>
+          {alliance_id && (
+            <>
+              <Link to={`${base}`}>Home</Link>
+              <Link to={`${base}/hq-map`}>HQ Map</Link>
+              <Link to={`${base}/events`}>Events</Link>
+            </>
+          )}
         </nav>
-      </aside>
+        <LogoutButton />
+      </header>
 
-      <main className="dashboard-main">
+      <main className="dashboard-content">
         <Outlet />
       </main>
     </div>
