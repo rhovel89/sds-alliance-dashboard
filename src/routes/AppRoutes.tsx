@@ -1,7 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import DashboardLayout from "../layouts/DashboardLayout";
 import RequireAlliance from "../components/RequireAlliance";
-import LogoutButton from "../components/LogoutButton";
 
 import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
@@ -14,7 +13,6 @@ import OwnerDashboard from "../pages/OwnerDashboard";
 export default function AppRoutes() {
   return (
     <>
-      <LogoutButton />
 
       <Routes>
         <Route path="/" element={<Login />} />
@@ -22,7 +20,7 @@ export default function AppRoutes() {
         {/* OAuth landing / router handoff */}
         <Route path="/dashboard" element={<AuthCallback />} />
 
-        <Route element={<DashboardLayout />}>
+        <Route element={<AppLayout />}>
           <Route
             path="/dashboard/:alliance_id"
             element={
