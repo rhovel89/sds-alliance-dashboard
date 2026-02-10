@@ -27,3 +27,4 @@ export function AllianceProvider({ children }: { children: React.ReactNode }) {
 export function useAlliance() {
   return useContext(AllianceContext);
 }
+
