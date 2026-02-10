@@ -1,50 +1,29 @@
 import { Routes, Route } from "react-router-dom";
 
-import Login from "../pages/Login";
-import AuthCallback from "../pages/AuthCallback";
-import MyAlliance from "../pages/MyAlliance";
-import EventsPage from "../pages/EventsPage";
+import RequireAlliance from "./RequireAlliance";
 
 import DashboardLayout from "../layouts/DashboardLayout";
-import RequireAlliance from "../components/RequireAlliance";
 
+import MyAlliance from "../pages/MyAlliance";
+import EventsPage from "../pages/EventsPage";
 import AllianceHQMap from "../pages/hq/HQMap";
+
+import StateDashboard from "../pages/StateDashboard";
+import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
 
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
-      <Route path="/" element={<Login />} />
-      <Route path="/dashboard" element={<AuthCallback />} />
+      <Route path="/" element={<StateDashboard />} />
 
-      {/* Alliance Dashboard */}
+      <Route path="/owner/select" element={<OwnerDashboardSelect />} />
+
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
-        <Route
-          index
-          element={
-            <RequireAlliance>
-              <MyAlliance />
-            </RequireAlliance>
-          }
-        />
-
-        <Route
-          path="hq-map"
-          element={
-            <RequireAlliance>
-              <AllianceHQMap />
-            </RequireAlliance>
-          }
-        />
-
-        <Route
-          path="events"
-          element={
-            <RequireAlliance>
-              <EventsPage />
-            </RequireAlliance>
-          }
-        />
+        <Route element={<RequireAlliance />}>
+          <Route index element={<MyAlliance />} />
+          <Route path="hq-map" element={<AllianceHQMap />} />
+          <Route path="events" element={<EventsPage />} />
+        </Route>
       </Route>
     </Routes>
   );
