@@ -12,46 +12,44 @@ import OwnerDashboard from "../pages/OwnerDashboard";
 
 export default function AppRoutes() {
   return (
-    <>
+    <Routes>
+      {/* Public */}
+      <Route path="/" element={<Login />} />
+      <Route path="/dashboard" element={<AuthCallback />} />
 
-      <Routes>
-        <Route path="/" element={<Login />} />
+      {/* Alliance Dashboard */}
+      <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
+        <Route
+          index
+          element={
+            <RequireAlliance>
+              <MyAlliance />
+            </RequireAlliance>
+          }
+        />
 
-        {/* OAuth landing / router handoff */}
-        <Route path="/dashboard" element={<AuthCallback />} />
+        <Route
+          path="hq-map"
+          element={
+            <RequireAlliance>
+              <HQMap />
+            </RequireAlliance>
+          }
+        />
 
-        <Route element={<AppLayout />}>
-          <Route
-            path="/dashboard/:alliance_id"
-            element={
-              <RequireAlliance>
-                <MyAlliance />
-              </RequireAlliance>
-            }
-          />
+        <Route
+          path="events"
+          element={
+            <RequireAlliance>
+              <EventsPage />
+            </RequireAlliance>
+          }
+        />
+      </Route>
 
-          <Route
-            path="/dashboard/:alliance_id/hq-map"
-            element={
-              <RequireAlliance>
-                <HQMap />
-              </RequireAlliance>
-            }
-          />
-
-          <Route
-            path="/dashboard/:alliance_id/events"
-            element={
-              <RequireAlliance>
-                <EventsPage />
-              </RequireAlliance>
-            }
-          />
-        </Route>
-
-        <Route path="/state/1" element={<StateDashboard />} />
-        <Route path="/owner" element={<OwnerDashboard />} />
-      </Routes>
-    </>
+      {/* Other */}
+      <Route path="/state/1" element={<StateDashboard />} />
+      <Route path="/owner" element={<OwnerDashboard />} />
+    </Routes>
   );
 }
