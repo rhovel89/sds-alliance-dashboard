@@ -3,6 +3,7 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import RequireAlliance from "../components/RequireAlliance";
 import LogoutButton from "../components/LogoutButton";
 
+import Login from "../pages/Login";
 import MyAlliance from "../pages/MyAlliance";
 import HQMap from "../pages/HQMap";
 import EventsPage from "../pages/EventsPage";
@@ -15,6 +16,9 @@ export default function AppRoutes() {
       <LogoutButton />
 
       <Routes>
+        <!-- ROOT LOGIN ENTRY -->
+        <Route path="/" element={<Login />} />
+
         <Route element={<DashboardLayout />}>
           <Route
             path="/dashboard/:alliance_id"
