@@ -18,32 +18,11 @@ export default function AppRoutes() {
       <Route path="/dashboard" element={<AuthCallback />} />
 
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
-        <Route
-          index
-          element={
-            <RequireAlliance>
-              <MyAlliance />
-            </RequireAlliance>
-          }
-        />
-
-        <Route
-          path="hq-map"
-          element={
-            <RequireAlliance>
-              <AllianceHQMap />
-            </RequireAlliance>
-          }
-        />
-
-        <Route
-          path="events"
-          element={
-            <RequireAlliance>
-              <EventsPage />
-            </RequireAlliance>
-          }
-        />
+        <Route element={<RequireAlliance />}>
+          <Route index element={<MyAlliance />} />
+          <Route path="hq-map" element={<AllianceHQMap />} />
+          <Route path="events" element={<EventsPage />} />
+        </Route>
       </Route>
 
       <Route path="/state/1" element={<StateDashboard />} />
