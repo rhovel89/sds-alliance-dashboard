@@ -2,14 +2,15 @@ import { Routes, Route } from "react-router-dom";
 
 import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
+
+import DashboardLayout from "../layouts/DashboardLayout";
+import RequireAlliance from "../components/RequireAlliance";
+
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
 import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
-
-import DashboardLayout from "../layouts/DashboardLayout";
-import RequireAlliance from "../components/RequireAlliance";
 
 import HQMap from "../pages/hq/HQMap";
 
@@ -50,7 +51,7 @@ export default function AppRoutes() {
         />
       </Route>
 
-      {/* Other */}
+      {/* Owner / State */}
       <Route path="/state/1" element={<StateDashboard />} />
       <Route path="/owner" element={<OwnerDashboard />} />
       <Route path="/owner/select" element={<OwnerDashboardSelect />} />
