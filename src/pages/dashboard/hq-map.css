@@ -1,0 +1,30 @@
+.hq-map-wrapper {
+  padding: 24px;
+}
+
+.hq-title {
+  color: #7CFF7C;
+  margin-bottom: 16px;
+}
+
+.hq-map {
+  position: relative;
+  width: 1024px;
+  height: 1024px;
+  background: radial-gradient(#111, #000);
+  border: 2px solid #2aff2a;
+  overflow: hidden;
+}
+
+.hq-slot {
+  position: absolute;
+  min-width: 80px;
+  padding: 6px 10px;
+  background: rgba(0, 255, 0, 0.15);
+  border: 1px solid #2aff2a;
+  color: #dfffdf;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: grab;
+  user-select: none;
+}
