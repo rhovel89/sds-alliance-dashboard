@@ -1,8 +1,0 @@
-export function rolePermissions(role: string) {
-  return {
-    canManageRoles: role === 'Owner',
-    canPromote: ['Owner','R5'].includes(role),
-    canEditName: ['Owner','R5','Mod'].includes(role),
-    canInvite: ['Owner','R5','Mod'].includes(role),
-  };
-}
