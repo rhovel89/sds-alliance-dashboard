@@ -1,0 +1,39 @@
+import { Routes, Route } from "react-router-dom";
+import DashboardLayout from "../layouts/DashboardLayout";
+import RequireAlliance from "../components/RequireAlliance";
+import MyAlliance from "../pages/MyAlliance";
+import HQMap from "../pages/HQMap";
+import EventsPage from "../pages/EventsPage";
+import TemplateList from "../components/templates/TemplateList";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
+
+import StateDashboard from "../pages/state/StateDashboard";
+import OwnerDashboard from "../pages/OwnerDashboard";
+
+export default function AppRoutes() {
+  return (
+    <LogoutButton /><Routes>
+
+      <Route
+        path="/dashboard/:alliance_id"
+        element={
+          <RequireAlliance>
+            <DashboardLayout />
+          </RequireAlliance>
+        }
+      >
+        <Route index element={<MyAlliance />} />
+        <Route path="hq-map" element={<HQMap />} />
+        <Route path="events" element={<EventsPage />} />
+        <Route path="event-templates" element={<TemplateList />} />
+        <Route path="profile" element={<PlayerProfilePage />} />
+      </Route>
+
+      <Route path="/state/1" element={<StateDashboard />} />
+      <Route path="/owner" element={<OwnerDashboard />} />
+
+    </Routes>
+  );
+}
+
+

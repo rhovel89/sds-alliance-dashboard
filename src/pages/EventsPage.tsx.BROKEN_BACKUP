@@ -1,46 +1,38 @@
-import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import PlannerGrid from "../components/events/PlannerGrid";
 import { supabase } from "../lib/supabaseClient";
-import { normalizeEvents } from "../components/events/normalizeEvents";
-import "../styles/events-calendar.css";
 
 export default function EventsPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const [events, setEvents] = useState<any[]>([]);
-  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  async function loadEvents() {
-    if (!alliance_id) return;
-    setLoadingEvents(true);
+  useEffect(() => {
+    if (!alliance_id) {
+      setLoading(false);
+      return;
+    }
 
-    const { data, error } = await supabase
+    setLoading(true);
+
+    supabase
       .from("alliance_events")
       .select("*")
       .eq("alliance_id", alliance_id)
-      .order("start_time_utc", { ascending: true });
-
-    if (error) {
-      console.error("❌ Failed to load events:", error);
-      setEvents([]);
-    } else {
-      setEvents(normalizeEvents(data ?? []));
-    }
-
-    setLoadingEvents(false);
-  }
-
-  useEffect(() => {
-    if (!alliance_id) return;
-    loadEvents();
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Failed to load events:", error);
+          setEvents([]);
+        } else {
+          setEvents(data || []);
+        }
+        setLoading(false);
+      });
   }, [alliance_id]);
 
-  if (loading || loadingEvents) {
+  if (loading) {
     return <div className="events-page">Loading events…</div>;
-  }
-
-  if (!alliance_id) {
-    return <div className="events-page">No alliance selected</div>;
   }
 
   return (
@@ -48,7 +40,7 @@ export default function EventsPage() {
       <PlannerGrid
         events={events}
         alliance_id={alliance_id}
-        onEventsChanged={loadEvents}
+        onEventsChanged={setEvents}
       />
     </div>
   );
