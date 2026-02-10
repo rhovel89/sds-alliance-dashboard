@@ -1,23 +1,9 @@
 import { supabase } from "../lib/supabaseClient";
 
 export default function Login() {
-  const loginWithEmail = async () => {
-    const email = prompt("Enter your email");
-    if (!email) return;
-
-    await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin + "/dashboard"
-      }
-    });
-
-    alert("Check your email for the login link");
-  };
-
-  const loginWithDiscord = async () => {
+  const login = async (provider: "discord" | "google") => {
     await supabase.auth.signInWithOAuth({
-      provider: "discord",
+      provider,
       options: {
         redirectTo: window.location.origin + "/dashboard"
       }
@@ -25,16 +11,16 @@ export default function Login() {
   };
 
   return (
-    <div style={{ padding: 40 }}>
-      <h1>Login</h1>
+    <div className="zombie-landing">
+      <div className="zombie-panel">
+        <h1 className="zombie-title">🧟 State 789 Alliance Command</h1>
 
-      <button onClick={loginWithEmail}>
-        Login with Email
-      </button>
-
-      <div style={{ marginTop: 16 }}>
-        <button onClick={loginWithDiscord}>
+        <button className="zombie-btn" onClick={() => login("discord")}>
           Login with Discord
+        </button>
+
+        <button className="zombie-btn" onClick={() => login("google")}>
+          Login with Google
         </button>
       </div>
     </div>
