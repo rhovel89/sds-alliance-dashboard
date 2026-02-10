@@ -16,8 +16,8 @@ export default function DashboardLayout() {
         <h2 className='sidebar-title'>🧟 {alliance_id.toUpperCase()}</h2>
         <nav>
           <NavLink to={base}>Dashboard</NavLink>
-          <NavLink to={`${base}/hq-map`}>HQ Map</NavLink>
-          <NavLink to={`${base}/events`}>Events</NavLink>
+          <NavLink to={${base}/hq-map}>HQ Map</NavLink>
+          <NavLink to={${base}/events}>Events</NavLink>
         </nav>
       </aside>
 

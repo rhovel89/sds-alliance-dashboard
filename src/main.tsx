@@ -20,3 +20,14 @@ import './styles/zombie-blood.css';
 import './styles/sidebar.css';
 
 import './styles/command-center.css';
+import './styles/zombie-base.css';
+import './styles/zombie-theme.css';
+import './styles/zombie-animations.css';
+import './styles/zombie-effects.css';
+import './styles/zombie-blood.css';
+import './styles/zombie-base.css';
+import './styles/zombie-theme.css';
+import './styles/zombie-animations.css';
+import './styles/zombie-effects.css';
+import './styles/zombie-blood.css';
+import './styles/dashboard-zombie.css';
