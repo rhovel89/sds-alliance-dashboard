@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
-import "./hq-map.css";
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { supabase } from '../../lib/supabaseClient';
+import '../../styles/hq-map.css';
 
-type Slot = {
+type HQSlot = {
   id: string;
   label: string | null;
   slot_x: number;
@@ -12,40 +12,49 @@ type Slot = {
 
 export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slots, setSlots] = useState<HQSlot[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!alliance_id) return;
 
     supabase
-      .from("alliance_hq_map")
-      .select("*")
-      .eq("alliance_id", alliance_id.toUpperCase())
-      .then(({ data }) => setSlots(data || []));
+      .from('alliance_hq_map')
+      .select('id,label,slot_x,slot_y')
+      .eq('alliance_id', alliance_id.toUpperCase())
+      .then(({ data }) => {
+        setSlots(data || []);
+        setLoading(false);
+      });
   }, [alliance_id]);
 
-  return (
-    <div className="hq-map-wrapper">
-      <h1 className="hq-title">
-        🧟 HQ MAP — {alliance_id?.toUpperCase()}
-      </h1>
+  if (loading) {
+    return <div style={{ padding: 24 }}>Loading HQ Map…</div>;
+  }
 
-      <div className="hq-map">
+  return (
+    <div style={{ padding: 24 }}>
+      <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {alliance_id?.toUpperCase()}</h1>
+
+      {slots.length === 0 && (
+        <p style={{ opacity: 0.6 }}>No HQ slots found.</p>
+      )}
+
+      <div className="hq-map-container">
         {slots.map(slot => (
           <div
             key={slot.id}
-            className="hq-slot"
+            className={\hq-slot \\}
             style={{
               left: slot.slot_x,
               top: slot.slot_y
             }}
           >
-            {slot.label || "Empty"}
+            <strong>{slot.label || 'Empty'}</strong>
+            X:{slot.slot_x} Y:{slot.slot_y}
           </div>
         ))}
       </div>
     </div>
   );
 }
-
-import './hq-map.css';
