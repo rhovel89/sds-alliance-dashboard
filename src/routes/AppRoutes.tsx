@@ -1,38 +1,52 @@
 import { Routes, Route } from "react-router-dom";
 import DashboardLayout from "../layouts/DashboardLayout";
 import RequireAlliance from "../components/RequireAlliance";
+import LogoutButton from "../components/LogoutButton";
 
 import MyAlliance from "../pages/MyAlliance";
 import HQMap from "../pages/HQMap";
 import EventsPage from "../pages/EventsPage";
-import TemplateList from "../components/templates/TemplateList";
-import PlayerProfilePage from "../pages/PlayerProfilePage";
-
-import StateDashboard from "../pages/state/StateDashboard";
+import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 
 export default function AppRoutes() {
   return (
-    <Routes>
+    <>
+      <LogoutButton />
 
-      <Route
-        path="/dashboard/:alliance_id"
-        element={
-          <RequireAlliance>
-            <DashboardLayout />
-          </RequireAlliance>
-        }
-      >
-        <Route index element={<MyAlliance />} />
-        <Route path="hq-map" element={<HQMap />} />
-        <Route path="events" element={<EventsPage />} />
-        <Route path="event-templates" element={<TemplateList />} />
-        <Route path="profile" element={<PlayerProfilePage />} />
-      </Route>
+      <Routes>
+        <Route element={<DashboardLayout />}>
+          <Route
+            path="/dashboard/:alliance_id"
+            element={
+              <RequireAlliance>
+                <MyAlliance />
+              </RequireAlliance>
+            }
+          />
 
-      <Route path="/state/1" element={<StateDashboard />} />
-      <Route path="/owner" element={<OwnerDashboard />} />
+          <Route
+            path="/dashboard/:alliance_id/hq-map"
+            element={
+              <RequireAlliance>
+                <HQMap />
+              </RequireAlliance>
+            }
+          />
 
-    </Routes>
+          <Route
+            path="/dashboard/:alliance_id/events"
+            element={
+              <RequireAlliance>
+                <EventsPage />
+              </RequireAlliance>
+            }
+          />
+        </Route>
+
+        <Route path="/state/1" element={<StateDashboard />} />
+        <Route path="/owner" element={<OwnerDashboard />} />
+      </Routes>
+    </>
   );
 }

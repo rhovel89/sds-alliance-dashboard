@@ -1,9 +1,9 @@
 import MonthBlock from "./MonthBlock";
 
-export default function PlannerGrid({ events }: any) {
+export default function PlannerGrid({ events, onDayClick }: any) {
   return (
-    <div className="planner">
-      <MonthBlock events={events} />
+    <div className="planner-grid">
+      <MonthBlock events={events} onDayClick={onDayClick} />
     </div>
   );
 }

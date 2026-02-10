@@ -1,8 +1,8 @@
 export default function OwnerDashboard() {
   return (
-    <div className="panel scanner">
-      <h1>🧟 Overseer Command Center</h1>
-      <p>All factions. All states. Full control.</p>
+    <div style={{ padding: 24 }}>
+      <h1>Owner System Dashboard</h1>
+      <p>Global owner controls will live here.</p>
     </div>
   );
 }
