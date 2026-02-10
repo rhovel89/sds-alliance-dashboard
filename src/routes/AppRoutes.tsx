@@ -18,10 +18,6 @@ export default function AppRoutes() {
       <Route path="/" element={<Login />} />
       <Route path="/dashboard" element={<AuthCallback />} />
 
-      {/* Owner */}
-      <Route path="/owner/select" element={<OwnerDashboardSelect />} />
-      <Route path="/owner" element={<OwnerDashboard />} />
-
       {/* Alliance Dashboard */}
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
         <Route
@@ -52,8 +48,10 @@ export default function AppRoutes() {
         />
       </Route>
 
-      {/* State */}
+      {/* Other */}
       <Route path="/state/1" element={<StateDashboard />} />
+      <Route path="/owner" element={<OwnerDashboard />} />
+      <Route path="/owner/select" element={<OwnerDashboardSelect />} />
     </Routes>
   );
 }

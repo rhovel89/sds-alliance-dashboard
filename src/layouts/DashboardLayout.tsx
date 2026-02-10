@@ -6,9 +6,11 @@ export default function DashboardLayout() {
   const base = alliance_id ? `/dashboard/${alliance_id}` : "";
 
   return (
-    <div className="dashboard-shell">`n      <div className="zombie-blood-drip"></div>
+    <div className="dashboard-shell">
+      <div className="zombie-blood-drip"></div>
+
       <aside className="dashboard-sidebar zombie-animated zombie-sidebar">
-        <h2 className="sidebar-title zombie-glow" data-alliance={alliance_id}>
+        <h2 className="sidebar-title zombie-glow">
           🧟 {alliance_id?.toUpperCase()}
         </h2>
 

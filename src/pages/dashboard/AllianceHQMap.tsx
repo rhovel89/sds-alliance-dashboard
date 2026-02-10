@@ -1,54 +1,13 @@
-import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
-import { usePermissions } from "../../hooks/usePermissions";
-
-type HQSlot = {
-  id: string;
-  label: string | null;
-  slot_x: number;
-  slot_y: number;
-};
 
 export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
-  const permissions = usePermissions();
-  const [slots, setSlots] = useState<HQSlot[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!alliance_id) return;
-
-    supabase
-      .from("alliance_hq_map")
-      .select("*")
-      .eq("alliance_id", alliance_id)
-      .then(({ data }) => {
-        setSlots(data || []);
-        setLoading(false);
-      });
-  }, [alliance_id]);
-
-  if (loading) {
-    return <div style={{ padding: 24 }}>Loading HQ Map…</div>;
-  }
 
   return (
     <div style={{ padding: 24 }}>
-      <h1>🧟 Alliance HQ Layout</h1>
-
-      <div className="hq-grid">
-        {slots.map((s) => (
-          <div key={s.id} className="hq-slot zombie-card">
-            <strong>{s.label || "Empty Slot"}</strong>
-            <div>X: {s.slot_x} | Y: {s.slot_y}</div>
-          </div>
-        ))}
-      </div>
-
-      {!permissions.canManageRoles && (
-        <p style={{ opacity: 0.6 }}>Read-only view</p>
-      )}
+      <h1 style={{ color: "lime" }}>
+        HQ MAP LOADED FOR ALLIANCE: {alliance_id}
+      </h1>
     </div>
   );
 }
