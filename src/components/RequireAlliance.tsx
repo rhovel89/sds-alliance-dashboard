@@ -1,61 +1,43 @@
 import { useEffect, useState } from "react";
-import { Navigate, Outlet, useParams, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
-const OWNER_ID = "1bf14480-765e-4704-89e6-63bfb02e1187";
+const OWNER_ID = "775966588200943616";
 
 export default function RequireAlliance() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
-  const navigate = useNavigate();
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const run = async () => {
-      const { data } = await supabase.auth.getUser();
+    supabase.auth.getUser().then(({ data }) => {
       const user = data.user;
 
-      // Not logged in
       if (!user) {
         setAllowed(false);
         return;
       }
 
-      // Owner override — full access everywhere
       if (user.id === OWNER_ID) {
         setAllowed(true);
         return;
       }
 
-      // Must have alliance in URL
       if (!alliance_id) {
         setAllowed(false);
         return;
       }
 
-      // Fetch user's actual alliance
-      const { data: membership, error } = await supabase
+      supabase
         .from("alliance_members")
-        .select("alliance_id")
+        .select("id")
         .eq("user_id", user.id)
-        .limit(1)
-        .single();
-
-      if (error || !membership) {
-        setAllowed(false);
-        return;
-      }
-
-      // 🔒 Alliance lock — prevent switching
-      if (membership.alliance_id !== alliance_id) {
-        navigate(/dashboard/, { replace: true });
-        return;
-      }
-
-      setAllowed(true);
-    };
-
-    run();
-  }, [alliance_id, navigate]);
+        .eq("alliance_id", alliance_id)
+        .single()
+        .then(({ data }) => {
+          setAllowed(!!data);
+        });
+    });
+  }, [alliance_id]);
 
   if (allowed === null) {
     return <div style={{ padding: 20 }}>Checking access…</div>;
