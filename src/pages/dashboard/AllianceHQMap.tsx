@@ -1,34 +1,46 @@
-import { useParams } from "react-router-dom";
-import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import { useMyAlliances } from '../../hooks/useMyAlliances';
-import { usePermissions } from '../../hooks/usePermissions';
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
+import { useMyAlliances } from "../../hooks/useMyAlliances";
+import { usePermissions } from "../../hooks/usePermissions";
+
+type HQSlot = {
+  id: string;
+  label: string | null;
+  slot_x: number;
+  slot_y: number;
+};
 
 export default function AllianceHQMap() {
-  const { alliance_id } = useParams<{ alliance_id: string }>();
   const { alliances } = useMyAlliances();
   const permissions = usePermissions();
-  const alliance_id = alliances?.[0]?.alliance_id;
 
-  const [slots, setSlots] = useState([]);
+  const allianceId = alliances?.[0]?.alliance_id;
+
+  const [slots, setSlots] = useState<HQSlot[]>([]);
 
   useEffect(() => {
-    if (!alliance_id) return;
+    if (!allianceId) return;
+
     supabase
-      .from('alliance_hq_map')
-      .select('*')
-      .eq('alliance_id', alliance_id)
-      .then(res => setSlots(res.data || []));
-  }, [alliance_id]);
+      .from("alliance_hq_map")
+      .select("*")
+      .eq("alliance_id", allianceId)
+      .then(({ data }) => {
+        setSlots(data || []);
+      });
+  }, [allianceId]);
 
   return (
     <div style={{ padding: 24 }}>
       <h1>Alliance HQ Map</h1>
+
       <div className="hq-grid">
-        {slots.map(s => (
+        {slots.map((s) => (
           <div key={s.id} className="hq-slot">
-            <strong>{s.label || 'Empty'}</strong>
-            <div>X:{s.slot_x} Y:{s.slot_y}</div>
+            <strong>{s.label || "Empty"}</strong>
+            <div>
+              X:{s.slot_x} Y:{s.slot_y}
+            </div>
           </div>
         ))}
       </div>
