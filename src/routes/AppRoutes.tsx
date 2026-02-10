@@ -14,11 +14,15 @@ import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
+      {/* PUBLIC */}
       <Route path="/" element={<Login />} />
       <Route path="/dashboard" element={<AuthCallback />} />
+      <Route path="/owner/select" element={<OwnerDashboardSelect />} />
 
-      {/* Alliance Dashboard */}
+      {/* OWNER */}
+      <Route path="/owner" element={<OwnerDashboard />} />
+
+      {/* ALLIANCE */}
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
         <Route
           index
@@ -48,10 +52,8 @@ export default function AppRoutes() {
         />
       </Route>
 
-      {/* Owner / State */}
+      {/* STATE */}
       <Route path="/state/1" element={<StateDashboard />} />
-      <Route path="/owner" element={<OwnerDashboard />} />
-      <Route path="/owner/select" element={<OwnerDashboardSelect />} />
     </Routes>
   );
 }
