@@ -1,49 +1,45 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabaseClient";
-
-const OWNER_ID = "775966588200943616";
 
 export default function OwnerDashboardSelect() {
   const navigate = useNavigate();
-  const [alliances, setAlliances] = useState<any[]>([]);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user || data.user.id !== OWNER_ID) return;
-
-      const { data: rows } = await supabase
-        .from("alliances")
-        .select("id, short_code")
-        .order("short_code");
-
-      setAlliances(rows || []);
-    });
-  }, []);
 
   return (
-    <div className="zombie-card">
+    <div className="zombie-card" style={{ maxWidth: 420, margin: "0 auto" }}>
       <h2>🧟 Select Dashboard</h2>
 
       <button
         className="zombie-btn"
+        style={{ width: "100%", marginTop: 12 }}
         onClick={() => navigate("/state/1")}
       >
         State 789 Dashboard
       </button>
 
-      <div style={{ marginTop: 20 }}>
-        {alliances.map(a => (
-          <button
-            key={a.id}
-            className="zombie-btn"
-            style={{ display: "block", marginTop: 10 }}
-            onClick={() => navigate(`/dashboard/${a.short_code}`)}
-          >
-            {a.short_code} Alliance
-          </button>
-        ))}
-      </div>
+      <hr className="zombie-divider" />
+
+      <button
+        className="zombie-btn"
+        style={{ width: "100%", marginTop: 8 }}
+        onClick={() => navigate("/dashboard/SDS")}
+      >
+        SDS Alliance
+      </button>
+
+      <button
+        className="zombie-btn"
+        style={{ width: "100%", marginTop: 8 }}
+        onClick={() => navigate("/dashboard/WOC")}
+      >
+        WOC Alliance
+      </button>
+
+      <button
+        className="zombie-btn"
+        style={{ width: "100%", marginTop: 8 }}
+        onClick={() => navigate("/dashboard/OZ")}
+      >
+        OZ Alliance
+      </button>
     </div>
   );
 }
