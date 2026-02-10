@@ -16,7 +16,6 @@ export default function AppRoutes() {
       <LogoutButton />
 
       <Routes>
-        <!-- ROOT LOGIN ENTRY -->
         <Route path="/" element={<Login />} />
 
         <Route element={<DashboardLayout />}>
