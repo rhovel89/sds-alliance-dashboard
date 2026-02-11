@@ -6,84 +6,66 @@ import { useHQPermissions } from "../../hooks/useHQPermissions";
 export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = alliance_id?.toUpperCase() || "";
-  const [slots, setSlots] = useState<any[]>([]);
   const { canEdit } = useHQPermissions(upperAlliance);
+
+  const [slots, setSlots] = useState<any[]>([]);
 
   // Load slots
   useEffect(() => {
     if (!upperAlliance) return;
 
-    supabase
-      .from("alliance_hq_map")
-      .select("*")
-      .eq("alliance_id", upperAlliance)
-      .then(({ data }) => setSlots(data || []));
+    loadSlots();
   }, [upperAlliance]);
 
-  // Add slot
-  async function addSlot() {
+  async function loadSlots() {
     const { data } = await supabase
       .from("alliance_hq_map")
-      .insert([
+      .select("*")
+      .eq("alliance_id", upperAlliance);
+
+    setSlots(data || []);
+  }
+
+  // REALTIME LISTENER
+  useEffect(() => {
+    if (!upperAlliance) return;
+
+    const channel = supabase
+      .channel("hq-map-realtime")
+      .on(
+        "postgres_changes",
         {
-          alliance_id: upperAlliance,
-          slot_x: 100,
-          slot_y: 100,
-          label: "New HQ"
+          event: "*",
+          schema: "public",
+          table: "alliance_hq_map",
+          filter: `alliance_id=eq.${upperAlliance}`,
+        },
+        () => {
+          loadSlots();
         }
-      ])
-      .select();
+      )
+      .subscribe();
 
-    if (data) {
-      setSlots(prev => [...prev, ...data]);
-    }
-  }
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [upperAlliance]);
 
-  // Update label
-  async function updateLabel(id: string, newLabel: string) {
-    await supabase
-      .from("alliance_hq_map")
-      .update({ label: newLabel })
-      .eq("id", id);
-
-    setSlots(prev =>
-      prev.map(s => (s.id === id ? { ...s, label: newLabel } : s))
-    );
-  }
-
-  // ✅ FIXED DELETE
   async function deleteSlot(id: string) {
-    const { error } = await supabase
+    if (!canEdit) return;
+
+    await supabase
       .from("alliance_hq_map")
       .delete()
       .eq("id", id);
-
-    if (error) {
-      console.error("Delete failed:", error);
-      return;
-    }
-
-    // Remove locally
-    setSlots(prev => prev.filter(s => s.id !== id));
   }
 
   return (
     <div style={{ padding: 24 }}>
       <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {upperAlliance}</h1>
 
-      {canEdit && (
-        <button
-          onClick={addSlot}
-          style={{
-            marginBottom: 16,
-            padding: "6px 12px",
-            background: "lime",
-            color: "black",
-            border: "none"
-          }}
-        >
-          + Add HQ Slot
-        </button>
+      {slots.length === 0 && (
+        <p style={{ opacity: 0.6 }}>No HQ slots found</p>
       )}
 
       <div
@@ -91,54 +73,26 @@ export default function AllianceHQMap() {
           position: "relative",
           width: 800,
           height: 800,
-          border: "1px solid #444"
+          border: "1px solid #444",
         }}
       >
-        {slots.map(slot => (
+        {slots.map((slot) => (
           <div
             key={slot.id}
             style={{
               position: "absolute",
               left: slot.slot_x,
               top: slot.slot_y,
-              padding: 8,
-              background: "#111",
+              padding: 6,
+              background: "#222",
               border: "1px solid lime",
               color: "lime",
-              fontSize: 12
+              fontSize: 12,
+              cursor: canEdit ? "pointer" : "default",
             }}
+            onDoubleClick={() => deleteSlot(slot.id)}
           >
-            {canEdit ? (
-              <>
-                <input
-                  value={slot.label || ""}
-                  onChange={e =>
-                    updateLabel(slot.id, e.target.value)
-                  }
-                  style={{
-                    background: "black",
-                    color: "lime",
-                    border: "1px solid lime",
-                    marginBottom: 4
-                  }}
-                />
-                <br />
-                <button
-                  onClick={() => deleteSlot(slot.id)}
-                  style={{
-                    background: "red",
-                    color: "white",
-                    border: "none",
-                    padding: "2px 6px",
-                    fontSize: 10
-                  }}
-                >
-                  Delete
-                </button>
-              </>
-            ) : (
-              slot.label || "HQ"
-            )}
+            {slot.label || "HQ"}
           </div>
         ))}
       </div>
