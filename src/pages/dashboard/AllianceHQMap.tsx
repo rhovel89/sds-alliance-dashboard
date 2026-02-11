@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 
 type HQSlot = {
   id: string;
@@ -12,65 +12,48 @@ type HQSlot = {
 export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const [slots, setSlots] = useState<HQSlot[]>([]);
-  const [role, setRole] = useState<string>("member");
-
-  const canEdit = role === "owner" || role === "r4" || role === "r5";
 
   useEffect(() => {
     if (!alliance_id) return;
 
     supabase
-      .from("alliance_members")
-      .select("role")
-      .eq("alliance_id", alliance_id.toUpperCase())
-      .single()
-      .then(({ data }) => {
-        if (data?.role) setRole(data.role.toLowerCase());
-      });
-
-    supabase
-      .from("alliance_hq_map")
-      .select("*")
-      .eq("alliance_id", alliance_id.toUpperCase())
-      .then(({ data }) => {
-        setSlots(data || []);
-      });
+      .from('alliance_hq_map')
+      .select('id, slot_x, slot_y, label')
+      .eq('alliance_id', alliance_id.toUpperCase())
+      .then(({ data }) => setSlots(data ?? []));
   }, [alliance_id]);
 
   return (
     <div style={{ padding: 24 }}>
-      <h2>🧟 HQ MAP LOADED FOR ALLIANCE: {alliance_id}</h2>
-
-      {!canEdit && (
-        <p style={{ opacity: 0.6 }}>
-          View only — R4 / R5 / Owner required to edit
-        </p>
-      )}
+      <h2>🧟 HQ MAP LOADED FOR ALLIANCE: {alliance_id?.toUpperCase()}</h2>
 
       <div
         style={{
-          position: "relative",
-          width: 600,
-          height: 600,
-          border: "2px solid #ff4444",
-          marginTop: 16
+          position: 'relative',
+          width: 1024,
+          height: 1024,
+          border: '2px solid red',
+          marginTop: 24
         }}
       >
         {slots.map(slot => (
           <div
             key={slot.id}
             style={{
-              position: "absolute",
+              position: 'absolute',
               left: slot.slot_x,
               top: slot.slot_y,
-              padding: "6px 10px",
-              background: canEdit ? "#ff4444" : "#888",
-              color: "#fff",
-              borderRadius: 4,
-              cursor: canEdit ? "move" : "default"
+              background: '#7CFF00',
+              color: '#000',
+              padding: '6px 10px',
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 700
             }}
           >
-            {slot.label ?? "Empty"}
+            {slot.label ?? 'EMPTY'}
+            <br />
+            X:{slot.slot_x} Y:{slot.slot_y}
           </div>
         ))}
       </div>
