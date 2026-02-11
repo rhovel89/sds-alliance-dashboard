@@ -32,7 +32,11 @@ export default function AllianceHQMap() {
     return <div style={{ padding: 24 }}>Loading HQ Map…</div>;
   }
 
-  return (
+  if (!allianceId) {
+  return <div style={{ padding: 24 }}>Checking alliance context…</div>;
+}
+
+return (
     <div style={{ padding: 24 }}>
       <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {alliance_id?.toUpperCase()}</h1>
 
@@ -70,3 +74,4 @@ export default function AllianceHQMap() {
     </div>
   );
 }
+
