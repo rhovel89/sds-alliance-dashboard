@@ -31,8 +31,9 @@ export default function AppRoutes() {
         <Route path="hq-map" element={<AllianceHQMap />} />
         <Route path="permissions" element={<Permissions />} />
         <Route path="events" element={<EventsPage />} />
-      </Route>
-
-    </Routes>
+                <Route path="permissions" element={<PermissionsPage />} />
+        </Route>
+      </Routes>
   );
 }
+
