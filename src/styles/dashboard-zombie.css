@@ -63,3 +63,55 @@
   overflow: auto;
   padding: 24px;
 }
+.hq-map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(rgba(0,255,0,.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,0,.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  box-shadow: inset 0 0 40px rgba(0,255,0,.15);
+}
+
+.hq-slot {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  background: rgba(120,255,120,.15);
+  border: 1px solid rgba(120,255,120,.6);
+  box-shadow: 0 0 12px rgba(120,255,120,.7);
+  font-size: 10px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.hq-slot:hover {
+  box-shadow: 0 0 20px red;
+  transform: scale(1.05);
+}
+
+/* === ZOMBIE POLISH === */
+.dashboard-shell {
+  display: flex;
+  height: 100vh;
+}
+
+.dashboard-main {
+  flex: 1;
+  padding: 24px;
+  overflow: auto;
+}
+
+.zombie-glow {
+  text-shadow: 0 0 8px crimson;
+}
+
+.zombie-blood-drip {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 18px;
+  background: linear-gradient(to bottom, darkred, transparent);
+}
+/* ===================== */
