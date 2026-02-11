@@ -2,18 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
-type Slot = {
-  id: string;
-  alliance_id: string;
-  slot_x: number;
-  slot_y: number;
-  label: string | null;
-};
-
 export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [slots, setSlots] = useState<any[]>([]);
 
   useEffect(() => {
     if (!alliance_id) return;
@@ -22,56 +13,36 @@ export default function AllianceHQMap() {
       .from("alliance_hq_map")
       .select("*")
       .eq("alliance_id", alliance_id.toUpperCase())
-      .then(({ data }) => {
-        setSlots(data || []);
-        setLoading(false);
-      });
+      .then(({ data }) => setSlots(data || []));
   }, [alliance_id]);
 
-  if (loading) {
-    return <div style={{ padding: 24 }}>Loading HQ Map…</div>;
-  }
-
-  if (!allianceId) {
-  return <div style={{ padding: 24 }}>Checking alliance context…</div>;
-}
-
-return (
+  return (
     <div style={{ padding: 24 }}>
       <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {alliance_id?.toUpperCase()}</h1>
 
       {slots.length === 0 && (
-        <p style={{ opacity: 0.6 }}>No HQ slots found.</p>
+        <p style={{ opacity: 0.6 }}>No HQ slots found</p>
       )}
 
-      <div
-        style={{
-          position: "relative",
-          width: 800,
-          height: 600,
-          border: "2px solid #555",
-          background: "#111",
-        }}
-      >
-        {slots.map((s) => (
+      <div style={{ position: "relative", width: 800, height: 800, border: "1px solid #444" }}>
+        {slots.map(slot => (
           <div
-            key={s.id}
+            key={slot.id}
             style={{
               position: "absolute",
-              left: s.slot_x,
-              top: s.slot_y,
-              padding: "6px 8px",
+              left: slot.slot_x,
+              top: slot.slot_y,
+              padding: 6,
               background: "#222",
-              border: "1px solid #0f0",
-              color: "#0f0",
-              fontSize: 12,
+              border: "1px solid lime",
+              color: "lime",
+              fontSize: 12
             }}
           >
-            {s.label ?? "Empty"}
+            {slot.label || "HQ"}
           </div>
         ))}
       </div>
     </div>
   );
 }
-
