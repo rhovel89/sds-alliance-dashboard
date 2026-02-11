@@ -14,13 +14,13 @@ export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const permissions = usePermissions();
 
-  const canEdit =
-    permissions?.role === "owner" ||
-    permissions?.role === "r5" ||
-    permissions?.role === "r4";
-
   const [slots, setSlots] = useState<HQSlot[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const canEdit =
+    permissions?.isOwner ||
+    permissions?.role === "R5" ||
+    permissions?.role === "R4";
 
   useEffect(() => {
     if (!alliance_id) return;
@@ -40,18 +40,19 @@ export default function AllianceHQMap() {
 
     await supabase.from("alliance_hq_map").insert({
       alliance_id: alliance_id.toUpperCase(),
-      slot_x: 0,
-      slot_y: 0,
+      slot_x: 100,
+      slot_y: 100,
       label: "New HQ",
     });
 
-    location.reload();
+    window.location.reload();
   };
 
   const deleteSlot = async (id: string) => {
     if (!canEdit) return;
+
     await supabase.from("alliance_hq_map").delete().eq("id", id);
-    setSlots(slots.filter(s => s.id !== id));
+    window.location.reload();
   };
 
   if (loading) {
@@ -60,16 +61,14 @@ export default function AllianceHQMap() {
 
   return (
     <div style={{ padding: 24 }}>
-      <h1>🧟 HQ MAP — {alliance_id?.toUpperCase()}</h1>
-
-      {!canEdit && (
-        <p style={{ opacity: 0.6 }}>
-          View-only access (Members)
-        </p>
-      )}
+      <h1>🧟 HQ Map — {alliance_id?.toUpperCase()}</h1>
 
       {canEdit && (
-        <button onClick={addSlot} style={{ marginBottom: 12 }}>
+        <button
+          className="zombie-btn"
+          style={{ marginBottom: 16 }}
+          onClick={addSlot}
+        >
           ➕ Add HQ Slot
         </button>
       )}
@@ -80,10 +79,9 @@ export default function AllianceHQMap() {
           width: 600,
           height: 600,
           border: "2px solid #444",
-          background: "#111",
         }}
       >
-        {slots.map(slot => (
+        {slots.map((slot) => (
           <div
             key={slot.id}
             style={{
@@ -91,23 +89,36 @@ export default function AllianceHQMap() {
               left: slot.slot_x,
               top: slot.slot_y,
               padding: "6px 10px",
-              background: "#222",
-              border: "1px solid #666",
+              background: "#111",
+              border: "1px solid #0f0",
               color: "#0f0",
-              cursor: canEdit ? "pointer" : "default",
             }}
           >
-            <strong>{slot.label || "HQ"}</strong>
-            <br />
-            X:{slot.slot_x} Y:{slot.slot_y}
+            {slot.label || "HQ"}
+
             {canEdit && (
-              <div>
-                <button onClick={() => deleteSlot(slot.id)}>🗑️</button>
-              </div>
+              <button
+                style={{
+                  marginLeft: 8,
+                  color: "red",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+                onClick={() => deleteSlot(slot.id)}
+              >
+                ✖
+              </button>
             )}
           </div>
         ))}
       </div>
+
+      {!canEdit && (
+        <p style={{ opacity: 0.6, marginTop: 12 }}>
+          View-only access
+        </p>
+      )}
     </div>
   );
 }
