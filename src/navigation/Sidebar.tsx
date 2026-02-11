@@ -1,80 +1,21 @@
-import { NavLink } from "react-router-dom";
-import { usePermissionContext } from "../contexts/PermissionContext";
-
-const navItemStyle = {
-  padding: "12px 16px",
-  display: "block",
-  textDecoration: "none",
-  color: "#b6ff6b",
-  fontWeight: 500,
-};
-
-const activeStyle = {
-  background: "rgba(50, 90, 0, 0.35)",
-  borderLeft: "4px solid #7CFF00",
-};
+import { NavLink, useParams } from "react-router-dom";
+import "../styles/sidebar.css";
 
 export default function Sidebar() {
-  const { hasPermission } = usePermissionContext();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const base = alliance_id ? `/dashboard/${alliance_id}` : "";
 
   return (
-    <aside
-      style={{
-        width: 260,
-        minHeight: "100vh",
-        background: "rgba(5,5,5,0.95)",
-        borderRight: "1px solid #1f3d00",
-        boxShadow: "0 0 25px rgba(0,255,0,0.15)",
-      }}
-    >
-      <div
-        style={{
-          padding: 20,
-          fontSize: 20,
-          fontWeight: 700,
-          color: "#7CFF00",
-          textAlign: "center",
-          borderBottom: "1px solid #1f3d00",
-        }}
-      >
-        🧟 Alliance Command
-      </div>
+    <aside className="dashboard-sidebar zombie-sidebar">
+      <h2 className="sidebar-title zombie-glow">
+        🧟 {alliance_id?.toUpperCase() ?? "STATE 789"}
+      </h2>
 
-      <nav style={{ marginTop: 10 }}>
-        <NavLink to="/" style={({ isActive }) => isActive ? { ...navItemStyle, ...activeStyle } : navItemStyle}>
-          My Alliance
-        </NavLink>
-
-        {hasPermission("state:view") && (
-          <NavLink to="/state" style={({ isActive }) => isActive ? { ...navItemStyle, ...activeStyle } : navItemStyle}>
-            State Dashboard
-          </NavLink>
-        )}
-
-        {hasPermission("hq:read") && (
-          <NavLink to="/dashboard/hq-map" style={({ isActive }) => isActive ? { ...navItemStyle, ...activeStyle } : navItemStyle}>
-            HQ Map
-          </NavLink>
-        
-        <NavLink to="/dashboard/events">Events</NavLink>
-)}
-
-        {hasPermission("permissions:admin") && (
-          <NavLink to="/owner/permissions" style={({ isActive }) => isActive ? { ...navItemStyle, ...activeStyle } : navItemStyle}>
-            Permissions
-          </NavLink>
-        )}
+      <nav className="sidebar-nav">
+        <NavLink to={base}>My Alliance</NavLink>
+        <NavLink to={`${base}/hq-map`}>HQ Map</NavLink>
+        <NavLink to={`${base}/events`}>Events</NavLink>
       </nav>
     </aside>
   );
 }
-
-
-
-
-
-
-
-
-
-
