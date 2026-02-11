@@ -66,3 +66,12 @@ export default function AppRoutes() {
   );
 }
 
+import Permissions from '../pages/dashboard/Permissions';
+import AllianceHQMap from '../pages/dashboard/AllianceHQMap';
+
+/* PERMISSIONS_ROUTE */
+<Route path=":alliance_id">
+  <Route path="hq-map" element={<AllianceHQMap />} />
+  <Route path="permissions" element={<Permissions />} />
+</Route>
+/* END_PERMISSIONS_ROUTE */
