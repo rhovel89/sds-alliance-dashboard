@@ -9,6 +9,9 @@ export default function AllianceHQMap() {
   const { canEdit } = useHQPermissions(upperAlliance);
 
   const [slots, setSlots] = useState<any[]>([]);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [name, setName] = useState("");
+  const [coords, setCoords] = useState("");
 
   useEffect(() => {
     if (!upperAlliance) return;
@@ -20,64 +23,148 @@ export default function AllianceHQMap() {
       .then(({ data }) => setSlots(data || []));
   }, [upperAlliance]);
 
-  const moveSlot = async (id: string, x: number, y: number) => {
+  const openEditor = (slot: any) => {
     if (!canEdit) return;
+    setEditing(slot);
+    setName(slot.label || "");
+    setCoords(slot.coords || "");
+  };
+
+  const saveSlot = async () => {
+    if (!editing) return;
 
     await supabase
       .from("alliance_hq_map")
-      .update({ slot_x: x, slot_y: y })
-      .eq("id", id);
+      .update({ label: name, coords })
+      .eq("id", editing.id);
 
     setSlots(prev =>
-      prev.map(s => (s.id === id ? { ...s, slot_x: x, slot_y: y } : s))
+      prev.map(s =>
+        s.id === editing.id ? { ...s, label: name, coords } : s
+      )
     );
+
+    setEditing(null);
+  };
+
+  const deleteSlot = async () => {
+    if (!editing) return;
+
+    await supabase
+      .from("alliance_hq_map")
+      .delete()
+      .eq("id", editing.id);
+
+    setSlots(prev => prev.filter(s => s.id !== editing.id));
+    setEditing(null);
+  };
+
+  const getCell = (index: number) => {
+    return slots.find(s => s.slot_number === index);
   };
 
   return (
     <div style={{ padding: 24 }}>
-      <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {upperAlliance}</h1>
+      <h1 style={{ marginBottom: 20 }}>
+        HQ Map — {upperAlliance}
+      </h1>
 
-      {slots.length === 0 && (
-        <p style={{ opacity: 0.6 }}>No HQ slots found</p>
-      )}
-
+      {/* GRID */}
       <div
         style={{
-          position: "relative",
-          width: 800,
-          height: 800,
-          border: "1px solid #444"
+          display: "grid",
+          gridTemplateColumns: "repeat(6, 1fr)",
+          gap: 16,
+          maxWidth: 1100
         }}
       >
-        {slots.map(slot => (
-          <div
-            key={slot.id}
-            draggable={canEdit}
-            onDragEnd={e => {
-              const rect = (e.target as HTMLElement).parentElement!.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const y = e.clientY - rect.top;
-              moveSlot(slot.id, x, y);
-            }}
-            style={{
-              position: "absolute",
-              left: slot.slot_x,
-              top: slot.slot_y,
-              padding: 3,
-              background: "#111",
-              border: "1px solid lime",
-              color: "lime",
-              fontSize: 10,
-              borderRadius: 4,
-              minWidth: 40,
-              textAlign: "center",
-              cursor: canEdit ? "grab" : "default"
-            }}
-          >
-            {slot.label || "HQ"}
-          </div>
-        ))}
+        {Array.from({ length: 36 }).map((_, i) => {
+          const slot = getCell(i + 1);
+
+          return (
+            <div
+              key={i}
+              onClick={() => slot && openEditor(slot)}
+              style={{
+                border: "1px solid #2a2a2a",
+                borderRadius: 12,
+                padding: 14,
+                background: "#111",
+                minHeight: 90,
+                cursor: canEdit ? "pointer" : "default"
+              }}
+            >
+              <div style={{ fontWeight: 600 }}>
+                #{i + 1}
+              </div>
+
+              {slot ? (
+                <>
+                  <div style={{ marginTop: 6 }}>
+                    {slot.label || "Unnamed"}
+                  </div>
+                  <div style={{ opacity: 0.6, fontSize: 12 }}>
+                    {slot.coords || "(no coords)"}
+                  </div>
+                </>
+              ) : (
+                <div style={{ opacity: 0.4, marginTop: 8 }}>
+                  (empty)
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
+
+      {/* EDIT PANEL */}
+      {editing && (
+        <div
+          style={{
+            marginTop: 30,
+            padding: 20,
+            borderRadius: 12,
+            background: "#151515",
+            maxWidth: 1100
+          }}
+        >
+          <h3>Edit Cell #{editing.slot_number}</h3>
+
+          <div style={{ display: "flex", gap: 16, marginTop: 12 }}>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="HQ Name"
+              style={{
+                flex: 1,
+                padding: 10,
+                borderRadius: 8,
+                border: "1px solid #333",
+                background: "#1a1a1a"
+              }}
+            />
+
+            <input
+              value={coords}
+              onChange={e => setCoords(e.target.value)}
+              placeholder="e.g. (12,34)"
+              style={{
+                flex: 1,
+                padding: 10,
+                borderRadius: 8,
+                border: "1px solid #333",
+                background: "#1a1a1a"
+              }}
+            />
+          </div>
+
+          <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
+            <button onClick={saveSlot}>Save</button>
+            <button onClick={deleteSlot}>Delete</button>
+            <button onClick={() => setEditing(null)}>Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
