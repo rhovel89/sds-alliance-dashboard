@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "../../lib/supabase";
 
 type HQSlot = {
   id: string;
-  alliance_id: string;
   slot_x: number;
   slot_y: number;
   label: string | null;
@@ -13,31 +12,50 @@ type HQSlot = {
 export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const [slots, setSlots] = useState<HQSlot[]>([]);
-  const alliance = alliance_id?.toUpperCase();
+  const [role, setRole] = useState<string>("member");
+
+  const canEdit = role === "owner" || role === "r4" || role === "r5";
 
   useEffect(() => {
-    if (!alliance) return;
+    if (!alliance_id) return;
+
+    supabase
+      .from("alliance_members")
+      .select("role")
+      .eq("alliance_id", alliance_id.toUpperCase())
+      .single()
+      .then(({ data }) => {
+        if (data?.role) setRole(data.role.toLowerCase());
+      });
 
     supabase
       .from("alliance_hq_map")
       .select("*")
-      .eq("alliance_id", alliance)
-      .then(({ data }) => setSlots(data || []));
-  }, [alliance]);
+      .eq("alliance_id", alliance_id.toUpperCase())
+      .then(({ data }) => {
+        setSlots(data || []);
+      });
+  }, [alliance_id]);
 
   return (
     <div style={{ padding: 24 }}>
-      <h2>🧟 HQ MAP LOADED FOR ALLIANCE: {alliance}</h2>
+      <h2>🧟 HQ MAP LOADED FOR ALLIANCE: {alliance_id}</h2>
 
-      {slots.length === 0 && <p>No HQ slots found.</p>}
+      {!canEdit && (
+        <p style={{ opacity: 0.6 }}>
+          View only — R4 / R5 / Owner required to edit
+        </p>
+      )}
 
-      <div style={{
-        position: "relative",
-        width: 1024,
-        height: 1024,
-        border: "1px solid #39ff14",
-        marginTop: 16
-      }}>
+      <div
+        style={{
+          position: "relative",
+          width: 600,
+          height: 600,
+          border: "2px solid #ff4444",
+          marginTop: 16
+        }}
+      >
         {slots.map(slot => (
           <div
             key={slot.id}
@@ -45,15 +63,14 @@ export default function AllianceHQMap() {
               position: "absolute",
               left: slot.slot_x,
               top: slot.slot_y,
-              background: "#39ff14",
-              color: "#000",
-              padding: "6px 8px",
-              borderRadius: 6,
-              fontSize: 12
+              padding: "6px 10px",
+              background: canEdit ? "#ff4444" : "#888",
+              color: "#fff",
+              borderRadius: 4,
+              cursor: canEdit ? "move" : "default"
             }}
           >
-            <strong>{slot.label || "Empty"}</strong><br />
-            X:{slot.slot_x} Y:{slot.slot_y}
+            {slot.label ?? "Empty"}
           </div>
         ))}
       </div>
