@@ -20,64 +20,22 @@ export default function AllianceHQMap() {
       .then(({ data }) => setSlots(data || []));
   }, [upperAlliance]);
 
-  const addSlot = async () => {
-    if (!canEdit) return;
-
-    const { data, error } = await supabase
-      .from("alliance_hq_map")
-      .insert([
-        {
-          alliance_id: upperAlliance,
-          slot_x: 100,
-          slot_y: 100,
-          label: "New HQ"
-        }
-      ])
-      .select()
-      .single();
-
-    if (!error && data) {
-      setSlots(prev => [...prev, data]);
-    }
-  };
-
-  const moveSlot = async (id: string, x: number, y: number) => {
+  const updateSlot = async (id: string, updates: any) => {
     if (!canEdit) return;
 
     await supabase
       .from("alliance_hq_map")
-      .update({ slot_x: x, slot_y: y })
+      .update(updates)
       .eq("id", id);
 
     setSlots(prev =>
-      prev.map(s => (s.id === id ? { ...s, slot_x: x, slot_y: y } : s))
+      prev.map(s => (s.id === id ? { ...s, ...updates } : s))
     );
-  };
-
-  const deleteSlot = async (id: string) => {
-    if (!canEdit) return;
-
-    await supabase
-      .from("alliance_hq_map")
-      .delete()
-      .eq("id", id);
-
-    setSlots(prev => prev.filter(s => s.id !== id));
   };
 
   return (
     <div style={{ padding: 24 }}>
       <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {upperAlliance}</h1>
-
-      {canEdit && (
-        <button onClick={addSlot} style={{ marginBottom: 12 }}>
-          ➕ Add HQ Slot
-        </button>
-      )}
-
-      {slots.length === 0 && (
-        <p style={{ opacity: 0.6 }}>No HQ slots found</p>
-      )}
 
       <div
         style={{
@@ -90,28 +48,58 @@ export default function AllianceHQMap() {
         {slots.map(slot => (
           <div
             key={slot.id}
-            draggable={canEdit}
-            onDoubleClick={() => deleteSlot(slot.id)}
-            onDragEnd={e => {
-              const rect = (e.target as HTMLElement)
-                .parentElement!.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const y = e.clientY - rect.top;
-              moveSlot(slot.id, x, y);
-            }}
             style={{
               position: "absolute",
               left: slot.slot_x,
               top: slot.slot_y,
               padding: 4,
-              background: "#111",
+              background: "#222",
               border: "1px solid lime",
               color: "lime",
               fontSize: 11,
-              cursor: canEdit ? "grab" : "default"
+              minWidth: 60
             }}
           >
-            {slot.label || "HQ"}
+            {canEdit ? (
+              <>
+                <input
+                  value={slot.label || ""}
+                  onChange={e =>
+                    updateSlot(slot.id, { label: e.target.value })
+                  }
+                  style={{
+                    width: "100%",
+                    fontSize: 11,
+                    background: "#111",
+                    color: "lime",
+                    border: "1px solid #333",
+                    marginBottom: 4
+                  }}
+                />
+
+                <div style={{ display: "flex", gap: 4 }}>
+                  <input
+                    type="number"
+                    value={slot.slot_x}
+                    onChange={e =>
+                      updateSlot(slot.id, { slot_x: Number(e.target.value) })
+                    }
+                    style={{ width: 50, fontSize: 10 }}
+                  />
+
+                  <input
+                    type="number"
+                    value={slot.slot_y}
+                    onChange={e =>
+                      updateSlot(slot.id, { slot_y: Number(e.target.value) })
+                    }
+                    style={{ width: 50, fontSize: 10 }}
+                  />
+                </div>
+              </>
+            ) : (
+              <div>{slot.label || "HQ"}</div>
+            )}
           </div>
         ))}
       </div>
