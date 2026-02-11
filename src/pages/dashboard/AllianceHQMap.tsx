@@ -20,32 +20,49 @@ export default function AllianceHQMap() {
       .then(({ data }) => setSlots(data || []));
   }, [upperAlliance]);
 
-  // ✅ ADD SLOT (REAL DATABASE INSERT)
   const addSlot = async () => {
     if (!canEdit) return;
-
-    const nextCellNumber = slots.length + 1;
 
     const { data, error } = await supabase
       .from("alliance_hq_map")
       .insert([
         {
           alliance_id: upperAlliance,
-          label: "New HQ",
           slot_x: 100,
           slot_y: 100,
-          cell_number: nextCellNumber
+          label: "New HQ"
         }
       ])
       .select()
       .single();
 
-    if (error) {
-      console.error("Add slot error:", error);
-      return;
+    if (!error && data) {
+      setSlots(prev => [...prev, data]);
     }
+  };
 
-    setSlots(prev => [...prev, data]);
+  const moveSlot = async (id: string, x: number, y: number) => {
+    if (!canEdit) return;
+
+    await supabase
+      .from("alliance_hq_map")
+      .update({ slot_x: x, slot_y: y })
+      .eq("id", id);
+
+    setSlots(prev =>
+      prev.map(s => (s.id === id ? { ...s, slot_x: x, slot_y: y } : s))
+    );
+  };
+
+  const deleteSlot = async (id: string) => {
+    if (!canEdit) return;
+
+    await supabase
+      .from("alliance_hq_map")
+      .delete()
+      .eq("id", id);
+
+    setSlots(prev => prev.filter(s => s.id !== id));
   };
 
   return (
@@ -53,18 +70,13 @@ export default function AllianceHQMap() {
       <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {upperAlliance}</h1>
 
       {canEdit && (
-        <button
-          onClick={addSlot}
-          style={{
-            marginBottom: 12,
-            padding: "6px 12px",
-            background: "lime",
-            border: "none",
-            cursor: "pointer"
-          }}
-        >
+        <button onClick={addSlot} style={{ marginBottom: 12 }}>
           ➕ Add HQ Slot
         </button>
+      )}
+
+      {slots.length === 0 && (
+        <p style={{ opacity: 0.6 }}>No HQ slots found</p>
       )}
 
       <div
@@ -78,6 +90,15 @@ export default function AllianceHQMap() {
         {slots.map(slot => (
           <div
             key={slot.id}
+            draggable={canEdit}
+            onDoubleClick={() => deleteSlot(slot.id)}
+            onDragEnd={e => {
+              const rect = (e.target as HTMLElement)
+                .parentElement!.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              moveSlot(slot.id, x, y);
+            }}
             style={{
               position: "absolute",
               left: slot.slot_x,
@@ -86,10 +107,11 @@ export default function AllianceHQMap() {
               background: "#111",
               border: "1px solid lime",
               color: "lime",
-              fontSize: 10
+              fontSize: 11,
+              cursor: canEdit ? "grab" : "default"
             }}
           >
-            {slot.label}
+            {slot.label || "HQ"}
           </div>
         ))}
       </div>
