@@ -1,18 +1,17 @@
 import { Routes, Route } from "react-router-dom";
+import DashboardLayout from "../layouts/DashboardLayout";
+import RequireAlliance from "../components/RequireAlliance";
 
 import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
-import PermissionsPage from "../pages/dashboard/PermissionsPage";
 import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
 
 import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
-
-import DashboardLayout from "../layouts/DashboardLayout";
-import RequireAlliance from "../components/RequireAlliance";
+import PermissionsPage from "../pages/dashboard/Permissions";
 
 export default function AppRoutes() {
   return (
@@ -46,7 +45,7 @@ export default function AppRoutes() {
         />
 
         <Route
-          
+          path="permissions"
           element={
             <RequireAlliance>
               <PermissionsPage />
@@ -64,7 +63,7 @@ export default function AppRoutes() {
         />
       </Route>
 
-      {/* Other */}
+      {/* State */}
       <Route path="/state/1" element={<StateDashboard />} />
     </Routes>
   );
