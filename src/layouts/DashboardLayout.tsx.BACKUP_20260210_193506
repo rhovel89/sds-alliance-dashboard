@@ -7,8 +7,10 @@ export default function DashboardLayout() {
 
   return (
     <div className="dashboard-shell">
-      <aside className="dashboard-sidebar zombie-animated">
-        <h2 className="sidebar-title">
+      <div className="zombie-blood-drip"></div>
+
+      <aside className="dashboard-sidebar zombie-animated zombie-sidebar">
+        <h2 className="sidebar-title zombie-glow">
           🧟 {alliance_id?.toUpperCase()}
         </h2>
 
