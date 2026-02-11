@@ -25,7 +25,7 @@ const MOCK_USERS: UserRow[] = [
 ];
 
 export default function Permissions() {
-  const { activeAlliance } = useAlliance();
+  const allianceCtx = useAlliance?.(); const activeAlliance = allianceCtx?.activeAlliance;
   const [users, setUsers] = useState<UserRow[]>(MOCK_USERS);
 
   function updateRole(userId: string, role: Role) {
@@ -34,7 +34,7 @@ export default function Permissions() {
     );
   }
 
-  return (
+  if (!activeAlliance) { return <div className="zombie-card">No alliance context</div>; } return (
     <div className='page'>
       <h1>Permissions</h1>
 
