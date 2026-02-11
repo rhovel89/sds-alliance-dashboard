@@ -1,0 +1,22 @@
+import { useParams } from "react-router-dom";
+import { supabase } from "./supabaseClient";
+
+export async function logAllianceActivity(args: {
+  alliance_id: string;
+  actionType: string;
+  actionLabel: string;
+  metadata?: any;
+}) {
+  const { alliance_id, actionType, actionLabel, metadata } = args;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase.from("alliance_activity_log").insert({
+    alliance_id: alliance_id,
+    actor_user_id: user.id,
+    action_type: actionType,
+    action_label: actionLabel,
+    metadata: metadata ?? null
+  });
+}
