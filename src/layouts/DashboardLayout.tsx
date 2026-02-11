@@ -8,7 +8,7 @@ export default function DashboardLayout() {
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar zombie-animated">
-        <h2 className="sidebar-title">
+        <h2 className="sidebar-title zombie-glow">
           🧟 {alliance_id?.toUpperCase()}
         </h2>
 
