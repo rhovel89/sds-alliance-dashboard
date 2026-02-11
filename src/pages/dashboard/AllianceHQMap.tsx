@@ -10,55 +10,28 @@ export default function AllianceHQMap() {
 
   const [slots, setSlots] = useState<any[]>([]);
 
-  // Load slots
   useEffect(() => {
     if (!upperAlliance) return;
 
-    loadSlots();
-  }, [upperAlliance]);
-
-  async function loadSlots() {
-    const { data } = await supabase
+    supabase
       .from("alliance_hq_map")
       .select("*")
-      .eq("alliance_id", upperAlliance);
-
-    setSlots(data || []);
-  }
-
-  // REALTIME LISTENER
-  useEffect(() => {
-    if (!upperAlliance) return;
-
-    const channel = supabase
-      .channel("hq-map-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "alliance_hq_map",
-          filter: `alliance_id=eq.${upperAlliance}`,
-        },
-        () => {
-          loadSlots();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      .eq("alliance_id", upperAlliance)
+      .then(({ data }) => setSlots(data || []));
   }, [upperAlliance]);
 
-  async function deleteSlot(id: string) {
+  const moveSlot = async (id: string, x: number, y: number) => {
     if (!canEdit) return;
 
     await supabase
       .from("alliance_hq_map")
-      .delete()
+      .update({ slot_x: x, slot_y: y })
       .eq("id", id);
-  }
+
+    setSlots(prev =>
+      prev.map(s => (s.id === id ? { ...s, slot_x: x, slot_y: y } : s))
+    );
+  };
 
   return (
     <div style={{ padding: 24 }}>
@@ -73,12 +46,19 @@ export default function AllianceHQMap() {
           position: "relative",
           width: 800,
           height: 800,
-          border: "1px solid #444",
+          border: "1px solid #444"
         }}
       >
-        {slots.map((slot) => (
+        {slots.map(slot => (
           <div
             key={slot.id}
+            draggable={canEdit}
+            onDragEnd={e => {
+              const rect = (e.target as HTMLElement).parentElement!.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              moveSlot(slot.id, x, y);
+            }}
             style={{
               position: "absolute",
               left: slot.slot_x,
@@ -88,9 +68,8 @@ export default function AllianceHQMap() {
               border: "1px solid lime",
               color: "lime",
               fontSize: 12,
-              cursor: canEdit ? "pointer" : "default",
+              cursor: canEdit ? "grab" : "default"
             }}
-            onDoubleClick={() => deleteSlot(slot.id)}
           >
             {slot.label || "HQ"}
           </div>
