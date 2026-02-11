@@ -1,35 +1,22 @@
 import { Routes, Route } from "react-router-dom";
-
-import Login from "../pages/Login";
-import AuthCallback from "../pages/AuthCallback";
-
 import DashboardLayout from "../layouts/DashboardLayout";
 import RequireAlliance from "../components/RequireAlliance";
 
+import Login from "../pages/Login";
+import AuthCallback from "../pages/AuthCallback";
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
-import Permissions from "../pages/Permissions";
-import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
-
-import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
-import OwnerDashboard from "../pages/OwnerDashboard";
 import StateDashboard from "../pages/StateDashboard";
+import OwnerDashboard from "../pages/OwnerDashboard";
+import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
+import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* PUBLIC */}
       <Route path="/" element={<Login />} />
       <Route path="/dashboard" element={<AuthCallback />} />
 
-      {/* OWNER */}
-      <Route path="/owner/select" element={<OwnerDashboardSelect />} />
-      <Route path="/owner" element={<OwnerDashboard />} />
-
-      {/* STATE */}
-      <Route path="/state/1" element={<StateDashboard />} />
-
-      {/* ALLIANCE DASHBOARD */}
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
         <Route
           index
@@ -50,15 +37,6 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="permissions"
-          element={
-            <RequireAlliance>
-              <Permissions />
-            </RequireAlliance>
-          }
-        />
-
-        <Route
           path="events"
           element={
             <RequireAlliance>
@@ -67,6 +45,10 @@ export default function AppRoutes() {
           }
         />
       </Route>
+
+      <Route path="/state/1" element={<StateDashboard />} />
+      <Route path="/owner" element={<OwnerDashboard />} />
+      <Route path="/owner/select" element={<OwnerDashboardSelect />} />
     </Routes>
   );
 }

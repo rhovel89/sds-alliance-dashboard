@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
 import { useParams } from "react-router-dom";
-import { usePermissions } from "../../hooks/usePermissions";
+import { supabase } from "../../lib/supabaseClient";
 
-type HQSlot = {
+type Slot = {
   id: string;
+  alliance_id: string;
   slot_x: number;
   slot_y: number;
   label: string | null;
@@ -12,15 +12,8 @@ type HQSlot = {
 
 export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
-  const permissions = usePermissions();
-
-  const [slots, setSlots] = useState<HQSlot[]>([]);
+  const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const canEdit =
-    permissions?.isOwner ||
-    permissions?.role === "R5" ||
-    permissions?.role === "R4";
 
   useEffect(() => {
     if (!alliance_id) return;
@@ -35,90 +28,45 @@ export default function AllianceHQMap() {
       });
   }, [alliance_id]);
 
-  const addSlot = async () => {
-    if (!canEdit || !alliance_id) return;
-
-    await supabase.from("alliance_hq_map").insert({
-      alliance_id: alliance_id.toUpperCase(),
-      slot_x: 100,
-      slot_y: 100,
-      label: "New HQ",
-    });
-
-    window.location.reload();
-  };
-
-  const deleteSlot = async (id: string) => {
-    if (!canEdit) return;
-
-    await supabase.from("alliance_hq_map").delete().eq("id", id);
-    window.location.reload();
-  };
-
   if (loading) {
     return <div style={{ padding: 24 }}>Loading HQ Map…</div>;
   }
 
   return (
     <div style={{ padding: 24 }}>
-      <h1>🧟 HQ Map — {alliance_id?.toUpperCase()}</h1>
+      <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {alliance_id?.toUpperCase()}</h1>
 
-      {canEdit && (
-        <button
-          className="zombie-btn"
-          style={{ marginBottom: 16 }}
-          onClick={addSlot}
-        >
-          ➕ Add HQ Slot
-        </button>
+      {slots.length === 0 && (
+        <p style={{ opacity: 0.6 }}>No HQ slots found.</p>
       )}
 
       <div
         style={{
           position: "relative",
-          width: 600,
+          width: 800,
           height: 600,
-          border: "2px solid #444",
+          border: "2px solid #555",
+          background: "#111",
         }}
       >
-        {slots.map((slot) => (
+        {slots.map((s) => (
           <div
-            key={slot.id}
+            key={s.id}
             style={{
               position: "absolute",
-              left: slot.slot_x,
-              top: slot.slot_y,
-              padding: "6px 10px",
-              background: "#111",
+              left: s.slot_x,
+              top: s.slot_y,
+              padding: "6px 8px",
+              background: "#222",
               border: "1px solid #0f0",
               color: "#0f0",
+              fontSize: 12,
             }}
           >
-            {slot.label || "HQ"}
-
-            {canEdit && (
-              <button
-                style={{
-                  marginLeft: 8,
-                  color: "red",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-                onClick={() => deleteSlot(slot.id)}
-              >
-                ✖
-              </button>
-            )}
+            {s.label ?? "Empty"}
           </div>
         ))}
       </div>
-
-      {!canEdit && (
-        <p style={{ opacity: 0.6, marginTop: 12 }}>
-          View-only access
-        </p>
-      )}
     </div>
   );
 }
