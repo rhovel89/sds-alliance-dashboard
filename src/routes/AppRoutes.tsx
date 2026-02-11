@@ -75,3 +75,4 @@ import AllianceHQMap from '../pages/dashboard/AllianceHQMap';
   <Route path="permissions" element={<Permissions />} />
 </Route>
 /* END_PERMISSIONS_ROUTE */
+
