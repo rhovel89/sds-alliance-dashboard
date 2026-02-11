@@ -1,27 +1,31 @@
-import { Outlet, NavLink, useParams } from "react-router-dom";
-import "../styles/dashboard-zombie.css";
+import { Outlet } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
 
 export default function DashboardLayout() {
-  const { alliance_id } = useParams<{ alliance_id: string }>();
-  const base = alliance_id ? `/dashboard/${alliance_id}` : "";
-
   return (
-    <div className="dashboard-shell">
-      <aside className="dashboard-sidebar zombie-animated">
-        <h2 className="sidebar-title zombie-glow">
-          🧟 {alliance_id?.toUpperCase()}
-        </h2>
+    <div style={{
+      display: "flex",
+      width: "100vw",
+      height: "100vh",
+      overflow: "hidden",
+    }}>
+      {/* SIDEBAR */}
+      <div style={{
+        width: "240px",
+        minWidth: "240px",
+        borderRight: "1px solid #0f0",
+      }}>
+        <Sidebar />
+      </div>
 
-        <nav className="sidebar-nav">
-          <NavLink to={base}>My Alliance</NavLink>
-          <NavLink to={`${base}/hq-map`}>HQ Layout</NavLink>
-          <NavLink to={`${base}/events`}>Events</NavLink>
-        </nav>
-      </aside>
-
-      <main className="dashboard-main">
+      {/* MAIN CONTENT */}
+      <div style={{
+        flex: 1,
+        position: "relative",
+        overflow: "auto",
+      }}>
         <Outlet />
-      </main>
+      </div>
     </div>
   );
 }
