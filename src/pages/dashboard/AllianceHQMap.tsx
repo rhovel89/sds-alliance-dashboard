@@ -9,7 +9,10 @@ export default function AllianceHQMap() {
   const { canEdit } = useHQPermissions(upperAlliance);
 
   const [slots, setSlots] = useState<any[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
 
+  // Load slots
   useEffect(() => {
     if (!upperAlliance) return;
 
@@ -18,6 +21,29 @@ export default function AllianceHQMap() {
       .select("*")
       .eq("alliance_id", upperAlliance)
       .then(({ data }) => setSlots(data || []));
+
+    const channel = supabase
+      .channel("hq-map-" + upperAlliance)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "alliance_hq_map", filter: `alliance_id=eq.${upperAlliance}` },
+        payload => {
+          if (payload.eventType === "INSERT") {
+            setSlots(prev => [...prev, payload.new]);
+          }
+          if (payload.eventType === "UPDATE") {
+            setSlots(prev => prev.map(s => s.id === payload.new.id ? payload.new : s));
+          }
+          if (payload.eventType === "DELETE") {
+            setSlots(prev => prev.filter(s => s.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [upperAlliance]);
 
   const moveSlot = async (id: string, x: number, y: number) => {
@@ -27,19 +53,42 @@ export default function AllianceHQMap() {
       .from("alliance_hq_map")
       .update({ slot_x: x, slot_y: y })
       .eq("id", id);
+  };
 
-    setSlots(prev =>
-      prev.map(s => (s.id === id ? { ...s, slot_x: x, slot_y: y } : s))
-    );
+  const addSlot = async (x: number, y: number) => {
+    if (!canEdit) return;
+
+    await supabase.from("alliance_hq_map").insert({
+      alliance_id: upperAlliance,
+      slot_x: x,
+      slot_y: y,
+      label: "New HQ"
+    });
+  };
+
+  const deleteSlot = async (id: string) => {
+    if (!canEdit) return;
+
+    await supabase
+      .from("alliance_hq_map")
+      .delete()
+      .eq("id", id);
+  };
+
+  const saveLabel = async (id: string) => {
+    if (!canEdit) return;
+
+    await supabase
+      .from("alliance_hq_map")
+      .update({ label: editingValue })
+      .eq("id", id);
+
+    setEditingId(null);
   };
 
   return (
     <div style={{ padding: 24 }}>
       <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {upperAlliance}</h1>
-
-      {slots.length === 0 && (
-        <p style={{ opacity: 0.6 }}>No HQ slots found</p>
-      )}
 
       <div
         style={{
@@ -48,6 +97,11 @@ export default function AllianceHQMap() {
           height: 800,
           border: "1px solid #444"
         }}
+        onDoubleClick={e => {
+          if (!canEdit) return;
+          const rect = (e.target as HTMLElement).getBoundingClientRect();
+          addSlot(e.clientX - rect.left, e.clientY - rect.top);
+        }}
       >
         {slots.map(slot => (
           <div
@@ -55,9 +109,12 @@ export default function AllianceHQMap() {
             draggable={canEdit}
             onDragEnd={e => {
               const rect = (e.target as HTMLElement).parentElement!.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const y = e.clientY - rect.top;
-              moveSlot(slot.id, x, y);
+              moveSlot(slot.id, e.clientX - rect.left, e.clientY - rect.top);
+            }}
+            onDoubleClick={() => {
+              if (!canEdit) return;
+              setEditingId(slot.id);
+              setEditingValue(slot.label || "");
             }}
             style={{
               position: "absolute",
@@ -71,7 +128,38 @@ export default function AllianceHQMap() {
               cursor: canEdit ? "grab" : "default"
             }}
           >
-            {slot.label || "HQ"}
+            {editingId === slot.id ? (
+              <input
+                autoFocus
+                value={editingValue}
+                onChange={e => setEditingValue(e.target.value)}
+                onBlur={() => saveLabel(slot.id)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") saveLabel(slot.id);
+                }}
+              />
+            ) : (
+              <>
+                {slot.label || "HQ"}
+                {canEdit && (
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      deleteSlot(slot.id);
+                    }}
+                    style={{
+                      marginLeft: 6,
+                      background: "red",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer"
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </>
+            )}
           </div>
         ))}
       </div>
