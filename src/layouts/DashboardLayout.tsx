@@ -1,31 +1,17 @@
-import { Outlet } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
+import { Outlet, useParams } from "react-router-dom";
+import Sidebar from "../navigation/Sidebar";
+import "../styles/dashboard-zombie.css";
 
 export default function DashboardLayout() {
-  return (
-    <div style={{
-      display: "flex",
-      width: "100vw",
-      height: "100vh",
-      overflow: "hidden",
-    }}>
-      {/* SIDEBAR */}
-      <div style={{
-        width: "240px",
-        minWidth: "240px",
-        borderRight: "1px solid #0f0",
-      }}>
-        <Sidebar />
-      </div>
+  const { alliance_id } = useParams<{ alliance_id: string }>();
 
-      {/* MAIN CONTENT */}
-      <div style={{
-        flex: 1,
-        position: "relative",
-        overflow: "auto",
-      }}>
+  return (
+    <div className="dashboard-shell">
+      <Sidebar />
+
+      <main className="dashboard-main">
         <Outlet />
-      </div>
+      </main>
     </div>
   );
 }
