@@ -1,6 +1,5 @@
 import { Routes, Route } from "react-router-dom";
 import DashboardLayout from "../layouts/DashboardLayout";
-import RequireAlliance from "../components/RequireAlliance";
 
 import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
@@ -16,54 +15,21 @@ import PermissionsPage from "../pages/dashboard/Permissions";
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
       <Route path="/" element={<Login />} />
       <Route path="/dashboard" element={<AuthCallback />} />
 
-      {/* Owner */}
       <Route path="/owner" element={<OwnerDashboard />} />
       <Route path="/owner/select" element={<OwnerDashboardSelect />} />
 
-      {/* Alliance Dashboard */}
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
-        <Route
-          index
-          element={
-            <RequireAlliance>
-              <MyAlliance />
-            </RequireAlliance>
-          }
-        />
+        <Route index element={<MyAlliance />} />
 
-        <Route
-          path="hq-map"
-          element={
-            <RequireAlliance>
-              <AllianceHQMap />
-            </RequireAlliance>
-          }
-        />
-
-        <Route
-          path="permissions"
-          element={
-            <RequireAlliance>
-              <PermissionsPage />
-            </RequireAlliance>
-          }
-        />
-
-        <Route
-          path="events"
-          element={
-            <RequireAlliance>
-              <EventsPage />
-            </RequireAlliance>
-          }
-        />
+        {/* TEMP: remove RequireAlliance for testing */}
+        <Route path="hq-map" element={<AllianceHQMap />} />
+        <Route path="permissions" element={<PermissionsPage />} />
+        <Route path="events" element={<EventsPage />} />
       </Route>
 
-      {/* State */}
       <Route path="/state/1" element={<StateDashboard />} />
     </Routes>
   );
