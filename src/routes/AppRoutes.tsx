@@ -2,44 +2,69 @@ import { Routes, Route } from "react-router-dom";
 
 import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
-
-import DashboardLayout from "../layouts/DashboardLayout";
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
-
-import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
+import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
-
+import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
+import PermissionsPage from "../pages/Permissions";
 import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
-import Permissions from "../pages/dashboard/Permissions";
+
+import DashboardLayout from "../layouts/DashboardLayout";
+import RequireAlliance from "../components/RequireAlliance";
 
 export default function AppRoutes() {
   return (
     <Routes>
-
-      {/* PUBLIC */}
+      {/* Public */}
       <Route path="/" element={<Login />} />
       <Route path="/dashboard" element={<AuthCallback />} />
 
-      {/* OWNER */}
+      {/* Owner */}
       <Route path="/owner" element={<OwnerDashboard />} />
       <Route path="/owner/select" element={<OwnerDashboardSelect />} />
 
-      {/* ALLIANCE DASHBOARD */}
+      {/* Alliance Dashboard */}
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
-        <Route index element={<MyAlliance />} />
-        <Route path="hq-map" element={<AllianceHQMap />} />
-        <Route path="permissions" element={<Permissions />} />
-        <Route path="events" element={<EventsPage />} />
-                <Route path="permissions" element={<PermissionsPage />} />
-        </Route>
-      </Routes>
+        <Route
+          index
+          element={
+            <RequireAlliance>
+              <MyAlliance />
+            </RequireAlliance>
+          }
+        />
+
+        <Route
+          path="hq-map"
+          element={
+            <RequireAlliance>
+              <AllianceHQMap />
+            </RequireAlliance>
+          }
+        />
+
+        <Route
+          path="permissions"
+          element={
+            <RequireAlliance>
+              <PermissionsPage />
+            </RequireAlliance>
+          }
+        />
+
+        <Route
+          path="events"
+          element={
+            <RequireAlliance>
+              <EventsPage />
+            </RequireAlliance>
+          }
+        />
+      </Route>
+
+      {/* Other */}
+      <Route path="/state/1" element={<StateDashboard />} />
+    </Routes>
   );
 }
-
-
-
-
-
-
-
