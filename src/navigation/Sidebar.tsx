@@ -9,10 +9,11 @@ export default function Sidebar() {
     <aside className="sidebar">
       <nav className="sidebar-nav">
         <NavLink to={base}>My Alliance</NavLink>
-        <NavLink to={`${base}/hq-map`}>HQ Map</NavLink>
-        <NavLink to={`${base}/events`}>Events</NavLink>
-        <NavLink to={`${base}/permissions`}>Permissions</NavLink>
+<NavLink to={`${base}/hq-map`}>HQ Map</NavLink>
+<NavLink to={`${base}/events`}>Events</NavLink>
+<NavLink to={`${base}/permissions`}>Permissions</NavLink>
       </nav>
     </aside>
   );
 }
+
