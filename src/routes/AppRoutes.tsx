@@ -6,6 +6,8 @@ import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
+import Permissions from "../pages/Permissions";
+import Permissions from "../pages/Permissions";
 import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
