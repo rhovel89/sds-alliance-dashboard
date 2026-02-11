@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { useHQPermissions } from "../../hooks/useHQPermissions";
 
 export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
+  const upperAlliance = alliance_id?.toUpperCase() || "";
   const [slots, setSlots] = useState<any[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draftLabel, setDraftLabel] = useState("");
+  const { canEdit } = useHQPermissions(upperAlliance);
 
-  const upperAlliance = alliance_id?.toUpperCase();
-
+  // Load slots
   useEffect(() => {
     if (!upperAlliance) return;
 
@@ -20,56 +20,80 @@ export default function AllianceHQMap() {
       .then(({ data }) => setSlots(data || []));
   }, [upperAlliance]);
 
-  useEffect(() => {
-    if (!upperAlliance) return;
-
-    const channel = supabase
-      .channel("hq-map-live")
-      .on(
-        "postgres_changes",
+  // Add slot
+  async function addSlot() {
+    const { data } = await supabase
+      .from("alliance_hq_map")
+      .insert([
         {
-          event: "*",
-          schema: "public",
-          table: "alliance_hq_map",
-          filter: `alliance_id=eq.${upperAlliance}`
-        },
-        () => {
-          supabase
-            .from("alliance_hq_map")
-            .select("*")
-            .eq("alliance_id", upperAlliance)
-            .then(({ data }) => setSlots(data || []));
+          alliance_id: upperAlliance,
+          slot_x: 100,
+          slot_y: 100,
+          label: "New HQ"
         }
-      )
-      .subscribe();
+      ])
+      .select();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [upperAlliance]);
+    if (data) {
+      setSlots(prev => [...prev, ...data]);
+    }
+  }
 
-  const saveLabel = async (id: string) => {
+  // Update label
+  async function updateLabel(id: string, newLabel: string) {
     await supabase
       .from("alliance_hq_map")
-      .update({ label: draftLabel })
+      .update({ label: newLabel })
       .eq("id", id);
 
-    setEditingId(null);
-    setDraftLabel("");
-  };
+    setSlots(prev =>
+      prev.map(s => (s.id === id ? { ...s, label: newLabel } : s))
+    );
+  }
 
-  const deleteSlot = async (id: string) => {
-    await supabase
+  // ✅ FIXED DELETE
+  async function deleteSlot(id: string) {
+    const { error } = await supabase
       .from("alliance_hq_map")
       .delete()
       .eq("id", id);
-  };
+
+    if (error) {
+      console.error("Delete failed:", error);
+      return;
+    }
+
+    // Remove locally
+    setSlots(prev => prev.filter(s => s.id !== id));
+  }
 
   return (
     <div style={{ padding: 24 }}>
       <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {upperAlliance}</h1>
 
-      <div style={{ position: "relative", width: 800, height: 800, border: "1px solid #444" }}>
+      {canEdit && (
+        <button
+          onClick={addSlot}
+          style={{
+            marginBottom: 16,
+            padding: "6px 12px",
+            background: "lime",
+            color: "black",
+            border: "none"
+          }}
+        >
+          + Add HQ Slot
+        </button>
+      )}
+
+      <div
+        style={{
+          position: "relative",
+          width: 800,
+          height: 800,
+          border: "1px solid #444"
+        }}
+      >
         {slots.map(slot => (
           <div
             key={slot.id}
@@ -77,37 +101,43 @@ export default function AllianceHQMap() {
               position: "absolute",
               left: slot.slot_x,
               top: slot.slot_y,
-              padding: 6,
-              background: "#222",
+              padding: 8,
+              background: "#111",
               border: "1px solid lime",
               color: "lime",
               fontSize: 12
             }}
           >
-            {editingId === slot.id ? (
+            {canEdit ? (
               <>
                 <input
-                  value={draftLabel}
-                  onChange={e => setDraftLabel(e.target.value)}
-                  style={{ fontSize: 12 }}
+                  value={slot.label || ""}
+                  onChange={e =>
+                    updateLabel(slot.id, e.target.value)
+                  }
+                  style={{
+                    background: "black",
+                    color: "lime",
+                    border: "1px solid lime",
+                    marginBottom: 4
+                  }}
                 />
-                <button onClick={() => saveLabel(slot.id)}>Save</button>
-              </>
-            ) : (
-              <>
-                <div>{slot.label || "HQ"}</div>
+                <br />
                 <button
-                  onClick={() => {
-                    setEditingId(slot.id);
-                    setDraftLabel(slot.label || "");
+                  onClick={() => deleteSlot(slot.id)}
+                  style={{
+                    background: "red",
+                    color: "white",
+                    border: "none",
+                    padding: "2px 6px",
+                    fontSize: 10
                   }}
                 >
-                  Edit
-                </button>
-                <button onClick={() => deleteSlot(slot.id)}>
                   Delete
                 </button>
               </>
+            ) : (
+              slot.label || "HQ"
             )}
           </div>
         ))}
