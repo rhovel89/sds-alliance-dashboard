@@ -4,10 +4,11 @@ import Login from "../pages/Login";
 import AuthCallback from "../pages/AuthCallback";
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
+import PermissionsPage from "../pages/dashboard/PermissionsPage";
 import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
-import PermissionsPage from "../pages/Permissions";
+
 import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -45,7 +46,7 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="permissions"
+          
           element={
             <RequireAlliance>
               <PermissionsPage />
