@@ -9,8 +9,9 @@ export default function Permissions() {
 
   return (
     <div style={{ padding: 24 }}>
-      <h2>🔐 Permissions — {alliance_id.toUpperCase()}</h2>
-      <p>Permissions UI will be built here.</p>
+      <h1>🔐 Permissions</h1>
+      <p>Alliance: <strong>{alliance_id.toUpperCase()}</strong></p>
+      <p>Permissions UI coming next.</p>
     </div>
   );
 }
