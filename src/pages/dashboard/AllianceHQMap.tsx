@@ -121,7 +121,7 @@ export default function AllianceHQMap() {
               overflowWrap: "anywhere",
               display: "flex",
               flexDirection: "column",
-              justifyContent: "center",
+              justifyContent: "space-between",
             }}
           >
             {editingId === slot.id ? (
@@ -188,3 +188,5 @@ export default function AllianceHQMap() {
     </div>
   );
 }
+
+
