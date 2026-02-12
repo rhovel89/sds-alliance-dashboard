@@ -1,438 +1,75 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useHQPermissions } from "../../hooks/useHQPermissions";
 
-type HQSlot = {
-  id: string;
-  alliance_id: string;
-  slot_x: number;   // 0..17 (grid col)
-  slot_y: number;   // 0..19 (grid row)
-  label: string | null;
-  player_x: number | null;
-  player_y: number | null;
-  slot_number: number | null;
-};
-
-const GRID_W = 18;
-const GRID_H = 20;
+const COLS = 16;
+const ROWS = 17;
+const CELL_SIZE = 96; // Bigger cells
 
 export default function AllianceHQMap() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
-  const upperAlliance = (alliance_id || "").toUpperCase();
+  const upperAlliance = alliance_id?.toUpperCase() || "";
   const { canEdit } = useHQPermissions(upperAlliance);
 
-  const [slots, setSlots] = useState<HQSlot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // inline editor
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const editingSlot = useMemo(
-    () => slots.find(s => s.id === editingId) || null,
-    [slots, editingId]
-  );
-  const [draftLabel, setDraftLabel] = useState("");
-  const [draftPX, setDraftPX] = useState<string>("");
-  const [draftPY, setDraftPY] = useState<string>("");
-
-  const keyFor = (x: number, y: number) => `${x},${y}`;
-  const slotByCell = useMemo(() => {
-    const m = new Map<string, HQSlot>();
-    for (const s of slots) m.set(keyFor(s.slot_x, s.slot_y), s);
-    return m;
-  }, [slots]);
-
-  const refetch = async () => {
-    if (!upperAlliance) return;
-    setLoading(true);
-    setErrorMsg(null);
-
-    const { data, error } = await supabase
-      .from("alliance_hq_map")
-      .select("id, alliance_id, slot_x, slot_y, label, player_x, player_y, slot_number")
-      .eq("alliance_id", upperAlliance);
-
-    if (error) {
-      console.error("HQ MAP SELECT ERROR:", error);
-      setErrorMsg(error.message);
-      setSlots([]);
-      setLoading(false);
-      return;
-    }
-
-    setSlots((data || []) as HQSlot[]);
-    setLoading(false);
-  };
+  const [slots, setSlots] = useState<any[]>([]);
 
   useEffect(() => {
-    refetch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [upperAlliance]);
-
-  const openEditor = (slot: HQSlot) => {
-    setEditingId(slot.id);
-    setDraftLabel(slot.label || "");
-    setDraftPX(slot.player_x == null ? "" : String(slot.player_x));
-    setDraftPY(slot.player_y == null ? "" : String(slot.player_y));
-  };
-
-  const closeEditor = () => {
-    setEditingId(null);
-    setDraftLabel("");
-    setDraftPX("");
-    setDraftPY("");
-  };
-
-  const saveEditor = async () => {
-    if (!editingSlot || !canEdit) return;
-
-    const px = draftPX.trim() === "" ? null : Number(draftPX);
-    const py = draftPY.trim() === "" ? null : Number(draftPY);
-
-    // basic numeric guard
-    if (px != null && Number.isNaN(px)) return alert("Player X must be a number (or blank).");
-    if (py != null && Number.isNaN(py)) return alert("Player Y must be a number (or blank).");
-
-    setBusyId(editingSlot.id);
-    setErrorMsg(null);
-
-    const payload = {
-      label: draftLabel.trim() === "" ? null : draftLabel.trim(),
-      player_x: px,
-      player_y: py
-    };
-
-    const { error } = await supabase
-      .from("alliance_hq_map")
-      .update(payload)
-      .eq("id", editingSlot.id);
-
-    if (error) {
-      console.error("HQ MAP UPDATE ERROR:", error);
-      setErrorMsg(error.message);
-      setBusyId(null);
-      return alert(`Save failed: ${error.message}`);
-    }
-
-    // optimistic update
-    setSlots(prev => prev.map(s => (s.id === editingSlot.id ? { ...s, ...payload } as HQSlot : s)));
-    setBusyId(null);
-    closeEditor();
-  };
-
-  const findFirstEmptyCell = (): { x: number; y: number } | null => {
-    for (let y = 0; y < GRID_H; y++) {
-      for (let x = 0; x < GRID_W; x++) {
-        if (!slotByCell.get(keyFor(x, y))) return { x, y };
-      }
-    }
-    return null;
-  };
-
-  const addSlot = async () => {
-    if (!canEdit) return;
     if (!upperAlliance) return;
 
-    const cell = findFirstEmptyCell();
-    if (!cell) return alert("No empty cells left.");
-
-    setErrorMsg(null);
-
-    // IMPORTANT: store grid coords (0..17, 0..19) to satisfy bounds constraints
-    const payload = {
-      alliance_id: upperAlliance,
-      slot_x: cell.x,
-      slot_y: cell.y,
-      label: "New HQ",
-      player_x: null,
-      player_y: null,
-      slot_number: cell.y * GRID_W + cell.x + 1
-    };
-
-    const { data, error } = await supabase
+    supabase
       .from("alliance_hq_map")
-      .insert(payload)
-      .select("id, alliance_id, slot_x, slot_y, label, player_x, player_y, slot_number")
-      .single();
-
-    if (error) {
-      console.error("HQ MAP INSERT ERROR:", error);
-      setErrorMsg(error.message);
-      return alert(`Add failed: ${error.message}`);
-    }
-
-    if (data) {
-      setSlots(prev => [...prev, data as HQSlot]);
-    } else {
-      await refetch();
-    }
-  };
-
-  const deleteSlot = async (id: string) => {
-    if (!canEdit) return;
-    if (!confirm("Delete this HQ slot?")) return;
-
-    setBusyId(id);
-    setErrorMsg(null);
-
-    const { error } = await supabase.from("alliance_hq_map").delete().eq("id", id);
-
-    if (error) {
-      console.error("HQ MAP DELETE ERROR:", error);
-      setErrorMsg(error.message);
-      setBusyId(null);
-      return alert(`Delete failed: ${error.message}`);
-    }
-
-    setSlots(prev => prev.filter(s => s.id !== id));
-    setBusyId(null);
-
-    if (editingId === id) closeEditor();
-  };
-
-  const moveSlotToCell = async (id: string, x: number, y: number) => {
-    if (!canEdit) return;
-
-    // prevent overlap
-    const occupying = slotByCell.get(keyFor(x, y));
-    if (occupying && occupying.id !== id) return;
-
-    setBusyId(id);
-    setErrorMsg(null);
-
-    const { error } = await supabase
-      .from("alliance_hq_map")
-      .update({ slot_x: x, slot_y: y, slot_number: y * GRID_W + x + 1 })
-      .eq("id", id);
-
-    if (error) {
-      console.error("HQ MAP MOVE ERROR:", error);
-      setErrorMsg(error.message);
-      setBusyId(null);
-      return alert(`Move failed: ${error.message}`);
-    }
-
-    setSlots(prev =>
-      prev.map(s => (s.id === id ? { ...s, slot_x: x, slot_y: y, slot_number: y * GRID_W + x + 1 } : s))
-    );
-    setBusyId(null);
-  };
-
-  const onDragStart = (e: React.DragEvent, slot: HQSlot) => {
-    if (!canEdit) return;
-    e.dataTransfer.setData("text/plain", slot.id);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const onDropCell = async (e: React.DragEvent, x: number, y: number) => {
-    if (!canEdit) return;
-    e.preventDefault();
-    const id = e.dataTransfer.getData("text/plain");
-    if (!id) return;
-    await moveSlotToCell(id, x, y);
-  };
-
-  if (!upperAlliance) {
-    return <div style={{ padding: 24 }}>Missing alliance in URL.</div>;
-  }
+      .select("*")
+      .eq("alliance_id", upperAlliance)
+      .then(({ data }) => setSlots(data || []));
+  }, [upperAlliance]);
 
   return (
-    <div style={{ padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-        <h1 style={{ margin: 0, fontSize: 14 }}>🧟 HQ Map — {upperAlliance}</h1>
-
-        {canEdit ? (
-          <button
-            className="zombie-btn"
-            style={{ padding: "8px 12px", fontSize: 14 }}
-            onClick={addSlot}
-          >
-            ➕ Add HQ Slot
-          </button>
-        ) : (
-          <span style={{ opacity: 0.7, fontSize: 14 }}>View-only</span>
-        )}
-
-        {loading && <span style={{ opacity: 0.7, fontSize: 14 }}>Loading…</span>}
-        {errorMsg && <span style={{ color: "#ff6464", fontSize: 14 }}>{errorMsg}</span>}
-      </div>
+    <div style={{ padding: 24 }}>
+      <h1>🧟 HQ Map</h1>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${GRID_W}, 40px)`,
-          gridTemplateRows: `repeat(${GRID_H}, 40px)`,
-          gap: 6,
-          width: 80, height: 80, padding: 8,
-          border: "1px solid rgba(0,255,0,0.25)",
-          borderRadius: 12,
-          background: "rgba(0,0,0,0.25)",
-          width: "fit-content"
+          gridTemplateColumns: `repeat(${COLS}, ${CELL_SIZE}px)`,
+          gap: 10,
+          justifyContent: "start"
         }}
       >
-        {Array.from({ length: GRID_H }).map((_, y) =>
-          Array.from({ length: GRID_W }).map((__, x) => {
-            const slot = slotByCell.get(keyFor(x, y));
-            const isBusy = slot ? busyId === slot.id : false;
+        {Array.from({ length: COLS * ROWS }).map((_, index) => {
+          const x = index % COLS;
+          const y = Math.floor(index / COLS);
 
-            return (
-              <div
-                key={`${x}-${y}`}
-                onDragOver={canEdit ? (e) => e.preventDefault() : undefined}
-                onDrop={canEdit ? (e) => onDropCell(e, x, y) : undefined}
-                style={{
-                  width: 80, height: 80, borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  background: slot ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.04)",
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  userSelect: "none"
-                }}
-                title={slot ? `${slot.label || "HQ"} (slot ${x},${y})` : `Empty (${x},${y})`}
-              >
-                {!slot && <span style={{ fontSize: 14, opacity: 0.35 }}>{x},{y}</span>}
+          const slot = slots.find(
+            s => s.slot_x === x && s.slot_y === y
+          );
 
-                {slot && (
-                  <div
-                    draggable={canEdit}
-                    onDragStart={canEdit ? (e) => onDragStart(e, slot) : undefined}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      width: 80, height: 80, padding: 8,
-                      boxSizing: "border-box",
-                      borderRadius: 10,
-                      border: "1px solid rgba(0,255,0,0.55)",
-                      color: "lime",
-                      fontSize: 14,
-                      lineheight: 42.1,
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      cursor: canEdit ? "grab" : "default",
-                      opacity: isBusy ? 0.6 : 1
-                    }}
-                    onDoubleClick={() => {
-                      if (!canEdit) return;
-                      openEditor(slot);
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {slot.label || "HQ"}
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between", opacity: 0.8 }}>
-                      <span>{x},{y}</span>
-                      {canEdit && (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            deleteSlot(slot.id);
-                          }}
-                          style={{
-                            fontSize: 14,
-                            padding: "1px 6px",
-                            borderRadius: 999,
-                            border: "1px solid rgba(255,0,0,0.45)",
-                            background: "rgba(255,0,0,0.12)",
-                            color: "#ffb3b3",
-                            cursor: "pointer"
-                          }}
-                          title="Delete slot"
-                        >
-                          ✖
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Inline editor panel */}
-      {editingSlot && (
-        <div
-          style={{
-            marginTop: 14,
-            width: 80, height: 80, padding: 8,
-            borderRadius: 12,
-            border: "1px solid rgba(0,255,0,0.25)",
-            background: "rgba(0,0,0,0.35)",
-            maxwidth: 42
-          }}
-        >
-          <div style={{ fontSize: 14, marginBottom: 8, color: "lime" }}>
-            Editing: <strong>{upperAlliance}</strong> slot ({editingSlot.slot_x},{editingSlot.slot_y})
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, alignItems: "center" }}>
-            <div style={{ opacity: 0.8 }}>HQ Name</div>
-            <input
-              value={draftLabel}
-              onChange={(e) => setDraftLabel(e.target.value)}
-              style={{ width: 80, height: 80, padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
-            />
-
-            <div style={{ opacity: 0.8 }}>Player X</div>
-            <input
-              value={draftPX}
-              onChange={(e) => setDraftPX(e.target.value)}
-              placeholder="optional"
-              style={{ width: 80, height: 80, padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
-            />
-
-            <div style={{ opacity: 0.8 }}>Player Y</div>
-            <input
-              value={draftPY}
-              onChange={(e) => setDraftPY(e.target.value)}
-              placeholder="optional"
-              style={{ width: 80, height: 80, padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-            <button
-              className="zombie-btn"
-              style={{ padding: "8px 12px", fontSize: 14 }}
-              onClick={saveEditor}
-              disabled={!canEdit || busyId === editingSlot.id}
-            >
-              💾 Save
-            </button>
-
-            <button
+          return (
+            <div
+              key={index}
               style={{
-                padding: "8px 12px",
-                fontSize: 14,
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "white",
-                cursor: "pointer"
+                width: CELL_SIZE,
+                height: CELL_SIZE,
+                borderRadius: 14,
+                border: "1px solid #333",
+                background: slot ? "#0f1f0f" : "#111",
+                color: slot ? "lime" : "#666",
+                padding: 8,
+                fontSize: 13,
+                position: "relative"
               }}
-              onClick={closeEditor}
             >
-              Cancel
-            </button>
+              <div style={{ fontWeight: 600 }}>
+                {slot?.label || ""}
+              </div>
 
-            <span style={{ opacity: 0.65, fontSize: 14, alignSelf: "center" }}>
-              Tip: double-click a slot to edit. Drag a slot onto an empty cell to move.
-            </span>
-          </div>
-        </div>
-      )}
+              <div style={{ fontSize: 11, opacity: 0.7 }}>
+                {slot ? `${x},${y}` : ""}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
-
-
-
-
