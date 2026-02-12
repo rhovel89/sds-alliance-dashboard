@@ -81,6 +81,11 @@ export default function AllianceHQMap() {
   };
 
   return (
+  <div style={{
+    padding: 30,
+    maxWidth: 1400,
+    margin: '0 auto',
+  }}>
     <div style={{ padding: 24 }}>
       <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {upperAlliance}</h1>
 
@@ -93,7 +98,11 @@ export default function AllianceHQMap() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${COLS}, ${CELL_SIZE}px)`,
+          border: '1px solid #1f2a1f',
+borderRadius: 12,
+padding: 20,
+background: 'rgba(0,0,0,0.4)',
+gridTemplateColumns: `repeat(${COLS}, ${CELL_SIZE}px)`,
           gridTemplateRows: `repeat(${ROWS}, ${CELL_SIZE}px)`,
           gap: 4,
         }}
@@ -109,10 +118,10 @@ export default function AllianceHQMap() {
               moveSlot(slot.id, x, y);
             }}
             style={{
-              border: "1px solid lime",
-              background: "#222",
+              border: "1px solid rgba(0,255,100,0.4)",
+              background: "rgba(0,0,0,0.65)",
               color: "lime",
-              fontSize: 12,
+              fontSize: 13,
               padding: 6,
               cursor: canEdit ? "grab" : "default",
               textAlign: "center",
@@ -189,4 +198,7 @@ export default function AllianceHQMap() {
   );
 }
 
+
+
+</div>
 
