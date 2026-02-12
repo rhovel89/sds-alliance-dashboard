@@ -265,9 +265,7 @@ export default function AllianceHQMap() {
           gridTemplateColumns: `repeat(${GRID_W}, 40px)`,
           gridTemplateRows: `repeat(${GRID_H}, 40px)`,
           gap: 6,
-          width: 42,
-              height: 42,
-              padding: 4,
+          width: 80, height: 80, padding: 8,
           border: "1px solid rgba(0,255,0,0.25)",
           borderRadius: 12,
           background: "rgba(0,0,0,0.25)",
@@ -285,9 +283,7 @@ export default function AllianceHQMap() {
                 onDragOver={canEdit ? (e) => e.preventDefault() : undefined}
                 onDrop={canEdit ? (e) => onDropCell(e, x, y) : undefined}
                 style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 10,
+                  width: 80, height: 80, borderRadius: 10,
                   border: "1px solid rgba(255,255,255,0.10)",
                   background: slot ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.04)",
                   position: "relative",
@@ -307,9 +303,7 @@ export default function AllianceHQMap() {
                     style={{
                       width: "100%",
                       height: "100%",
-                      width: 42,
-              height: 42,
-              padding: 4,
+                      width: 80, height: 80, padding: 8,
                       boxSizing: "border-box",
                       borderRadius: 10,
                       border: "1px solid rgba(0,255,0,0.55)",
@@ -368,9 +362,7 @@ export default function AllianceHQMap() {
         <div
           style={{
             marginTop: 14,
-            width: 42,
-              height: 42,
-              padding: 4,
+            width: 80, height: 80, padding: 8,
             borderRadius: 12,
             border: "1px solid rgba(0,255,0,0.25)",
             background: "rgba(0,0,0,0.35)",
@@ -386,9 +378,7 @@ export default function AllianceHQMap() {
             <input
               value={draftLabel}
               onChange={(e) => setDraftLabel(e.target.value)}
-              style={{ width: 42,
-              height: 42,
-              padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
+              style={{ width: 80, height: 80, padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
             />
 
             <div style={{ opacity: 0.8 }}>Player X</div>
@@ -396,9 +386,7 @@ export default function AllianceHQMap() {
               value={draftPX}
               onChange={(e) => setDraftPX(e.target.value)}
               placeholder="optional"
-              style={{ width: 42,
-              height: 42,
-              padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
+              style={{ width: 80, height: 80, padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
             />
 
             <div style={{ opacity: 0.8 }}>Player Y</div>
@@ -406,9 +394,7 @@ export default function AllianceHQMap() {
               value={draftPY}
               onChange={(e) => setDraftPY(e.target.value)}
               placeholder="optional"
-              style={{ width: 42,
-              height: 42,
-              padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
+              style={{ width: 80, height: 80, padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
             />
           </div>
 
@@ -446,6 +432,7 @@ export default function AllianceHQMap() {
     </div>
   );
 }
+
 
 
 
