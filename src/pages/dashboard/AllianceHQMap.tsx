@@ -241,12 +241,12 @@ export default function AllianceHQMap() {
   return (
     <div style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-        <h1 style={{ margin: 0, fontSize: 20 }}>🧟 HQ Map — {upperAlliance}</h1>
+        <h1 style={{ margin: 0, fontSize: 13 }}>🧟 HQ Map — {upperAlliance}</h1>
 
         {canEdit ? (
           <button
             className="zombie-btn"
-            style={{ padding: "8px 12px", fontSize: 14 }}
+            style={{ padding: "8px 12px", fontSize: 13 }}
             onClick={addSlot}
           >
             ➕ Add HQ Slot
@@ -265,7 +265,9 @@ export default function AllianceHQMap() {
           gridTemplateColumns: `repeat(${GRID_W}, 40px)`,
           gridTemplateRows: `repeat(${GRID_H}, 40px)`,
           gap: 6,
-          padding: 12,
+          width: 42,
+              height: 42,
+              padding: 4,
           border: "1px solid rgba(0,255,0,0.25)",
           borderRadius: 12,
           background: "rgba(0,0,0,0.25)",
@@ -283,8 +285,8 @@ export default function AllianceHQMap() {
                 onDragOver={canEdit ? (e) => e.preventDefault() : undefined}
                 onDrop={canEdit ? (e) => onDropCell(e, x, y) : undefined}
                 style={{
-                  width: 40,
-                  height: 40,
+                  width: 42,
+                  height: 42,
                   borderRadius: 10,
                   border: "1px solid rgba(255,255,255,0.10)",
                   background: slot ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.04)",
@@ -296,7 +298,7 @@ export default function AllianceHQMap() {
                 }}
                 title={slot ? `${slot.label || "HQ"} (slot ${x},${y})` : `Empty (${x},${y})`}
               >
-                {!slot && <span style={{ fontSize: 10, opacity: 0.35 }}>{x},{y}</span>}
+                {!slot && <span style={{ fontSize: 13, opacity: 0.35 }}>{x},{y}</span>}
 
                 {slot && (
                   <div
@@ -305,13 +307,15 @@ export default function AllianceHQMap() {
                     style={{
                       width: "100%",
                       height: "100%",
-                      padding: 6,
+                      width: 42,
+              height: 42,
+              padding: 4,
                       boxSizing: "border-box",
                       borderRadius: 10,
                       border: "1px solid rgba(0,255,0,0.55)",
                       color: "lime",
-                      fontSize: 10,
-                      lineHeight: 1.1,
+                      fontSize: 13,
+                      lineheight: 42.1,
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
@@ -337,7 +341,7 @@ export default function AllianceHQMap() {
                             deleteSlot(slot.id);
                           }}
                           style={{
-                            fontSize: 10,
+                            fontSize: 13,
                             padding: "1px 6px",
                             borderRadius: 999,
                             border: "1px solid rgba(255,0,0,0.45)",
@@ -364,11 +368,13 @@ export default function AllianceHQMap() {
         <div
           style={{
             marginTop: 14,
-            padding: 12,
+            width: 42,
+              height: 42,
+              padding: 4,
             borderRadius: 12,
             border: "1px solid rgba(0,255,0,0.25)",
             background: "rgba(0,0,0,0.35)",
-            maxWidth: 520
+            maxwidth: 42
           }}
         >
           <div style={{ fontSize: 13, marginBottom: 8, color: "lime" }}>
@@ -380,7 +386,9 @@ export default function AllianceHQMap() {
             <input
               value={draftLabel}
               onChange={(e) => setDraftLabel(e.target.value)}
-              style={{ padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
+              style={{ width: 42,
+              height: 42,
+              padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
             />
 
             <div style={{ opacity: 0.8 }}>Player X</div>
@@ -388,7 +396,9 @@ export default function AllianceHQMap() {
               value={draftPX}
               onChange={(e) => setDraftPX(e.target.value)}
               placeholder="optional"
-              style={{ padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
+              style={{ width: 42,
+              height: 42,
+              padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
             />
 
             <div style={{ opacity: 0.8 }}>Player Y</div>
@@ -396,14 +406,16 @@ export default function AllianceHQMap() {
               value={draftPY}
               onChange={(e) => setDraftPY(e.target.value)}
               placeholder="optional"
-              style={{ padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
+              style={{ width: 42,
+              height: 42,
+              padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(0,0,0,0.35)", color: "white" }}
             />
           </div>
 
           <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
             <button
               className="zombie-btn"
-              style={{ padding: "8px 12px", fontSize: 14 }}
+              style={{ padding: "8px 12px", fontSize: 13 }}
               onClick={saveEditor}
               disabled={!canEdit || busyId === editingSlot.id}
             >
@@ -413,7 +425,7 @@ export default function AllianceHQMap() {
             <button
               style={{
                 padding: "8px 12px",
-                fontSize: 14,
+                fontSize: 13,
                 borderRadius: 999,
                 border: "1px solid rgba(255,255,255,0.15)",
                 background: "rgba(255,255,255,0.06)",
@@ -425,7 +437,7 @@ export default function AllianceHQMap() {
               Cancel
             </button>
 
-            <span style={{ opacity: 0.65, fontSize: 12, alignSelf: "center" }}>
+            <span style={{ opacity: 0.65, fontSize: 13, alignSelf: "center" }}>
               Tip: double-click a slot to edit. Drag a slot onto an empty cell to move.
             </span>
           </div>
@@ -434,4 +446,5 @@ export default function AllianceHQMap() {
     </div>
   );
 }
+
 
