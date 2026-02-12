@@ -241,22 +241,22 @@ export default function AllianceHQMap() {
   return (
     <div style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-        <h1 style={{ margin: 0, fontSize: 13 }}>🧟 HQ Map — {upperAlliance}</h1>
+        <h1 style={{ margin: 0, fontSize: 14 }}>🧟 HQ Map — {upperAlliance}</h1>
 
         {canEdit ? (
           <button
             className="zombie-btn"
-            style={{ padding: "8px 12px", fontSize: 13 }}
+            style={{ padding: "8px 12px", fontSize: 14 }}
             onClick={addSlot}
           >
             ➕ Add HQ Slot
           </button>
         ) : (
-          <span style={{ opacity: 0.7, fontSize: 13 }}>View-only</span>
+          <span style={{ opacity: 0.7, fontSize: 14 }}>View-only</span>
         )}
 
-        {loading && <span style={{ opacity: 0.7, fontSize: 13 }}>Loading…</span>}
-        {errorMsg && <span style={{ color: "#ff6464", fontSize: 13 }}>{errorMsg}</span>}
+        {loading && <span style={{ opacity: 0.7, fontSize: 14 }}>Loading…</span>}
+        {errorMsg && <span style={{ color: "#ff6464", fontSize: 14 }}>{errorMsg}</span>}
       </div>
 
       <div
@@ -298,7 +298,7 @@ export default function AllianceHQMap() {
                 }}
                 title={slot ? `${slot.label || "HQ"} (slot ${x},${y})` : `Empty (${x},${y})`}
               >
-                {!slot && <span style={{ fontSize: 13, opacity: 0.35 }}>{x},{y}</span>}
+                {!slot && <span style={{ fontSize: 14, opacity: 0.35 }}>{x},{y}</span>}
 
                 {slot && (
                   <div
@@ -314,7 +314,7 @@ export default function AllianceHQMap() {
                       borderRadius: 10,
                       border: "1px solid rgba(0,255,0,0.55)",
                       color: "lime",
-                      fontSize: 13,
+                      fontSize: 14,
                       lineheight: 42.1,
                       display: "flex",
                       flexDirection: "column",
@@ -341,7 +341,7 @@ export default function AllianceHQMap() {
                             deleteSlot(slot.id);
                           }}
                           style={{
-                            fontSize: 13,
+                            fontSize: 14,
                             padding: "1px 6px",
                             borderRadius: 999,
                             border: "1px solid rgba(255,0,0,0.45)",
@@ -377,7 +377,7 @@ export default function AllianceHQMap() {
             maxwidth: 42
           }}
         >
-          <div style={{ fontSize: 13, marginBottom: 8, color: "lime" }}>
+          <div style={{ fontSize: 14, marginBottom: 8, color: "lime" }}>
             Editing: <strong>{upperAlliance}</strong> slot ({editingSlot.slot_x},{editingSlot.slot_y})
           </div>
 
@@ -415,7 +415,7 @@ export default function AllianceHQMap() {
           <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
             <button
               className="zombie-btn"
-              style={{ padding: "8px 12px", fontSize: 13 }}
+              style={{ padding: "8px 12px", fontSize: 14 }}
               onClick={saveEditor}
               disabled={!canEdit || busyId === editingSlot.id}
             >
@@ -425,7 +425,7 @@ export default function AllianceHQMap() {
             <button
               style={{
                 padding: "8px 12px",
-                fontSize: 13,
+                fontSize: 14,
                 borderRadius: 999,
                 border: "1px solid rgba(255,255,255,0.15)",
                 background: "rgba(255,255,255,0.06)",
@@ -437,7 +437,7 @@ export default function AllianceHQMap() {
               Cancel
             </button>
 
-            <span style={{ opacity: 0.65, fontSize: 13, alignSelf: "center" }}>
+            <span style={{ opacity: 0.65, fontSize: 14, alignSelf: "center" }}>
               Tip: double-click a slot to edit. Drag a slot onto an empty cell to move.
             </span>
           </div>
@@ -446,5 +446,6 @@ export default function AllianceHQMap() {
     </div>
   );
 }
+
 
 
