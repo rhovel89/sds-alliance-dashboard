@@ -1,0 +1,32 @@
+  const addSlot = async () => {
+    if (!canEdit) return;
+    if (!upperAlliance) return;
+
+    const cell = findFirstEmptyCell();
+    if (!cell) return alert("No empty cells left.");
+
+    setErrorMsg(null);
+
+    const payload = {
+      alliance_id: upperAlliance,
+      slot_x: cell.x,
+      slot_y: cell.y,
+      label: "New HQ",
+      player_x: null,
+      player_y: null,
+      slot_number: cell.y * GRID_W + cell.x + 1
+    };
+
+    const { error } = await supabase
+      .from("alliance_hq_map")
+      .insert(payload);
+
+    if (error) {
+      console.error("HQ MAP INSERT ERROR:", error);
+      setErrorMsg(error.message);
+      return alert("Add failed: " + error.message);
+    }
+
+    // Refetch after insert instead of relying on .select()
+    await refetch();
+  };
