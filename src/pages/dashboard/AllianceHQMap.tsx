@@ -5,17 +5,17 @@ import { useHQPermissions } from "../../hooks/useHQPermissions";
 
 const COLS = 16;
 const ROWS = 17;
-const CELL_SIZE = 90;
+const CELL_SIZE = 95;
 
 export default function AllianceHQMap() {
-  const { alliance_id } = useParams();
+  const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = alliance_id?.toUpperCase() || "";
   const { canEdit } = useHQPermissions(upperAlliance);
 
-  const [slots, setSlots] = useState([]);
-  const [editingSlot, setEditingSlot] = useState(null);
-  const [nameInput, setNameInput] = useState("");
-  const [coordsInput, setCoordsInput] = useState("");
+  const [slots, setSlots] = useState<any[]>([]);
+  const [editingSlot, setEditingSlot] = useState<any | null>(null);
+  const [formName, setFormName] = useState("");
+  const [formCoords, setFormCoords] = useState("");
 
   useEffect(() => {
     if (!upperAlliance) return;
@@ -27,47 +27,34 @@ export default function AllianceHQMap() {
       .then(({ data }) => setSlots(data || []));
   }, [upperAlliance]);
 
-  const openEdit = (slot) => {
-    setEditingSlot(slot);
-    setNameInput(slot?.label || "");
-    setCoordsInput(
-      slot?.player_x != null && slot?.player_y != null
-        ? `${slot.player_x},${slot.player_y}`
-        : ""
-    );
-  };
-
   const saveSlot = async () => {
     if (!editingSlot) return;
 
-    let player_x = null;
-    let player_y = null;
-
-    if (coordsInput.includes(",")) {
-      const parts = coordsInput.split(",");
-      player_x = parseInt(parts[0]);
-      player_y = parseInt(parts[1]);
-    }
+    const coords = formCoords.split(",");
+    const player_x = coords[0] ? parseInt(coords[0]) : null;
+    const player_y = coords[1] ? parseInt(coords[1]) : null;
 
     await supabase
       .from("alliance_hq_map")
       .update({
-        label: nameInput,
+        label: formName,
         player_x,
         player_y
       })
       .eq("id", editingSlot.id);
 
-    const { data } = await supabase
-      .from("alliance_hq_map")
-      .select("*")
-      .eq("alliance_id", upperAlliance);
+    setSlots(prev =>
+      prev.map(s =>
+        s.id === editingSlot.id
+          ? { ...s, label: formName, player_x, player_y }
+          : s
+      )
+    );
 
-    setSlots(data || []);
     setEditingSlot(null);
   };
 
-  const deleteSlot = async (id) => {
+  const deleteSlot = async (id: string) => {
     await supabase
       .from("alliance_hq_map")
       .delete()
@@ -76,110 +63,177 @@ export default function AllianceHQMap() {
     setSlots(prev => prev.filter(s => s.id !== id));
   };
 
+  const addSlot = async (slot_number: number) => {
+    const { data } = await supabase
+      .from("alliance_hq_map")
+      .insert({
+        alliance_id: upperAlliance,
+        slot_number,
+        label: "New HQ"
+      })
+      .select()
+      .single();
+
+    if (data) setSlots(prev => [...prev, data]);
+  };
+
+  const renderCell = (index: number) => {
+    const existing = slots.find(s => s.slot_number === index);
+
+    return (
+      <div
+        key={index}
+        style={{
+          width: CELL_SIZE,
+          height: CELL_SIZE,
+          border: "1px solid #2f2f2f",
+          borderRadius: 12,
+          background: "#0e0e0e",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          fontSize: 13,
+          color: "#9eff9e",
+          cursor: canEdit ? "pointer" : "default",
+          transition: "0.2s ease"
+        }}
+        onClick={() => {
+          if (!canEdit) return;
+          if (existing) {
+            setEditingSlot(existing);
+            setFormName(existing.label || "");
+            setFormCoords(
+              existing.player_x && existing.player_y
+                ? `${existing.player_x},${existing.player_y}`
+                : ""
+            );
+          } else {
+            addSlot(index);
+          }
+        }}
+      >
+        {existing ? (
+          <>
+            <strong>{existing.label}</strong>
+            <small>
+              {existing.player_x && existing.player_y
+                ? `(${existing.player_x}, ${existing.player_y})`
+                : "(no coords)"}
+            </small>
+            {canEdit && (
+              <button
+                style={{
+                  marginTop: 6,
+                  background: "#3a0000",
+                  color: "#ffb3b3",
+                  border: "1px solid #660000",
+                  borderRadius: 6,
+                  padding: "2px 6px",
+                  fontSize: 11,
+                  cursor: "pointer"
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteSlot(existing.id);
+                }}
+              >
+                Delete
+              </button>
+            )}
+          </>
+        ) : (
+          <span style={{ opacity: 0.3 }}>Empty</span>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div style={{ padding: 24 }}>
-      <h1 style={{ color: "#9eff9e" }}>HQ Map</h1>
+    <div style={{ padding: 30 }}>
+      <h1 style={{ color: "#9eff9e" }}>
+        HQ Map — {upperAlliance}
+      </h1>
 
       <div
         style={{
           display: "grid",
           gridTemplateColumns: `repeat(${COLS}, ${CELL_SIZE}px)`,
-          gap: 12,
-          justifyContent: "center"
+          gap: 14,
+          marginTop: 30
         }}
       >
-        {Array.from({ length: ROWS }).map((_, y) =>
-          Array.from({ length: COLS }).map((_, x) => {
-            const slot = slots.find(
-              s => s.slot_x === x && s.slot_y === y
-            );
-
-            return (
-              <div
-                key={x + "-" + y}
-                onClick={() => slot && openEdit(slot)}
-                style={{
-                  width: CELL_SIZE,
-                  height: CELL_SIZE,
-                  background: slot ? "#111" : "#0a0a0a",
-                  border: "2px solid #2cff2c",
-                  borderRadius: 12,
-                  padding: 6,
-                  fontSize: 12,
-                  color: "#9eff9e",
-                  cursor: slot ? "pointer" : "default",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  textAlign: "center"
-                }}
-              >
-                {slot ? (
-                  <>
-                    <div style={{ fontWeight: "bold" }}>
-                      {slot.label || "New HQ"}
-                    </div>
-
-                    {slot.player_x != null && (
-                      <div>
-                        ({slot.player_x},{slot.player_y})
-                      </div>
-                    )}
-
-                    {canEdit && (
-                      <button
-                        style={{
-                          marginTop: 4,
-                          background: "#300",
-                          color: "white",
-                          border: "none",
-                          padding: "4px 6px",
-                          borderRadius: 6,
-                          cursor: "pointer"
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteSlot(slot.id);
-                        }}
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </>
-                ) : (
-                  <div style={{ opacity: 0.3 }}>
-                    {x},{y}
-                  </div>
-                )}
-              </div>
-            );
-          })
+        {Array.from({ length: COLS * ROWS }).map((_, i) =>
+          renderCell(i + 1)
         )}
       </div>
 
       {editingSlot && (
-        <div style={{ marginTop: 40 }}>
-          <h2>Edit Slot</h2>
+        <div
+          style={{
+            marginTop: 40,
+            padding: 20,
+            border: "1px solid #1f1f1f",
+            borderRadius: 12,
+            background: "#0b0b0b"
+          }}
+        >
+          <h3 style={{ color: "#9eff9e" }}>
+            Edit Cell #{editingSlot.slot_number}
+          </h3>
 
           <input
-            value={nameInput}
-            onChange={e => setNameInput(e.target.value)}
-            placeholder="HQ Name"
-            style={{ marginRight: 12 }}
+            placeholder="Name"
+            value={formName}
+            onChange={e => setFormName(e.target.value)}
+            style={{
+              width: "100%",
+              marginBottom: 10,
+              padding: 8,
+              background: "#111",
+              border: "1px solid #333",
+              color: "#9eff9e"
+            }}
           />
 
           <input
-            value={coordsInput}
-            onChange={e => setCoordsInput(e.target.value)}
-            placeholder="e.g. 123,456"
+            placeholder="Coords (e.g. 222,333)"
+            value={formCoords}
+            onChange={e => setFormCoords(e.target.value)}
+            style={{
+              width: "100%",
+              marginBottom: 10,
+              padding: 8,
+              background: "#111",
+              border: "1px solid #333",
+              color: "#9eff9e"
+            }}
           />
 
-          <button onClick={saveSlot} style={{ marginLeft: 12 }}>
+          <button
+            onClick={saveSlot}
+            style={{
+              marginRight: 10,
+              padding: "6px 12px",
+              background: "#003300",
+              color: "#9eff9e",
+              border: "1px solid #006600",
+              borderRadius: 6
+            }}
+          >
             Save
           </button>
 
-          <button onClick={() => setEditingSlot(null)} style={{ marginLeft: 8 }}>
+          <button
+            onClick={() => setEditingSlot(null)}
+            style={{
+              padding: "6px 12px",
+              background: "#222",
+              color: "#ccc",
+              border: "1px solid #444",
+              borderRadius: 6
+            }}
+          >
             Close
           </button>
         </div>
