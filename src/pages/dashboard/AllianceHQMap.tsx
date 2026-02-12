@@ -5,200 +5,185 @@ import { useHQPermissions } from "../../hooks/useHQPermissions";
 
 const COLS = 16;
 const ROWS = 17;
-const CELL_SIZE = 70;
+const CELL_SIZE = 90;
 
 export default function AllianceHQMap() {
-  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { alliance_id } = useParams();
   const upperAlliance = alliance_id?.toUpperCase() || "";
   const { canEdit } = useHQPermissions(upperAlliance);
 
-  const [slots, setSlots] = useState<any[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [slots, setSlots] = useState([]);
+  const [editingSlot, setEditingSlot] = useState(null);
+  const [nameInput, setNameInput] = useState("");
+  const [coordsInput, setCoordsInput] = useState("");
 
   useEffect(() => {
     if (!upperAlliance) return;
-    loadSlots();
+
+    supabase
+      .from("alliance_hq_map")
+      .select("*")
+      .eq("alliance_id", upperAlliance)
+      .then(({ data }) => setSlots(data || []));
   }, [upperAlliance]);
 
-  const loadSlots = async () => {
+  const openEdit = (slot) => {
+    setEditingSlot(slot);
+    setNameInput(slot?.label || "");
+    setCoordsInput(
+      slot?.player_x != null && slot?.player_y != null
+        ? `${slot.player_x},${slot.player_y}`
+        : ""
+    );
+  };
+
+  const saveSlot = async () => {
+    if (!editingSlot) return;
+
+    let player_x = null;
+    let player_y = null;
+
+    if (coordsInput.includes(",")) {
+      const parts = coordsInput.split(",");
+      player_x = parseInt(parts[0]);
+      player_y = parseInt(parts[1]);
+    }
+
+    await supabase
+      .from("alliance_hq_map")
+      .update({
+        label: nameInput,
+        player_x,
+        player_y
+      })
+      .eq("id", editingSlot.id);
+
     const { data } = await supabase
       .from("alliance_hq_map")
       .select("*")
       .eq("alliance_id", upperAlliance);
 
     setSlots(data || []);
+    setEditingSlot(null);
   };
 
-  const saveSlot = async (slot: any) => {
-    await supabase
-      .from("alliance_hq_map")
-      .update({
-        label: slot.label,
-        player_x: slot.player_x,
-        player_y: slot.player_y,
-      })
-      .eq("id", slot.id);
-
-    setEditingId(null);
-    loadSlots();
-  };
-
-  const deleteSlot = async (id: string) => {
-    if (!canEdit) return;
-
+  const deleteSlot = async (id) => {
     await supabase
       .from("alliance_hq_map")
       .delete()
       .eq("id", id);
 
-    loadSlots();
-  };
-
-  const addSlot = async () => {
-    if (!canEdit) return;
-
-    await supabase.from("alliance_hq_map").insert({
-      alliance_id: upperAlliance,
-      slot_x: 0,
-      slot_y: 0,
-      label: "New HQ",
-      player_x: null,
-      player_y: null,
-    });
-
-    loadSlots();
-  };
-
-  const moveSlot = async (id: string, x: number, y: number) => {
-    if (!canEdit) return;
-
-    await supabase
-      .from("alliance_hq_map")
-      .update({ slot_x: x, slot_y: y })
-      .eq("id", id);
-
-    loadSlots();
+    setSlots(prev => prev.filter(s => s.id !== id));
   };
 
   return (
-  <div style={{
-    padding: 30,
-    maxWidth: 1400,
-    margin: '0 auto',
-  }}>
     <div style={{ padding: 24 }}>
-      <h1>🧟 HQ MAP LOADED FOR ALLIANCE: {upperAlliance}</h1>
-
-      {canEdit && (
-        <button onClick={addSlot} style={{ marginBottom: 12 }}>
-          ➕ Add HQ Slot
-        </button>
-      )}
+      <h1 style={{ color: "#9eff9e" }}>HQ Map</h1>
 
       <div
         style={{
           display: "grid",
-          border: '1px solid #1f2a1f',
-borderRadius: 12,
-padding: 20,
-background: 'rgba(0,0,0,0.4)',
-gridTemplateColumns: `repeat(${COLS}, ${CELL_SIZE}px)`,
-          gridTemplateRows: `repeat(${ROWS}, ${CELL_SIZE}px)`,
-          gap: 4,
+          gridTemplateColumns: `repeat(${COLS}, ${CELL_SIZE}px)`,
+          gap: 12,
+          justifyContent: "center"
         }}
       >
-        {slots.map((slot) => (
-          <div
-            key={slot.id}
-            draggable={canEdit}
-            onDragEnd={(e) => {
-              const grid = e.currentTarget.parentElement!.getBoundingClientRect();
-              const x = e.clientX - grid.left;
-              const y = e.clientY - grid.top;
-              moveSlot(slot.id, x, y);
-            }}
-            style={{
-              border: "1px solid rgba(0,255,100,0.4)",
-              background: "rgba(0,0,0,0.65)",
-              color: "lime",
-              fontSize: 13,
-              padding: 6,
-              cursor: canEdit ? "grab" : "default",
-              textAlign: "center",
-              whiteSpace: "normal",
-              wordBreak: "break-word",
-              overflowWrap: "anywhere",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-            }}
-          >
-            {editingId === slot.id ? (
-              <>
-                <input
-                  value={slot.label || ""}
-                  onChange={(e) =>
-                    setSlots((prev) =>
-                      prev.map((s) =>
-                        s.id === slot.id
-                          ? { ...s, label: e.target.value }
-                          : s
-                      )
-                    )
-                  }
-                />
-                <input
-                  placeholder="Player X"
-                  value={slot.player_x || ""}
-                  onChange={(e) =>
-                    setSlots((prev) =>
-                      prev.map((s) =>
-                        s.id === slot.id
-                          ? { ...s, player_x: e.target.value }
-                          : s
-                      )
-                    )
-                  }
-                />
-                <input
-                  placeholder="Player Y"
-                  value={slot.player_y || ""}
-                  onChange={(e) =>
-                    setSlots((prev) =>
-                      prev.map((s) =>
-                        s.id === slot.id
-                          ? { ...s, player_y: e.target.value }
-                          : s
-                      )
-                    )
-                  }
-                />
-                <button onClick={() => saveSlot(slot)}>💾 Save</button>
-              </>
-            ) : (
-              <>
-                <div>{slot.label}</div>
-                {slot.player_x && (
-                  <div>
-                    ({slot.player_x}, {slot.player_y})
+        {Array.from({ length: ROWS }).map((_, y) =>
+          Array.from({ length: COLS }).map((_, x) => {
+            const slot = slots.find(
+              s => s.slot_x === x && s.slot_y === y
+            );
+
+            return (
+              <div
+                key={x + "-" + y}
+                onClick={() => slot && openEdit(slot)}
+                style={{
+                  width: CELL_SIZE,
+                  height: CELL_SIZE,
+                  background: slot ? "#111" : "#0a0a0a",
+                  border: "2px solid #2cff2c",
+                  borderRadius: 12,
+                  padding: 6,
+                  fontSize: 12,
+                  color: "#9eff9e",
+                  cursor: slot ? "pointer" : "default",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  textAlign: "center"
+                }}
+              >
+                {slot ? (
+                  <>
+                    <div style={{ fontWeight: "bold" }}>
+                      {slot.label || "New HQ"}
+                    </div>
+
+                    {slot.player_x != null && (
+                      <div>
+                        ({slot.player_x},{slot.player_y})
+                      </div>
+                    )}
+
+                    {canEdit && (
+                      <button
+                        style={{
+                          marginTop: 4,
+                          background: "#300",
+                          color: "white",
+                          border: "none",
+                          padding: "4px 6px",
+                          borderRadius: 6,
+                          cursor: "pointer"
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSlot(slot.id);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ opacity: 0.3 }}>
+                    {x},{y}
                   </div>
                 )}
-                {canEdit && (
-                  <>
-                    <button onClick={() => setEditingId(slot.id)}>✏ Edit</button>
-                    <button onClick={() => deleteSlot(slot.id)}>🗑 Delete</button>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        ))}
+              </div>
+            );
+          })
+        )}
       </div>
+
+      {editingSlot && (
+        <div style={{ marginTop: 40 }}>
+          <h2>Edit Slot</h2>
+
+          <input
+            value={nameInput}
+            onChange={e => setNameInput(e.target.value)}
+            placeholder="HQ Name"
+            style={{ marginRight: 12 }}
+          />
+
+          <input
+            value={coordsInput}
+            onChange={e => setCoordsInput(e.target.value)}
+            placeholder="e.g. 123,456"
+          />
+
+          <button onClick={saveSlot} style={{ marginLeft: 12 }}>
+            Save
+          </button>
+
+          <button onClick={() => setEditingSlot(null)} style={{ marginLeft: 8 }}>
+            Close
+          </button>
+        </div>
+      )}
     </div>
   );
 }
-
-
-
-</div>
-
