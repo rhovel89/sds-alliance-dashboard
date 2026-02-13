@@ -278,7 +278,7 @@ border: "1px solid rgba(0,255,0,0.25)",
 background: "rgba(0,0,0,0.65)",
 boxShadow: "0 0 25px rgba(0,255,0,0.08)",
 width: "fit-content",
-          maxWidth: "100%",
+          maxwidth: "100%",
           overflowX: "auto",
         }}
       >
@@ -386,7 +386,7 @@ opacity: isBusy ? 0.6 : 1,
             border: "1px solid rgba(0,255,0,0.25)",
             background: "rgba(0,0,0,0.35)",
             padding: 12,
-            maxWidth: 520,
+            maxwidth: 90,
           }}
         >
           <div style={{ fontSize: 12, marginBottom: 8, color: "lime" }}>
@@ -473,6 +473,7 @@ opacity: isBusy ? 0.6 : 1,
     </div>
   );
 }
+
 
 
 
