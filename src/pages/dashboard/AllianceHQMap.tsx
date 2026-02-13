@@ -245,7 +245,12 @@ export default function AllianceHQMap() {
   const GAP = 6;
 
   return (
-    <div style={{ padding: 16 }}>
+  <div style={{
+    padding: 20,
+    background: "linear-gradient(to bottom, #120000 0%, #000000 40%)",
+    minHeight: "100vh",
+    color: "#b6ff9e"
+  }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
         <h1 style={{ margin: 0, fontSize: 14 }}>🧟 HQ Map — {upperAlliance}</h1>
 
@@ -264,14 +269,15 @@ export default function AllianceHQMap() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${GRID_W}, ${CELL}px)`,
-          gridTemplateRows: `repeat(${GRID_H}, ${CELL}px)`,
-          gap: GAP,
-          border: "1px solid rgba(0,255,0,0.25)",
-          borderRadius: 12,
-          background: "rgba(0,0,0,0.25)",
-          padding: 10,
-          width: "fit-content",
+gridTemplateColumns: `repeat(${GRID_W}, 48px)`,
+gridTemplateRows: `repeat(${GRID_H}, 48px)`,
+gap: 8,
+padding: 18,
+borderRadius: 18,
+border: "1px solid rgba(0,255,0,0.25)",
+background: "rgba(0,0,0,0.65)",
+boxShadow: "0 0 25px rgba(0,255,0,0.08)",
+width: "fit-content",
           maxWidth: "100%",
           overflowX: "auto",
         }}
@@ -313,16 +319,17 @@ export default function AllianceHQMap() {
                       height: "100%",
                       boxSizing: "border-box",
                       borderRadius: 10,
-                      border: "1px solid rgba(0,255,0,0.55)",
-                      color: "lime",
-                      fontSize: 11,
-                      lineHeight: 1.1,
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      padding: 5,
-                      cursor: canEdit ? "grab" : "default",
-                      opacity: isBusy ? 0.6 : 1,
+                      border: "1px solid rgba(0,255,0,0.6)",
+background: "rgba(0,20,0,0.6)",
+boxShadow: "0 0 8px rgba(0,255,0,0.3)",
+color: "#7CFF5B",
+fontSize: 13,
+display: "flex",
+flexDirection: "column",
+justifyContent: "space-between",
+padding: 6,
+cursor: canEdit ? "grab" : "default",
+opacity: isBusy ? 0.6 : 1,
                       overflow: "hidden",
                     }}
                   >
@@ -466,3 +473,4 @@ export default function AllianceHQMap() {
     </div>
   );
 }
+
