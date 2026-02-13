@@ -332,6 +332,9 @@ justifyContent: "space-between",
 alignItems: "center",
 textAlign: "center",
 overflow: "hidden",
+alignItems: "center",
+textAlign: "center",
+overflow: "hidden",
 padding: 8,
 padding: 24,
 cursor: canEdit ? "grab" : "default",
@@ -353,7 +356,7 @@ opacity: isBusy ? 0.6 : 1,
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.8,
 fontSize: 12,
 marginTop: 4.5 }}>
-                      <span style={{ fontSize: 10 }}>{x},{y}</span>
+                      <span style={{ fontSize: 12, marginTop: 6 }}>{x},{y}</span>
 
                       {canEdit && (
                         <button
@@ -487,6 +490,7 @@ marginTop: 4, fontSize: 12 }}>Player Y</div>
     </div>
   );
 }
+
 
 
 
