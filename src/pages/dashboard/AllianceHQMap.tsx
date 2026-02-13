@@ -269,8 +269,8 @@ export default function AllianceHQMap() {
       <div
         style={{
           display: "grid",
-gridTemplateColumns: `repeat(${GRID_W}, 48px)`,
-gridTemplateRows: `repeat(${GRID_H}, 48px)`,
+gridTemplateColumns: `repeat(${GRID_W}, 90px)`,
+gridTemplateRows: `repeat(${GRID_H}, 90px)`,
 gap: 8,
 padding: 18,
 borderRadius: 18,
@@ -473,6 +473,7 @@ opacity: isBusy ? 0.6 : 1,
     </div>
   );
 }
+
 
 
 
