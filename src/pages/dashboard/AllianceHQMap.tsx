@@ -329,6 +329,10 @@ fontSize: 14,
 display: "flex",
 flexDirection: "column",
 justifyContent: "space-between",
+alignItems: "center",
+textAlign: "center",
+overflow: "hidden",
+padding: 8,
 padding: 24,
 cursor: canEdit ? "grab" : "default",
 opacity: isBusy ? 0.6 : 1,
@@ -346,7 +350,9 @@ opacity: isBusy ? 0.6 : 1,
                       {slot.label || "HQ"}
                     </div>
 
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.85 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.8,
+fontSize: 12,
+marginTop: 4,5 }}>
                       <span style={{ fontSize: 10 }}>{x},{y}</span>
 
                       {canEdit && (
@@ -396,7 +402,9 @@ opacity: isBusy ? 0.6 : 1,
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, alignItems: "center" }}>
-            <div style={{ opacity: 0.8, fontSize: 12 }}>HQ Name</div>
+            <div style={{ opacity: 0.8,
+fontSize: 12,
+marginTop: 4,, fontSize: 12 }}>HQ Name</div>
             <input
               value={draftLabel}
               onChange={(e) => setDraftLabel(e.target.value)}
@@ -410,7 +418,9 @@ opacity: isBusy ? 0.6 : 1,
               }}
             />
 
-            <div style={{ opacity: 0.8, fontSize: 12 }}>Player X</div>
+            <div style={{ opacity: 0.8,
+fontSize: 12,
+marginTop: 4,, fontSize: 12 }}>Player X</div>
             <input
               value={draftPX}
               onChange={(e) => setDraftPX(e.target.value)}
@@ -425,7 +435,9 @@ opacity: isBusy ? 0.6 : 1,
               }}
             />
 
-            <div style={{ opacity: 0.8, fontSize: 12 }}>Player Y</div>
+            <div style={{ opacity: 0.8,
+fontSize: 12,
+marginTop: 4,, fontSize: 12 }}>Player Y</div>
             <input
               value={draftPY}
               onChange={(e) => setDraftPY(e.target.value)}
@@ -475,6 +487,7 @@ opacity: isBusy ? 0.6 : 1,
     </div>
   );
 }
+
 
 
 
