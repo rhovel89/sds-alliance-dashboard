@@ -246,8 +246,8 @@ export default function AllianceHQMap() {
 
   return (
   <div style={{
-    padding: 20,
-    background: "linear-gradient(to bottom, #120000 0%, #000000 40%)",
+    padding: 24,
+    background: "rgba(0,0,0,0.45)",
     minHeight: "100vh",
     color: "#b6ff9e"
   }}>
@@ -269,13 +269,13 @@ export default function AllianceHQMap() {
       <div
         style={{
           display: "grid",
-gridTemplateColumns: `repeat(${GRID_W}, 90px)`,
-gridTemplateRows: `repeat(${GRID_H}, 90px)`,
+gridTemplateColumns: `repeat(${GRID_W}, 100px)`,
+gridTemplateRows: `repeat(${GRID_H}, 100px)`,
 gap: 8,
-padding: 18,
+padding: 24,
 borderRadius: 18,
 border: "1px solid rgba(0,255,0,0.25)",
-background: "rgba(0,0,0,0.65)",
+background: "rgba(0,0,0,0.45)",
 boxShadow: "0 0 25px rgba(0,255,0,0.08)",
 width: "fit-content",
           maxwidth: "100%",
@@ -307,7 +307,7 @@ width: "fit-content",
                 }}
                 title={slot ? `${slot.label || "HQ"} (slot ${x},${y})` : `Empty (${x},${y})`}
               >
-                {!slot && <span style={{ fontSize: 11, opacity: 0.35 }}>{x},{y}</span>}
+                {!slot && <span style={{ fontSize: 14, opacity: 0.35 }}>{x},{y}</span>}
 
                 {slot && (
                   <div
@@ -322,17 +322,17 @@ minHeight: 90,
                       boxSizing: "border-box",
                       borderRadius: 10,
                       border: "1px solid rgba(0,255,0,0.6)",
-background: "rgba(0,20,0,0.6)",
+background: "rgba(0,0,0,0.45)",
 boxShadow: "0 0 8px rgba(0,255,0,0.3)",
 color: "#7CFF5B",
-fontSize: 13,
+fontSize: 14,
 display: "flex",
 flexDirection: "column",
 justifyContent: "space-between",
-padding: 6,
+padding: 24,
 cursor: canEdit ? "grab" : "default",
 opacity: isBusy ? 0.6 : 1,
-                      overflow: "hidden",
+                      overflow: "visible",
                     }}
                   >
                     <div
@@ -357,11 +357,11 @@ opacity: isBusy ? 0.6 : 1,
                             deleteSlot(slot.id);
                           }}
                           style={{
-                            fontSize: 11,
+                            fontSize: 14,
                             padding: "1px 6px",
                             borderRadius: 999,
                             border: "1px solid rgba(255,0,0,0.45)",
-                            background: "rgba(255,0,0,0.12)",
+                            background: "rgba(0,0,0,0.45)",
                             color: "#ffb3b3",
                             cursor: "pointer",
                           }}
@@ -386,12 +386,12 @@ opacity: isBusy ? 0.6 : 1,
             marginTop: 14,
             borderRadius: 12,
             border: "1px solid rgba(0,255,0,0.25)",
-            background: "rgba(0,0,0,0.35)",
-            padding: 12,
+            background: "rgba(0,0,0,0.45)",
+            padding: 24,
             maxwidth: 90,
           }}
         >
-          <div style={{ fontSize: 12, marginBottom: 8, color: "lime" }}>
+          <div style={{ fontSize: 14, marginBottom: 8, color: "lime" }}>
             Editing slot ({editingSlot.slot_x},{editingSlot.slot_y}) — double-click any slot to edit
           </div>
 
@@ -403,10 +403,10 @@ opacity: isBusy ? 0.6 : 1,
               style={{
                 borderRadius: 10,
                 border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(0,0,0,0.35)",
+                background: "rgba(0,0,0,0.45)",
                 color: "white",
                 padding: "8px 10px",
-                fontSize: 12,
+                fontSize: 14,
               }}
             />
 
@@ -418,10 +418,10 @@ opacity: isBusy ? 0.6 : 1,
               style={{
                 borderRadius: 10,
                 border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(0,0,0,0.35)",
+                background: "rgba(0,0,0,0.45)",
                 color: "white",
                 padding: "8px 10px",
-                fontSize: 12,
+                fontSize: 14,
               }}
             />
 
@@ -433,10 +433,10 @@ opacity: isBusy ? 0.6 : 1,
               style={{
                 borderRadius: 10,
                 border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(0,0,0,0.35)",
+                background: "rgba(0,0,0,0.45)",
                 color: "white",
                 padding: "8px 10px",
-                fontSize: 12,
+                fontSize: 14,
               }}
             />
           </div>
@@ -454,10 +454,10 @@ opacity: isBusy ? 0.6 : 1,
             <button
               style={{
                 padding: "8px 12px",
-                fontSize: 16,
+                fontSize: 14,
                 borderRadius: 999,
                 border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
+                background: "rgba(0,0,0,0.45)",
                 color: "white",
                 cursor: "pointer",
               }}
@@ -475,6 +475,7 @@ opacity: isBusy ? 0.6 : 1,
     </div>
   );
 }
+
 
 
 
