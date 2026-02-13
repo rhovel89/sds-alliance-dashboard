@@ -452,7 +452,7 @@ opacity: isBusy ? 0.6 : 1,
             <button
               style={{
                 padding: "8px 12px",
-                fontSize: 14,
+                fontSize: 16,
                 borderRadius: 999,
                 border: "1px solid rgba(255,255,255,0.15)",
                 background: "rgba(255,255,255,0.06)",
@@ -473,6 +473,7 @@ opacity: isBusy ? 0.6 : 1,
     </div>
   );
 }
+
 
 
 
