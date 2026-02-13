@@ -316,7 +316,9 @@ width: "fit-content",
                     onDoubleClick={() => { if (canEdit) openEditor(slot); }}
                     style={{
                       width: "100%",
-                      height: "100%",
+height: "100%",
+minWidth: 90,
+minHeight: 90,
                       boxSizing: "border-box",
                       borderRadius: 10,
                       border: "1px solid rgba(0,255,0,0.6)",
@@ -473,6 +475,7 @@ opacity: isBusy ? 0.6 : 1,
     </div>
   );
 }
+
 
 
 
