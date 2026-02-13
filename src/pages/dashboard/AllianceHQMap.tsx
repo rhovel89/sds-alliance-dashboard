@@ -352,7 +352,7 @@ opacity: isBusy ? 0.6 : 1,
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.8,
 fontSize: 12,
-marginTop: 4,5 }}>
+marginTop: 4.5 }}>
                       <span style={{ fontSize: 10 }}>{x},{y}</span>
 
                       {canEdit && (
@@ -404,7 +404,7 @@ marginTop: 4,5 }}>
           <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, alignItems: "center" }}>
             <div style={{ opacity: 0.8,
 fontSize: 12,
-marginTop: 4,, fontSize: 12 }}>HQ Name</div>
+marginTop: 4, fontSize: 12 }}>HQ Name</div>
             <input
               value={draftLabel}
               onChange={(e) => setDraftLabel(e.target.value)}
@@ -420,7 +420,7 @@ marginTop: 4,, fontSize: 12 }}>HQ Name</div>
 
             <div style={{ opacity: 0.8,
 fontSize: 12,
-marginTop: 4,, fontSize: 12 }}>Player X</div>
+marginTop: 4, fontSize: 12 }}>Player X</div>
             <input
               value={draftPX}
               onChange={(e) => setDraftPX(e.target.value)}
@@ -437,7 +437,7 @@ marginTop: 4,, fontSize: 12 }}>Player X</div>
 
             <div style={{ opacity: 0.8,
 fontSize: 12,
-marginTop: 4,, fontSize: 12 }}>Player Y</div>
+marginTop: 4, fontSize: 12 }}>Player Y</div>
             <input
               value={draftPY}
               onChange={(e) => setDraftPY(e.target.value)}
@@ -487,6 +487,7 @@ marginTop: 4,, fontSize: 12 }}>Player Y</div>
     </div>
   );
 }
+
 
 
 
