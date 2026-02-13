@@ -14,8 +14,8 @@ type HQSlot = {
   slot_number: number | null;
 };
 
-const GRID_W = 18;
-const GRID_H = 20;
+const GRID_W = 12;
+const GRID_H = 10;
 
 const keyFor = (x: number, y: number) => `${x},${y}`;
 
@@ -475,6 +475,7 @@ opacity: isBusy ? 0.6 : 1,
     </div>
   );
 }
+
 
 
 
