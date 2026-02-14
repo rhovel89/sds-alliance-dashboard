@@ -52,39 +52,40 @@ export default function AllianceCalendarPage() {
   // -----------------------
   // SAVE EVENT
   // -----------------------
-  const saveEvent = async () => {
-    if (!canEdit) return;
+    const saveEvent = async () => {
+    if (!upperAlliance) return;
 
     if (!form.title || !form.start_at || !form.end_at) {
       alert("Please complete all required fields.");
       return;
     }
 
+    const start = new Date(form.start_at);
+    const end = new Date(form.end_at);
+
+    const payload = {
+      alliance_id: upperAlliance,
+      event_name: form.title,
+      event_type: form.event_type,
+      start_date: start.toISOString().split("T")[0],
+      end_date: end.toISOString().split("T")[0],
+      start_time: start.toTimeString().split(" ")[0],
+      end_time: end.toTimeString().split(" ")[0],
+    };
+
     const { error } = await supabase
       .from("alliance_events")
-      .insert({
-        alliance_id: upperAlliance,
-        event_name: form.title,
-        event_type: form.event_type,
-        start_date: form.start_at,
-        end_date: form.end_at,
-      });
+      .insert(payload);
 
     if (error) {
       console.error("SAVE EVENT ERROR:", error);
-      alert("Failed to save event");
+      alert(error.message);
       return;
     }
 
     setShowModal(false);
-    setForm({
-      title: "",
-      event_type: "State vs. State",
-      start_at: "",
-      end_at: "",
-    });
-
-    await refetch(); // 🔁 AUTO REFRESH
+    await refetch(); // auto refresh calendar
+    alert("Event Created Successfully");
   };
 
   // -----------------------
@@ -262,3 +263,4 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
