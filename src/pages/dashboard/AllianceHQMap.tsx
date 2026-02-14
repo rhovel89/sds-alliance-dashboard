@@ -27,19 +27,24 @@ export default function AllianceHQMap() {
   const { canEdit } = useHQPermissions(upperAlliance);
 
   const [slots, setSlots] = useState<HQSlot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const editingSlot = useMemo(
+    () => slots.find((s) => s.id === editingId) || null,
+    [slots, editingId]
+  );
+
   const [draftLabel, setDraftLabel] = useState("");
   const [draftPX, setDraftPX] = useState("");
   const [draftPY, setDraftPY] = useState("");
 
-  const editingSlot = useMemo(
-    () => slots.find(s => s.id === editingId) || null,
-    [slots, editingId]
-  );
-
   const slotByCell = useMemo(() => {
     const map = new Map<string, HQSlot>();
-    slots.forEach(s => map.set(keyFor(s.slot_x, s.slot_y), s));
+    slots.forEach((s) => {
+      map.set(keyFor(s.slot_x, s.slot_y), s);
+    });
     return map;
   }, [slots]);
 
@@ -47,50 +52,146 @@ export default function AllianceHQMap() {
     if (!upperAlliance) return;
 
     const load = async () => {
+      setLoading(true);
       const { data } = await supabase
         .from("alliance_hq_map")
         .select("*")
         .eq("alliance_id", upperAlliance);
 
-      if (data) setSlots(data);
+      if (data) setSlots(data as HQSlot[]);
+      setLoading(false);
     };
 
     load();
   }, [upperAlliance]);
 
-  const saveEditor = async () => {
-    if (!editingSlot) return;
+  const openEditor = (slot: HQSlot) => {
+    setEditingId(slot.id);
+    setDraftLabel(slot.label || "");
+    setDraftPX(slot.player_x == null ? "" : String(slot.player_x));
+    setDraftPY(slot.player_y == null ? "" : String(slot.player_y));
+  };
 
-    const payload = {
-      label: draftLabel.trim() || null,
-      player_x: draftPX ? Number(draftPX) : null,
-      player_y: draftPY ? Number(draftPY) : null,
-    };
+  const closeEditor = () => {
+    setEditingId(null);
+    setDraftLabel("");
+    setDraftPX("");
+    setDraftPY("");
+  };
+
+  const saveEditor = async () => {
+    if (!editingSlot || !canEdit) return;
+
+    const px = draftPX.trim() === "" ? null : Number(draftPX);
+    const py = draftPY.trim() === "" ? null : Number(draftPY);
+
+    setBusyId(editingSlot.id);
+
+    const { error } = await supabase
+      .from("alliance_hq_map")
+      .update({
+        label: draftLabel || null,
+        player_x: px,
+        player_y: py,
+      })
+      .eq("id", editingSlot.id);
+
+    if (!error) {
+      setSlots((prev) =>
+        prev.map((s) =>
+          s.id === editingSlot.id
+            ? { ...s, label: draftLabel, player_x: px, player_y: py }
+            : s
+        )
+      );
+    }
+
+    setBusyId(null);
+    closeEditor();
+  };
+
+  const deleteSlot = async (id: string) => {
+    if (!canEdit) return;
+    if (!confirm("Delete this HQ slot?")) return;
+
+    await supabase.from("alliance_hq_map").delete().eq("id", id);
+    setSlots((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const addSlot = async () => {
+    if (!canEdit) return;
+
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        if (!slotByCell.get(keyFor(x, y))) {
+          const { data } = await supabase
+            .from("alliance_hq_map")
+            .insert({
+              alliance_id: upperAlliance,
+              slot_x: x,
+              slot_y: y,
+              label: "New HQ",
+            })
+            .select()
+            .single();
+
+          if (data) setSlots((prev) => [...prev, data as HQSlot]);
+          return;
+        }
+      }
+    }
+  };
+
+  const moveSlot = async (id: string, x: number, y: number) => {
+    if (!canEdit) return;
+    if (slotByCell.get(keyFor(x, y))) return;
 
     await supabase
       .from("alliance_hq_map")
-      .update(payload)
-      .eq("id", editingSlot.id);
+      .update({ slot_x: x, slot_y: y })
+      .eq("id", id);
 
-    setSlots(prev =>
-      prev.map(s =>
-        s.id === editingSlot.id ? { ...s, ...payload } : s
+    setSlots((prev) =>
+      prev.map((s) =>
+        s.id === id ? { ...s, slot_x: x, slot_y: y } : s
       )
     );
-
-    setEditingId(null);
   };
+
+  const onDragStart = (e: React.DragEvent, slot: HQSlot) => {
+    if (!canEdit) return;
+    e.dataTransfer.setData("text/plain", slot.id);
+  };
+
+  const onDrop = (e: React.DragEvent, x: number, y: number) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain");
+    if (id) moveSlot(id, x, y);
+  };
+
+  if (!upperAlliance) {
+    return <div style={{ padding: 24 }}>Missing alliance in URL.</div>;
+  }
 
   return (
     <div style={{ padding: 24 }}>
-      <h2 style={{ color: "#7CFF5B" }}>HQ Map — {upperAlliance}</h2>
+      <div style={{ marginBottom: 16 }}>
+        <h2>HQ Map — {upperAlliance}</h2>
+        {canEdit && (
+          <button onClick={addSlot} className="zombie-btn">
+            ➕ Add HQ Slot
+          </button>
+        )}
+        {loading && <span style={{ marginLeft: 12 }}>Loading...</span>}
+      </div>
 
       <div
         style={{
           display: "grid",
           gridTemplateColumns: `repeat(${GRID_W}, ${CELL_SIZE}px)`,
           gridTemplateRows: `repeat(${GRID_H}, ${CELL_SIZE}px)`,
-          gap: 8,
+          gap: 10,
         }}
       >
         {Array.from({ length: GRID_H }).map((_, y) =>
@@ -100,58 +201,65 @@ export default function AllianceHQMap() {
             return (
               <div
                 key={`${x}-${y}`}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => onDrop(e, x, y)}
                 style={{
                   width: CELL_SIZE,
                   height: CELL_SIZE,
-                  borderRadius: 16,
                   border: "2px solid rgba(0,255,0,0.6)",
+                  borderRadius: 14,
                   background: slot
-                    ? "rgba(0,40,0,0.9)"
+                    ? "rgba(0,40,0,0.95)"
                     : "rgba(255,255,255,0.05)",
                   display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
+                  justifyContent: "center",
                   alignItems: "center",
-                  padding: 10,
-                  boxSizing: "border-box",
-                  color: "#7CFF5B",
-                  overflow: "hidden",
-                }}
-                onDoubleClick={() => {
-                  if (!canEdit || !slot) return;
-                  setEditingId(slot.id);
-                  setDraftLabel(slot.label || "");
-                  setDraftPX(slot.player_x?.toString() || "");
-                  setDraftPY(slot.player_y?.toString() || "");
                 }}
               >
                 {slot && (
-                  <>
+                  <div
+                    draggable={canEdit}
+                    onDragStart={(e) => onDragStart(e, slot)}
+                    onDoubleClick={() => openEditor(slot)}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      padding: 8,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      textAlign: "center",
+                      fontSize: 12,
+                      color: "#8aff8a",
+                      overflow: "hidden",
+                    }}
+                  >
                     <div
                       style={{
                         fontWeight: 700,
-                        fontSize: 12,
-                        lineHeight: "14px",
-                        textAlign: "center",
                         wordBreak: "break-word",
-                        overflowWrap: "anywhere",
-                        maxHeight: 55,
-                        overflow: "hidden",
                       }}
                     >
                       {slot.label}
                     </div>
 
-                    <div
-                      style={{
-                        fontSize: 11,
-                        opacity: 0.8,
-                        textAlign: "center",
-                      }}
-                    >
+                    <div style={{ fontSize: 11, opacity: 0.8 }}>
                       {slot.player_x ?? "-"}, {slot.player_y ?? "-"}
                     </div>
-                  </>
+
+                    {canEdit && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSlot(slot.id);
+                        }}
+                        style={{ marginTop: 4 }}
+                      >
+                        ✖
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             );
@@ -163,20 +271,21 @@ export default function AllianceHQMap() {
         <div style={{ marginTop: 20 }}>
           <input
             value={draftLabel}
-            onChange={e => setDraftLabel(e.target.value)}
+            onChange={(e) => setDraftLabel(e.target.value)}
             placeholder="HQ Name"
           />
           <input
             value={draftPX}
-            onChange={e => setDraftPX(e.target.value)}
+            onChange={(e) => setDraftPX(e.target.value)}
             placeholder="Player X"
           />
           <input
             value={draftPY}
-            onChange={e => setDraftPY(e.target.value)}
+            onChange={(e) => setDraftPY(e.target.value)}
             placeholder="Player Y"
           />
           <button onClick={saveEditor}>Save</button>
+          <button onClick={closeEditor}>Cancel</button>
         </div>
       )}
     </div>
