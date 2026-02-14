@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { useHQPermissions } from "../../hooks/useHQPermissions";
 import EventModal from "../../components/calendar/EventModal";
+import { useHQPermissions } from "../../hooks/useHQPermissions";
 
 
 type CreateEventPayload = {
@@ -15,6 +16,8 @@ type CreateEventPayload = {
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = (alliance_id || "").toUpperCase();
+  const { canEdit } = useHQPermissions(upperAlliance);
+
 
   const { canEdit } = useHQPermissions(upperAlliance);
 
@@ -28,48 +31,16 @@ export default function AllianceCalendarPage() {
     end_at: "",
   });
 
-  
-  const createEvent = async (eventData: any) => {
-    if (!upperAlliance) return;
-
-    const payload = {
-      alliance_id: upperAlliance,
-      event_name: eventData.event_name,
-      event_type: eventData.event_type,
-      start_date: eventData.start_date,
-      end_date: eventData.end_date,
-      start_time: eventData.start_time,
-      end_time: eventData.end_time,
-      recurrence_type: eventData.recurrence_type,
-      recurrence_days: eventData.recurrence_days,
-      created_by: user?.id
-    };
-
-    const { error } = await supabase
-      .from("alliance_events")
-      .insert(payload);
-
-    if (error) {
-      console.error("CREATE EVENT ERROR:", error);
-      alert("Failed to create event");
-      return;
-    }
-
-    await refetch();
-  };
-return (
+  return (
     <div style={{ padding: 24 }}>
       <h2>📅 Alliance Calendar — {upperAlliance}</h2>
 
-      {canEdit && (
-        <button
-          className="zombie-btn"
-          style={{ marginBottom: 16 }}
-          onClick={() => setShowModal(true)}
-        >
-          ➕ Create Event
-        </button>
+     {canEdit && (
+          <button onClick={() => setShowModal(true)}>
+           ➕ Create Event
+         </button>
       )}
+
 
       {showModal && (
         <div
@@ -156,7 +127,6 @@ return (
     </div>
   );
 }
-
 
 
 
