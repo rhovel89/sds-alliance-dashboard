@@ -1,75 +1,96 @@
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { supabase } from "../../lib/supabaseClient";
+
+type AllianceEvent = {
+  id: string;
+  alliance_id: string;
+  title: string;
+  event_type: string;
+  start_date: string;
+  end_date: string;
+  start_time: string | null;
+  end_time: string | null;
+};
 
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = (alliance_id || "").toUpperCase();
 
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
+  const [events, setEvents] = useState<AllianceEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const firstDay = new Date(year, month, 1);
-  const startDayIndex = firstDay.getDay(); // 0 = Sunday
+  useEffect(() => {
+    if (!upperAlliance) return;
 
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const loadEvents = async () => {
+      setLoading(true);
+      setErrorMsg(null);
 
-  const cells: (number | null)[] = [];
+      const { data, error } = await supabase
+        .from("alliance_events")
+        .select("*")
+        .eq("alliance_id", upperAlliance)
+        .order("start_date", { ascending: true });
 
-  for (let i = 0; i < startDayIndex; i++) {
-    cells.push(null);
-  }
+      if (error) {
+        console.error("CALENDAR LOAD ERROR:", error);
+        setErrorMsg(error.message);
+        setLoading(false);
+        return;
+      }
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push(d);
-  }
+      setEvents(data || []);
+      setLoading(false);
+    };
+
+    loadEvents();
+  }, [upperAlliance]);
 
   return (
     <div style={{ padding: 24, color: "#b6ff9e" }}>
-      <h1 style={{ marginBottom: 20 }}>
+      <h1 style={{ marginBottom: 12 }}>
         📅 Alliance Calendar — {upperAlliance}
       </h1>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, 1fr)",
-          gap: 10,
-          maxWidth: 900,
-        }}
-      >
-        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
-          <div
-            key={day}
-            style={{
-              textAlign: "center",
-              fontWeight: 700,
-              padding: 8,
-              background: "rgba(0,255,0,0.1)",
-              borderRadius: 6
-            }}
-          >
-            {day}
-          </div>
-        ))}
+      {loading && <div>Loading events...</div>}
+      {errorMsg && <div style={{ color: "red" }}>{errorMsg}</div>}
 
-        {cells.map((day, i) => (
+      {!loading && events.length === 0 && (
+        <div style={{ opacity: 0.6 }}>
+          No events yet for this alliance.
+        </div>
+      )}
+
+      <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+        {events.map((event) => (
           <div
-            key={i}
+            key={event.id}
             style={{
-              height: 100,
-              borderRadius: 10,
+              padding: 16,
+              borderRadius: 12,
+              background: "rgba(0,0,0,0.45)",
               border: "1px solid rgba(0,255,0,0.25)",
-              background: "rgba(0,0,0,0.35)",
-              padding: 8,
-              fontSize: 14,
-              position: "relative"
             }}
           >
-            {day && (
-              <div style={{ fontWeight: 600 }}>
-                {day}
+            <div style={{ fontWeight: 700, fontSize: 16 }}>
+              {event.title}
+            </div>
+
+            <div style={{ opacity: 0.8, marginTop: 6 }}>
+              {event.start_date} → {event.end_date}
+            </div>
+
+            {event.start_time && (
+              <div style={{ opacity: 0.7 }}>
+                {event.start_time} – {event.end_time}
               </div>
             )}
+
+            <div style={{ marginTop: 6, fontSize: 12, opacity: 0.6 }}>
+              Type: {event.event_type}
+            </div>
           </div>
         ))}
       </div>
