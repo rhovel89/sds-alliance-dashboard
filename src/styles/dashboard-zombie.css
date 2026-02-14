@@ -123,3 +123,36 @@
 .hq-slot:hover {
   box-shadow: 0 0 18px rgba(0,255,0,0.6);
 }
+
+/* ===== HQ MAP VISUAL SAFE OVERRIDE ===== */
+
+.dashboard-main div[style*="gridTemplateColumns"] {
+  gap: 14px !important;
+  padding: 30px !important;
+}
+
+.dashboard-main div[style*="border: 2px solid rgba(0,255,0"] {
+  width: 120px !important;
+  height: 120px !important;
+  padding: 14px !important;
+  font-size: 11px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  text-align: center !important;
+  overflow: hidden !important;
+  word-break: break-word !important;
+}
+
+.dashboard-main div[style*="fontWeight: 700"] {
+  font-size: 12px !important;
+  line-height: 14px !important;
+  max-height: 60px !important;
+  overflow: hidden !important;
+}
+
+.dashboard-main div[style*="opacity: 0.8"] {
+  font-size: 11px !important;
+}
+
