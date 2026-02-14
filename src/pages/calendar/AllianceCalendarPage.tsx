@@ -24,6 +24,39 @@ export default function AllianceCalendarPage() {
     end_at: "",
   });
 
+  
+  // ===== SAVE_EVENT_HANDLER =====
+  const handleSaveEvent = async () => {
+    if (!form.title || !form.start_at) {
+      alert("Title and Start Date required");
+      return;
+    }
+
+    const payload = {
+      alliance_id: upperAlliance,
+      event_name: form.title,
+      event_type: form.event_type,
+      start_date: form.start_at.split("T")[0],
+      end_date: form.end_at ? form.end_at.split("T")[0] : form.start_at.split("T")[0],
+      start_time: form.start_at.split("T")[1],
+      end_time: form.end_at ? form.end_at.split("T")[1] : null
+    };
+
+    const { error } = await supabase
+      .from("alliance_events")
+      .insert(payload);
+
+    if (error) {
+      console.error(error);
+      alert("Failed to save event");
+      return;
+    }
+
+    setShowModal(false);
+    alert("Event saved!");
+  };
+  // ===== SAVE_EVENT_HANDLER_END =====
+
   return (
     <div style={{ padding: 24 }}>
       <h2>📅 Alliance Calendar — {upperAlliance}</h2>
@@ -167,7 +200,40 @@ export default function AllianceCalendarPage() {
       >
         {Array.from({ length: 35 }).map((_, i) => {
           const day = i + 1
-          return (
+          
+  // ===== SAVE_EVENT_HANDLER =====
+  const handleSaveEvent = async () => {
+    if (!form.title || !form.start_at) {
+      alert("Title and Start Date required");
+      return;
+    }
+
+    const payload = {
+      alliance_id: upperAlliance,
+      event_name: form.title,
+      event_type: form.event_type,
+      start_date: form.start_at.split("T")[0],
+      end_date: form.end_at ? form.end_at.split("T")[0] : form.start_at.split("T")[0],
+      start_time: form.start_at.split("T")[1],
+      end_time: form.end_at ? form.end_at.split("T")[1] : null
+    };
+
+    const { error } = await supabase
+      .from("alliance_events")
+      .insert(payload);
+
+    if (error) {
+      console.error(error);
+      alert("Failed to save event");
+      return;
+    }
+
+    setShowModal(false);
+    alert("Event saved!");
+  };
+  // ===== SAVE_EVENT_HANDLER_END =====
+
+  return (
             <div
               key={i}
               style={{
@@ -186,8 +252,40 @@ export default function AllianceCalendarPage() {
       </div>
       {/* ===== Calendar Grid END ===== */}
 
+      
+      {/* ===== CALENDAR_GRID_START ===== */}
+      <div
+        style={{
+          marginTop: 30,
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gap: 12
+        }}
+      >
+        {Array.from({ length: 30 }).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              background: "rgba(0,0,0,0.45)",
+              border: "1px solid rgba(0,255,0,0.25)",
+              borderRadius: 12,
+              padding: 12,
+              minHeight: 80,
+              color: "#b6ff9e"
+            }}
+          >
+            <div style={{ fontSize: 12, opacity: 0.6 }}>
+              Day {i + 1}
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* ===== CALENDAR_GRID_END ===== */}
+
       <p>Alliance calendar system initializing...</p>
     </div>
   );
 }
+
+
 
