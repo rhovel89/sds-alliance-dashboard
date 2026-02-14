@@ -1,99 +1,116 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
 
-type AllianceEvent = {
-  id: string;
-  alliance_id: string;
+import { useState } from "react";
+import { useHQPermissions } from "../../hooks/useHQPermissions";
+
+type CreateEventPayload = {
   title: string;
   event_type: string;
-  start_date: string;
-  end_date: string;
-  start_time: string | null;
-  end_time: string | null;
+  start_at: string;
+  end_at: string;
 };
 
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = (alliance_id || "").toUpperCase();
 
-  const [events, setEvents] = useState<AllianceEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { canEdit } = useHQPermissions(upperAlliance);
 
-  useEffect(() => {
-    if (!upperAlliance) return;
-
-    const loadEvents = async () => {
-      setLoading(true);
-      setErrorMsg(null);
-
-      const { data, error } = await supabase
-        .from("alliance_events")
-        .select("*")
-        .eq("alliance_id", upperAlliance)
-        .order("start_date", { ascending: true });
-
-      if (error) {
-        console.error("CALENDAR LOAD ERROR:", error);
-        setErrorMsg(error.message);
-        setLoading(false);
-        return;
-      }
-
-      setEvents(data || []);
-      setLoading(false);
-    };
-
-    loadEvents();
-  }, [upperAlliance]);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<CreateEventPayload>({
+    title: "",
+    event_type: "State vs. State",
+    start_at: "",
+    end_at: "",
+  });
 
   return (
-    <div style={{ padding: 24, color: "#b6ff9e" }}>
-      <h1 style={{ marginBottom: 12 }}>
-        📅 Alliance Calendar — {upperAlliance}
-      </h1>
+    <div style={{ padding: 24 }}>
+      <h2>📅 Alliance Calendar — {upperAlliance}</h2>
 
-      {loading && <div>Loading events...</div>}
-      {errorMsg && <div style={{ color: "red" }}>{errorMsg}</div>}
+      {canEdit && (
+        <button
+          className="zombie-btn"
+          style={{ marginBottom: 16 }}
+          onClick={() => setShowModal(true)}
+        >
+          ➕ Create Event
+        </button>
+      )}
 
-      {!loading && events.length === 0 && (
-        <div style={{ opacity: 0.6 }}>
-          No events yet for this alliance.
+      {showModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.7)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000
+          }}
+        >
+          <div
+            style={{
+              background: "#111",
+              padding: 24,
+              borderRadius: 12,
+              width: 400,
+              boxShadow: "0 0 25px rgba(0,255,0,0.2)"
+            }}
+          >
+            <h3>Create Event</h3>
+
+            <input
+              placeholder="Event Title"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              style={{ width: "100%", marginBottom: 12 }}
+            />
+
+            <select
+              value={form.event_type}
+              onChange={(e) => setForm({ ...form, event_type: e.target.value })}
+              style={{ width: "100%", marginBottom: 12 }}
+            >
+              <option>State vs. State</option>
+              <option>Sonic</option>
+              <option>Dead Rising</option>
+              <option>Defense of Alliance</option>
+              <option>Wasteland King</option>
+              <option>Valiance Conquest</option>
+              <option>Tundra</option>
+              <option>Alliance Clash</option>
+              <option>Alliance Showdown</option>
+              <option>FireFlies</option>
+            </select>
+
+            <input
+              type="datetime-local"
+              value={form.start_at}
+              onChange={(e) => setForm({ ...form, start_at: e.target.value })}
+              style={{ width: "100%", marginBottom: 12 }}
+            />
+
+            <input
+              type="datetime-local"
+              value={form.end_at}
+              onChange={(e) => setForm({ ...form, end_at: e.target.value })}
+              style={{ width: "100%", marginBottom: 12 }}
+            />
+
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button onClick={() => setShowModal(false)}>
+                Cancel
+              </button>
+              <button className="zombie-btn">
+                Save Event
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
-        {events.map((event) => (
-          <div
-            key={event.id}
-            style={{
-              padding: 16,
-              borderRadius: 12,
-              background: "rgba(0,0,0,0.45)",
-              border: "1px solid rgba(0,255,0,0.25)",
-            }}
-          >
-            <div style={{ fontWeight: 700, fontSize: 16 }}>
-              {event.title}
-            </div>
-
-            <div style={{ opacity: 0.8, marginTop: 6 }}>
-              {event.start_date} → {event.end_date}
-            </div>
-
-            {event.start_time && (
-              <div style={{ opacity: 0.7 }}>
-                {event.start_time} – {event.end_time}
-              </div>
-            )}
-
-            <div style={{ marginTop: 6, fontSize: 12, opacity: 0.6 }}>
-              Type: {event.event_type}
-            </div>
-          </div>
-        ))}
-      </div>
+      <p>Alliance calendar system initializing...</p>
     </div>
   );
 }
