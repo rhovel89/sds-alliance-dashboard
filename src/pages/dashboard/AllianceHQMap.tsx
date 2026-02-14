@@ -113,8 +113,8 @@ export default function AllianceHQMap() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${GRID_W}, 100px)`,
-          gridTemplateRows: `repeat(${GRID_H}, 100px)`,
+          gridTemplateColumns: `repeat(${GRID_W}, ${CELL}px)`,
+          gridTemplateRows: `repeat(${GRID_H}, ${CELL}px)`,
           gap: 14,
         }}
       >
@@ -241,3 +241,4 @@ export default function AllianceHQMap() {
     </div>
   );
 }
+
