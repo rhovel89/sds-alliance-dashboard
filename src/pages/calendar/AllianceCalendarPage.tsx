@@ -144,11 +144,59 @@ export default function AllianceCalendarPage() {
                   {ev.event_name}
                 </div>
               ))}
-            </div>
+            
+      {showModal && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: "#111",
+            padding: 24,
+            borderRadius: 12,
+            width: 420
+          }}>
+            <h3>Create Event</h3>
+            <button onClick={() => setShowModal(false)}>Close</button>
+          </div>
+        </div>
+      )}
+
+</div>
           );
         })}
       </div>
-    </div>
+    
+      {showModal && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: "#111",
+            padding: 24,
+            borderRadius: 12,
+            width: 420
+          }}>
+            <h3>Create Event</h3>
+            <button onClick={() => setShowModal(false)}>Close</button>
+          </div>
+        </div>
+      )}
+
+</div>
   );
 }
+
+
 
