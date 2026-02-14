@@ -81,10 +81,11 @@ export default function AllianceCalendarPage() {
       .insert(payload);
 
     if (error) {
-      console.error(error);
-      alert("Failed to save event");
-      return;
-    }
+  console.error("SAVE EVENT ERROR FULL:", error);
+  alert(JSON.stringify(error, null, 2));
+  return;
+}
+
 
     setShowModal(false);
     setForm({
@@ -274,3 +275,4 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
