@@ -28,7 +28,36 @@ export default function AllianceCalendarPage() {
     end_at: "",
   });
 
-  return (
+  
+  const createEvent = async (eventData: any) => {
+    if (!upperAlliance) return;
+
+    const payload = {
+      alliance_id: upperAlliance,
+      event_name: eventData.event_name,
+      event_type: eventData.event_type,
+      start_date: eventData.start_date,
+      end_date: eventData.end_date,
+      start_time: eventData.start_time,
+      end_time: eventData.end_time,
+      recurrence_type: eventData.recurrence_type,
+      recurrence_days: eventData.recurrence_days,
+      created_by: user?.id
+    };
+
+    const { error } = await supabase
+      .from("alliance_events")
+      .insert(payload);
+
+    if (error) {
+      console.error("CREATE EVENT ERROR:", error);
+      alert("Failed to create event");
+      return;
+    }
+
+    await refetch();
+  };
+return (
     <div style={{ padding: 24 }}>
       <h2>📅 Alliance Calendar — {upperAlliance}</h2>
 
@@ -127,6 +156,7 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
 
 
 
