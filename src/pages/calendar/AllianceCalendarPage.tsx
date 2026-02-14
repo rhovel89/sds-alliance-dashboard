@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
 import { useHQPermissions } from "../../hooks/useHQPermissions";
 
 type CreateEventPayload = {
@@ -57,7 +58,36 @@ export default function AllianceCalendarPage() {
   };
   // ===== SAVE_EVENT_HANDLER_END =====
 
-  return (
+  
+  const saveEvent = async () => {
+    if (!upperAlliance) return;
+
+    if (!form.title || !form.start_at || !form.end_at) {
+      alert("Please complete all required fields.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("alliance_events")
+      .insert({
+        alliance_id: upperAlliance,
+        event_name: form.title,
+        event_type: form.event_type,
+        start_date: form.start_at,
+        end_date: form.end_at,
+      });
+
+    if (error) {
+      console.error("SAVE EVENT ERROR:", error);
+      alert("Failed to save event");
+      return;
+    }
+
+    setShowModal(false);
+    alert("Event Created Successfully");
+  };
+
+return (
     <div style={{ padding: 24 }}>
       <h2>📅 Alliance Calendar — {upperAlliance}</h2>
 
@@ -233,7 +263,36 @@ export default function AllianceCalendarPage() {
   };
   // ===== SAVE_EVENT_HANDLER_END =====
 
-  return (
+  
+  const saveEvent = async () => {
+    if (!upperAlliance) return;
+
+    if (!form.title || !form.start_at || !form.end_at) {
+      alert("Please complete all required fields.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("alliance_events")
+      .insert({
+        alliance_id: upperAlliance,
+        event_name: form.title,
+        event_type: form.event_type,
+        start_date: form.start_at,
+        end_date: form.end_at,
+      });
+
+    if (error) {
+      console.error("SAVE EVENT ERROR:", error);
+      alert("Failed to save event");
+      return;
+    }
+
+    setShowModal(false);
+    alert("Event Created Successfully");
+  };
+
+return (
             <div
               key={i}
               style={{
@@ -286,6 +345,9 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
+
+
 
 
 
