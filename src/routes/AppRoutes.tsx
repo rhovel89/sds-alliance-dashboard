@@ -36,27 +36,21 @@ export default function AppRoutes() {
         <Route
           index
           element={
-            <RequireAlliance>
-              <MyAlliance />
-            </RequireAlliance>
+            <MyAlliance />
           }
         />
 
         <Route
           path="hq-map"
           element={
-            <RequireAlliance>
-              <AllianceHQMap />
-            </RequireAlliance>
+            <AllianceHQMap />
           }
         />
 
         <Route
           path="calendar"
           element={
-            <RequireAlliance>
-              <AllianceCalendarPage />
-            </RequireAlliance>
+            <AllianceCalendarPage />
           }
         />
 
@@ -83,3 +77,4 @@ export default function AppRoutes() {
     </Routes>
   );
 }
+
