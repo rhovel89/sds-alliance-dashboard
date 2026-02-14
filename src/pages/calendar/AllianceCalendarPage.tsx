@@ -6,12 +6,13 @@ import { useHQPermissions } from "../../hooks/useHQPermissions";
 type EventRecord = {
   id: string;
   alliance_id: string;
-  event_name: string;
+  title: string;
   event_type: string;
   start_date: string;
   end_date: string;
   start_time: string;
   end_time: string;
+  created_by: string;
 };
 
 export default function AllianceCalendarPage() {
@@ -23,7 +24,7 @@ export default function AllianceCalendarPage() {
   const [showModal, setShowModal] = useState(false);
 
   const [form, setForm] = useState({
-    event_name: "",
+    title: "",
     event_type: "State vs. State",
     start_date: "",
     end_date: "",
@@ -32,9 +33,8 @@ export default function AllianceCalendarPage() {
   });
 
   const today = new Date();
-  const [month, setMonth] = useState(today.getMonth());
-  const [year, setYear] = useState(today.getFullYear());
-
+  const [month] = useState(today.getMonth());
+  const [year] = useState(today.getFullYear());
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const refetch = async () => {
@@ -56,7 +56,7 @@ export default function AllianceCalendarPage() {
     if (!canEdit) return;
 
     if (
-      !form.event_name ||
+      !form.title ||
       !form.start_date ||
       !form.end_date ||
       !form.start_time ||
@@ -66,39 +66,40 @@ export default function AllianceCalendarPage() {
       return;
     }
 
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("Not authenticated");
+      return;
+    }
+
     const payload = {
-  alliance_id: upperAlliance,
-  title: form.event_name,            // REQUIRED COLUMN
-  event_name: form.event_name,
-  event_type: form.event_type,
-  start_date: form.start_date,
-  end_date: form.end_date,
-  start_time: form.start_time,
-  end_time: form.end_time,
-  start_time_utc: new Date(form.start_date + "T" + form.start_time).toISOString(),
-  duration_minutes:
-    (
-      (new Date(form.end_date + "T" + form.end_time).getTime() -
-       new Date(form.start_date + "T" + form.start_time).getTime())
-    ) / 60000,
-  timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  created_by: null
-};
+      alliance_id: upperAlliance,
+      title: form.title,               // REQUIRED
+      event_name: form.title,          // keep compatibility
+      event_type: form.event_type,
+      start_date: form.start_date,
+      end_date: form.end_date,
+      start_time: form.start_time,
+      end_time: form.end_time,
+      created_by: user.id              // REQUIRED
+    };
 
     const { error } = await supabase
       .from("alliance_events")
       .insert(payload);
 
     if (error) {
-  console.error("SAVE EVENT ERROR FULL:", error);
-  alert(JSON.stringify(error, null, 2));
-  return;
-}
-
+      console.error("SAVE ERROR:", error);
+      alert(error.message);
+      return;
+    }
 
     setShowModal(false);
     setForm({
-      event_name: "",
+      title: "",
       event_type: "State vs. State",
       start_date: "",
       end_date: "",
@@ -111,7 +112,6 @@ export default function AllianceCalendarPage() {
 
   const deleteEvent = async (id: string) => {
     if (!canEdit) return;
-
     if (!confirm("Delete event?")) return;
 
     await supabase
@@ -178,7 +178,7 @@ export default function AllianceCalendarPage() {
                   }}
                   onClick={() => deleteEvent(e.id)}
                 >
-                  {e.event_name}
+                  {e.title}
                 </div>
               ))}
             </div>
@@ -210,9 +210,9 @@ export default function AllianceCalendarPage() {
 
             <input
               placeholder="Event Name"
-              value={form.event_name}
+              value={form.title}
               onChange={(e) =>
-                setForm({ ...form, event_name: e.target.value })
+                setForm({ ...form, title: e.target.value })
               }
               style={{ width: "100%", marginBottom: 10 }}
             />
@@ -284,5 +284,3 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
-
-
