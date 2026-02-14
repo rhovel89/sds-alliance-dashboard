@@ -2,6 +2,8 @@ import { useParams } from "react-router-dom";
 
 import { useState } from "react";
 import { useHQPermissions } from "../../hooks/useHQPermissions";
+import EventModal from "../../components/calendar/EventModal";
+
 
 type CreateEventPayload = {
   title: string;
@@ -17,6 +19,8 @@ export default function AllianceCalendarPage() {
   const { canEdit } = useHQPermissions(upperAlliance);
 
   const [showModal, setShowModal] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+
   const [form, setForm] = useState<CreateEventPayload>({
     title: "",
     event_type: "State vs. State",
@@ -106,6 +110,14 @@ export default function AllianceCalendarPage() {
               <button className="zombie-btn">
                 Save Event
               </button>
+      
+             <EventModal
+                open={modalOpen}
+                onClose={() => setModalOpen(false)}
+                onSave={(data) => {
+                console.log("Event Created:", data);
+             }}
+             />
             </div>
           </div>
         </div>
