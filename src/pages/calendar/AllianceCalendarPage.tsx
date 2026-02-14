@@ -1,47 +1,51 @@
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useHQPermissions } from "../../hooks/useHQPermissions";
 
-type CreateEventPayload = {
-  title: string;
+type EventRecord = {
+  id: string;
+  alliance_id: string;
+  event_name: string;
   event_type: string;
   start_date: string;
   end_date: string;
+  start_time: string;
+  end_time: string;
 };
 
 export default function AllianceCalendarPage() {
-
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = (alliance_id || "").toUpperCase();
-
   const { canEdit } = useHQPermissions(upperAlliance);
 
+  const [events, setEvents] = useState<EventRecord[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [events, setEvents] = useState<any[]>([]);
 
-  const [form, setForm] = useState<CreateEventPayload>({
-    title: "",
+  const [form, setForm] = useState({
+    event_name: "",
     event_type: "State vs. State",
     start_date: "",
     end_date: "",
+    start_time: "",
+    end_time: ""
   });
+
+  const today = new Date();
+  const [month, setMonth] = useState(today.getMonth());
+  const [year, setYear] = useState(today.getFullYear());
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const refetch = async () => {
     if (!upperAlliance) return;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("alliance_events")
       .select("*")
-      .eq("alliance_id", upperAlliance)
-      .order("start_date", { ascending: true });
+      .eq("alliance_id", upperAlliance);
 
-    if (error) {
-      console.error("FETCH EVENTS ERROR:", error);
-      return;
-    }
-
-    setEvents(data || []);
+    if (data) setEvents(data as EventRecord[]);
   };
 
   useEffect(() => {
@@ -49,34 +53,47 @@ export default function AllianceCalendarPage() {
   }, [upperAlliance]);
 
   const saveEvent = async () => {
+    if (!canEdit) return;
 
-    if (!form.title || !form.start_date || !form.end_date) {
-      alert("Please complete all required fields.");
+    if (
+      !form.event_name ||
+      !form.start_date ||
+      !form.end_date ||
+      !form.start_time ||
+      !form.end_time
+    ) {
+      alert("Please fill all fields");
       return;
     }
 
+    const payload = {
+      alliance_id: upperAlliance,
+      event_name: form.event_name,
+      event_type: form.event_type,
+      start_date: form.start_date,
+      end_date: form.end_date,
+      start_time: form.start_time,
+      end_time: form.end_time
+    };
+
     const { error } = await supabase
       .from("alliance_events")
-      .insert({
-        alliance_id: upperAlliance,
-        event_name: form.title,
-        event_type: form.event_type,
-        start_date: form.start_date,
-        end_date: form.end_date,
-      });
+      .insert(payload);
 
     if (error) {
-      console.error("SAVE EVENT ERROR:", error);
+      console.error(error);
       alert("Failed to save event");
       return;
     }
 
     setShowModal(false);
     setForm({
-      title: "",
+      event_name: "",
       event_type: "State vs. State",
       start_date: "",
       end_date: "",
+      start_time: "",
+      end_time: ""
     });
 
     await refetch();
@@ -85,7 +102,7 @@ export default function AllianceCalendarPage() {
   const deleteEvent = async (id: string) => {
     if (!canEdit) return;
 
-    if (!confirm("Delete this event?")) return;
+    if (!confirm("Delete event?")) return;
 
     await supabase
       .from("alliance_events")
@@ -97,45 +114,69 @@ export default function AllianceCalendarPage() {
 
   return (
     <div style={{ padding: 24 }}>
-
       <h2>📅 Alliance Calendar — {upperAlliance}</h2>
 
       {canEdit && (
-        <button onClick={() => setShowModal(true)}>
+        <button
+          className="zombie-btn"
+          onClick={() => setShowModal(true)}
+        >
           ➕ Create Event
         </button>
       )}
 
-      <div style={{ marginTop: 20 }}>
-        {events.length === 0 && (
-          <p>No events yet for this alliance.</p>
-        )}
+      {/* Month Grid */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gap: 10,
+          marginTop: 20
+        }}
+      >
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
 
-        {events.map(e => (
-          <div
-            key={e.id}
-            style={{
-              padding: 10,
-              marginBottom: 8,
-              background: "rgba(0,255,0,0.1)",
-              borderRadius: 6
-            }}
-          >
-            <strong>{e.event_name}</strong><br/>
-            {e.event_type}<br/>
-            {e.start_date} → {e.end_date}
+          const dayEvents = events.filter(
+            (e) =>
+              new Date(e.start_date).getDate() === day &&
+              new Date(e.start_date).getMonth() === month
+          );
 
-            {canEdit && (
-              <div style={{ marginTop: 6 }}>
-                <button onClick={() => deleteEvent(e.id)}>
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+          return (
+            <div
+              key={day}
+              style={{
+                border: "1px solid rgba(0,255,0,0.3)",
+                borderRadius: 10,
+                padding: 10,
+                minHeight: 100
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{day}</div>
+
+              {dayEvents.map((e) => (
+                <div
+                  key={e.id}
+                  style={{
+                    background: "rgba(0,255,0,0.15)",
+                    marginTop: 6,
+                    padding: 6,
+                    borderRadius: 6,
+                    fontSize: 12,
+                    cursor: canEdit ? "pointer" : "default"
+                  }}
+                  onClick={() => deleteEvent(e.id)}
+                >
+                  {e.event_name}
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
 
+      {/* Modal */}
       {showModal && (
         <div
           style={{
@@ -158,12 +199,12 @@ export default function AllianceCalendarPage() {
             <h3>Create Event</h3>
 
             <input
-              placeholder="Event Title"
-              value={form.title}
+              placeholder="Event Name"
+              value={form.event_name}
               onChange={(e) =>
-                setForm({ ...form, title: e.target.value })
+                setForm({ ...form, event_name: e.target.value })
               }
-              style={{ width: "100%", marginBottom: 12 }}
+              style={{ width: "100%", marginBottom: 10 }}
             />
 
             <select
@@ -171,7 +212,7 @@ export default function AllianceCalendarPage() {
               onChange={(e) =>
                 setForm({ ...form, event_type: e.target.value })
               }
-              style={{ width: "100%", marginBottom: 12 }}
+              style={{ width: "100%", marginBottom: 10 }}
             >
               <option>State vs. State</option>
               <option>Sonic</option>
@@ -191,7 +232,16 @@ export default function AllianceCalendarPage() {
               onChange={(e) =>
                 setForm({ ...form, start_date: e.target.value })
               }
-              style={{ width: "100%", marginBottom: 12 }}
+              style={{ width: "100%", marginBottom: 10 }}
+            />
+
+            <input
+              type="time"
+              value={form.start_time}
+              onChange={(e) =>
+                setForm({ ...form, start_time: e.target.value })
+              }
+              style={{ width: "100%", marginBottom: 10 }}
             />
 
             <input
@@ -200,26 +250,27 @@ export default function AllianceCalendarPage() {
               onChange={(e) =>
                 setForm({ ...form, end_date: e.target.value })
               }
-              style={{ width: "100%", marginBottom: 12 }}
+              style={{ width: "100%", marginBottom: 10 }}
+            />
+
+            <input
+              type="time"
+              value={form.end_time}
+              onChange={(e) =>
+                setForm({ ...form, end_time: e.target.value })
+              }
+              style={{ width: "100%", marginBottom: 10 }}
             />
 
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <button onClick={() => setShowModal(false)}>
-                Cancel
-              </button>
-
-              <button
-                className="zombie-btn"
-                onClick={canEdit ? saveEvent : undefined}
-              >
-                Save Event
+              <button onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="zombie-btn" onClick={saveEvent}>
+                Save
               </button>
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }
