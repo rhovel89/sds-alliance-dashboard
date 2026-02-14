@@ -1,133 +1,153 @@
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-
-import { useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
 import { useHQPermissions } from "../../hooks/useHQPermissions";
-import EventModal from "../../components/calendar/EventModal";
-import { useHQPermissions } from "../../hooks/useHQPermissions";
-
-
-type CreateEventPayload = {
-  title: string;
-  event_type: string;
-  start_at: string;
-  end_at: string;
-};
 
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = (alliance_id || "").toUpperCase();
-  const { canEdit } = useHQPermissions(upperAlliance);
-
 
   const { canEdit } = useHQPermissions(upperAlliance);
 
+  const [events, setEvents] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
 
-  const [form, setForm] = useState<CreateEventPayload>({
-    title: "",
-    event_type: "State vs. State",
-    start_at: "",
-    end_at: "",
-  });
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+
+  const refetch = async () => {
+    if (!upperAlliance) return;
+
+    const { data, error } = await supabase
+      .from("alliance_events")
+      .select("*")
+      .eq("alliance_id", upperAlliance);
+
+    if (!error && data) {
+      setEvents(data);
+    }
+  };
+
+  useEffect(() => {
+    refetch();
+  }, [upperAlliance]);
+
+  // ===============================
+  // RECURRING ENGINE
+  // ===============================
+  const expandRecurringEvents = (events: any[], month: number, year: number) => {
+    const expanded: any[] = [];
+
+    events.forEach((event) => {
+      const start = new Date(event.start_date);
+      const end = new Date(event.end_date);
+
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const current = new Date(year, month, day);
+
+        if (current < start || current > end) continue;
+
+        if (!event.recurrence_type || event.recurrence_type === "none") {
+          if (current.toDateString() === start.toDateString()) {
+            expanded.push({ ...event, instanceDate: current });
+          }
+        }
+
+        if (event.recurrence_type === "daily") {
+          expanded.push({ ...event, instanceDate: current });
+        }
+
+        if (event.recurrence_type === "weekly" && event.recurrence_days) {
+          const weekday = current.getDay();
+          if (event.recurrence_days.includes(weekday)) {
+            expanded.push({ ...event, instanceDate: current });
+          }
+        }
+
+        if (event.recurrence_type === "monthly") {
+          if (current.getDate() === start.getDate()) {
+            expanded.push({ ...event, instanceDate: current });
+          }
+        }
+      }
+    });
+
+    return expanded;
+  };
+
+  const expandedEvents = useMemo(() => {
+    return expandRecurringEvents(events, currentMonth, currentYear);
+  }, [events, currentMonth, currentYear]);
+
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
   return (
-    <div style={{ padding: 24 }}>
-      <h2>📅 Alliance Calendar — {upperAlliance}</h2>
+    <div style={{ padding: 24, color: "#b6ff9e" }}>
+      <h1>📅 Alliance Calendar — {upperAlliance}</h1>
 
-     {canEdit && (
-          <button onClick={() => setShowModal(true)}>
-           ➕ Create Event
-         </button>
-      )}
-
-
-      {showModal && (
-        <div
+      {canEdit && (
+        <button
+          onClick={() => setShowModal(true)}
           style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.7)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000
+            marginTop: 12,
+            padding: "8px 14px",
+            borderRadius: 8,
+            background: "rgba(0,255,0,0.15)",
+            border: "1px solid rgba(0,255,0,0.5)",
+            color: "#8aff8a",
+            cursor: "pointer"
           }}
         >
-          <div
-            style={{
-              background: "#111",
-              padding: 24,
-              borderRadius: 12,
-              width: 400,
-              boxShadow: "0 0 25px rgba(0,255,0,0.2)"
-            }}
-          >
-            <h3>Create Event</h3>
-
-            <input
-              placeholder="Event Title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              style={{ width: "100%", marginBottom: 12 }}
-            />
-
-            <select
-              value={form.event_type}
-              onChange={(e) => setForm({ ...form, event_type: e.target.value })}
-              style={{ width: "100%", marginBottom: 12 }}
-            >
-              <option>State vs. State</option>
-              <option>Sonic</option>
-              <option>Dead Rising</option>
-              <option>Defense of Alliance</option>
-              <option>Wasteland King</option>
-              <option>Valiance Conquest</option>
-              <option>Tundra</option>
-              <option>Alliance Clash</option>
-              <option>Alliance Showdown</option>
-              <option>FireFlies</option>
-            </select>
-
-            <input
-              type="datetime-local"
-              value={form.start_at}
-              onChange={(e) => setForm({ ...form, start_at: e.target.value })}
-              style={{ width: "100%", marginBottom: 12 }}
-            />
-
-            <input
-              type="datetime-local"
-              value={form.end_at}
-              onChange={(e) => setForm({ ...form, end_at: e.target.value })}
-              style={{ width: "100%", marginBottom: 12 }}
-            />
-
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <button onClick={() => setShowModal(false)}>
-                Cancel
-              </button>
-              <button className="zombie-btn">
-                Save Event
-              </button>
-      
-             <EventModal
-                open={modalOpen}
-                onClose={() => setModalOpen(false)}
-                onSave={(data) => {
-                console.log("Event Created:", data);
-             }}
-             />
-            </div>
-          </div>
-        </div>
+          ➕ Create Event
+        </button>
       )}
 
-      <p>Alliance calendar system initializing...</p>
+      <div style={{
+        marginTop: 24,
+        display: "grid",
+        gridTemplateColumns: "repeat(7, 1fr)",
+        gap: 8
+      }}>
+        {Array.from({ length: daysInMonth }).map((_, index) => {
+          const day = index + 1;
+
+          const dayEvents = expandedEvents.filter(e =>
+            new Date(e.instanceDate).getDate() === day
+          );
+
+          return (
+            <div
+              key={day}
+              style={{
+                minHeight: 100,
+                border: "1px solid rgba(0,255,0,0.2)",
+                padding: 6,
+                borderRadius: 8
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{day}</div>
+
+              {dayEvents.map((ev, i) => (
+                <div
+                  key={i}
+                  style={{
+                    marginTop: 4,
+                    fontSize: 11,
+                    background: "rgba(0,255,0,0.08)",
+                    padding: 4,
+                    borderRadius: 4
+                  }}
+                >
+                  {ev.event_name}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
-
-
-
-
