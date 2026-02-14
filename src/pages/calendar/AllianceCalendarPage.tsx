@@ -1,7 +1,13 @@
-import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
+import { useState } from "react";
 import { useHQPermissions } from "../../hooks/useHQPermissions";
+
+type CreateEventPayload = {
+  title: string;
+  event_type: string;
+  start_at: string;
+  end_at: string;
+};
 
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
@@ -9,194 +15,146 @@ export default function AllianceCalendarPage() {
 
   const { canEdit } = useHQPermissions(upperAlliance);
 
-  const [events, setEvents] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
 
-  const today = new Date();
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
-
-  const refetch = async () => {
-    if (!upperAlliance) return;
-
-    const { data, error } = await supabase
-      .from("alliance_events")
-      .select("*")
-      .eq("alliance_id", upperAlliance);
-
-    if (!error && data) {
-      setEvents(data);
-    }
-  };
-
-  useEffect(() => {
-    refetch();
-  }, [upperAlliance]);
-
-  // ===============================
-  // RECURRING ENGINE
-  // ===============================
-  const expandRecurringEvents = (events: any[], month: number, year: number) => {
-    const expanded: any[] = [];
-
-    events.forEach((event) => {
-      const start = new Date(event.start_date);
-      const end = new Date(event.end_date);
-
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        const current = new Date(year, month, day);
-
-        if (current < start || current > end) continue;
-
-        if (!event.recurrence_type || event.recurrence_type === "none") {
-          if (current.toDateString() === start.toDateString()) {
-            expanded.push({ ...event, instanceDate: current });
-          }
-        }
-
-        if (event.recurrence_type === "daily") {
-          expanded.push({ ...event, instanceDate: current });
-        }
-
-        if (event.recurrence_type === "weekly" && event.recurrence_days) {
-          const weekday = current.getDay();
-          if (event.recurrence_days.includes(weekday)) {
-            expanded.push({ ...event, instanceDate: current });
-          }
-        }
-
-        if (event.recurrence_type === "monthly") {
-          if (current.getDate() === start.getDate()) {
-            expanded.push({ ...event, instanceDate: current });
-          }
-        }
-      }
-    });
-
-    return expanded;
-  };
-
-  const expandedEvents = useMemo(() => {
-    return expandRecurringEvents(events, currentMonth, currentYear);
-  }, [events, currentMonth, currentYear]);
-
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const [form, setForm] = useState<CreateEventPayload>({
+    title: "",
+    event_type: "State vs. State",
+    start_at: "",
+    end_at: "",
+  });
 
   return (
-    <div style={{ padding: 24, color: "#b6ff9e" }}>
-      <h1>📅 Alliance Calendar — {upperAlliance}</h1>
+    <div style={{ padding: 24 }}>
+      <h2>📅 Alliance Calendar — {upperAlliance}</h2>
 
       {canEdit && (
         <button
+          className="zombie-btn"
+          style={{ marginBottom: 16 }}
           onClick={() => setShowModal(true)}
-          style={{
-            marginTop: 12,
-            padding: "8px 14px",
-            borderRadius: 8,
-            background: "rgba(0,255,0,0.15)",
-            border: "1px solid rgba(0,255,0,0.5)",
-            color: "#8aff8a",
-            cursor: "pointer"
-          }}
         >
           ➕ Create Event
         </button>
       )}
 
-      <div style={{
-        marginTop: 24,
-        display: "grid",
-        gridTemplateColumns: "repeat(7, 1fr)",
-        gap: 8
-      }}>
-        {Array.from({ length: daysInMonth }).map((_, index) => {
-          const day = index + 1;
+      {showModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: "#111",
+              padding: 24,
+              borderRadius: 12,
+              width: 420,
+              boxShadow: "0 0 25px rgba(0,255,0,0.2)",
+              color: "#b6ff9e",
+            }}
+          >
+            <h3 style={{ marginBottom: 16 }}>Create Event</h3>
 
-          const dayEvents = expandedEvents.filter(e =>
-            new Date(e.instanceDate).getDate() === day
-          );
-
-          return (
-            <div
-              key={day}
+            <input
+              placeholder="Event Title"
+              value={form.title}
+              onChange={(e) =>
+                setForm({ ...form, title: e.target.value })
+              }
               style={{
-                minHeight: 100,
-                border: "1px solid rgba(0,255,0,0.2)",
-                padding: 6,
-                borderRadius: 8
+                width: "100%",
+                marginBottom: 12,
+                padding: 8,
+                borderRadius: 6,
+              }}
+            />
+
+            <select
+              value={form.event_type}
+              onChange={(e) =>
+                setForm({ ...form, event_type: e.target.value })
+              }
+              style={{
+                width: "100%",
+                marginBottom: 12,
+                padding: 8,
+                borderRadius: 6,
               }}
             >
-              <div style={{ fontWeight: 700 }}>{day}</div>
+              <option>State vs. State</option>
+              <option>Sonic</option>
+              <option>Dead Rising</option>
+              <option>Defense of Alliance</option>
+              <option>Wasteland King</option>
+              <option>Valiance Conquest</option>
+              <option>Tundra</option>
+              <option>Alliance Clash</option>
+              <option>Alliance Showdown</option>
+              <option>FireFlies</option>
+            </select>
 
-              {dayEvents.map((ev, i) => (
-                <div
-                  key={i}
-                  style={{
-                    marginTop: 4,
-                    fontSize: 11,
-                    background: "rgba(0,255,0,0.08)",
-                    padding: 4,
-                    borderRadius: 4
-                  }}
-                >
-                  {ev.event_name}
-                </div>
-              ))}
-            
-      {showModal && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.7)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: "#111",
-            padding: 24,
-            borderRadius: 12,
-            width: 420
-          }}>
-            <h3>Create Event</h3>
-            <button onClick={() => setShowModal(false)}>Close</button>
+            <label style={{ fontSize: 12 }}>Start</label>
+            <input
+              type="datetime-local"
+              value={form.start_at}
+              onChange={(e) =>
+                setForm({ ...form, start_at: e.target.value })
+              }
+              style={{
+                width: "100%",
+                marginBottom: 12,
+                padding: 8,
+                borderRadius: 6,
+              }}
+            />
+
+            <label style={{ fontSize: 12 }}>End</label>
+            <input
+              type="datetime-local"
+              value={form.end_at}
+              onChange={(e) =>
+                setForm({ ...form, end_at: e.target.value })
+              }
+              style={{
+                width: "100%",
+                marginBottom: 16,
+                padding: 8,
+                borderRadius: 6,
+              }}
+            />
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
+              <button onClick={() => setShowModal(false)}>
+                Cancel
+              </button>
+
+              <button
+                className="zombie-btn"
+                onClick={() => {
+                  console.log("Event Created:", form);
+                  setShowModal(false);
+                }}
+              >
+                Save Event
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-</div>
-          );
-        })}
-      </div>
-    
-      {showModal && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.7)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: "#111",
-            padding: 24,
-            borderRadius: 12,
-            width: 420
-          }}>
-            <h3>Create Event</h3>
-            <button onClick={() => setShowModal(false)}>Close</button>
-          </div>
-        </div>
-      )}
-
-</div>
+      <p>Alliance calendar system initializing...</p>
+    </div>
   );
 }
-
-
-
