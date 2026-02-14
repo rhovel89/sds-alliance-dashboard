@@ -325,7 +325,7 @@ minHeight: 90,
 background: "rgba(0,0,0,0.45)",
 boxShadow: "0 0 8px rgba(0,255,0,0.3)",
 color: "#7CFF5B",
-fontSize: 14,
+fontSize: 10,
 display: "flex",
 flexDirection: "column",
 justifyContent: "space-between",
@@ -335,8 +335,8 @@ overflow: "hidden",
 alignItems: "center",
 textAlign: "center",
 overflow: "hidden",
-padding: 8,
-padding: 24,
+padding: 10,
+boxSizing: "border-box",
 cursor: canEdit ? "grab" : "default",
 opacity: isBusy ? 0.6 : 1,
                       overflow: "visible",
@@ -344,10 +344,15 @@ opacity: isBusy ? 0.6 : 1,
                   >
                     <div
                       style={{
-                        fontWeight: 800,
+                        fontWeight: 700,
+                        fontSize: 12,
+                        lineHeight: "15px",
+                        wordBreak: "break-word",
+                        maxHeight: 55,
                         whiteSpace: "normal",
                         wordBreak: "break-word",
                         overflowWrap: "anywhere",
+                        overflow: "hidden",
                       }}
                     >
                       {slot.label || "HQ"}
@@ -423,7 +428,7 @@ marginTop: 4, fontSize: 12 }}>HQ Name</div>
 
             <div style={{ opacity: 0.8,
 fontSize: 12,
-marginTop: 4, fontSize: 12 }}>Player X</div>
+marginTop: 4, fontSize: 10 }}>Player X</div>
             <input
               value={draftPX}
               onChange={(e) => setDraftPX(e.target.value)}
@@ -434,13 +439,13 @@ marginTop: 4, fontSize: 12 }}>Player X</div>
                 background: "rgba(0,0,0,0.45)",
                 color: "white",
                 padding: "8px 10px",
-                fontSize: 14,
+                fontSize: 10,
               }}
             />
 
             <div style={{ opacity: 0.8,
 fontSize: 12,
-marginTop: 4, fontSize: 12 }}>Player Y</div>
+marginTop: 4, fontSize: 10 }}>Player Y</div>
             <input
               value={draftPY}
               onChange={(e) => setDraftPY(e.target.value)}
@@ -451,7 +456,7 @@ marginTop: 4, fontSize: 12 }}>Player Y</div>
                 background: "rgba(0,0,0,0.45)",
                 color: "white",
                 padding: "8px 10px",
-                fontSize: 14,
+                fontSize: 10,
               }}
             />
           </div>
