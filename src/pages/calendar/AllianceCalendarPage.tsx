@@ -2,45 +2,29 @@ import { useParams } from "react-router-dom";
 
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
-  const upperAlliance = alliance_id?.toUpperCase() || "";
+  const upperAlliance = (alliance_id || "").toUpperCase();
 
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth();
 
   const firstDay = new Date(year, month, 1);
-  const startDay = firstDay.getDay(); // 0 = Sunday
+  const startDayIndex = firstDay.getDay(); // 0 = Sunday
+
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const cells = [];
+  const cells: (number | null)[] = [];
 
-  // Empty leading cells
-  for (let i = 0; i < startDay; i++) {
-    cells.push(<div key={"empty-" + i} />);
+  for (let i = 0; i < startDayIndex; i++) {
+    cells.push(null);
   }
 
-  // Actual days
   for (let d = 1; d <= daysInMonth; d++) {
-    cells.push(
-      <div
-        key={d}
-        style={{
-          border: "1px solid rgba(0,255,0,0.25)",
-          minHeight: 100,
-          padding: 6,
-          borderRadius: 8,
-          background: "rgba(0,0,0,0.4)",
-          color: "#b6ff9e",
-          fontSize: 12
-        }}
-      >
-        <div style={{ fontWeight: 700 }}>{d}</div>
-      </div>
-    );
+    cells.push(d);
   }
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: 24, color: "#b6ff9e" }}>
       <h1 style={{ marginBottom: 20 }}>
         📅 Alliance Calendar — {upperAlliance}
       </h1>
@@ -49,10 +33,45 @@ export default function AllianceCalendarPage() {
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
-          gap: 10
+          gap: 10,
+          maxWidth: 900,
         }}
       >
-        {cells}
+        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
+          <div
+            key={day}
+            style={{
+              textAlign: "center",
+              fontWeight: 700,
+              padding: 8,
+              background: "rgba(0,255,0,0.1)",
+              borderRadius: 6
+            }}
+          >
+            {day}
+          </div>
+        ))}
+
+        {cells.map((day, i) => (
+          <div
+            key={i}
+            style={{
+              height: 100,
+              borderRadius: 10,
+              border: "1px solid rgba(0,255,0,0.25)",
+              background: "rgba(0,0,0,0.35)",
+              padding: 8,
+              fontSize: 14,
+              position: "relative"
+            }}
+          >
+            {day && (
+              <div style={{ fontWeight: 600 }}>
+                {day}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
