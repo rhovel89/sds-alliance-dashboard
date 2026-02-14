@@ -154,7 +154,40 @@ export default function AllianceCalendarPage() {
         </div>
       )}
 
+      
+      {/* ===== Calendar Grid START ===== */}
+      <div
+        style={{
+          marginTop: 30,
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gap: 8,
+          maxWidth: 900
+        }}
+      >
+        {Array.from({ length: 35 }).map((_, i) => {
+          const day = i + 1
+          return (
+            <div
+              key={i}
+              style={{
+                minHeight: 90,
+                background: "#111",
+                border: "1px solid rgba(0,255,0,0.2)",
+                borderRadius: 8,
+                padding: 6,
+                fontSize: 12
+              }}
+            >
+              <div style={{ opacity: 0.7 }}>{day <= 31 ? day : ""}</div>
+            </div>
+          )
+        })}
+      </div>
+      {/* ===== Calendar Grid END ===== */}
+
       <p>Alliance calendar system initializing...</p>
     </div>
   );
 }
+
