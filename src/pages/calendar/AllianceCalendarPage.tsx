@@ -37,6 +37,9 @@ export default function AllianceCalendarPage() {
   const [showModal, setShowModal] = useState(false);
 
   const [form, setForm] = useState({
+    recurrence_type: "",
+    recurrence_days: [] as string[],
+    recurrence_end_date: "",
     title: "",
     event_type: "State vs. State",
     start_date: "",
@@ -275,4 +278,7 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
+
+
 
