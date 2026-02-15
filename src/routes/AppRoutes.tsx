@@ -22,6 +22,7 @@ import OwnerAccessRequestsPage from "../pages/owner/OwnerAccessRequestsPage";
 import OwnerMembershipsPage from "../pages/owner/OwnerMembershipsPage";
 import OwnerAlliancesPage from "../pages/owner/OwnerAlliancesPage";
 import OwnerPlayersPage from "../pages/owner/OwnerPlayersPage";
+import RequireAllianceAccess from "../components/auth/RequireAllianceAccess";
 
 export default function AppRoutes() {
   return (
@@ -59,9 +60,7 @@ export default function AppRoutes() {
 
         <Route
           path="calendar"
-          element={
-            <AllianceCalendarPage />
-          }
+          element={<RequireAllianceAccess><AllianceCalendarPage  /></RequireAllianceAccess>}
         />
 
         <Route
@@ -94,6 +93,8 @@ export default function AppRoutes() {
 </Routes>
   );
 }
+
+
 
 
 
