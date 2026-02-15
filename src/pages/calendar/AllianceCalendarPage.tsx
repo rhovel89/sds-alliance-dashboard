@@ -39,19 +39,7 @@ export default function AllianceCalendarPage() {
   const [form, setForm] = useState({
 
   // ===============================
-  // 🔁 RECURRING EVENT SUPPORT
-  // ===============================
-  const [recurring, setRecurring] = useState(false);
-  const [frequency, setFrequency] = useState("none"); // none | daily | weekly | biweekly | monthly
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
-
-  const toggleDay = (day: string) => {
-    if (selectedDays.includes(day)) {
-      setSelectedDays(selectedDays.filter(d => d !== day));
-    } else {
-      setSelectedDays([...selectedDays, day]);
-    }
-  };
+  
     recurrence_type: "",
     recurrence_days: [] as string[],
     recurrence_end_date: "",
@@ -336,6 +324,8 @@ const refetch = async () => {
     </div>
   );
 }
+
+
 
 
 
