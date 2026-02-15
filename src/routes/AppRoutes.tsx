@@ -9,6 +9,8 @@ import EventsPage from "../pages/EventsPage";
 import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
+import OwnerDashboardPage from "./pages/owner/OwnerDashboardPage";
+
 
 import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 import PermissionsPage from "../pages/dashboard/Permissions";
@@ -26,6 +28,8 @@ export default function AppRoutes() {
       {/* Owner */}
       <Route path="/owner" element={<OwnerDashboard />} />
       <Route path="/owner/select" element={<OwnerDashboardSelect />} />
+      <Route path="/owner" element={<OwnerDashboardPage />} />
+
 
       {/* State */}
       <Route path="/state/1" element={<StateDashboard />} />
