@@ -37,6 +37,21 @@ export default function AllianceCalendarPage() {
   const [showModal, setShowModal] = useState(false);
 
   const [form, setForm] = useState({
+
+  // ===============================
+  // 🔁 RECURRING EVENT SUPPORT
+  // ===============================
+  const [recurring, setRecurring] = useState(false);
+  const [frequency, setFrequency] = useState("none"); // none | daily | weekly | biweekly | monthly
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+
+  const toggleDay = (day: string) => {
+    if (selectedDays.includes(day)) {
+      setSelectedDays(selectedDays.filter(d => d !== day));
+    } else {
+      setSelectedDays([...selectedDays, day]);
+    }
+  };
     recurrence_type: "",
     recurrence_days: [] as string[],
     recurrence_end_date: "",
@@ -64,7 +79,50 @@ export default function AllianceCalendarPage() {
     })();
   }, []);
 
-  const refetch = async () => {
+  
+  // ===============================
+  // 🔁 Expand Recurring Events
+  // ===============================
+  const expandRecurringEvents = (events: EventRow[]) => {
+    const expanded: EventRow[] = [];
+
+    events.forEach(event => {
+      expanded.push(event);
+
+      if (!event.recurring_enabled) return;
+
+      const baseDate = new Date(event.start_time_utc);
+
+      for (let i = 1; i <= 30; i++) { // generate next 30 instances safely
+        const clone = { ...event };
+
+        const next = new Date(baseDate);
+
+        if (event.recurring_frequency === "daily") {
+          next.setDate(baseDate.getDate() + i);
+        }
+
+        if (event.recurring_frequency === "weekly") {
+          next.setDate(baseDate.getDate() + (7 * i));
+        }
+
+        if (event.recurring_frequency === "biweekly") {
+          next.setDate(baseDate.getDate() + (14 * i));
+        }
+
+        if (event.recurring_frequency === "monthly") {
+          next.setMonth(baseDate.getMonth() + i);
+        }
+
+        clone.start_time_utc = next.toISOString();
+        expanded.push(clone);
+      }
+    });
+
+    return expanded;
+  };
+
+const refetch = async () => {
     if (!upperAlliance) return;
 
     const { data } = await supabase
@@ -73,7 +131,7 @@ export default function AllianceCalendarPage() {
       .eq("alliance_id", upperAlliance)
       .order("start_time_utc", { ascending: true });
 
-    setEvents((data || []) as EventRow[]);
+    setEvents(expandRecurringEvents((data || []) as EventRow[]));
   };
 
   useEffect(() => {
@@ -278,6 +336,11 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
+
+
+
+
 
 
 
