@@ -3,17 +3,12 @@ import React from "react";
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] as const;
 type Day = typeof DAYS[number];
 
-// Named export
+// Named export (calendar imports { RecurringControls })
 export function RecurringControls(props: {
   form: any;
   setForm: React.Dispatch<React.SetStateAction<any>>;
 }) {
-  const form = props.form ?? {};
-  const setForm = props.setForm;
-
-  const update = (patch: any) => {
-    setForm((prev: any) => ({ ...(prev ?? {}), ...patch }));
-  };
+  const { form, setForm } = props;
 
   const enabled = !!form.recurring_enabled;
   const type = String(form.recurrence_type ?? "");
@@ -23,7 +18,7 @@ export function RecurringControls(props: {
 
   const toggleDay = (d: Day) => {
     const next = days.includes(d) ? days.filter(x => x !== d) : [...days, d];
-    update({ recurrence_days: next });
+    setForm({ ...form, recurrence_days: next });
   };
 
   return (
@@ -33,10 +28,11 @@ export function RecurringControls(props: {
           type="checkbox"
           checked={enabled}
           onChange={(e) =>
-            update({
+            setForm({
+              ...form,
               recurring_enabled: e.target.checked,
               recurrence_type: e.target.checked ? (form.recurrence_type || "weekly") : "",
-              recurrence_days: e.target.checked ? (days || []) : [],
+              recurrence_days: e.target.checked ? (form.recurrence_days || []) : [],
               recurrence_end_date: e.target.checked ? (form.recurrence_end_date || "") : "",
             })
           }
@@ -48,7 +44,10 @@ export function RecurringControls(props: {
         <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
           <label style={{ display: "grid", gap: 6 }}>
             <span style={{ fontWeight: 800 }}>Frequency</span>
-            <select value={type} onChange={(e) => update({ recurrence_type: e.target.value })}>
+            <select
+              value={type}
+              onChange={(e) => setForm({ ...form, recurrence_type: e.target.value })}
+            >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
               <option value="biweekly">Bi-weekly</option>
@@ -82,7 +81,7 @@ export function RecurringControls(props: {
             <input
               type="date"
               value={form.recurrence_end_date || ""}
-              onChange={(e) => update({ recurrence_end_date: e.target.value })}
+              onChange={(e) => setForm({ ...form, recurrence_end_date: e.target.value })}
             />
           </label>
         </div>
@@ -91,4 +90,5 @@ export function RecurringControls(props: {
   );
 }
 
+// Default export (safe for other imports)
 export default RecurringControls;
