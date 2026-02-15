@@ -3,205 +3,174 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://pvngssnazuzekriakqds.supabase.co";
+
+// Optional fallback (only used if alliance has no row configured)
+const FALLBACK_DISCORD_WEBHOOK_URL = Deno.env.get("DISCORD_WEBHOOK_URL") ?? "";
+const FALLBACK_DISCORD_ROLE_ID = Deno.env.get("DISCORD_ROLE_ID") ?? "";
+
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 type DiscordSetting = {
   alliance_id: string;
   webhook_url: string | null;
   role_id: string | null;
-  enabled: boolean;
+  enabled: boolean | null;
 };
+
+function normalizeAllianceId(v: any) {
+  return String(v ?? "").trim().toUpperCase();
+}
 
 function buildMention(roleIdRaw: string | null | undefined) {
-  const roleId = (roleIdRaw ?? "").trim();
+  const roleId = String(roleIdRaw ?? "").trim();
   const lower = roleId.toLowerCase();
 
+  // Special keywords for reliable server-wide pings
   if (lower === "everyone" || lower === "@everyone") {
-    return { prefix: "@everyone", allowed_mentions: { parse: ["everyone"] as const } };
+    return {
+      contentPrefix: "@everyone ",
+      allowed_mentions: { parse: ["everyone"] as const },
+    };
   }
   if (lower === "here" || lower === "@here") {
-    return { prefix: "@here", allowed_mentions: { parse: ["everyone"] as const } };
-  }
-  if (roleId) {
-    return { prefix: `<@&${roleId}>`, allowed_mentions: { roles: [roleId] } };
-  }
-  return { prefix: "", allowed_mentions: { parse: [] as const } };
-}
-
-const DAY_MAP: Record<string, number> = {
-  sun: 0, sunday: 0,
-  mon: 1, monday: 1,
-  tue: 2, tues: 2, tuesday: 2,
-  wed: 3, wednesday: 3,
-  thu: 4, thur: 4, thurs: 4, thursday: 4,
-  fri: 5, friday: 5,
-  sat: 6, saturday: 6,
-};
-
-function toDow(v: string): number | null {
-  const k = v.trim().toLowerCase();
-  return k in DAY_MAP ? DAY_MAP[k] : null;
-}
-
-function daysInUtcMonth(y: number, m: number) {
-  return new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-}
-
-function startOfUtcWeek(d: Date) {
-  const day = d.getUTCDay();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
-}
-
-function parseEndClamp(endDate: any): Date | null {
-  if (!endDate) return null;
-  const [yy, mm, dd] = String(endDate).split("-").map(Number);
-  if (!yy || !mm || !dd) return null;
-  return new Date(Date.UTC(yy, mm - 1, dd, 23, 59, 59, 999));
-}
-
-function occurrencesInWindow(event: any, windowStart: Date, windowEnd: Date): string[] {
-  if (!event.start_time_utc) return [];
-  const base = new Date(event.start_time_utc);
-
-  const enabled = !!event.recurring_enabled;
-  const rtype = String(event.recurrence_type ?? "").toLowerCase();
-  const endClamp = parseEndClamp(event.recurrence_end_date);
-
-  if (!enabled || !rtype) {
-    if (base >= windowStart && base <= windowEnd) return [base.toISOString()];
-    return [];
+    return {
+      contentPrefix: "@here ",
+      allowed_mentions: { parse: ["here"] as const },
+    };
   }
 
-  const baseH = base.getUTCHours();
-  const baseM = base.getUTCMinutes();
-  const baseS = base.getUTCSeconds();
-  const baseMs = base.getUTCMilliseconds();
-
-  const rawDays: string[] = Array.isArray(event.recurrence_days) ? event.recurrence_days : [];
-  const parsed = rawDays.map(toDow).filter((x): x is number => x !== null);
-  const allowedDays =
-    (rtype === "weekly" || rtype === "biweekly")
-      ? (parsed.length ? parsed : [base.getUTCDay()])
-      : [];
-
-  // Check only a few days around the window (cheap + safe for 61m window)
-  const startDay = new Date(Date.UTC(windowStart.getUTCFullYear(), windowStart.getUTCMonth(), windowStart.getUTCDate() - 1));
-  const endDay = new Date(Date.UTC(windowEnd.getUTCFullYear(), windowEnd.getUTCMonth(), windowEnd.getUTCDate() + 1));
-
-  const out: string[] = [];
-
-  for (let t = startDay.getTime(); t <= endDay.getTime(); t += 24 * 60 * 60 * 1000) {
-    const d = new Date(t);
-    let cand = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), baseH, baseM, baseS, baseMs));
-
-    if (cand < base) continue;
-    if (cand < windowStart || cand > windowEnd) continue;
-    if (endClamp && cand > endClamp) continue;
-
-    if (rtype === "daily") {
-      // ok
-    } else if (rtype === "weekly") {
-      if (!allowedDays.includes(cand.getUTCDay())) continue;
-    } else if (rtype === "biweekly") {
-      if (!allowedDays.includes(cand.getUTCDay())) continue;
-      const weeksDiff = Math.floor((startOfUtcWeek(cand).getTime() - startOfUtcWeek(base).getTime()) / (7 * 24 * 60 * 60 * 1000));
-      if (weeksDiff % 2 !== 0) continue;
-    } else if (rtype === "monthly") {
-      const baseDay = base.getUTCDate();
-      const dim = daysInUtcMonth(cand.getUTCFullYear(), cand.getUTCMonth());
-      const effectiveDay = Math.min(baseDay, dim);
-      if (cand.getUTCDate() !== effectiveDay) continue;
-    } else {
-      continue;
-    }
-
-    out.push(cand.toISOString());
+  // Normal role ping by ID
+  if (roleId && /^[0-9]+$/.test(roleId)) {
+    return {
+      contentPrefix: `<@&${roleId}> `,
+      allowed_mentions: { roles: [roleId] },
+    };
   }
 
-  return out;
+  // No mention
+  return { contentPrefix: "", allowed_mentions: {} };
 }
 
-serve(async () => {
+serve(async (req) => {
   try {
     const now = new Date();
 
-    // Per-alliance discord settings
-    const { data: settings, error: settingsErr } = await supabase
+    // Load discord settings (per alliance)
+    const { data: discordRows, error: discordErr } = await supabase
       .from("alliance_discord_settings")
       .select("alliance_id, webhook_url, role_id, enabled");
 
-    if (settingsErr) {
-      console.error("Settings fetch error:", settingsErr);
-      return new Response("Settings fetch error", { status: 500 });
+    if (discordErr) {
+      console.error("Discord settings fetch error:", discordErr);
+      // continue anyway (fallback env webhook might still work)
     }
 
-    const settingsMap = new Map<string, DiscordSetting>();
-    (settings ?? []).forEach((s: any) => {
-      settingsMap.set(String(s.alliance_id ?? "").toUpperCase(), s as DiscordSetting);
-    });
+    const discordMap = new Map<string, DiscordSetting>();
+    for (const row of (discordRows ?? []) as any[]) {
+      const aid = normalizeAllianceId(row.alliance_id);
+      if (!aid) continue;
+      discordMap.set(aid, {
+        alliance_id: aid,
+        webhook_url: row.webhook_url ?? null,
+        role_id: row.role_id ?? null,
+        enabled: row.enabled ?? true,
+      });
+    }
 
-    const reminderOffsets = [60, 30, 15, 5];
-    const windowStart = now;
-    const windowEnd = new Date(now.getTime() + 61 * 60000);
+    // Only fetch events in the next ~61 minutes (cheaper + safer)
+    const windowMax = new Date(now.getTime() + 61 * 60 * 1000);
 
-    // Fetch events broadly; occurrences filter is cheap
-    const { data: events, error } = await supabase
+    const { data: events, error: evErr } = await supabase
       .from("alliance_events")
-      .select("*");
+      .select("id, alliance_id, title, start_time_utc")
+      .gte("start_time_utc", now.toISOString())
+      .lte("start_time_utc", windowMax.toISOString());
 
-    if (error) {
-      console.error("Events fetch error:", error);
+    if (evErr) {
+      console.error("Events fetch error:", evErr);
       return new Response("DB fetch error", { status: 500 });
     }
 
-    for (const event of events ?? []) {
-      const allianceId = String(event.alliance_id ?? "").toUpperCase();
-      const cfg = settingsMap.get(allianceId);
-      if (!cfg || !cfg.enabled || !cfg.webhook_url) continue;
+    const reminderOffsets = [60, 30, 15, 5];
 
-      const occs = occurrencesInWindow(event, windowStart, windowEnd);
-      if (!occs.length) continue;
+    for (const event of (events ?? []) as any[]) {
+      const allianceId = normalizeAllianceId(event.alliance_id);
+      if (!event.start_time_utc) continue;
 
-      for (const occIso of occs) {
-        const occStart = new Date(occIso);
-        const diffMinutes = Math.floor((occStart.getTime() - now.getTime()) / 60000);
+      const start = new Date(event.start_time_utc);
+      const diffMs = start.getTime() - now.getTime();
 
-        for (const offset of reminderOffsets) {
-          if (diffMinutes !== offset) continue;
+      // round-to-nearest-minute to avoid missing due to seconds drift
+      const diffMinutes = Math.floor((diffMs + 30000) / 60000);
 
-          // dedupe per occurrence
-          const { data: existing } = await supabase
-            .from("reminder_logs")
-            .select("id")
-            .eq("event_id", event.id)
-            .eq("offset_minutes", offset)
-            .eq("occurrence_time_utc", occIso)
-            .maybeSingle();
+      if (diffMs <= 0) continue;
 
-          if (existing) continue;
+      for (const offset of reminderOffsets) {
+        if (diffMinutes !== offset) continue;
 
-          const { prefix, allowed_mentions } = buildMention(cfg.role_id);
-          const content = `${prefix ? prefix + " " : ""}🔔 **${event.title}** starts in ${offset} minutes!`;
+        // Dedupe check
+        const { data: existing } = await supabase
+          .from("reminder_logs")
+          .select("id")
+          .eq("event_id", event.id)
+          .eq("offset_minutes", offset)
+          .maybeSingle();
 
-          const resp = await fetch(cfg.webhook_url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content, allowed_mentions }),
-          });
+        if (existing) continue;
 
-          if (!resp.ok) {
-            const txt = await resp.text().catch(() => "");
-            console.error("Discord webhook failed:", resp.status, txt);
-            continue;
-          }
+        // Pick webhook + role per alliance (fallback to env if missing)
+        const setting = allianceId ? discordMap.get(allianceId) : undefined;
+        const enabled = setting ? (setting.enabled !== false) : true;
 
-          await supabase.from("reminder_logs").insert({
-            event_id: event.id,
-            offset_minutes: offset,
-            occurrence_time_utc: occIso,
-          });
+        if (!enabled) continue;
 
-          console.log(`Sent reminder ${allianceId}: ${event.title} (${offset}m) @ ${occIso}`);
+        const webhookUrl =
+          (setting?.webhook_url && String(setting.webhook_url).trim() !== "")
+            ? String(setting.webhook_url).trim()
+            : (FALLBACK_DISCORD_WEBHOOK_URL || "");
+
+        if (!webhookUrl) {
+          console.log(`No webhook configured for alliance ${allianceId || "(unknown)"}; skipping reminder.`);
+          continue;
+        }
+
+        const roleId =
+          (setting?.role_id && String(setting.role_id).trim() !== "")
+            ? String(setting.role_id).trim()
+            : (FALLBACK_DISCORD_ROLE_ID || "");
+
+        const mention = buildMention(roleId);
+
+        const title = String(event.title ?? "Event").trim();
+
+        // Send Discord message
+        const body = {
+          content: `${mention.contentPrefix}🔔 **${title}** starts in ${offset} minutes!`,
+          allowed_mentions: mention.allowed_mentions,
+        };
+
+        const res = await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          console.error("Discord send failed:", res.status, text);
+          continue;
+        }
+
+        // Log sent reminder
+        const logRes = await supabase.from("reminder_logs").insert({
+          event_id: event.id,
+          offset_minutes: offset,
+        });
+
+        if (logRes.error) {
+          console.error("Reminder log insert error:", logRes.error);
+        } else {
+          console.log(`Sent reminder: ${allianceId} / ${title} (${offset}m)`);
         }
       }
     }

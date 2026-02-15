@@ -28,7 +28,6 @@ import OwnerAlliancesPage from "../pages/owner/OwnerAlliancesPage";
 import OwnerRequestsProvisionPage from "../pages/owner/OwnerRequestsProvisionPage";
 import OwnerCommandCenterPage from "../pages/owner/OwnerCommandCenterPage";
 import OwnerPlayersLinkPage from "../pages/owner/OwnerPlayersLinkPage";
-import RequireAdmin from "../components/auth/RequireAdmin";
 
 export default function AppRoutes() {
   return (
@@ -39,9 +38,9 @@ export default function AppRoutes() {
       <Route path="/dashboard" element={<AuthCallback />} />
 
       {/* Owner */}
-      <Route path="/owner" element={<RequireAdmin><OwnerDashboard /></RequireAdmin>} />
-      <Route path="/owner/select" element={<RequireAdmin><OwnerDashboardSelect /></RequireAdmin>} />
-      <Route path="/owner" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
+      <Route path="/owner" element={<OwnerDashboard />} />
+      <Route path="/owner/select" element={<OwnerDashboardSelect />} />
+      <Route path="/owner" element={<OwnerDashboardPage />} />
 
 
       {/* State */}
@@ -89,18 +88,18 @@ export default function AppRoutes() {
 
       </Route>
 
-      <Route path="/owner/discord" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
+      <Route path="/owner/discord" element={<OwnerDashboardPage />} />
   <Route path="/onboarding" element={<RequestAccessPage />} />
   <Route path="/dashboard" element={<MyDashboardsPage />} />
-  <Route path="/owner/requests" element={<RequireAdmin><OwnerAccessRequestsPage /></RequireAdmin>} />
-  <Route path="/owner/memberships" element={<RequireAdmin><OwnerMembershipsPage /></RequireAdmin>} />
-  <Route path="/owner/alliances" element={<RequireAdmin><OwnerAlliancesPage /></RequireAdmin>} />
-  <Route path="/owner/players" element={<RequireAdmin><OwnerPlayersPage /></RequireAdmin>} />
-        <Route path="/owner/membership" element={<RequireAdmin><OwnerMembershipManagerPage /></RequireAdmin>} />
-        <Route path="/owner/alliances" element={<RequireAdmin><OwnerAlliancesPage /></RequireAdmin>} />
-              <Route path="/owner/requests-provision" element={<RequireAdmin><OwnerRequestsProvisionPage /></RequireAdmin>} />
-              <Route path="/owner/players-link" element={<RequireAdmin><OwnerPlayersLinkPage /></RequireAdmin>} />
-              <Route path="/owner" element={<RequireAdmin><OwnerCommandCenterPage /></RequireAdmin>} />
+  <Route path="/owner/requests" element={<OwnerAccessRequestsPage />} />
+  <Route path="/owner/memberships" element={<OwnerMembershipsPage />} />
+  <Route path="/owner/alliances" element={<OwnerAlliancesPage />} />
+  <Route path="/owner/players" element={<OwnerPlayersPage />} />
+        <Route path="/owner/membership" element={<OwnerMembershipManagerPage />} />
+        <Route path="/owner/alliances" element={<OwnerAlliancesPage />} />
+              <Route path="/owner/requests-provision" element={<OwnerRequestsProvisionPage />} />
+              <Route path="/owner/players-link" element={<OwnerPlayersLinkPage />} />
+              <Route path="/owner" element={<OwnerCommandCenterPage />} />
       </Routes>
   );
 }

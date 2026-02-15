@@ -6,7 +6,8 @@ import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 
 export default function TopNav() {
   
-  const { isAdmin: isAppAdmin } = useIsAppAdmin();const [userId, setUserId] = useState<string | null>(null);
+  const { isAdmin } = useIsAppAdmin();
+const [userId, setUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -65,7 +66,7 @@ export default function TopNav() {
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <a href="/dashboard" style={{ fontWeight: 900 }}>🧟 State Alliance</a>
         <a href="/onboarding" style={{ fontSize: 12 }}>Onboarding</a>
-        {isAppAdmin ? <a href="/owner" style={{ fontSize: 12 }}>Owner</a> : null}
+        {isAdmin ? <a href="/owner" style={{ fontSize: 12 }}>Owner</a> : null}
       </div>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -87,4 +88,3 @@ export default function TopNav() {
     </div>
   );
 }
-
