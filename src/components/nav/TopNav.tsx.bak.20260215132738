@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import AllianceSwitcher from "./AllianceSwitcher";
-import AuthControls from "./AuthControls";
 
 export default function TopNav() {
   const [userId, setUserId] = useState<string | null>(null);
