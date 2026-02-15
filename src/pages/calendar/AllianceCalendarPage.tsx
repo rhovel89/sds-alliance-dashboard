@@ -99,14 +99,14 @@ export default function AllianceCalendarPage() {
     const payload = {
   alliance_id: upperAlliance,
 
-  // REQUIRED NOT NULL FIELDS
+  // REQUIRED NOT NULL COLUMNS
   title: title,
   created_by: userId,
   start_time_utc: startLocal.toISOString(),
   duration_minutes: durationMinutes,
   timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
 
-  // Optional / legacy fields
+  // Optional display fields
   event_name: title,
   event_type: form.event_type,
   start_date: form.start_date,
@@ -263,4 +263,5 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
 
