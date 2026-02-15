@@ -9,7 +9,7 @@ import EventsPage from "../pages/EventsPage";
 import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
-import OwnerDashboardPage from "./pages/owner/OwnerDashboardPage";
+import OwnerDashboardPage from "../pages/owner/OwnerDashboardPage";
 
 
 import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
@@ -81,4 +81,5 @@ export default function AppRoutes() {
     </Routes>
   );
 }
+
 
