@@ -10,6 +10,7 @@ export default function MyDashboardsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [rows, setRows] = useState<Membership[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const title = useMemo(() => "🧟 My Dashboards", []);
 
@@ -22,6 +23,16 @@ export default function MyDashboardsPage() {
 
     if (!uid) return;
 
+    // admin flag
+    const adminRes = await supabase
+      .from("app_admins")
+      .select("user_id")
+      .eq("user_id", uid)
+      .maybeSingle();
+
+    setIsAdmin(!!adminRes.data);
+
+    // memberships
     const res = await supabase
       .from("alliance_memberships")
       .select("alliance_id, role")
@@ -57,6 +68,8 @@ export default function MyDashboardsPage() {
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
         <a href="/onboarding">Request Access</a>
+        <a href="/dashboard">Refresh</a>
+        {isAdmin ? <a href="/owner">Owner</a> : null}
       </div>
 
       {error ? (
@@ -67,7 +80,8 @@ export default function MyDashboardsPage() {
 
       {rows.length === 0 ? (
         <div style={{ opacity: 0.85 }}>
-          No alliance access found yet. If you haven’t requested access, go to <a href="/onboarding">Onboarding</a>.
+          No alliance access found yet. If you haven’t requested access, go to{" "}
+          <a href="/onboarding">Onboarding</a>.
         </div>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
