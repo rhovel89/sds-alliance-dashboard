@@ -46,12 +46,14 @@ export default function RequestAccessPage() {
       .maybeSingle();
 
     if (r.error) return setError(r.error.message);
-    setLatest((r.data ?? null) as any);
 
-    if (r.data?.game_name) setGameName(r.data.game_name);
-    if (Array.isArray(r.data?.requested_alliances)) {
+    const req = (r.data ?? null) as any as AccessRequest | null;
+    setLatest(req);
+
+    if (req?.game_name) setGameName(req.game_name);
+    if (Array.isArray(req?.requested_alliances)) {
       const map: Record<string, boolean> = {};
-      r.data.requested_alliances.forEach((x: string) => (map[String(x).toUpperCase()] = true));
+      req.requested_alliances.forEach((x) => (map[String(x).toUpperCase()] = true));
       setSelected(map);
     }
   }
@@ -75,7 +77,7 @@ export default function RequestAccessPage() {
     if (!gn) return alert("Game Name is required.");
     if (selectedCodes.length === 0) return alert("Select at least one alliance.");
 
-    // Optional: prevent spamming multiple pending requests
+    // prevent multiple pending
     if (latest?.status === "pending") return alert("You already have a pending request.");
 
     const res = await supabase.from("access_requests").insert({
@@ -132,12 +134,41 @@ export default function RequestAccessPage() {
       {latest ? (
         <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12, marginBottom: 16 }}>
           <div style={{ fontWeight: 900, marginBottom: 6 }}>Your latest request</div>
-          <div>Status: <strong>{latest.status}</strong></div>
+
+          <div>
+            Status:{" "}
+            <strong>
+              {latest.status === "approved" ? "approved ✅" : latest.status === "pending" ? "pending ⏳" : "denied ❌"}
+            </strong>
+          </div>
+
           <div style={{ marginTop: 6, opacity: 0.85, fontSize: 12 }}>
             Alliances: {Array.isArray(latest.requested_alliances) ? latest.requested_alliances.join(", ") : ""}
           </div>
-          {latest.status === "denied" && latest.decision_reason ? (
-            <div style={{ marginTop: 6 }}>Reason: {latest.decision_reason}</div>
+
+          {latest.status === "approved" ? (
+            <div style={{ marginTop: 12 }}>
+              <a href="/dashboard">
+                <button style={{ fontSize: 16, padding: "10px 14px" }}>
+                  Go to My Dashboards →
+                </button>
+              </a>
+            </div>
+          ) : null}
+
+          {latest.status === "denied" ? (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ opacity: 0.9 }}>
+                {latest.decision_reason ? (
+                  <>Reason: <strong>{latest.decision_reason}</strong></>
+                ) : (
+                  <>No reason provided.</>
+                )}
+              </div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+                You can submit a new request below.
+              </div>
+            </div>
           ) : null}
 
           {latest.status === "pending" ? (
@@ -149,7 +180,9 @@ export default function RequestAccessPage() {
       ) : null}
 
       <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12 }}>
-        <div style={{ fontWeight: 900, marginBottom: 10 }}>Submit new request</div>
+        <div style={{ fontWeight: 900, marginBottom: 10 }}>
+          {latest?.status === "approved" ? "Request additional alliance access" : "Submit new request"}
+        </div>
 
         <div style={{ display: "grid", gap: 10, maxWidth: 820 }}>
           <input
@@ -175,7 +208,9 @@ export default function RequestAccessPage() {
             ))}
           </div>
 
-          <button onClick={submit}>Submit Request</button>
+          <button onClick={submit} disabled={latest?.status === "pending"}>
+            Submit Request
+          </button>
 
           <div style={{ opacity: 0.75, fontSize: 12 }}>
             Owner must approve. No automatic alliance assignment happens on OAuth.

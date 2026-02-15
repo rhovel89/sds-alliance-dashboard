@@ -1,5 +1,10 @@
 import AppRoutes from './routes/AppRoutes';
+import TopNav from "./components/nav/TopNav";
+import AuthRedirector from "./components/auth/AuthRedirector";
 
 export default function App() {
-  return <AppRoutes />;
+  return <AuthRedirector />
+      <TopNav />
+      <AppRoutes />;
 }
+
