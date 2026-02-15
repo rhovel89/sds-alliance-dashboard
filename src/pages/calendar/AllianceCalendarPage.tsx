@@ -84,14 +84,20 @@ export default function AllianceCalendarPage() {
     setLoading(false);
   };
 
-  useEffect(() => {
+  
+  
+
+useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getUser();
       setUserId(data?.user?.id ?? null);
     })();
   }, []);
 
-  useEffect(() => {
+  
+  
+
+useEffect(() => {
     refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [upperAlliance]);
@@ -127,24 +133,19 @@ export default function AllianceCalendarPage() {
     // - created_by (NOT NULL)
     // - start_time_utc (NOT NULL)
     // - duration_minutes (NOT NULL)
+        const localStart = new Date(`${form.start_date}T${form.start_time}`);
+    const utcStart = new Date(localStart.getTime() - (localStart.getTimezoneOffset() * 60000));
+
     const payload = {
       alliance_id: upperAlliance,
-      title,
-      created_by: userId,
-      start_time_utc: startLocal.toISOString(),
-      duration_minutes: durationMinutes,
-
-      // Keep these because your table also has them and UI wants them
+      title: form.event_name,
+      event_name: form.event_name,
       event_type: form.event_type,
-      event_name: title,
-      start_date: form.start_date,
-      end_date: form.end_date,
-      start_time: form.start_time,
-      end_time: form.end_time,
-
-      // Nice to have / future recurrence work (won’t break if nullable)
-      timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      is_state_event: false,
+      start_time_utc: utcStart.toISOString(),
+      duration_minutes:
+        (new Date(`${form.end_date}T${form.end_time}`).getTime() -
+         new Date(`${form.start_date}T${form.start_time}`).getTime()) / 60000,
+      timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone
     };
 
     const { error } = await supabase.from("alliance_events").insert(payload);
@@ -186,7 +187,39 @@ export default function AllianceCalendarPage() {
     return d.toLocaleString(undefined, { month: "long", year: "numeric" });
   }, [month, year]);
 
-  return (
+  
+  // ===============================
+  // 🔔 REMINDER SYSTEM (SAFE ADD)
+  // ===============================
+  const checkReminders = () => {
+    const now = new Date();
+
+    events.forEach((event) => {
+      if (!event.start_date || !event.start_time) return;
+
+      const eventDateTime = new Date(
+        event.start_date + "T" + event.start_time
+      );
+
+      const diffMinutes = (eventDateTime.getTime() - now.getTime()) / 60000;
+
+      // Trigger reminder 15 minutes before event
+      if (diffMinutes > 0 && diffMinutes <= 15) {
+        console.log("🔔 Reminder Triggered:", event.event_name);
+      }
+    });
+  };
+
+  
+  
+
+useEffect(() => {
+    if (events.length > 0) {
+      checkReminders();
+    }
+  }, [events]);
+
+return (
     <div style={{ padding: 24, color: "#cfffbe" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0 }}>📅 Alliance Calendar — {upperAlliance}</h2>
@@ -244,7 +277,39 @@ export default function AllianceCalendarPage() {
             return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
           });
 
-          return (
+          
+  // ===============================
+  // 🔔 REMINDER SYSTEM (SAFE ADD)
+  // ===============================
+  const checkReminders = () => {
+    const now = new Date();
+
+    events.forEach((event) => {
+      if (!event.start_date || !event.start_time) return;
+
+      const eventDateTime = new Date(
+        event.start_date + "T" + event.start_time
+      );
+
+      const diffMinutes = (eventDateTime.getTime() - now.getTime()) / 60000;
+
+      // Trigger reminder 15 minutes before event
+      if (diffMinutes > 0 && diffMinutes <= 15) {
+        console.log("🔔 Reminder Triggered:", event.event_name);
+      }
+    });
+  };
+
+  
+  
+
+useEffect(() => {
+    if (events.length > 0) {
+      checkReminders();
+    }
+  }, [events]);
+
+return (
             <div
               key={day}
               style={{
@@ -465,4 +530,54 @@ export default function AllianceCalendarPage() {
       )}
     </div>
   );
+
+
+  // =====================================
+  // 🔔 REMINDER ENGINE SAFE
+  // =====================================
+  
+  
+
+useEffect(() => {
+    if (!events || events.length === 0) return;
+
+    const reminderOffsets = [60, 30, 15, 5]; // minutes
+    const triggered = new Set<string>();
+
+    const interval = setInterval(() => {
+      const now = new Date();
+
+      events.forEach((event: any) => {
+        if (!event.start_time_utc) return;
+
+        const start = new Date(event.start_time_utc);
+        const diffMinutes = Math.floor((start.getTime() - now.getTime()) / 60000);
+
+        reminderOffsets.forEach(offset => {
+          const key = event.id + "-" + offset;
+
+          if (diffMinutes === offset && !triggered.has(key)) {
+            triggered.add(key);
+            alert(
+              "🔔 Reminder: " +
+              event.event_name +
+              " starts in " +
+              offset +
+              " minutes."
+            );
+          }
+        });
+      });
+
+    }, 60000);
+
+    return () => clearInterval(interval);
+
+  }, [events]);
+
 }
+
+
+
+
+
