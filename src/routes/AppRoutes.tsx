@@ -16,6 +16,9 @@ import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 import PermissionsPage from "../pages/dashboard/Permissions";
 
 import AllianceCalendarPage from "../pages/calendar/AllianceCalendarPage";
+import RequestAccessPage from "../pages/onboarding/RequestAccessPage";
+import MyDashboardsPage from "../pages/dashboard/MyDashboardsPage";
+import OwnerAccessRequestsPage from "../pages/owner/OwnerAccessRequestsPage";
 
 export default function AppRoutes() {
   return (
@@ -79,9 +82,14 @@ export default function AppRoutes() {
       </Route>
 
       <Route path="/owner/discord" element={<OwnerDashboardPage />} />
+  <Route path="/onboarding" element={<RequestAccessPage />} />
+  <Route path="/dashboard" element={<MyDashboardsPage />} />
+  <Route path="/owner/requests" element={<OwnerAccessRequestsPage />} />
 </Routes>
   );
 }
+
+
 
 
 
