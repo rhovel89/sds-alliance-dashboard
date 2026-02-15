@@ -143,6 +143,9 @@ export default function OwnerRequestsProvisionPage() {
                   </div>
 
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    {requester !== "—" ? (
+                      <button onClick={() => copyText("User UUID", requester)}>📋 Copy User UUID</button>
+                    ) : null}
                     <button
                       onClick={() => approveAndProvision(r)}
                       disabled={status === "approved"}
@@ -172,3 +175,4 @@ export default function OwnerRequestsProvisionPage() {
     </div>
   );
 }
+
