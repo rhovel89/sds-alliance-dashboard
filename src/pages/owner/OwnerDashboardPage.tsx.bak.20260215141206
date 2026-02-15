@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-
-import styles from "./OwnerDashboardPage.module.css";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -89,9 +87,9 @@ export default function OwnerDashboardPage() {
   );
 
   return (
-    <div className={styles.page}>
-      <h2 className={styles.title}>🧟 Owner Dashboard</h2>
-      <div className={styles.subtext}>
+    <div style={{ padding: 24 }}>
+      <h2 style={{ margin: 0 }}>🧟 Owner Dashboard</h2>
+      <div style={{ opacity: 0.8, marginTop: 6 }}>
         Quick access to requests, approvals, players, alliances, and Discord reminders.
       </div>
 
@@ -107,9 +105,7 @@ export default function OwnerDashboardPage() {
         {healthCards.map((c) => (
           <div
             key={c.label}
-            
-            className={styles.card}
-role={c.path ? "button" : undefined}
+            role={c.path ? "button" : undefined}
             tabIndex={c.path ? 0 : -1}
             onClick={() => {
               if (!c.path) return;
@@ -135,7 +131,7 @@ role={c.path ? "button" : undefined}
       </div>
 
       {/* Links */}
-      <div className={styles.sectionTitle}>⚙️ Owner Links</div>
+      <div style={{ marginTop: 20, fontWeight: 900 }}>⚙️ Owner Links</div>
       <div
         style={{
           marginTop: 10,
@@ -148,8 +144,7 @@ role={c.path ? "button" : undefined}
           <button
             key={l.path}
             onClick={() => navigate(l.path)}
-                        className={styles.linkCard}
-style={{
+            style={{
               textAlign: "left",
               padding: 14,
               border: "1px solid #333",
@@ -161,7 +156,7 @@ style={{
 }}
           >
             <div style={{ fontWeight: 900 }}>{l.label}</div>
-            <div className={styles.linkDesc}>
+            <div style={{ opacity: 0.8, fontSize: 12, marginTop: 6 }}>
               {l.desc ?? l.path}
             </div>
           </button>
@@ -170,6 +165,5 @@ style={{
     </div>
   );
 }
-
 
 
