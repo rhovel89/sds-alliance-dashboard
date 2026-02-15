@@ -96,6 +96,53 @@ export default function OwnerRequestsProvisionPage() {
     alert("Provisioned ✅");
   };
 
+
+  const copyLinkedUserUuid = async (r: AccessRequestRow) => {
+    // requester is the auth user uuid from the request row
+    const requester = r.user_id || r.auth_user_id || null;
+
+    // Primary: find player by auth_user_id = requester
+    if (requester) {
+      const res = await supabase
+        .from("players")
+        .select("auth_user_id")
+        .eq("auth_user_id", requester)
+        .limit(1);
+
+      if (!res.error && res.data && res.data[0]?.auth_user_id) {
+        await copyText("Linked User UUID", res.data[0].auth_user_id);
+        return;
+      }
+    }
+
+    // Secondary: try match by game_name (or name) to find the linked player
+    const gn = (r.game_name || "").trim();
+    if (gn) {
+      const byGame = await supabase
+        .from("players")
+        .select("auth_user_id")
+        .eq("game_name", gn)
+        .limit(1);
+
+      if (!byGame.error && byGame.data && byGame.data[0]?.auth_user_id) {
+        await copyText("Linked User UUID", byGame.data[0].auth_user_id);
+        return;
+      }
+
+      const byName = await supabase
+        .from("players")
+        .select("auth_user_id")
+        .eq("name", gn)
+        .limit(1);
+
+      if (!byName.error && byName.data && byName.data[0]?.auth_user_id) {
+        await copyText("Linked User UUID", byName.data[0].auth_user_id);
+        return;
+      }
+    }
+
+    alert("No linked user UUID found yet. Try 'Provision Only', or link the user on /owner/players-link.");
+  };
   return (
     <div style={{ padding: 24 }}>
       <h2>🧟 Owner — Requests (Approve + Provision)</h2>
@@ -145,6 +192,8 @@ export default function OwnerRequestsProvisionPage() {
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                     {requester !== "—" ? (
                       <button onClick={() => copyText("User UUID", requester)}>📋 Copy User UUID</button>
+                    ) : null}                    {status === "approved" ? (
+                      <button onClick={() => copyLinkedUserUuid(r)}>📋 Copy Linked User UUID</button>
                     ) : null}
                     <button
                       onClick={() => approveAndProvision(r)}
@@ -175,4 +224,5 @@ export default function OwnerRequestsProvisionPage() {
     </div>
   );
 }
+
 
