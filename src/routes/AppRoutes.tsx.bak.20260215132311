@@ -27,7 +27,6 @@ import RequireAllianceAccess from "../components/auth/RequireAllianceAccess";
 import OwnerAlliancesPage from "../pages/owner/OwnerAlliancesPage";
 import OwnerRequestsProvisionPage from "../pages/owner/OwnerRequestsProvisionPage";
 import OwnerCommandCenterPage from "../pages/owner/OwnerCommandCenterPage";
-import OwnerPlayersLinkPage from "../pages/owner/OwnerPlayersLinkPage";
 
 export default function AppRoutes() {
   return (
