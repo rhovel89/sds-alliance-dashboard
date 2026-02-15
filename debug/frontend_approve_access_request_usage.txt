@@ -1,0 +1,9 @@
+
+> src/pages/owner/OwnerAccessRequestsPage.tsx:85:    const res = await supabase.rpc("approve_access_request", {
+  src/pages/owner/OwnerAccessRequestsPage.tsx:86:      p_request_id: id,
+  src/pages/owner/OwnerAccessRequestsPage.tsx:87:      p_role: role,
+  src/pages/owner/OwnerAccessRequestsPage.tsx:88:    });
+  src/pages/owner/OwnerAccessRequestsPage.tsx:89:
+  src/pages/owner/OwnerAccessRequestsPage.tsx:90:    if (res.error) {
+  src/pages/owner/OwnerAccessRequestsPage.tsx:91:      setError(res.error.message);
+
