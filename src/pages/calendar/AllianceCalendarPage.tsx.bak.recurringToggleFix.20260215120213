@@ -397,11 +397,11 @@ export default function AllianceCalendarPage() {
           {/* Recurrence UI (Requested Feature A) */}
           <RecurringControls
             enabled={form.recurring_enabled}
-            onEnabledChange={(v) => setForm((prev) => ({ ...prev, recurring_enabled: v }))}
+            onEnabledChange={(v) => setForm({ ...form, recurring_enabled: v })}
             recurrenceType={form.recurrence_type}
-            onRecurrenceTypeChange={(v) => setForm((prev) => ({ ...prev, recurrence_type: v }))}
+            onRecurrenceTypeChange={(v) => setForm({ ...form, recurrence_type: v })}
             daysOfWeek={form.recurrence_days}
-            onDaysOfWeekChange={(v) => setForm((prev) => ({ ...prev, recurrence_days: v }))}
+            onDaysOfWeekChange={(v) => setForm({ ...form, recurrence_days: v })}
           />
 
           <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
@@ -413,7 +413,6 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
-
 
 
 
