@@ -38,22 +38,21 @@ export default function AllianceCalendarPage() {
   const [events, setEvents] = useState<EventRow[]>([]);
 
   const [showModal, setShowModal] = useState(false);
-  
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
-  const makeEmptyForm = () => ({
+  const [form, setForm] = useState({
     title: "",
     event_type: "State vs. State",
+
     start_date: "",
     start_time: "",
     end_date: "",
     end_time: "",
-    recurring_enabled: false,
-    recurrence_type: "weekly",
-    recurrence_days: [] as string[],
-    recurrence_end_date: "",
-  });const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
-  const [form, setForm] = useState(makeEmptyForm());
+    recurring_enabled: false,
+    recurrence_type: "weekly" as RecurrenceType,
+    recurrence_days: [] as number[], // 0=Sun..6=Sat
+  });
 
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth());
@@ -195,7 +194,18 @@ export default function AllianceCalendarPage() {
     }
 
     setShowModal(false);
-    setForm(makeEmptyForm());await refetch();
+    setForm({
+      title: "",
+      event_type: "State vs. State",
+      start_date: "",
+      start_time: "",
+      end_date: "",
+      end_time: "",
+      recurring_enabled: false,
+      recurrence_type: "weekly",
+      recurrence_days: [],
+      recurrence_end_date: "",
+    });await refetch();
   };
 
   const deleteEvent = async (id: string) => {
@@ -233,7 +243,7 @@ export default function AllianceCalendarPage() {
       <h2>📅 Alliance Calendar — {upperAlliance}</h2>
 
       {canEdit && (
-        <button onClick={() => { setForm(makeEmptyForm()); setShowModal(true); }}>
+        <button onClick={() => setShowModal(true)}>
           ➕ Create Event
         </button>
       )}
@@ -410,7 +420,6 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
-
 
 
 
