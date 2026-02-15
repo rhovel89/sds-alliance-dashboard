@@ -1,0 +1,156 @@
+:root {
+  --z-green: #b9ffb3;
+  --z-green-dim: rgba(185, 255, 179, 0.72);
+  --z-blood: rgba(170, 15, 15, 0.95);
+  --z-blood-dim: rgba(110, 0, 0, 0.55);
+  --z-ink: rgba(0, 0, 0, 0.82);
+}
+
+.page {
+  padding: 24px;
+  color: var(--z-green);
+  min-height: calc(100vh - 64px);
+  position: relative;
+  overflow: hidden;
+
+  background:
+    radial-gradient(1200px 600px at 20% 10%, rgba(170, 0, 0, 0.18), transparent 55%),
+    radial-gradient(900px 500px at 80% 15%, rgba(0, 255, 90, 0.08), transparent 60%),
+    radial-gradient(900px 900px at 50% 80%, rgba(255, 0, 0, 0.08), transparent 65%),
+    linear-gradient(180deg, rgba(12, 0, 0, 0.92), rgba(0, 0, 0, 0.92));
+}
+
+.page::before {
+  /* fog layer */
+  content: "";
+  position: fixed;
+  inset: -40px;
+  pointer-events: none;
+  background:
+    radial-gradient(600px 260px at 10% 20%, rgba(255, 0, 0, 0.10), transparent 60%),
+    radial-gradient(520px 240px at 70% 30%, rgba(0, 255, 120, 0.06), transparent 62%),
+    radial-gradient(700px 300px at 40% 60%, rgba(255, 255, 255, 0.04), transparent 70%);
+  filter: blur(18px);
+  opacity: 0.55;
+  animation: fogMove 12s ease-in-out infinite alternate;
+}
+
+.page::after {
+  /* subtle film grain */
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.02) 0px,
+      rgba(255,255,255,0.02) 1px,
+      transparent 2px,
+      transparent 6px
+    );
+  opacity: 0.10;
+  mix-blend-mode: overlay;
+}
+
+@keyframes fogMove {
+  from { transform: translate3d(-12px, -6px, 0); }
+  to   { transform: translate3d(12px, 8px, 0); }
+}
+
+.title {
+  margin: 0;
+  font-size: 38px;
+  font-weight: 950;
+  letter-spacing: 0.5px;
+  text-shadow:
+    0 0 20px rgba(170, 0, 0, 0.30),
+    0 0 16px rgba(0, 255, 120, 0.12);
+  position: relative;
+  display: inline-block;
+  padding-bottom: 10px;
+}
+
+.title::after {
+  /* dripping blood underline */
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -10px;
+  height: 26px;
+  background:
+    radial-gradient(circle at 8% 0%, var(--z-blood) 0 6px, transparent 7px),
+    radial-gradient(circle at 18% 0%, var(--z-blood) 0 9px, transparent 10px),
+    radial-gradient(circle at 36% 0%, var(--z-blood) 0 7px, transparent 8px),
+    radial-gradient(circle at 57% 0%, var(--z-blood) 0 10px, transparent 11px),
+    radial-gradient(circle at 78% 0%, var(--z-blood) 0 8px, transparent 9px),
+    linear-gradient(to bottom, var(--z-blood), rgba(60, 0, 0, 0));
+  opacity: 0.85;
+  border-radius: 0 0 14px 14px;
+  filter: drop-shadow(0 6px 8px rgba(0,0,0,0.55));
+}
+
+.subtext {
+  opacity: 0.84;
+  margin-top: 8px;
+  color: var(--z-green-dim);
+}
+
+.sectionTitle {
+  margin-top: 20px;
+  font-weight: 950;
+  letter-spacing: 0.3px;
+  text-shadow: 0 0 14px rgba(170, 0, 0, 0.18);
+}
+
+.card {
+  border: 1px solid rgba(255, 0, 0, 0.20);
+  border-radius: 12px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(30, 0, 0, 0.35), rgba(0, 0, 0, 0.30));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 255, 120, 0.08),
+    0 10px 24px rgba(0, 0, 0, 0.45);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 0, 0, 0.35);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 255, 120, 0.12),
+    0 14px 28px rgba(0, 0, 0, 0.55);
+}
+
+.linkCard {
+  text-align: left;
+  padding: 14px;
+  border: 1px solid rgba(255, 0, 0, 0.20);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(30, 0, 0, 0.35), rgba(0, 0, 0, 0.30));
+  cursor: pointer;
+  color: inherit;
+
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 255, 120, 0.07),
+    0 10px 24px rgba(0, 0, 0, 0.45);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.linkCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 0, 0, 0.35);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 255, 120, 0.11),
+    0 14px 28px rgba(0, 0, 0, 0.55);
+}
+
+.linkDesc {
+  opacity: 0.82;
+  font-size: 12px;
+  margin-top: 6px;
+  color: var(--z-green-dim);
+}
