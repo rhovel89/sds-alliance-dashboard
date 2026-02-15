@@ -27,6 +27,7 @@ async function copyText(text: string) {
     await navigator.clipboard.writeText(text);
     alert("Copied!");
   } catch {
+    // fallback
     const el = document.createElement("textarea");
     el.value = text;
     document.body.appendChild(el);
@@ -51,11 +52,6 @@ export default function OwnerMembershipManagerPage() {
   const [linkUserUuid, setLinkUserUuid] = useState<string>("");
 
   const [search, setSearch] = useState("");
-
-  // ✅ New: create player inputs
-  const [newPlayerName, setNewPlayerName] = useState("");
-  const [newPlayerRole, setNewPlayerRole] = useState<MembershipRow["role"]>("member");
-  const [newAutoAdd, setNewAutoAdd] = useState(true);
 
   const playersById = useMemo(() => {
     const m = new Map<string, PlayerRow>();
@@ -146,61 +142,6 @@ export default function OwnerMembershipManagerPage() {
     await refetchMemberships(selectedAlliance);
   };
 
-  // ✅ New: Create player (game name) and optionally add to selected alliance
-  const createPlayer = async () => {
-    const name = newPlayerName.trim();
-    if (!name) return alert("Game Name required.");
-
-    // Try insert with game_name, fallback to name if schema differs
-    let createdId: string | null = null;
-
-    const resA = await supabase.from("players").insert({ game_name: name }).select("id").single();
-    if (!resA.error) {
-      createdId = resA.data?.id ?? null;
-    } else {
-      const msg = (resA.error.message || "").toLowerCase();
-      if (msg.includes("column") && msg.includes("game_name")) {
-        const resB = await supabase.from("players").insert({ name }).select("id").single();
-        if (resB.error) {
-          console.error(resB.error);
-          alert(resB.error.message);
-          return;
-        }
-        createdId = resB.data?.id ?? null;
-      } else {
-        console.error(resA.error);
-        alert(resA.error.message);
-        return;
-      }
-    }
-
-    if (!createdId) return alert("Failed to create player.");
-
-    // Optionally add membership immediately
-    if (newAutoAdd && selectedAlliance) {
-      const { error } = await supabase.from("player_alliances").insert({
-        player_id: createdId,
-        alliance_code: selectedAlliance,
-        role: newPlayerRole,
-      });
-
-      if (error) {
-        console.error(error);
-        alert(error.message);
-        // still refresh players
-      } else {
-        await refetchMemberships(selectedAlliance);
-      }
-    }
-
-    setNewPlayerName("");
-    await refetchAll();
-
-    // convenience: set dropdowns to the new player
-    setAddPlayerId(createdId);
-    setLinkPlayerId(createdId);
-  };
-
   const linkUser = async () => {
     const userId = linkUserUuid.trim();
     if (!linkPlayerId) return alert("Select a player to link.");
@@ -243,43 +184,6 @@ export default function OwnerMembershipManagerPage() {
               </option>
             ))}
           </select>
-        </div>
-
-        {/* ✅ New: Create player */}
-        <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12 }}>
-          <h3 style={{ marginTop: 0 }}>Create Player</h3>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>Game Name</span>
-              <input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder='Example: "Seven"' />
-            </label>
-
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>Role (if auto-add)</span>
-              <select value={newPlayerRole} onChange={(e) => setNewPlayerRole(e.target.value as any)}>
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </label>
-
-            <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
-              <input
-                type="checkbox"
-                checked={newAutoAdd}
-                onChange={(e) => setNewAutoAdd(e.target.checked)}
-                disabled={!selectedAlliance}
-              />
-              Auto-add to selected alliance
-            </label>
-
-            <button onClick={createPlayer}>➕ Create</button>
-          </div>
-
-          <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
-            If an alliance is selected and “Auto-add” is checked, the new player is immediately added to that alliance with the chosen role.
-          </div>
         </div>
 
         {selectedAlliance ? (
