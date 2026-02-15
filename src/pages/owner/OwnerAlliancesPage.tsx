@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
 type AllianceRow = {
@@ -21,19 +21,42 @@ export default function OwnerAlliancesPage() {
 
   const refetch = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+
+    // try with enabled; fallback if column doesn't exist
+    let data: any[] | null = null;
+
+    const resA = await supabase
       .from("alliances")
       .select("code,name,enabled")
       .order("code", { ascending: true });
 
-    setLoading(false);
+    if (!resA.error) {
+      data = resA.data as any[];
+    } else {
+      const msg = (resA.error.message || "").toLowerCase();
+      if (msg.includes("enabled")) {
+        const resB = await supabase
+          .from("alliances")
+          .select("code,name")
+          .order("code", { ascending: true });
 
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
+        if (resB.error) {
+          console.error(resB.error);
+          alert(resB.error.message);
+          setLoading(false);
+          return;
+        }
+        data = (resB.data as any[]).map((r) => ({ ...r, enabled: true }));
+      } else {
+        console.error(resA.error);
+        alert(resA.error.message);
+        setLoading(false);
+        return;
+      }
     }
+
     setRows((data || []) as AllianceRow[]);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -46,16 +69,22 @@ export default function OwnerAlliancesPage() {
     if (!code) return alert("Alliance code required (example: SDS)");
     if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
 
-    const { error } = await supabase.from("alliances").insert({
-      code,
-      name,
-      enabled: newEnabled,
-    });
-
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
+    // try with enabled, fallback without enabled
+    const resA = await supabase.from("alliances").insert({ code, name, enabled: newEnabled });
+    if (resA.error) {
+      const msg = (resA.error.message || "").toLowerCase();
+      if (msg.includes("enabled")) {
+        const resB = await supabase.from("alliances").insert({ code, name });
+        if (resB.error) {
+          console.error(resB.error);
+          alert(resB.error.message);
+          return;
+        }
+      } else {
+        console.error(resA.error);
+        alert(resA.error.message);
+        return;
+      }
     }
 
     setNewCode("");
@@ -64,11 +93,26 @@ export default function OwnerAlliancesPage() {
     await refetch();
   };
 
-  const updateAlliance = async (code: string, patch: Partial<AllianceRow>) => {
-    const { error } = await supabase.from("alliances").update(patch).eq("code", code);
+  const renameAlliance = async (code: string) => {
+    const current = rows.find((r) => r.code === code);
+    const next = prompt("Alliance name:", current?.name || code);
+    if (next == null) return;
+    const name = next.trim() || code;
+
+    const { error } = await supabase.from("alliances").update({ name }).eq("code", code);
     if (error) {
       console.error(error);
       alert(error.message);
+      return;
+    }
+    await refetch();
+  };
+
+  const toggleEnabled = async (code: string, enabled: boolean) => {
+    const res = await supabase.from("alliances").update({ enabled }).eq("code", code);
+    if (res.error) {
+      console.error(res.error);
+      alert(res.error.message);
       return;
     }
     await refetch();
@@ -85,8 +129,6 @@ export default function OwnerAlliancesPage() {
     }
     await refetch();
   };
-
-  const byCode = useMemo(() => new Map(rows.map(r => [r.code, r])), [rows]);
 
   return (
     <div style={{ padding: 24 }}>
@@ -116,7 +158,7 @@ export default function OwnerAlliancesPage() {
         </div>
 
         <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-          New alliances automatically appear in Onboarding + Owner pages as soon as they exist in the DB.
+          New alliances immediately work at: <code>/dashboard/&lt;CODE&gt;/calendar</code> and <code>/dashboard/&lt;CODE&gt;/hq-map</code>
         </div>
       </div>
 
@@ -140,32 +182,20 @@ export default function OwnerAlliancesPage() {
                     </div>
 
                     <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                      <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                          type="checkbox"
-                          checked={enabled}
-                          onChange={(e) => updateAlliance(r.code, { enabled: e.target.checked })}
-                        />
-                        Enabled
-                      </label>
+                      {"enabled" in r ? (
+                        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            type="checkbox"
+                            checked={enabled}
+                            onChange={(e) => toggleEnabled(r.code, e.target.checked)}
+                          />
+                          Enabled
+                        </label>
+                      ) : null}
 
-                      <button
-                        onClick={() => {
-                          const current = byCode.get(r.code);
-                          const next = prompt("Alliance name:", current?.name || r.code);
-                          if (next == null) return;
-                          updateAlliance(r.code, { name: next.trim() || r.code });
-                        }}
-                      >
-                        ✏️ Rename
-                      </button>
-
+                      <button onClick={() => renameAlliance(r.code)}>✏️ Rename</button>
                       <button onClick={() => deleteAlliance(r.code)}>🗑 Delete</button>
                     </div>
-                  </div>
-
-                  <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
-                    Dashboard routes: <code>/dashboard/{r.code}/calendar</code> and <code>/dashboard/{r.code}/hq-map</code>
                   </div>
                 </div>
               );

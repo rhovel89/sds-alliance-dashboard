@@ -24,8 +24,6 @@ import OwnerMembershipsPage from "../pages/owner/OwnerMembershipsPage";
 import OwnerAlliancesPage from "../pages/owner/OwnerAlliancesPage";
 import OwnerPlayersPage from "../pages/owner/OwnerPlayersPage";
 import RequireAllianceAccess from "../components/auth/RequireAllianceAccess";
-import OwnerAlliancesPage from "../pages/owner/OwnerAlliancesPage";
-import OwnerRequestsProvisionPage from "../pages/owner/OwnerRequestsProvisionPage";
 
 export default function AppRoutes() {
   return (
@@ -94,9 +92,7 @@ export default function AppRoutes() {
   <Route path="/owner/alliances" element={<OwnerAlliancesPage />} />
   <Route path="/owner/players" element={<OwnerPlayersPage />} />
         <Route path="/owner/membership" element={<OwnerMembershipManagerPage />} />
-        <Route path="/owner/alliances" element={<OwnerAlliancesPage />} />
-              <Route path="/owner/requests-provision" element={<OwnerRequestsProvisionPage />} />
-      </Routes>
+</Routes>
   );
 }
 
