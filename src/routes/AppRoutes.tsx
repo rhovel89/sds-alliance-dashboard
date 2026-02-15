@@ -96,9 +96,11 @@ export default function AppRoutes() {
         <Route path="/owner/membership" element={<OwnerMembershipManagerPage />} />
         <Route path="/owner/alliances" element={<OwnerAlliancesPage />} />
               <Route path="/owner/requests-provision" element={<OwnerRequestsProvisionPage />} />
+              <Route path="/owner/players-link" element={<OwnerPlayersLinkPage />} />
       </Routes>
   );
 }
+
 
 
 
