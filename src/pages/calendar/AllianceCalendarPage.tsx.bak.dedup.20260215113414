@@ -195,6 +195,10 @@ export default function AllianceCalendarPage() {
 
     setShowModal(false);
     setForm({
+      recurring_enabled: false,
+      recurrence_type: "",
+      recurrence_days: [],
+      recurrence_end_date: "",
       title: "",
       event_type: "State vs. State",
       start_date: "",
@@ -204,8 +208,9 @@ export default function AllianceCalendarPage() {
       recurring_enabled: false,
       recurrence_type: "weekly",
       recurrence_days: [],
-      recurrence_end_date: "",
-    });await refetch();
+    });
+
+    await refetch();
   };
 
   const deleteEvent = async (id: string) => {
@@ -420,6 +425,5 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
-
 
 

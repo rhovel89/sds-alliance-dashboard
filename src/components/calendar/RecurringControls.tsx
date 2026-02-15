@@ -3,7 +3,8 @@ import React from "react";
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] as const;
 type Day = typeof DAYS[number];
 
-export default function RecurringControls(props: {
+// Named export (calendar imports { RecurringControls })
+export function RecurringControls(props: {
   form: any;
   setForm: React.Dispatch<React.SetStateAction<any>>;
 }) {
@@ -88,3 +89,6 @@ export default function RecurringControls(props: {
     </div>
   );
 }
+
+// Default export (safe for other imports)
+export default RecurringControls;
