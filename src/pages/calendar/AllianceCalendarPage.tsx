@@ -139,7 +139,8 @@ useEffect(() => {
     const payload = {
       alliance_id: upperAlliance,
       title: form.event_name,
-      event_name: form.event_name,
+      title: form.event_name,
+        event_name: form.event_name,
       event_type: form.event_type,
       start_time_utc: utcStart.toISOString(),
       duration_minutes:
@@ -576,6 +577,7 @@ useEffect(() => {
   }, [events]);
 
 }
+
 
 
 
