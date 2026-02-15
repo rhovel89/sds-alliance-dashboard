@@ -78,8 +78,10 @@ export default function AppRoutes() {
 
       </Route>
 
-    </Routes>
+      <Route path="/owner/discord" element={<OwnerDashboardPage />} />
+</Routes>
   );
 }
+
 
 

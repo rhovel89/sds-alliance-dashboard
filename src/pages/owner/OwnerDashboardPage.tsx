@@ -147,6 +147,31 @@ export default function OwnerDashboardPage() {
     await fetchRows();
   }
 
+  async function sendTest(allianceId: string) {
+    setError(null);
+
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) return alert("No session token.");
+
+    const res = await fetch("https://pvngssnazuzekriakqds.functions.supabase.co/send-test-discord", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({ alliance_id: allianceId }),
+    });
+
+    const txt = await res.text().catch(() => "");
+    if (!res.ok) {
+      setError(txt || "Test failed.");
+      return;
+    }
+
+    alert(`Test sent for ${allianceId}`);
+  }
+
   if (loading) {
     return <div style={{ padding: 24 }}>Loading…</div>;
   }
@@ -267,6 +292,9 @@ export default function OwnerDashboardPage() {
                       </>
                     )}
 
+                    <button onClick={() => sendTest(key)}>Send Test</button>
+
+
                     <button onClick={() => remove(key)}>Delete</button>
                   </div>
                 </div>
@@ -317,3 +345,4 @@ export default function OwnerDashboardPage() {
     </div>
   );
 }
+
