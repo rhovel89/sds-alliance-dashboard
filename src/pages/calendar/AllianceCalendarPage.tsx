@@ -137,17 +137,24 @@ useEffect(() => {
     const utcStart = new Date(localStart.getTime() - (localStart.getTimezoneOffset() * 60000));
 
     const payload = {
-      alliance_id: upperAlliance,
-      title: form.event_name,
-      title: form.event_name,
-        event_name: form.event_name,
-      event_type: form.event_type,
-      start_time_utc: utcStart.toISOString(),
-      duration_minutes:
-        (new Date(`${form.end_date}T${form.end_time}`).getTime() -
-         new Date(`${form.start_date}T${form.start_time}`).getTime()) / 60000,
-      timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone
-    };
+  alliance_id: upperAlliance,
+
+  // REQUIRED NOT NULL COLUMNS
+  title: title,                 // <-- MUST EXIST
+  created_by: userId,           // <-- MUST EXIST
+  start_time_utc: startLocal.toISOString(),
+  duration_minutes: durationMinutes,
+
+  // Optional / legacy columns
+  event_name: title,
+  event_type: form.event_type,
+  start_date: form.start_date,
+  end_date: form.end_date,
+  start_time: form.start_time,
+  end_time: form.end_time,
+  timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
+};
+
 
     const { error } = await supabase.from("alliance_events").insert(payload);
 
