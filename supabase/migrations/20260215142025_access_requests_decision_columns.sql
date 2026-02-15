@@ -1,0 +1,13 @@
+-- approve_access_request RPC expects these (safe, additive)
+alter table public.access_requests
+  add column if not exists decided_by uuid;
+
+alter table public.access_requests
+  add column if not exists decided_at timestamptz;
+
+alter table public.access_requests
+  add column if not exists decision text;
+
+-- Optional index
+create index if not exists access_requests_decision_idx
+  on public.access_requests (decision, decided_at);
