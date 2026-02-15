@@ -2,16 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useHQPermissions } from "../../hooks/useHQPermissions";
+import { RecurringControls } from "../../components/calendar/RecurringControls";
+import {
+  expandEventsForMonth,
+  getDeleteId,
+  getEventStartUtc,
+  type CalendarEventRow,
+  type RecurrenceType,
+} from "../../utils/recurrence";
 
-type EventRow = {
-  id: string;
-  alliance_id: string;
-  title: string;
-  event_type: string | null;
-  start_time_utc: string;
-  duration_minutes: number;
-  created_by: string;
-};
+type EventRow = CalendarEventRow;
 
 const EVENT_TYPES = [
   "State vs. State",
@@ -33,22 +33,25 @@ export default function AllianceCalendarPage() {
   const { canEdit } = useHQPermissions(upperAlliance);
 
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Raw rows from DB
   const [events, setEvents] = useState<EventRow[]>([]);
+
   const [showModal, setShowModal] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const [form, setForm] = useState({
-
-  // ===============================
-  
-    recurrence_type: "",
-    recurrence_days: [] as string[],
-    recurrence_end_date: "",
     title: "",
     event_type: "State vs. State",
+
     start_date: "",
     start_time: "",
     end_date: "",
     end_time: "",
+
+    recurring_enabled: false,
+    recurrence_type: "weekly" as RecurrenceType,
+    recurrence_days: [] as number[], // 0=Sun..6=Sat
   });
 
   const today = new Date();
@@ -60,6 +63,11 @@ export default function AllianceCalendarPage() {
     [month, year]
   );
 
+  // Expand recurring events for the visible month (client-side)
+  const expandedEvents = useMemo(() => {
+    return expandEventsForMonth(events, year, month);
+  }, [events, year, month]);
+
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getUser();
@@ -67,63 +75,26 @@ export default function AllianceCalendarPage() {
     })();
   }, []);
 
-  
-  // ===============================
-  // 🔁 Expand Recurring Events
-  // ===============================
-  const expandRecurringEvents = (events: EventRow[]) => {
-    const expanded: EventRow[] = [];
-
-    events.forEach(event => {
-      expanded.push(event);
-
-      if (!event.recurring_enabled) return;
-
-      const baseDate = new Date(event.start_time_utc);
-
-      for (let i = 1; i <= 30; i++) { // generate next 30 instances safely
-        const clone = { ...event };
-
-        const next = new Date(baseDate);
-
-        if (event.recurring_frequency === "daily") {
-          next.setDate(baseDate.getDate() + i);
-        }
-
-        if (event.recurring_frequency === "weekly") {
-          next.setDate(baseDate.getDate() + (7 * i));
-        }
-
-        if (event.recurring_frequency === "biweekly") {
-          next.setDate(baseDate.getDate() + (14 * i));
-        }
-
-        if (event.recurring_frequency === "monthly") {
-          next.setMonth(baseDate.getMonth() + i);
-        }
-
-        clone.start_time_utc = next.toISOString();
-        expanded.push(clone);
-      }
-    });
-
-    return expanded;
-  };
-
-const refetch = async () => {
+  const refetch = async () => {
     if (!upperAlliance) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("alliance_events")
       .select("*")
       .eq("alliance_id", upperAlliance)
       .order("start_time_utc", { ascending: true });
 
-    setEvents(expandRecurringEvents((data || []) as EventRow[]));
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setEvents((data || []) as EventRow[]);
   };
 
   useEffect(() => {
     refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [upperAlliance]);
 
   const saveEvent = async () => {
@@ -136,41 +107,84 @@ const refetch = async () => {
     const startLocal = new Date(`${form.start_date}T${form.start_time}`);
     const endLocal = new Date(`${form.end_date}T${form.end_time}`);
 
-    if (endLocal <= startLocal)
-      return alert("End must be after start.");
+    if (Number.isNaN(startLocal.getTime()) || Number.isNaN(endLocal.getTime()))
+      return alert("Start/End date & time required.");
+
+    if (endLocal <= startLocal) return alert("End must be after start.");
 
     const durationMinutes = Math.max(
       1,
       Math.round((endLocal.getTime() - startLocal.getTime()) / 60000)
     );
 
-    const payload = {
-  alliance_id: upperAlliance,
+    const basePayload: any = {
+      alliance_id: upperAlliance,
 
-  // REQUIRED NOT NULL COLUMNS
-  title: form.title.trim(),
-  created_by: userId,
-  start_time_utc: startLocal.toISOString(),
-  duration_minutes: durationMinutes,
-  timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      // REQUIRED NOT NULL COLUMNS
+      title: cleanTitle,
+      created_by: userId,
+      start_time_utc: startLocal.toISOString(),
+      duration_minutes: durationMinutes,
+      timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
 
-  // Optional
-  event_name: form.title.trim(),
-  event_type: form.event_type,
-  start_date: form.start_date,
-  end_date: form.end_date,
-  start_time: form.start_time,
-  end_time: form.end_time
-};
+      // Optional legacy columns (keep existing behavior)
+      event_name: cleanTitle,
+      event_type: form.event_type,
+      start_date: form.start_date,
+      end_date: form.end_date,
+      start_time: form.start_time,
+      end_time: form.end_time,
+    };
 
-    const { error } = await supabase
+    // If recurring is enabled:
+    // - weekly/biweekly uses selected days; if none, we'll save empty and the expander defaults to base day
+    const wantRecurring = form.recurring_enabled && form.recurrence_type !== "none";
+
+    // Attempt A: recurrence_type + recurrence_days
+    const payloadA = {
+      ...basePayload,
+      ...(wantRecurring
+        ? { recurrence_type: form.recurrence_type, recurrence_days: form.recurrence_days }
+        : { recurrence_type: null, recurrence_days: null }),
+    };
+
+    const resA = await supabase
       .from("alliance_events")
-      .insert(payload);
+      .insert(payloadA)
+      .select("id")
+      .single();
 
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
+    // If schema doesn't have those columns, fallback to recurrence + days_of_week
+    if (resA.error) {
+      const msg = (resA.error.message || "").toLowerCase();
+      const missingRecCols =
+        msg.includes("column") &&
+        (msg.includes("recurrence_type") || msg.includes("recurrence_days"));
+
+      if (!missingRecCols) {
+        console.error(resA.error);
+        alert(resA.error.message);
+        return;
+      }
+
+      const payloadB = {
+        ...basePayload,
+        ...(wantRecurring
+          ? { recurrence: form.recurrence_type, days_of_week: form.recurrence_days }
+          : { recurrence: null, days_of_week: null }),
+      };
+
+      const resB = await supabase
+        .from("alliance_events")
+        .insert(payloadB)
+        .select("id")
+        .single();
+
+      if (resB.error) {
+        console.error(resB.error);
+        alert(resB.error.message);
+        return;
+      }
     }
 
     setShowModal(false);
@@ -181,6 +195,9 @@ const refetch = async () => {
       start_time: "",
       end_date: "",
       end_time: "",
+      recurring_enabled: false,
+      recurrence_type: "weekly",
+      recurrence_days: [],
     });
 
     await refetch();
@@ -201,7 +218,7 @@ const refetch = async () => {
     });
   }, [month, year]);
 
-  // ✅ Calendar day match FIXED using UTC conversion
+  // ✅ Calendar day match FIXED using local conversion from UTC instant
   const isSameDay = (utcString: string, y: number, m: number, d: number) => {
     const local = new Date(utcString);
     return (
@@ -210,6 +227,11 @@ const refetch = async () => {
       local.getDate() === d
     );
   };
+
+  const selectedDayEvents = useMemo(() => {
+    if (!selectedDay) return [];
+    return expandedEvents.filter((e) => isSameDay(getEventStartUtc(e), year, month, selectedDay));
+  }, [expandedEvents, selectedDay, year, month]);
 
   return (
     <div style={{ padding: 24 }}>
@@ -236,33 +258,39 @@ const refetch = async () => {
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
 
-          const dayEvents = events.filter((e) =>
-            isSameDay(e.start_time_utc, year, month, day)
+          const dayEvents = expandedEvents.filter((e) =>
+            isSameDay(getEventStartUtc(e), year, month, day)
           );
 
           return (
             <div
               key={day}
+              onClick={() => setSelectedDay(day)}
               style={{
                 border: "1px solid #444",
                 borderRadius: 8,
                 padding: 10,
                 minHeight: 100,
+                outline: selectedDay === day ? "2px solid #666" : "none",
               }}
             >
               <strong>{day}</strong>
 
               {dayEvents.map((e) => (
                 <div
-                  key={e.id}
+                  key={e.instance_id ?? e.id}
                   style={{
                     marginTop: 6,
                     fontSize: 12,
                     cursor: canEdit ? "pointer" : "default",
                   }}
-                  onClick={() => deleteEvent(e.id)}
+                  onClick={(evt) => {
+                    evt.stopPropagation();
+                    if (canEdit) deleteEvent(getDeleteId(e));
+                  }}
+                  title={canEdit ? "Click to delete" : undefined}
                 >
-                  {new Date(e.start_time_utc).toLocaleTimeString([], {
+                  {new Date(getEventStartUtc(e)).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}{" "}
@@ -273,6 +301,40 @@ const refetch = async () => {
           );
         })}
       </div>
+
+      {/* Optional Agenda List */}
+      {selectedDay && (
+        <div style={{ marginTop: 18 }}>
+          <h3 style={{ marginBottom: 8 }}>
+            🧟 Agenda — {new Date(year, month, selectedDay).toLocaleDateString()}
+          </h3>
+
+          {selectedDayEvents.length === 0 ? (
+            <div style={{ opacity: 0.75 }}>No events.</div>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              {selectedDayEvents
+                .slice()
+                .sort((a, b) => new Date(getEventStartUtc(a)).getTime() - new Date(getEventStartUtc(b)).getTime())
+                .map((e) => (
+                  <div
+                    key={`agenda__${e.instance_id ?? e.id}`}
+                    style={{ border: "1px solid #333", borderRadius: 8, padding: 10 }}
+                  >
+                    <div style={{ fontWeight: 700 }}>
+                      {new Date(getEventStartUtc(e)).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}{" "}
+                      — {e.title}
+                    </div>
+                    {e.event_type ? <div style={{ opacity: 0.85, fontSize: 12 }}>{e.event_type}</div> : null}
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showModal && (
         <div style={{ marginTop: 20 }}>
@@ -286,53 +348,70 @@ const refetch = async () => {
             }
           />
 
-          <input
-            type="date"
-            value={form.start_date}
-            onChange={(e) =>
-              setForm({ ...form, start_date: e.target.value })
-            }
+          <div style={{ marginTop: 10 }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span>Event Type</span>
+              <select
+                value={form.event_type}
+                onChange={(e) => setForm({ ...form, event_type: e.target.value })}
+              >
+                {EVENT_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            <input
+              type="date"
+              value={form.start_date}
+              onChange={(e) =>
+                setForm({ ...form, start_date: e.target.value })
+              }
+            />
+
+            <input
+              type="time"
+              value={form.start_time}
+              onChange={(e) =>
+                setForm({ ...form, start_time: e.target.value })
+              }
+            />
+
+            <input
+              type="date"
+              value={form.end_date}
+              onChange={(e) =>
+                setForm({ ...form, end_date: e.target.value })
+              }
+            />
+
+            <input
+              type="time"
+              value={form.end_time}
+              onChange={(e) =>
+                setForm({ ...form, end_time: e.target.value })
+              }
+            />
+          </div>
+
+          {/* Recurrence UI (Requested Feature A) */}
+          <RecurringControls
+            enabled={form.recurring_enabled}
+            onEnabledChange={(v) => setForm({ ...form, recurring_enabled: v })}
+            recurrenceType={form.recurrence_type}
+            onRecurrenceTypeChange={(v) => setForm({ ...form, recurrence_type: v })}
+            daysOfWeek={form.recurrence_days}
+            onDaysOfWeekChange={(v) => setForm({ ...form, recurrence_days: v })}
           />
 
-          <input
-            type="time"
-            value={form.start_time}
-            onChange={(e) =>
-              setForm({ ...form, start_time: e.target.value })
-            }
-          />
-
-          <input
-            type="date"
-            value={form.end_date}
-            onChange={(e) =>
-              setForm({ ...form, end_date: e.target.value })
-            }
-          />
-
-          <input
-            type="time"
-            value={form.end_time}
-            onChange={(e) =>
-              setForm({ ...form, end_time: e.target.value })
-            }
-          />
-
-          <button onClick={saveEvent}>Save</button>
+          <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+            <button onClick={saveEvent}>Save</button>
+            <button onClick={() => setShowModal(false)}>Cancel</button>
+          </div>
         </div>
       )}
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
