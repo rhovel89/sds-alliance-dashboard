@@ -20,6 +20,8 @@ import RequestAccessPage from "../pages/onboarding/RequestAccessPage";
 import MyDashboardsPage from "../pages/dashboard/MyDashboardsPage";
 import OwnerAccessRequestsPage from "../pages/owner/OwnerAccessRequestsPage";
 import OwnerMembershipsPage from "../pages/owner/OwnerMembershipsPage";
+import OwnerAlliancesPage from "../pages/owner/OwnerAlliancesPage";
+import OwnerPlayersPage from "../pages/owner/OwnerPlayersPage";
 
 export default function AppRoutes() {
   return (
@@ -87,9 +89,12 @@ export default function AppRoutes() {
   <Route path="/dashboard" element={<MyDashboardsPage />} />
   <Route path="/owner/requests" element={<OwnerAccessRequestsPage />} />
   <Route path="/owner/memberships" element={<OwnerMembershipsPage />} />
+  <Route path="/owner/alliances" element={<OwnerAlliancesPage />} />
+  <Route path="/owner/players" element={<OwnerPlayersPage />} />
 </Routes>
   );
 }
+
 
 
 
