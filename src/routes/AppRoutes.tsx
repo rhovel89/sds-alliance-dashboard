@@ -10,6 +10,7 @@ import StateDashboard from "../pages/StateDashboard";
 import OwnerDashboard from "../pages/OwnerDashboard";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
 import OwnerDashboardPage from "../pages/owner/OwnerDashboardPage";
+import OwnerMembershipManagerPage from "../pages/owner/OwnerMembershipManagerPage";
 
 
 import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
@@ -90,9 +91,11 @@ export default function AppRoutes() {
   <Route path="/owner/memberships" element={<OwnerMembershipsPage />} />
   <Route path="/owner/alliances" element={<OwnerAlliancesPage />} />
   <Route path="/owner/players" element={<OwnerPlayersPage />} />
+        <Route path="/owner/membership" element={<OwnerMembershipManagerPage />} />
 </Routes>
   );
 }
+
 
 
 
