@@ -1,9 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { useAlliancesList } from "../hooks/useAlliancesList";
 
 export default function OwnerDashboardSelect() {
   const navigate = useNavigate();
-  const { alliances, loading: alliancesLoading, error: alliancesError } = useAlliancesList();
 
   return (
     <div className="zombie-card" style={{ maxWidth: 420, margin: "0 auto" }}>
@@ -24,24 +22,24 @@ export default function OwnerDashboardSelect() {
         style={{ width: "100%", marginTop: 8 }}
         onClick={() => navigate("/dashboard/SDS")}
       >
-        {alliancesLoading ? (
-          <div style={{ opacity: 0.75 }}>Loading alliances…</div>
-        ) : alliancesError ? (
-          <div style={{ color: "#ffb3b3" }}>{alliancesError}</div>
-        ) : (
-          <>
-            {alliances.map((a) => (
-              <button
-                key={a.code}
-                onClick={() => navigate("/dashboard/" + a.code)}
-              >
-                {a.code} — {a.name || a.code}
-              </button>
-            ))}
-          </>
-        )}
+        SDS Alliance
+      </button>
+
+      <button
+        className="zombie-btn"
+        style={{ width: "100%", marginTop: 8 }}
+        onClick={() => navigate("/dashboard/WOC")}
+      >
+        WOC Alliance
+      </button>
+
+      <button
+        className="zombie-btn"
+        style={{ width: "100%", marginTop: 8 }}
+        onClick={() => navigate("/dashboard/OZ")}
+      >
+        OZ Alliance
       </button>
     </div>
   );
 }
-
