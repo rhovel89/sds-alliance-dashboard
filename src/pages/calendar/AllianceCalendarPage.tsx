@@ -34,6 +34,7 @@ export default function AllianceCalendarPage() {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [events, setEvents] = useState<EventRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
   const [form, setForm] = useState({
@@ -54,6 +55,9 @@ export default function AllianceCalendarPage() {
     [month, year]
   );
 
+  // ===============================
+  // LOAD USER
+  // ===============================
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getUser();
@@ -61,6 +65,9 @@ export default function AllianceCalendarPage() {
     })();
   }, []);
 
+  // ===============================
+  // LOAD EVENTS
+  // ===============================
   const refetch = async () => {
     if (!upperAlliance) return;
 
@@ -71,51 +78,53 @@ export default function AllianceCalendarPage() {
       .order("start_time_utc", { ascending: true });
 
     setEvents((data || []) as EventRow[]);
+    setLoading(false);
   };
 
   useEffect(() => {
     refetch();
   }, [upperAlliance]);
 
+  // ===============================
+  // SAVE EVENT
+  // ===============================
   const saveEvent = async () => {
     if (!canEdit) return;
-    if (!userId) return alert("User session missing.");
 
-    if (!form.title || !form.start_date || !form.start_time || !form.end_date || !form.end_time) {
-      return alert("All fields required.");
+    const trimmedTitle = form.title.trim();
+    if (!trimmedTitle) return alert("Event Title required.");
+
+    if (!form.start_date || !form.start_time || !form.end_date || !form.end_time) {
+      return alert("Start/End date & time required.");
     }
 
-    const startLocal = new Date(`${form.start_date}T${form.start_time}:00`);
-    const endLocal = new Date(`${form.end_date}T${form.end_time}:00`);
+    if (!userId) return alert("Missing user session.");
+
+    const startLocal = new Date(`${form.start_date}T${form.start_time}`);
+    const endLocal = new Date(`${form.end_date}T${form.end_time}`);
 
     if (endLocal <= startLocal) {
-      return alert("End time must be after start time.");
+      return alert("End must be after start.");
     }
 
-    const durationMinutes = Math.round(
-      (endLocal.getTime() - startLocal.getTime()) / 60000
+    const durationMinutes = Math.max(
+      1,
+      Math.round((endLocal.getTime() - startLocal.getTime()) / 60000)
     );
 
     const payload = {
-  alliance_id: upperAlliance,
+      alliance_id: upperAlliance,
+      title: trimmedTitle,
+      created_by: userId,
+      start_time_utc: startLocal.toISOString(),
+      duration_minutes: durationMinutes,
+      event_type: form.event_type,
+      timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    };
 
-  // REQUIRED NOT NULL COLUMNS
-  title: title,
-  created_by: userId,
-  start_time_utc: startLocal.toISOString(),
-  duration_minutes: durationMinutes,
-  timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
-
-  // Optional display fields
-  event_name: title,
-  event_type: form.event_type,
-  start_date: form.start_date,
-  end_date: form.end_date,
-  start_time: form.start_time,
-  end_time: form.end_time
-};
-
-    const { error } = await supabase.from("alliance_events").insert(payload);
+    const { error } = await supabase
+      .from("alliance_events")
+      .insert(payload);
 
     if (error) {
       alert(error.message);
@@ -132,25 +141,58 @@ export default function AllianceCalendarPage() {
       end_time: "",
     });
 
-    await refetch();
+    refetch();
   };
 
+  // ===============================
+  // DELETE
+  // ===============================
   const deleteEvent = async (id: string) => {
     if (!canEdit) return;
     if (!confirm("Delete this event?")) return;
 
     await supabase.from("alliance_events").delete().eq("id", id);
-    await refetch();
+    refetch();
   };
 
+  // ===============================
+  // REMINDER ENGINE (SAFE)
+  // ===============================
+  useEffect(() => {
+    if (!events.length) return;
+
+    const offsets = [60, 30, 15, 5];
+    const triggered = new Set<string>();
+
+    const interval = setInterval(() => {
+      const now = new Date();
+
+      events.forEach((event) => {
+        const start = new Date(event.start_time_utc);
+        const diff = Math.floor((start.getTime() - now.getTime()) / 60000);
+
+        offsets.forEach((offset) => {
+          const key = event.id + "-" + offset;
+          if (diff === offset && !triggered.has(key)) {
+            triggered.add(key);
+            alert(`🔔 ${event.title} starts in ${offset} minutes`);
+          }
+        });
+      });
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [events]);
+
+  // ===============================
+  // RENDER
+  // ===============================
   return (
-    <div style={{ padding: 24, color: "#cfffbe" }}>
+    <div style={{ padding: 24 }}>
       <h2>📅 Alliance Calendar — {upperAlliance}</h2>
 
       {canEdit && (
-        <button className="zombie-btn" onClick={() => setShowModal(true)}>
-          ➕ Create Event
-        </button>
+        <button onClick={() => setShowModal(true)}>➕ Create Event</button>
       )}
 
       <div
@@ -177,24 +219,17 @@ export default function AllianceCalendarPage() {
             <div
               key={day}
               style={{
-                border: "1px solid rgba(0,255,0,0.2)",
-                borderRadius: 10,
-                padding: 10,
-                minHeight: 120,
+                border: "1px solid rgba(0,255,0,0.3)",
+                padding: 8,
+                minHeight: 100,
               }}
             >
-              <div style={{ fontWeight: 700 }}>{day}</div>
+              <strong>{day}</strong>
 
               {dayEvents.map((e) => (
                 <div
                   key={e.id}
-                  style={{
-                    marginTop: 6,
-                    padding: 6,
-                    borderRadius: 6,
-                    background: "rgba(0,255,0,0.15)",
-                    cursor: canEdit ? "pointer" : "default",
-                  }}
+                  style={{ marginTop: 6, fontSize: 12 }}
                   onClick={() => deleteEvent(e.id)}
                 >
                   {e.title}
@@ -206,62 +241,40 @@ export default function AllianceCalendarPage() {
       </div>
 
       {showModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.75)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ background: "#111", padding: 20, borderRadius: 12 }}>
-            <h3>Create Event</h3>
+        <div>
+          <input
+            placeholder="Title"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+          />
 
-            <input
-              placeholder="Title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-            />
+          <input
+            type="date"
+            value={form.start_date}
+            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+          />
 
-            <select
-              value={form.event_type}
-              onChange={(e) => setForm({ ...form, event_type: e.target.value })}
-            >
-              {EVENT_TYPES.map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
+          <input
+            type="time"
+            value={form.start_time}
+            onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+          />
 
-            <input
-              type="date"
-              value={form.start_date}
-              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-            />
-            <input
-              type="time"
-              value={form.start_time}
-              onChange={(e) => setForm({ ...form, start_time: e.target.value })}
-            />
+          <input
+            type="date"
+            value={form.end_date}
+            onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+          />
 
-            <input
-              type="date"
-              value={form.end_date}
-              onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-            />
-            <input
-              type="time"
-              value={form.end_time}
-              onChange={(e) => setForm({ ...form, end_time: e.target.value })}
-            />
+          <input
+            type="time"
+            value={form.end_time}
+            onChange={(e) => setForm({ ...form, end_time: e.target.value })}
+          />
 
-            <button onClick={saveEvent}>Save</button>
-          </div>
+          <button onClick={saveEvent}>Save</button>
         </div>
       )}
     </div>
   );
 }
-
-
