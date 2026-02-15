@@ -78,10 +78,10 @@ export default function OwnerDashboardPage() {
 
   const healthCards = useMemo(
     () => [
-      { label: "Pending Requests", value: stats.pendingRequests, path: "/owner/requests" },
-      { label: "Alliances", value: stats.alliances, path: "/owner/alliances" },
-      { label: "Players", value: stats.players, path: "/owner/players" },
-      { label: "Discord Webhooks", value: stats.webhooks, path: "/owner/discord" },
+      { label: "Pending Requests", value: stats.pendingRequests },
+      { label: "Alliances", value: stats.alliances },
+      { label: "Players", value: stats.players },
+      { label: "Discord Webhooks", value: stats.webhooks },
     ],
     [stats]
   );
@@ -105,16 +105,6 @@ export default function OwnerDashboardPage() {
         {healthCards.map((c) => (
           <div
             key={c.label}
-            role={c.path ? "button" : undefined}
-            tabIndex={c.path ? 0 : -1}
-            onClick={() => {
-              if (!c.path) return;
-              navigate(c.path);
-            }}
-            onKeyDown={(e) => {
-              if (!c.path) return;
-              if (e.key === "Enter" || e.key === " ") navigate(c.path);
-            }}
             style={{
               border: "1px solid #333",
               borderRadius: 12,
@@ -163,4 +153,3 @@ export default function OwnerDashboardPage() {
     </div>
   );
 }
-
