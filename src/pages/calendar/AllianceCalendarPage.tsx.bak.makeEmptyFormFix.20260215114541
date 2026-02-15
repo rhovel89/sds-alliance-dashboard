@@ -40,19 +40,7 @@ export default function AllianceCalendarPage() {
   const [showModal, setShowModal] = useState(false);
   
 
-  
   const makeEmptyForm = () => ({
-  title: "",
-  event_type: "State vs. State",
-  start_date: "",
-  start_time: "",
-  end_date: "",
-  end_time: "",
-  recurring_enabled: false,
-  recurrence_type: "weekly",
-  recurrence_days: [] as string[],
-  recurrence_end_date: "",
-});const makeEmptyForm = () => ({
     title: "",
     event_type: "State vs. State",
     start_date: "",
@@ -422,7 +410,6 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
-
 
 
 
