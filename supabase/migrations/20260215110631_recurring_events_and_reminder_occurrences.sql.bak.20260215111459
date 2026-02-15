@@ -1,0 +1,61 @@
+-- ==========================================================
+-- Recurring Events (alliance_events) + per-occurrence reminders
+-- ==========================================================
+
+-- 1) Add recurrence columns to alliance_events (safe)
+alter table public.alliance_events
+  add column if not exists recurring_enabled boolean not null default false,
+  add column if not exists recurrence_type text null,
+  add column if not exists recurrence_days text[] null,
+  add column if not exists recurrence_end_date date null;
+
+-- Normalize recurrence_type before constraint (legacy cleanup)
+update public.alliance_events
+set recurrence_type = null
+where recurrence_type is not null and btrim(recurrence_type) = '';
+
+update public.alliance_events
+set recurrence_type = lower(btrim(recurrence_type))
+where recurrence_type is not null;
+
+-- Normalize common variants
+update public.alliance_events set recurrence_type = 'biweekly'
+where recurrence_type in ('bi-weekly','bi weekly','bi_weekly','biweekly');
+
+update public.alliance_events set recurrence_type = 'weekly'
+where recurrence_type in ('week','wk','weekly');
+
+update public.alliance_events set recurrence_type = 'daily'
+where recurrence_type in ('day','daily');
+
+update public.alliance_events set recurrence_type = 'monthly'
+where recurrence_type in ('month','monthly');
+
+-- Anything else invalid -> null + disable recurrence (safe)
+update public.alliance_events
+set recurrence_type = null,
+    recurring_enabled = false
+where recurrence_type is not null
+  and recurrence_type not in ('daily','weekly','biweekly','monthly');
+
+-- Optional constraint on recurrence_type (safe)
+do $
+begin
+  alter table public.alliance_events
+    add constraint alliance_events_recurrence_type_check
+    check (
+      recurrence_type is null
+      or recurrence_type in ('daily','weekly','biweekly','monthly')
+    );
+exception when duplicate_object then
+  null;
+end $;
+
+-- 2) Upgrade reminder_logs to dedupe per occurrence
+alter table public.reminder_logs
+  add column if not exists occurrence_time_utc timestamptz null;
+
+-- Unique per (event, offset, occurrence)
+create unique index if not exists reminder_logs_unique_occurrence
+on public.reminder_logs(event_id, offset_minutes, occurrence_time_utc);
+
