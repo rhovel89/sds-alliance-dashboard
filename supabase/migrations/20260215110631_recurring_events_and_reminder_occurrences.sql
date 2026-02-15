@@ -1,0 +1,110 @@
+-- ==========================================================
+-- Recurring Events (alliance_events) + per-occurrence reminders
+-- ==========================================================
+
+-- 1) Add recurrence columns to alliance_events (safe)
+alter table public.alliance_events
+  add column if not exists recurring_enabled boolean not null default false,
+  add column if not exists recurrence_type text null,
+  add column if not exists recurrence_days text[] null,
+  add column if not exists recurrence_end_date date null;
+
+-- Normalize recurrence_type before constraint (legacy cleanup; supports enum/text)
+do $$
+declare
+  col_oid oid;
+  col_type regtype;
+  is_enum boolean;
+  is_nullable boolean;
+begin
+  -- detect column type and nullability
+  select a.atttypid, a.atttypid::regtype
+    into col_oid, col_type
+  from pg_attribute a
+  join pg_class c on c.oid = a.attrelid
+  join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public'
+    and c.relname = 'alliance_events'
+    and a.attname = 'recurrence_type'
+    and a.attnum > 0
+    and not a.attisdropped;
+
+  select (t.typtype = 'e') into is_enum
+  from pg_type t
+  where t.oid = col_oid;
+
+  select (cols.is_nullable = 'YES') into is_nullable
+  from information_schema.columns cols
+  where cols.table_schema='public'
+    and cols.table_name='alliance_events'
+    and cols.column_name='recurrence_type';
+
+  -- If enum, make sure canonical values exist (safe)
+  if is_enum then
+    execute format('alter type %s add value if not exists ''daily''', col_type);
+    execute format('alter type %s add value if not exists ''weekly''', col_type);
+    execute format('alter type %s add value if not exists ''biweekly''', col_type);
+    execute format('alter type %s add value if not exists ''monthly''', col_type);
+  end if;
+
+  -- Blank-ish -> null (or fallback if NOT NULL)
+  execute format($q$
+    update public.alliance_events
+    set recurrence_type = %s
+    where recurrence_type is not null
+      and btrim(recurrence_type::text) = ''
+  $q$,
+    case when is_nullable then 'null' else '''weekly''' end
+  );
+
+  -- Normalize common variants to canonical
+  execute format($q$
+    update public.alliance_events
+    set recurrence_type = (
+      case lower(btrim(recurrence_type::text))
+        when 'day' then 'daily'
+        when 'daily' then 'daily'
+        when 'week' then 'weekly'
+        when 'wk' then 'weekly'
+        when 'weekly' then 'weekly'
+        when 'bi-weekly' then 'biweekly'
+        when 'bi weekly' then 'biweekly'
+        when 'bi_weekly' then 'biweekly'
+        when 'biweekly' then 'biweekly'
+        when 'month' then 'monthly'
+        when 'monthly' then 'monthly'
+        else %s
+      end
+    )::%s
+    where recurrence_type is not null
+  $q$,
+    case when is_nullable then 'null' else '''weekly''' end,
+    col_type
+  );
+
+  -- Any remaining non-canonical values -> null + disable recurrence (or fallback if NOT NULL)
+  execute format($q$
+    update public.alliance_events
+    set recurrence_type = %s,
+        recurring_enabled = false
+    where recurrence_type is not null
+      and lower(btrim(recurrence_type::text)) not in ('daily','weekly','biweekly','monthly')
+  $q$,
+    case when is_nullable then 'null' else '''weekly''' end
+  );
+end $$;
+-- Optional constraint on recurrence_type skipped (migration hotfix)
+-- Reason: file contained invalid DO dollar block (do $path). Enum already constrains values.
+
+-- 2) Upgrade reminder_logs to dedupe per occurrence
+alter table public.reminder_logs
+  add column if not exists occurrence_time_utc timestamptz null;
+
+-- Unique per (event, offset, occurrence)
+create unique index if not exists reminder_logs_unique_occurrence
+on public.reminder_logs(event_id, offset_minutes, occurrence_time_utc);
+
+
+
+
+

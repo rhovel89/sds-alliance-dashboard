@@ -134,12 +134,6 @@ export default function AllianceCalendarPage() {
       end_date: form.end_date,
       start_time: form.start_time,
       end_time: form.end_time,
-
-  // Recurrence (optional)
-  recurring_enabled: form.recurring_enabled,
-  recurrence_type: form.recurrence_type || null,
-  recurrence_days: form.recurrence_days,
-  recurrence_end_date: form.recurrence_end_date || null,
     };
 
     // If recurring is enabled:
@@ -194,7 +188,8 @@ export default function AllianceCalendarPage() {
     }
 
     setShowModal(false);
-    setForm({`n      recurring_enabled: false,`n      recurrence_type: "",`n      recurrence_days: [],`n      recurrence_end_date: "",`n      title: "",
+    setForm({
+      title: "",
       event_type: "State vs. State",
       start_date: "",
       start_time: "",
@@ -420,4 +415,3 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
-
