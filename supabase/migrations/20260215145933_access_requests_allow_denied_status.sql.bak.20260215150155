@@ -1,0 +1,70 @@
+-- Allow status = 'denied' without breaking existing allowed values.
+-- Reads current constraint, extracts allowed literals, appends 'denied', rebuilds constraint.
+
+do $$
+declare
+  v_def text;
+  v_vals text[] := '{}'::text[];
+  v_val  text;
+  v_sql  text;
+  v_typid oid;
+begin
+  -- Get current check constraint definition (if it exists)
+  select pg_get_constraintdef(c.oid)
+  into v_def
+  from pg_constraint c
+  where c.conname = 'access_requests_status_check'
+    and c.conrelid = 'public.access_requests'::regclass;
+
+  -- Extract quoted literals from constraint definition (e.g. 'pending', 'approved')
+  if v_def is not null then
+    for v_val in
+      select distinct m[1]
+      from regexp_matches(v_def, $$'([^']+)'$$, 'g') as m
+    loop
+      v_vals := array_append(v_vals, v_val);
+    end loop;
+  end if;
+
+  -- Ensure 'denied' exists in allowed set
+  if not ('denied' = any(v_vals)) then
+    v_vals := array_append(v_vals, 'denied');
+  end if;
+
+  -- If we couldn't parse anything, fall back to sensible defaults
+  if array_length(v_vals, 1) is null then
+    v_vals := array['pending','approved','denied'];
+  end if;
+
+  -- If status is an enum, ensure enum label 'denied' exists
+  select a.atttypid
+  into v_typid
+  from pg_attribute a
+  where a.attrelid = 'public.access_requests'::regclass
+    and a.attname = 'status'
+    and a.attnum > 0
+    and not a.attisdropped;
+
+  if exists (select 1 from pg_type t where t.oid = v_typid and t.typtype = 'e') then
+    begin
+      execute format('alter type %s add value if not exists %L', v_typid::regtype, 'denied');
+    exception when duplicate_object then
+      null;
+    end;
+  end if;
+
+  -- Drop + recreate constraint with expanded allowed set
+  execute 'alter table public.access_requests drop constraint if exists access_requests_status_check';
+
+  v_sql :=
+    'alter table public.access_requests add constraint access_requests_status_check check (status in (' ||
+    (select string_agg(quote_literal(x), ',') from unnest(v_vals) as x) ||
+    '))';
+
+  execute v_sql;
+end $$;
+
+-- (Optional) normalize blanks
+update public.access_requests
+set status = 'pending'
+where status is null or btrim(status::text) = '';
