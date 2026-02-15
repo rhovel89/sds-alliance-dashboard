@@ -11,10 +11,10 @@ type EventRow = {
   event_name: string | null;
   start_time_utc: string;
   duration_minutes: number;
-  start_date: string | null;
-  end_date: string | null;
-  start_time: string | null;
-  end_time: string | null;
+  start_date: string | null; // YYYY-MM-DD
+  end_date: string | null;   // YYYY-MM-DD
+  start_time: string | null; // HH:mm
+  end_time: string | null;   // HH:mm
   created_by: string;
 };
 
@@ -31,6 +31,17 @@ const EVENT_TYPES = [
   "Alliance Showdown",
   "FireFlies",
 ];
+
+function parseYMD(ymd: string): { y: number; m: number; d: number } | null {
+  // Expect "YYYY-MM-DD"
+  const parts = ymd.split("-");
+  if (parts.length !== 3) return null;
+  const y = Number(parts[0]);
+  const m = Number(parts[1]) - 1; // JS month 0..11
+  const d = Number(parts[2]);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+  return { y, m, d };
+}
 
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
@@ -59,7 +70,10 @@ export default function AllianceCalendarPage() {
   const [month, setMonth] = useState(today.getMonth());
   const [year, setYear] = useState(today.getFullYear());
 
-  const daysInMonth = useMemo(() => new Date(year, month + 1, 0).getDate(), [month, year]);
+  const daysInMonth = useMemo(
+    () => new Date(year, month + 1, 0).getDate(),
+    [month, year]
+  );
 
   const refetch = async () => {
     if (!upperAlliance) return;
@@ -84,20 +98,14 @@ export default function AllianceCalendarPage() {
     setLoading(false);
   };
 
-  
-  
-
-useEffect(() => {
+  useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getUser();
       setUserId(data?.user?.id ?? null);
     })();
   }, []);
 
-  
-  
-
-useEffect(() => {
+  useEffect(() => {
     refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [upperAlliance]);
@@ -114,47 +122,45 @@ useEffect(() => {
 
     if (!userId) return alert("Missing user session. Please refresh and try again.");
 
-    // Build local datetimes from date+time inputs
+    // Build local datetimes from date+time inputs (local time)
     const startLocal = new Date(`${form.start_date}T${form.start_time}:00`);
     const endLocal = new Date(`${form.end_date}T${form.end_time}:00`);
 
     if (Number.isNaN(startLocal.getTime()) || Number.isNaN(endLocal.getTime())) {
       return alert("Invalid date/time values.");
     }
-
     if (endLocal <= startLocal) {
       return alert("End time must be after Start time.");
     }
 
-    const durationMinutes = Math.max(1, Math.round((endLocal.getTime() - startLocal.getTime()) / 60000));
+    const durationMinutes = Math.max(
+      1,
+      Math.round((endLocal.getTime() - startLocal.getTime()) / 60000)
+    );
 
-    // REQUIRED by your table (per your errors):
-    // - title (NOT NULL)
-    // - created_by (NOT NULL)
-    // - start_time_utc (NOT NULL)
-    // - duration_minutes (NOT NULL)
-        const localStart = new Date(`${form.start_date}T${form.start_time}`);
-    const utcStart = new Date(localStart.getTime() - (localStart.getTimezoneOffset() * 60000));
+    // Store UTC start for reminders/back-end logic
+    const startUtcIso = startLocal.toISOString();
 
     const payload = {
-  alliance_id: upperAlliance,
+      alliance_id: upperAlliance,
 
-  // REQUIRED NOT NULL COLUMNS
-  title: title,                 // <-- MUST EXIST
-  created_by: userId,           // <-- MUST EXIST
-  start_time_utc: startLocal.toISOString(),
-  duration_minutes: durationMinutes,
+      // REQUIRED NOT NULL fields in your table:
+      title: title,
+      created_by: userId,
+      start_time_utc: startUtcIso,
+      duration_minutes: durationMinutes,
 
-  // Optional / legacy columns
-  event_name: title,
-  event_type: form.event_type,
-  start_date: form.start_date,
-  end_date: form.end_date,
-  start_time: form.start_time,
-  end_time: form.end_time,
-  timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
-};
+      // Keep these for display + filtering (prevents day-shift issues):
+      start_date: form.start_date,
+      end_date: form.end_date,
+      start_time: form.start_time,
+      end_time: form.end_time,
 
+      // Optional / compatibility columns you also have:
+      event_name: title,
+      event_type: form.event_type,
+      timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    };
 
     const { error } = await supabase.from("alliance_events").insert(payload);
 
@@ -174,7 +180,7 @@ useEffect(() => {
       end_time: "",
     });
 
-    await refetch(); // ✅ auto-refresh after save
+    await refetch(); // auto-refresh after save
   };
 
   const deleteEvent = async (id: string) => {
@@ -195,39 +201,7 @@ useEffect(() => {
     return d.toLocaleString(undefined, { month: "long", year: "numeric" });
   }, [month, year]);
 
-  
-  // ===============================
-  // 🔔 REMINDER SYSTEM (SAFE ADD)
-  // ===============================
-  const checkReminders = () => {
-    const now = new Date();
-
-    events.forEach((event) => {
-      if (!event.start_date || !event.start_time) return;
-
-      const eventDateTime = new Date(
-        event.start_date + "T" + event.start_time
-      );
-
-      const diffMinutes = (eventDateTime.getTime() - now.getTime()) / 60000;
-
-      // Trigger reminder 15 minutes before event
-      if (diffMinutes > 0 && diffMinutes <= 15) {
-        console.log("🔔 Reminder Triggered:", event.event_name);
-      }
-    });
-  };
-
-  
-  
-
-useEffect(() => {
-    if (events.length > 0) {
-      checkReminders();
-    }
-  }, [events]);
-
-return (
+  return (
     <div style={{ padding: 24, color: "#cfffbe" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0 }}>📅 Alliance Calendar — {upperAlliance}</h2>
@@ -279,45 +253,16 @@ return (
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
 
+          // IMPORTANT: use start_date string (YYYY-MM-DD), not new Date(start_date)
+          // This prevents timezone shifting the date backward.
           const dayEvents = events.filter((e) => {
             if (!e.start_date) return false;
-            const d = new Date(e.start_date);
-            return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+            const p = parseYMD(e.start_date);
+            if (!p) return false;
+            return p.y === year && p.m === month && p.d === day;
           });
 
-          
-  // ===============================
-  // 🔔 REMINDER SYSTEM (SAFE ADD)
-  // ===============================
-  const checkReminders = () => {
-    const now = new Date();
-
-    events.forEach((event) => {
-      if (!event.start_date || !event.start_time) return;
-
-      const eventDateTime = new Date(
-        event.start_date + "T" + event.start_time
-      );
-
-      const diffMinutes = (eventDateTime.getTime() - now.getTime()) / 60000;
-
-      // Trigger reminder 15 minutes before event
-      if (diffMinutes > 0 && diffMinutes <= 15) {
-        console.log("🔔 Reminder Triggered:", event.event_name);
-      }
-    });
-  };
-
-  
-  
-
-useEffect(() => {
-    if (events.length > 0) {
-      checkReminders();
-    }
-  }, [events]);
-
-return (
+          return (
             <div
               key={day}
               style={{
@@ -538,55 +483,4 @@ return (
       )}
     </div>
   );
-
-
-  // =====================================
-  // 🔔 REMINDER ENGINE SAFE
-  // =====================================
-  
-  
-
-useEffect(() => {
-    if (!events || events.length === 0) return;
-
-    const reminderOffsets = [60, 30, 15, 5]; // minutes
-    const triggered = new Set<string>();
-
-    const interval = setInterval(() => {
-      const now = new Date();
-
-      events.forEach((event: any) => {
-        if (!event.start_time_utc) return;
-
-        const start = new Date(event.start_time_utc);
-        const diffMinutes = Math.floor((start.getTime() - now.getTime()) / 60000);
-
-        reminderOffsets.forEach(offset => {
-          const key = event.id + "-" + offset;
-
-          if (diffMinutes === offset && !triggered.has(key)) {
-            triggered.add(key);
-            alert(
-              "🔔 Reminder: " +
-              event.event_name +
-              " starts in " +
-              offset +
-              " minutes."
-            );
-          }
-        });
-      });
-
-    }, 60000);
-
-    return () => clearInterval(interval);
-
-  }, [events]);
-
 }
-
-
-
-
-
-
