@@ -151,9 +151,7 @@ export default function OwnerDashboardPage() {
               borderRadius: 12,
               background: "rgba(0,0,0,0.20)",
               cursor: "pointer",
-            
-              color: "inherit",
-}}
+            }}
           >
             <div style={{ fontWeight: 900 }}>{l.label}</div>
             <div style={{ opacity: 0.8, fontSize: 12, marginTop: 6 }}>
@@ -165,5 +163,4 @@ export default function OwnerDashboardPage() {
     </div>
   );
 }
-
 
