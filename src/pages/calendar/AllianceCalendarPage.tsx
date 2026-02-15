@@ -97,13 +97,23 @@ export default function AllianceCalendarPage() {
     );
 
     const payload = {
-      alliance_id: upperAlliance,
-      title: form.title,
-      event_type: form.event_type,
-      created_by: userId,
-      start_time_utc: startLocal.toISOString(),
-      duration_minutes: durationMinutes,
-    };
+  alliance_id: upperAlliance,
+
+  // REQUIRED NOT NULL FIELDS
+  title: title,
+  created_by: userId,
+  start_time_utc: startLocal.toISOString(),
+  duration_minutes: durationMinutes,
+  timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
+
+  // Optional / legacy fields
+  event_name: title,
+  event_type: form.event_type,
+  start_date: form.start_date,
+  end_date: form.end_date,
+  start_time: form.start_time,
+  end_time: form.end_time
+};
 
     const { error } = await supabase.from("alliance_events").insert(payload);
 
@@ -253,3 +263,4 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
