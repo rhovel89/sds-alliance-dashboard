@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useAlliancesList } from "../hooks/useAlliancesList";
+import { useAlliancesList } from "../../hooks/useAlliancesList";
 
 export default function OwnerDashboardSelect() {
   const navigate = useNavigate();
@@ -44,4 +44,3 @@ export default function OwnerDashboardSelect() {
     </div>
   );
 }
-
