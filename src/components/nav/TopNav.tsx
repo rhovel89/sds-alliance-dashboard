@@ -9,7 +9,7 @@ export default function TopNav() {
   useEffect(() => {
     let alive = true;
 
-    (async () => {
+    async function refresh() {
       const u = await supabase.auth.getUser();
       const uid = u.data.user?.id ?? null;
       if (!alive) return;
@@ -29,28 +29,12 @@ export default function TopNav() {
 
       if (!alive) return;
       setIsAdmin(!!adminRes.data);
-    })();
+    }
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event) => {
-      const u = await supabase.auth.getUser();
-      const uid = u.data.user?.id ?? null;
-      if (!alive) return;
+    refresh();
 
-      setUserId(uid);
-
-      if (!uid) {
-        setIsAdmin(false);
-        return;
-      }
-
-      const adminRes = await supabase
-        .from("app_admins")
-        .select("user_id")
-        .eq("user_id", uid)
-        .maybeSingle();
-
-      if (!alive) return;
-      setIsAdmin(!!adminRes.data);
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      refresh();
     });
 
     return () => {
@@ -83,6 +67,7 @@ export default function TopNav() {
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <AllianceSwitcher />
+
         {userId ? (
           <button
             onClick={async () => {
@@ -90,9 +75,11 @@ export default function TopNav() {
               window.location.href = "/";
             }}
           >
-            Sign Out
+            Log Out
           </button>
-        ) : null}
+        ) : (
+          <a href="/dashboard" style={{ fontSize: 12 }}>Sign In</a>
+        )}
       </div>
     </div>
   );
