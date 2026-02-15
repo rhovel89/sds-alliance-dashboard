@@ -39,7 +39,7 @@ export default function AppRoutes() {
       <Route path="/dashboard" element={<AuthCallback />} />
 
       {/* Owner */}
-      <Route path="/owner" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
+      <Route path="/owner" element={<RequireAdmin><OwnerDashboard /></RequireAdmin>} />
       <Route path="/owner/select" element={<RequireAdmin><OwnerDashboardSelect /></RequireAdmin>} />
       <Route path="/owner" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
 
@@ -100,11 +100,10 @@ export default function AppRoutes() {
         <Route path="/owner/alliances" element={<RequireAdmin><OwnerAlliancesPage /></RequireAdmin>} />
               <Route path="/owner/requests-provision" element={<RequireAdmin><OwnerRequestsProvisionPage /></RequireAdmin>} />
               <Route path="/owner/players-link" element={<RequireAdmin><OwnerPlayersLinkPage /></RequireAdmin>} />
-              <Route path="/owner" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
+              <Route path="/owner" element={<RequireAdmin><OwnerCommandCenterPage /></RequireAdmin>} />
       </Routes>
   );
 }
-
 
 
 
