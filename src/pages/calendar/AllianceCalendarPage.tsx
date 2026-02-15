@@ -34,7 +34,6 @@ export default function AllianceCalendarPage() {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [events, setEvents] = useState<EventRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
   const [form, setForm] = useState({
@@ -55,9 +54,6 @@ export default function AllianceCalendarPage() {
     [month, year]
   );
 
-  // ===============================
-  // LOAD USER
-  // ===============================
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getUser();
@@ -65,9 +61,6 @@ export default function AllianceCalendarPage() {
     })();
   }, []);
 
-  // ===============================
-  // LOAD EVENTS
-  // ===============================
   const refetch = async () => {
     if (!upperAlliance) return;
 
@@ -78,34 +71,24 @@ export default function AllianceCalendarPage() {
       .order("start_time_utc", { ascending: true });
 
     setEvents((data || []) as EventRow[]);
-    setLoading(false);
   };
 
   useEffect(() => {
     refetch();
   }, [upperAlliance]);
 
-  // ===============================
-  // SAVE EVENT
-  // ===============================
   const saveEvent = async () => {
     if (!canEdit) return;
 
-    const trimmedTitle = form.title.trim();
-    if (!trimmedTitle) return alert("Event Title required.");
-
-    if (!form.start_date || !form.start_time || !form.end_date || !form.end_time) {
-      return alert("Start/End date & time required.");
-    }
-
-    if (!userId) return alert("Missing user session.");
+    const cleanTitle = form.title.trim();
+    if (!cleanTitle) return alert("Event Title required.");
+    if (!userId) return alert("No user session.");
 
     const startLocal = new Date(`${form.start_date}T${form.start_time}`);
     const endLocal = new Date(`${form.end_date}T${form.end_time}`);
 
-    if (endLocal <= startLocal) {
+    if (endLocal <= startLocal)
       return alert("End must be after start.");
-    }
 
     const durationMinutes = Math.max(
       1,
@@ -114,12 +97,11 @@ export default function AllianceCalendarPage() {
 
     const payload = {
       alliance_id: upperAlliance,
-      title: trimmedTitle,
+      title: cleanTitle,
+      event_type: form.event_type,
       created_by: userId,
       start_time_utc: startLocal.toISOString(),
       duration_minutes: durationMinutes,
-      event_type: form.event_type,
-      timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
 
     const { error } = await supabase
@@ -127,6 +109,7 @@ export default function AllianceCalendarPage() {
       .insert(payload);
 
     if (error) {
+      console.error(error);
       alert(error.message);
       return;
     }
@@ -141,59 +124,47 @@ export default function AllianceCalendarPage() {
       end_time: "",
     });
 
-    refetch();
+    await refetch();
   };
 
-  // ===============================
-  // DELETE
-  // ===============================
   const deleteEvent = async (id: string) => {
     if (!canEdit) return;
     if (!confirm("Delete this event?")) return;
 
     await supabase.from("alliance_events").delete().eq("id", id);
-    refetch();
+    await refetch();
   };
 
-  // ===============================
-  // REMINDER ENGINE (SAFE)
-  // ===============================
-  useEffect(() => {
-    if (!events.length) return;
+  const monthLabel = useMemo(() => {
+    return new Date(year, month).toLocaleString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+  }, [month, year]);
 
-    const offsets = [60, 30, 15, 5];
-    const triggered = new Set<string>();
+  // ✅ Calendar day match FIXED using UTC conversion
+  const isSameDay = (utcString: string, y: number, m: number, d: number) => {
+    const local = new Date(utcString);
+    return (
+      local.getFullYear() === y &&
+      local.getMonth() === m &&
+      local.getDate() === d
+    );
+  };
 
-    const interval = setInterval(() => {
-      const now = new Date();
-
-      events.forEach((event) => {
-        const start = new Date(event.start_time_utc);
-        const diff = Math.floor((start.getTime() - now.getTime()) / 60000);
-
-        offsets.forEach((offset) => {
-          const key = event.id + "-" + offset;
-          if (diff === offset && !triggered.has(key)) {
-            triggered.add(key);
-            alert(`🔔 ${event.title} starts in ${offset} minutes`);
-          }
-        });
-      });
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [events]);
-
-  // ===============================
-  // RENDER
-  // ===============================
   return (
     <div style={{ padding: 24 }}>
       <h2>📅 Alliance Calendar — {upperAlliance}</h2>
 
       {canEdit && (
-        <button onClick={() => setShowModal(true)}>➕ Create Event</button>
+        <button onClick={() => setShowModal(true)}>
+          ➕ Create Event
+        </button>
       )}
+
+      <div style={{ marginTop: 20 }}>
+        <strong>{monthLabel}</strong>
+      </div>
 
       <div
         style={{
@@ -206,21 +177,17 @@ export default function AllianceCalendarPage() {
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
 
-          const dayEvents = events.filter((e) => {
-            const local = new Date(e.start_time_utc);
-            return (
-              local.getFullYear() === year &&
-              local.getMonth() === month &&
-              local.getDate() === day
-            );
-          });
+          const dayEvents = events.filter((e) =>
+            isSameDay(e.start_time_utc, year, month, day)
+          );
 
           return (
             <div
               key={day}
               style={{
-                border: "1px solid rgba(0,255,0,0.3)",
-                padding: 8,
+                border: "1px solid #444",
+                borderRadius: 8,
+                padding: 10,
                 minHeight: 100,
               }}
             >
@@ -229,10 +196,18 @@ export default function AllianceCalendarPage() {
               {dayEvents.map((e) => (
                 <div
                   key={e.id}
-                  style={{ marginTop: 6, fontSize: 12 }}
+                  style={{
+                    marginTop: 6,
+                    fontSize: 12,
+                    cursor: canEdit ? "pointer" : "default",
+                  }}
                   onClick={() => deleteEvent(e.id)}
                 >
-                  {e.title}
+                  {new Date(e.start_time_utc).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  — {e.title}
                 </div>
               ))}
             </div>
@@ -241,35 +216,47 @@ export default function AllianceCalendarPage() {
       </div>
 
       {showModal && (
-        <div>
+        <div style={{ marginTop: 20 }}>
+          <h3>Create Event</h3>
+
           <input
             placeholder="Title"
             value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, title: e.target.value })
+            }
           />
 
           <input
             type="date"
             value={form.start_date}
-            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, start_date: e.target.value })
+            }
           />
 
           <input
             type="time"
             value={form.start_time}
-            onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, start_time: e.target.value })
+            }
           />
 
           <input
             type="date"
             value={form.end_date}
-            onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, end_date: e.target.value })
+            }
           />
 
           <input
             type="time"
             value={form.end_time}
-            onChange={(e) => setForm({ ...form, end_time: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, end_time: e.target.value })
+            }
           />
 
           <button onClick={saveEvent}>Save</button>
