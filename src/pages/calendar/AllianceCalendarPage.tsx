@@ -297,7 +297,7 @@ export default function AllianceCalendarPage() {
                     deleteEvent(e.id);
                   }}
                 >
-                  {e.title}
+                  {new Date(e.start_time_utc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {e.title}
                 </div>
               ))}
             </div>
@@ -484,3 +484,5 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
+
