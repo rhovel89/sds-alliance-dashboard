@@ -83,7 +83,7 @@ export default function OwnerAccessRequestsPage() {
     const role = roleById[id] ?? "member";
 
     const res = await supabase.rpc("approve_access_request", {
-      request_id: id,
+      p_request_id: id,
       p_role: role,
     });
 
@@ -100,7 +100,7 @@ export default function OwnerAccessRequestsPage() {
 
     setError(null);
     const res = await supabase.rpc("deny_access_request", {
-      request_id: id,
+      p_request_id: id,
       p_reason: reason,
     });
 
@@ -196,4 +196,3 @@ export default function OwnerAccessRequestsPage() {
     </div>
   );
 }
-
