@@ -1,30 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
-type AccessRequest = {
+type Req = {
   id: string;
   user_id: string;
+  game_name: string;
   requested_alliances: string[];
-  note: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "denied";
   created_at: string;
 };
 
-const ROLES = ["member", "viewer", "r5", "r4", "owner"] as const;
+const ROLES = ["member", "viewer", "r4", "r5", "owner"] as const;
+type Role = typeof ROLES[number];
 
 export default function OwnerAccessRequestsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const [rows, setRows] = useState<AccessRequest[]>([]);
+  const [rows, setRows] = useState<Req[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const [defaultRole, setDefaultRole] = useState<(typeof ROLES)[number]>("member");
-  const [decisionNote, setDecisionNote] = useState("");
+  // per-request chosen role
+  const [roleById, setRoleById] = useState<Record<string, Role>>({});
 
   const title = useMemo(() => "🧟 Owner — Access Requests", []);
 
   async function boot() {
+    setError(null);
+
     const u = await supabase.auth.getUser();
     const uid = u.data.user?.id ?? null;
     setUserId(uid);
@@ -40,15 +43,15 @@ export default function OwnerAccessRequestsPage() {
     const ok = !!adminRes.data;
     setIsAdmin(ok);
 
-    if (ok) await fetchPending();
+    if (ok) await fetchRows();
   }
 
-  async function fetchPending() {
+  async function fetchRows() {
     setError(null);
 
     const res = await supabase
       .from("access_requests")
-      .select("id, user_id, requested_alliances, note, status, created_at")
+      .select("id, user_id, game_name, requested_alliances, status, created_at")
       .eq("status", "pending")
       .order("created_at", { ascending: true });
 
@@ -58,77 +61,55 @@ export default function OwnerAccessRequestsPage() {
       return;
     }
 
-    setRows((res.data ?? []) as any);
+    const data = (res.data ?? []) as any as Req[];
+    setRows(data);
+
+    // default roles
+    const next = { ...roleById };
+    data.forEach((r) => {
+      if (!next[r.id]) next[r.id] = "member";
+    });
+    setRoleById(next);
   }
 
   useEffect(() => {
     boot();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function approve(r: AccessRequest) {
-    if (!isAdmin || !userId) return;
+  async function approve(id: string) {
+    setError(null);
 
-    const alliances = (r.requested_alliances ?? [])
-      .map((a) => a.toString().trim().toUpperCase())
-      .filter(Boolean);
+    const role = roleById[id] ?? "member";
 
-    if (alliances.length === 0) return alert("Request has no alliance codes.");
-
-    // Upsert memberships for each alliance
-    const membershipRows = alliances.map((aid) => ({
-      alliance_id: aid,
-      user_id: r.user_id,
-      role: defaultRole,
-    }));
-
-    const up = await supabase.from("alliance_memberships").upsert(membershipRows, {
-      onConflict: "alliance_id,user_id",
+    const res = await supabase.rpc("approve_access_request", {
+      p_request_id: id,
+      p_role: role,
     });
 
-    if (up.error) {
-      setError(up.error.message);
+    if (res.error) {
+      setError(res.error.message);
       return;
     }
 
-    const upd = await supabase
-      .from("access_requests")
-      .update({
-        status: "approved",
-        reviewed_by: userId,
-        reviewed_at: new Date().toISOString(),
-        decision_note: decisionNote.trim() || null,
-      })
-      .eq("id", r.id);
-
-    if (upd.error) {
-      setError(upd.error.message);
-      return;
-    }
-
-    setDecisionNote("");
-    await fetchPending();
+    await fetchRows();
   }
 
-  async function reject(r: AccessRequest) {
-    if (!isAdmin || !userId) return;
+  async function deny(id: string) {
+    const reason = prompt("Reason for denial? (optional)") ?? null;
 
-    const upd = await supabase
-      .from("access_requests")
-      .update({
-        status: "rejected",
-        reviewed_by: userId,
-        reviewed_at: new Date().toISOString(),
-        decision_note: decisionNote.trim() || null,
-      })
-      .eq("id", r.id);
+    setError(null);
+    const res = await supabase.rpc("deny_access_request", {
+      p_request_id: id,
+      p_reason: reason,
+    });
 
-    if (upd.error) {
-      setError(upd.error.message);
+    if (res.error) {
+      setError(res.error.message);
       return;
     }
 
-    setDecisionNote("");
-    await fetchPending();
+    await fetchRows();
   }
 
   if (!userId) {
@@ -153,53 +134,60 @@ export default function OwnerAccessRequestsPage() {
     <div style={{ padding: 24 }}>
       <h2>{title}</h2>
 
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+        <a href="/owner">← Back to Owner</a>
+        <a href="/owner/players">Players</a>
+        <a href="/owner/alliances">Alliances</a>
+      </div>
+
       {error ? (
         <div style={{ border: "1px solid #733", borderRadius: 8, padding: 10, marginBottom: 12 }}>
           {error}
         </div>
       ) : null}
 
-      <div style={{ display: "grid", gap: 10, maxWidth: 820, marginBottom: 14 }}>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>Default role to grant on approval</span>
-          <select value={defaultRole} onChange={(e) => setDefaultRole(e.target.value as any)}>
-            {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-        </label>
-
-        <textarea
-          placeholder="Optional decision note (sent back to requester)"
-          value={decisionNote}
-          onChange={(e) => setDecisionNote(e.target.value)}
-          rows={2}
-        />
-
-        <button onClick={fetchPending}>Refresh</button>
+      <div style={{ marginBottom: 12 }}>
+        <button onClick={fetchRows}>Refresh</button>
       </div>
 
       {rows.length === 0 ? (
         <div style={{ opacity: 0.8 }}>No pending requests.</div>
       ) : (
-        <div style={{ display: "grid", gap: 12, maxWidth: 900 }}>
+        <div style={{ display: "grid", gap: 12 }}>
           {rows.map((r) => (
-            <div key={r.id} style={{ border: "1px solid #333", borderRadius: 10, padding: 12 }}>
-              <div style={{ fontWeight: 900 }}>
-                {r.requested_alliances?.map((a) => a.toUpperCase()).join(", ")}
+            <div key={r.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 900 }}>
+                  {r.game_name} — {Array.isArray(r.requested_alliances) ? r.requested_alliances.join(", ") : ""}
+                </div>
+                <div style={{ opacity: 0.75, fontSize: 12 }}>
+                  {new Date(r.created_at).toLocaleString()}
+                </div>
               </div>
 
-              <div style={{ opacity: 0.8, fontSize: 12, marginTop: 6 }}>
-                User: {r.user_id}
+              <div style={{ marginTop: 6, opacity: 0.85, fontSize: 12 }}>
+                User UUID: <code>{r.user_id}</code>
               </div>
 
-              {r.note ? <div style={{ marginTop: 8, opacity: 0.9 }}>Note: {r.note}</div> : null}
+              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ opacity: 0.85 }}>Approve as:</span>
+                <select
+                  value={roleById[r.id] ?? "member"}
+                  onChange={(e) => setRoleById({ ...roleById, [r.id]: e.target.value as Role })}
+                >
+                  {ROLES.map((x) => (
+                    <option key={x} value={x}>
+                      {x}
+                    </option>
+                  ))}
+                </select>
 
-              <div style={{ marginTop: 8, opacity: 0.7, fontSize: 12 }}>
-                Submitted: {new Date(r.created_at).toLocaleString()}
+                <button onClick={() => approve(r.id)}>Approve</button>
+                <button onClick={() => deny(r.id)}>Deny</button>
               </div>
 
-              <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                <button onClick={() => approve(r)}>Approve</button>
-                <button onClick={() => reject(r)}>Reject</button>
+              <div style={{ opacity: 0.75, fontSize: 12, marginTop: 10 }}>
+                Approve creates roster + links auth user, then DB triggers sync dashboard access (RLS).
               </div>
             </div>
           ))}
