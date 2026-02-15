@@ -264,6 +264,27 @@ export default function OwnerPlayersPage() {
     await fetchAll();
   }
 
+  async function copyText(text: string) {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      alert("Copied User UUID.");
+    } catch (e) {
+      console.error(e);
+      alert("Copy failed — please copy manually.");
+    }
+  }
   if (!userId) {
     return (
       <div style={{ padding: 24 }}>
@@ -390,6 +411,12 @@ export default function OwnerPlayersPage() {
                     {linkedUserId ? (
                       <>
                         <code>{linkedUserId}</code>{" "}
+                        <button
+                          style={{ marginLeft: 10 }}
+                          onClick={async () => copyText(linkedUserId)}
+                        >
+                          Copy User UUID
+                        </button>
                         <button style={{ marginLeft: 10 }} onClick={() => unlinkPlayer(p.id)}>
                           Unlink
                         </button>
@@ -450,3 +477,4 @@ export default function OwnerPlayersPage() {
     </div>
   );
 }
+
