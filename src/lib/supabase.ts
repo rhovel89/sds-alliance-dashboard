@@ -1,5 +1,8 @@
-import { supabase } from "./supabaseClient";const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!; const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;  export const supabase = createClient(supabaseUrl, supabaseAnonKey); 
+/**
+ * Wrapper to ensure there is only ONE Supabase client instance.
+ * This avoids "Multiple GoTrueClient instances detected" and prevents runtime "createClient is not defined".
+ */
+import { supabase } from "./supabaseClient";
 
-import { createClient } from "@supabase/supabase-js";
-import { supabase } from "./supabaseClient";const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!; const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;  export const supabase = createClient(supabaseUrl, supabaseAnonKey); 
-
+export { supabase };
+export default supabase;
