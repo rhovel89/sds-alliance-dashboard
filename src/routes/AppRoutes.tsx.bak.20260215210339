@@ -29,7 +29,6 @@ import OwnerRequestsProvisionPage from "../pages/owner/OwnerRequestsProvisionPag
 import OwnerCommandCenterPage from "../pages/owner/OwnerCommandCenterPage";
 import OwnerPlayersLinkPage from "../pages/owner/OwnerPlayersLinkPage";
 import RequireAdmin from "../components/auth/RequireAdmin";
-import OwnerStateManagerPage from "../pages/owner/OwnerStateManagerPage";
 
 export default function AppRoutes() {
   return (
@@ -102,9 +101,7 @@ export default function AppRoutes() {
               <Route path="/owner/requests-provision" element={<RequireAdmin><OwnerRequestsProvisionPage /></RequireAdmin>} />
               <Route path="/owner/players-link" element={<RequireAdmin><OwnerPlayersLinkPage /></RequireAdmin>} />
               <Route path="/owner" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
-        <Route path="/state" element={<StateDashboardPage />} />
-  <Route path="/owner/state" element={<OwnerStateManagerPage />} />
-</Routes>
+      </Routes>
   );
 }
 
