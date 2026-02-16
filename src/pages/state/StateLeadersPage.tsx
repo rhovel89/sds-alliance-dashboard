@@ -14,19 +14,11 @@ export default function StateLeadersPage() {
     return nameByUserId[id] ?? id;
   };
 
-  const [nameByUserId, setNameByUserId] = useState<Record<string, string>>({});
-
-  const leaderLabel = (userId?: string | null) => {
-    const id = (userId || "").trim();
-    if (!id) return "";
-    return nameByUserId[id] ?? id;
-  };
-
   const loadLeaderNames = async (userIds: string[]) => {
     const ids = Array.from(new Set((userIds || []).map((x) => (x || "").trim()).filter(Boolean)));
     if (ids.length === 0) { setNameByUserId({}); return; }
 
-    // 1) Best: players.auth_user_id -> game_name
+    // 1) Best: players.auth_user_id -> game_name (NO players.user_id)
     {
       const { data, error } = await supabase
         .from("players")
@@ -89,19 +81,18 @@ export default function StateLeadersPage() {
 
     setNameByUserId({});
   };
-
   // --- END STATE LEADER NAME LOOKUP ---
 
+  
 
-  const [nameByUserId, setNameByUserId] = useState<Record<string, string>>({});
 
-  const leaderLabel = (userId?: string | null) => {
+
+
     const id = (userId || "").trim();
     if (!id) return "";
     return nameByUserId[id] ?? id;
   };
 
-  const loadLeaderNames = async (userIds: string[]) => {
     const ids = Array.from(new Set((userIds || []).map((x) => (x || "").trim()).filter(Boolean)));
     if (ids.length === 0) { setNameByUserId({}); return; }
 
@@ -262,6 +253,7 @@ const { isAdmin, loading } = useIsAppAdmin();
     </div>
   );
 }
+
 
 
 
