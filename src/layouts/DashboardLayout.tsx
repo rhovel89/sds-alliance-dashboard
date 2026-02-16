@@ -21,8 +21,6 @@ export default function DashboardLayout() {
   const base = `/dashboard/${upper}`;
 
   return (
-    <>
-
       {/* --- Added: Alliance Announcements + Guides --- */}
       <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
         <AllianceDashboardExtras />
@@ -49,5 +47,4 @@ export default function DashboardLayout() {
     </div>
   );
 }
-
 
