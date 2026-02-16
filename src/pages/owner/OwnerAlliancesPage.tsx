@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
+// Prefer setting one of these:
+// - VITE_STATE_UUID = <uuid>
+// - VITE_STATE_ID   = 789   (we will look up states.state_code = S789 and use states.id/state_id)
+const RAW_STATE = String(
+  (import.meta as any).env?.VITE_STATE_UUID ??
+  (import.meta as any).env?.VITE_STATE_ID ??
+  ""
+).trim();
+
 type AllianceRow = {
   code: string;
   name: string | null;
@@ -11,57 +20,57 @@ function normCode(v: string) {
   return v.trim().toUpperCase();
 }
 
-function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+function isUuid(s: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }
 
-async function resolveStateIdUuid(): Promise<string | null> {
-  // Prefer explicit UUID env if you ever add one
-  const envUuid = String((import.meta as any).env?.VITE_STATE_UUID ?? "").trim();
-  if (envUuid && isUuid(envUuid)) return envUuid;
+async function resolveStateIdForAlliance(): Promise<any | undefined> {
+  // 1) If env provides a UUID directly, use it.
+  if (RAW_STATE && isUuid(RAW_STATE)) return RAW_STATE;
 
-  // Your current env appears to be numeric like 789
-  const rawId = String((import.meta as any).env?.VITE_STATE_ID ?? "").trim();
-  const rawCode = String((import.meta as any).env?.VITE_STATE_CODE ?? "").trim();
-
-  // If VITE_STATE_ID is actually a UUID, accept it
-  if (rawId && isUuid(rawId)) return rawId;
-
-  // Otherwise treat as state code like S789 (common pattern)
-  const stateCode = (rawCode || (rawId ? `S${rawId}` : "")).trim().toUpperCase();
-
-  const tryColumn = async (col: "state_code" | "code" | "tag") => {
-    if (!stateCode) return null;
-    const sel = `id,${col}`;
+  // 2) If env provides a number like 789, look up states.state_code = S789 and take states.id (uuid) if present.
+  if (RAW_STATE && /^\d+$/.test(RAW_STATE)) {
+    const stateCode = `S${RAW_STATE}`;
     const { data, error } = await supabase
       .from("states")
-      .select(sel)
-      .eq(col as any, stateCode)
+      .select("id,state_id,state_code")
+      .eq("state_code", stateCode)
       .maybeSingle();
 
-    if (error) {
-      // If column doesn't exist or other issue, we just return null and fall back.
-      return null;
+    if (!error && data) {
+      const anyRow: any = data as any;
+      return anyRow.id ?? anyRow.state_id ?? undefined;
     }
-    return (data as any)?.id ?? null;
-  };
 
-  // Try the most likely column names for your schema
-  for (const col of ["state_code", "code", "tag"] as const) {
-    const id = await tryColumn(col);
-    if (id) return id;
+    // Some older schemas might use int ids — if so, returning int can help.
+    return parseInt(RAW_STATE, 10);
   }
 
-  // Final fallback: first row in states
-  const { data, error } = await supabase
+  // 3) If env provides something like S789, try state_code match.
+  if (RAW_STATE) {
+    const stateCode = RAW_STATE.toUpperCase().startsWith("S") ? RAW_STATE.toUpperCase() : `S${RAW_STATE.toUpperCase()}`;
+    const { data, error } = await supabase
+      .from("states")
+      .select("id,state_id,state_code")
+      .eq("state_code", stateCode)
+      .maybeSingle();
+
+    if (!error && data) {
+      const anyRow: any = data as any;
+      return anyRow.id ?? anyRow.state_id ?? undefined;
+    }
+  }
+
+  // 4) Last fallback: pick the first state row (keeps UI working if env not set).
+  const { data } = await supabase
     .from("states")
-    .select("id")
-    .order("id", { ascending: true })
+    .select("id,state_id,state_code")
+    .order("state_code", { ascending: true })
     .limit(1)
     .maybeSingle();
 
-  if (error) return null;
-  return (data as any)?.id ?? null;
+  const anyRow: any = data as any;
+  return anyRow?.id ?? anyRow?.state_id ?? undefined;
 }
 
 export default function OwnerAlliancesPage() {
@@ -114,41 +123,63 @@ export default function OwnerAlliancesPage() {
 
   useEffect(() => {
     refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const insertAllianceWithFallbacks = async (payload: any) => {
+    // First attempt
+    let res = await supabase.from("alliances").insert(payload);
+    if (!res.error) return res;
+
+    const msg1 = (res.error.message || "").toLowerCase();
+
+    // If enabled column doesn't exist, retry without enabled
+    if (msg1.includes("enabled")) {
+      const p2 = { ...payload };
+      delete p2.enabled;
+      res = await supabase.from("alliances").insert(p2);
+      if (!res.error) return res;
+    }
+
+    // If state_id mismatches schema, retry WITHOUT state_id (so creating alliances never blocks)
+    const msg2 = (res.error.message || "").toLowerCase();
+    if (msg2.includes("state_id") && (msg2.includes("uuid") || msg2.includes("integer") || msg2.includes("type"))) {
+      const p3 = { ...payload };
+      delete p3.state_id;
+      delete p3.stateId;
+      res = await supabase.from("alliances").insert(p3);
+      if (!res.error) return res;
+    }
+
+    return res;
+  };
 
   const createAlliance = async () => {
     const code = normCode(newCode);
     const name = newName.trim() || code;
 
-    if (!code) return alert("Alliance code required (example: SDS)");
+    if (!code) return alert("Alliance code required (example: OZR)");
     if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
 
-    // Resolve the UUID state_id (your DB expects UUID)
-    const stateId = await resolveStateIdUuid();
-    if (!stateId) {
-      return alert("Could not find a state UUID in table 'states'. Ensure states has a row for your state.");
+    // Build payload and try to attach a valid state_id if possible
+    const payload: any = { code, name, enabled: newEnabled };
+
+    try {
+      const stateId = await resolveStateIdForAlliance();
+      if (stateId !== undefined && stateId !== null && String(stateId).trim() !== "") {
+        payload.state_id = stateId;
+      }
+    } catch (e) {
+      // Ignore state lookup failures; we’ll still create the alliance
+      console.warn("State resolve skipped:", e);
     }
 
-    const basePayload: any = { code, name, state_id: stateId };
+    const res = await insertAllianceWithFallbacks(payload);
 
-    // try with enabled, fallback without enabled
-    const resA = await supabase.from("alliances").insert({ ...basePayload, enabled: newEnabled });
-
-    if (resA.error) {
-      const msg = (resA.error.message || "").toLowerCase();
-
-      if (msg.includes("enabled")) {
-        const resB = await supabase.from("alliances").insert(basePayload);
-        if (resB.error) {
-          console.error(resB.error);
-          alert(resB.error.message);
-          return;
-        }
-      } else {
-        console.error(resA.error);
-        alert(resA.error.message);
-        return;
-      }
+    if (res.error) {
+      console.error(res.error);
+      alert(res.error.message);
+      return;
     }
 
     setNewCode("");
@@ -204,12 +235,24 @@ export default function OwnerAlliancesPage() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
           <label style={{ display: "grid", gap: 6 }}>
             <span>Code</span>
-            <input value={newCode} onChange={(e) => setNewCode(e.target.value)} placeholder="SDS" />
+            <input
+              type="text"
+              inputMode="text"
+              value={newCode}
+              onChange={(e) => setNewCode(e.target.value)}
+              placeholder="OZR"
+              autoCapitalize="characters"
+            />
           </label>
 
           <label style={{ display: "grid", gap: 6 }}>
             <span>Name</span>
-            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Seven Deadly Sins" />
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="OzR MindHunters"
+            />
           </label>
 
           <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
