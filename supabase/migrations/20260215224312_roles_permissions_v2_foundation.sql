@@ -134,30 +134,65 @@ with check (public.is_app_admin(auth.uid()));
 -- Ensure newer columns exist on older schemas (safe, additive)
 alter table public.permission_keys
   add column if not exists category text;
-insert into public.permission_keys(key, label, category) values
-  ('calendar.view', 'View Calendar', 'Calendar'),
-  ('calendar.edit', 'Create/Edit/Delete Calendar Events', 'Calendar'),
+do }
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='permission_keys' and column_name='feature'
+  ) then
+    insert into public.permission_keys(key, label, category, feature) values
+      ('calendar.view',  'View Calendar',                         'Calendar',  'Calendar'),
+      ('calendar.edit',  'Create/Edit/Delete Calendar Events',    'Calendar',  'Calendar'),
 
-  ('roster.view', 'View Roster / Memberships', 'Roster'),
-  ('roster.manage', 'Manage Roster / Memberships', 'Roster'),
+      ('roster.view',    'View Roster / Memberships',             'Roster',    'Roster'),
+      ('roster.manage',  'Manage Roster / Memberships',           'Roster',    'Roster'),
 
-  ('discord.view', 'View Discord Settings', 'Discord'),
-  ('discord.manage', 'Manage Discord Settings', 'Discord'),
+      ('discord.view',   'View Discord Settings',                 'Discord',   'Discord'),
+      ('discord.manage', 'Manage Discord Settings',               'Discord',   'Discord'),
 
-  ('alliances.view', 'View Alliances', 'Alliances'),
-  ('alliances.manage', 'Manage Alliances', 'Alliances'),
+      ('alliances.view', 'View Alliances',                        'Alliances', 'Alliances'),
+      ('alliances.manage','Manage Alliances',                     'Alliances', 'Alliances'),
 
-  ('players.view', 'View Players', 'Players'),
-  ('players.manage', 'Manage Players', 'Players'),
+      ('players.view',   'View Players',                          'Players',   'Players'),
+      ('players.manage', 'Manage Players',                        'Players',   'Players'),
 
-  ('hq_map.view', 'View HQ Map', 'HQ Map'),
-  ('hq_map.manage', 'Manage HQ Map', 'HQ Map'),
+      ('hq_map.view',    'View HQ Map',                           'HQ Map',    'HQ Map'),
+      ('hq_map.manage',  'Manage HQ Map',                         'HQ Map',    'HQ Map'),
 
-  ('state.view', 'View State Dashboard', 'State'),
-  ('state.manage', 'Manage State Dashboard', 'State')
-on conflict (key) do update
-set label = excluded.label,
-    category = excluded.category;
+      ('state.view',     'View State Dashboard',                  'State',     'State'),
+      ('state.manage',   'Manage State Dashboard',                'State',     'State')
+    on conflict (key) do update
+      set label    = excluded.label,
+          category = excluded.category,
+          feature  = excluded.feature;
+  else
+    insert into public.permission_keys(key, label, category) values
+      ('calendar.view',  'View Calendar',                         'Calendar'),
+      ('calendar.edit',  'Create/Edit/Delete Calendar Events',    'Calendar'),
+
+      ('roster.view',    'View Roster / Memberships',             'Roster'),
+      ('roster.manage',  'Manage Roster / Memberships',           'Roster'),
+
+      ('discord.view',   'View Discord Settings',                 'Discord'),
+      ('discord.manage', 'Manage Discord Settings',               'Discord'),
+
+      ('alliances.view', 'View Alliances',                        'Alliances'),
+      ('alliances.manage','Manage Alliances',                     'Alliances'),
+
+      ('players.view',   'View Players',                          'Players'),
+      ('players.manage', 'Manage Players',                        'Players'),
+
+      ('hq_map.view',    'View HQ Map',                           'HQ Map'),
+      ('hq_map.manage',  'Manage HQ Map',                         'HQ Map'),
+
+      ('state.view',     'View State Dashboard',                  'State'),
+      ('state.manage',   'Manage State Dashboard',                'State')
+    on conflict (key) do update
+      set label    = excluded.label,
+          category = excluded.category;
+  end if;
+end };
+
 
 -- Best-effort PostgREST schema cache refresh
 do $$
