@@ -33,8 +33,6 @@ import OwnerStateManagerPage from "../pages/owner/OwnerStateManagerPage";
 import StateDashboardPage from "../pages/state/StateDashboardPage";
 import StateLeadersPage from "../pages/state/StateLeadersPage";
 import OwnerRolesPermissionsV2Page from "../pages/owner/OwnerRolesPermissionsV2Page";
-import AllianceAnnouncementsPage from "../pages/alliance/AllianceAnnouncementsPage";
-import AllianceGuidesPage from "../pages/alliance/AllianceGuidesPage";
 
 export default function AppRoutes() {
   return (
@@ -111,13 +109,9 @@ export default function AppRoutes() {
   <Route path="/owner/state" element={<OwnerStateManagerPage />} />
   <Route path="/owner/state-leaders" element={<StateLeadersPage />} />
       <Route path="/owner/roles" element={<OwnerRolesPermissionsV2Page />} />
-      <Route path="/dashboard/:code/announcements" element={<AllianceAnnouncementsPage />} />
-      <Route path="/dashboard/:code/guides" element={<AllianceGuidesPage />} />
 </Routes>
   );
 }
-
-
 
 
 
