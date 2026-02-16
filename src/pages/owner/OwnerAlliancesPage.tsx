@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
+// Accepts VITE_STATE_ID as either:
+// - a UUID (preferred if you have it), OR
+// - "789" / "S789" (we’ll resolve it via states table)
+const RAW_STATE = String(import.meta.env.VITE_STATE_ID ?? "789").trim();
+const STATE_CODE = RAW_STATE.toUpperCase().startsWith("S")
+  ? RAW_STATE.toUpperCase()
+  : `S${RAW_STATE}`;
+
 type AllianceRow = {
   code: string;
   name: string | null;
@@ -8,7 +16,53 @@ type AllianceRow = {
 };
 
 function normCode(v: string) {
-  return (v || "").trim().toUpperCase();
+  return v.trim().toUpperCase();
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+let _cachedStateUuid: string | null = null;
+
+async function resolveStateUuid(): Promise<string> {
+  if (_cachedStateUuid) return _cachedStateUuid;
+
+  // 1) If env already is a UUID, use it directly
+  if (UUID_RE.test(RAW_STATE)) {
+    _cachedStateUuid = RAW_STATE;
+    return _cachedStateUuid;
+  }
+
+  // 2) Best guess: states.code = 'S789'
+  {
+    const { data, error } = await supabase
+      .from("states")
+      .select("id,code")
+      .eq("code", STATE_CODE)
+      .maybeSingle();
+
+    if (!error && (data as any)?.id) {
+      _cachedStateUuid = (data as any).id;
+      return _cachedStateUuid;
+    }
+  }
+
+  // 3) Fallback: first row from states (works if you only have one state configured)
+  {
+    const { data, error } = await supabase.from("states").select("*").limit(1);
+    if (error) throw error;
+
+    const row: any = (data || [])[0];
+    const id = row?.id ?? row?.state_id ?? row?.uuid;
+    if (!id || !UUID_RE.test(String(id))) {
+      throw new Error(
+        "Could not resolve state UUID from states table. Ensure states has a UUID column (usually id) and at least one row."
+      );
+    }
+
+    _cachedStateUuid = String(id);
+    return _cachedStateUuid;
+  }
 }
 
 export default function OwnerAlliancesPage() {
@@ -64,24 +118,32 @@ export default function OwnerAlliancesPage() {
 
   const createAlliance = async () => {
     const code = normCode(newCode);
-    const name = (newName || "").trim() || code;
+    const name = newName.trim() || code;
 
-    if (!code) return alert("Alliance code required (example: OZR)");
-    // Code must be URL-safe: letters+numbers only
-    if (!/^[A-Z0-9]{2,12}$/.test(code)) {
-      return alert("Code must be 2–12 chars (A–Z, 0–9). Example: OZR");
+    if (!code) return alert("Alliance code required (example: SDS)");
+    if (!/^[A-Z0-9]{2,12}$/.test(code))
+      return alert("Code must be 2–12 chars (A–Z, 0–9).");
+
+    let state_id: string;
+    try {
+      state_id = await resolveStateUuid();
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.message || "Could not resolve state id. Check states table.");
+      return;
     }
 
-    // IMPORTANT:
-    // Do NOT send state_id here. Your DB already allows NULL (you have rows with NULL),
-    // and state_id type differs across environments causing 400s.
-    const payloadWithEnabled: any = { code, name, enabled: newEnabled };
+    const base = { code, name, state_id };
 
-    const resA = await supabase.from("alliances").insert(payloadWithEnabled);
+    // try with enabled; fallback without enabled if column doesn't exist
+    const resA = await supabase
+      .from("alliances")
+      .insert({ ...base, enabled: newEnabled });
+
     if (resA.error) {
       const msg = (resA.error.message || "").toLowerCase();
       if (msg.includes("enabled")) {
-        const resB = await supabase.from("alliances").insert({ code, name });
+        const resB = await supabase.from("alliances").insert(base);
         if (resB.error) {
           console.error(resB.error);
           alert(resB.error.message);
@@ -104,8 +166,8 @@ export default function OwnerAlliancesPage() {
     const current = rows.find((r) => r.code === code);
     const next = prompt("Alliance name:", current?.name || code);
     if (next == null) return;
-
     const name = next.trim() || code;
+
     const { error } = await supabase.from("alliances").update({ name }).eq("code", code);
     if (error) {
       console.error(error);
@@ -127,6 +189,7 @@ export default function OwnerAlliancesPage() {
 
   const deleteAlliance = async (code: string) => {
     if (!confirm(`Delete alliance ${code}? This may fail if referenced by members/events.`)) return;
+
     const { error } = await supabase.from("alliances").delete().eq("code", code);
     if (error) {
       console.error(error);
@@ -147,22 +210,19 @@ export default function OwnerAlliancesPage() {
           <label style={{ display: "grid", gap: 6 }}>
             <span>Code</span>
             <input
+              type="text"
+              inputMode="text"
+              autoCapitalize="characters"
               value={newCode}
               onChange={(e) => setNewCode(e.target.value)}
               placeholder="OZR"
+              style={{ textTransform: "uppercase" }}
             />
-            <span style={{ fontSize: 12, opacity: 0.7 }}>
-              Code is used in URLs, so it must be letters/numbers only.
-            </span>
           </label>
 
           <label style={{ display: "grid", gap: 6 }}>
             <span>Name</span>
-            <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="OzR MindHunters"
-            />
+            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Seven Deadly Sins" />
           </label>
 
           <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
@@ -193,7 +253,15 @@ export default function OwnerAlliancesPage() {
               const enabled = r.enabled !== false;
               return (
                 <div key={r.code} style={{ border: "1px solid #2a2a2a", borderRadius: 10, padding: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
                     <div>
                       <div style={{ fontWeight: 900 }}>{r.code}</div>
                       <div style={{ opacity: 0.85 }}>{r.name || r.code}</div>
@@ -202,11 +270,7 @@ export default function OwnerAlliancesPage() {
                     <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                       {"enabled" in r ? (
                         <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input
-                            type="checkbox"
-                            checked={enabled}
-                            onChange={(e) => toggleEnabled(r.code, e.target.checked)}
-                          />
+                          <input type="checkbox" checked={enabled} onChange={(e) => toggleEnabled(r.code, e.target.checked)} />
                           Enabled
                         </label>
                       ) : null}
