@@ -14,6 +14,7 @@ export default function StateLeadersPage() {
   const { isAdmin, loading } = useIsAppAdmin();
 
   const [rows, setRows] = useState<LeaderRow[]>([]);
+  const leaders = rows; // alias to prevent ReferenceError
   const [nameByUserId, setNameByUserId] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -190,3 +191,4 @@ export default function StateLeadersPage() {
     </div>
   );
 }
+
