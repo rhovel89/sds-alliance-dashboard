@@ -24,7 +24,42 @@ function upperCode(v: any) {
 }
 
 export default function AllianceGuidesPage() {
-  const params = useParams();
+  
+  // --- BEGIN GUIDE SIGNED IMAGE URLS ---
+  const GUIDE_BUCKET = "guides";
+  const [imageUrlByPath, setImageUrlByPath] = useState<Record<string, string>>({});
+
+  const postImagePath = (p: any): string | null => {
+    return (p?.image_path ?? p?.image_url ?? p?.image ?? p?.storage_path ?? null) as any;
+  };
+
+  const resolveSignedUrls = async (paths: string[]) => {
+    const uniq = Array.from(new Set((paths || []).map((x) => (x || "").trim()).filter(Boolean)));
+    if (uniq.length === 0) { setImageUrlByPath({}); return; }
+
+    const next: Record<string, string> = {};
+    for (const p of uniq) {
+      try {
+        const { data, error } = await supabase.storage.from(GUIDE_BUCKET).createSignedUrl(p, 60 * 60);
+        if (!error && data?.signedUrl) next[p] = data.signedUrl;
+      } catch {}
+    }
+    setImageUrlByPath(next);
+  };
+
+  const guideImgSrc = (post: any): string => {
+    const p = postImagePath(post);
+    if (!p) return "";
+    return imageUrlByPath[p] ?? p; // fallback shows path if URL missing
+  };
+  // --- END GUIDE SIGNED IMAGE URLS ---
+
+  useEffect(() => {
+    const paths = Array.from(new Set(((sections ?? []) as any[]).map((p) => postImagePath(p)).filter(Boolean)));
+    resolveSignedUrls(paths as any);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections]);
+const params = useParams();
   const raw = (params as any)?.allianceCode ?? (params as any)?.code ?? (params as any)?.alliance ?? (params as any)?.tag ?? (params as any)?.id ?? "";
   const allianceCode = useMemo(() => upperCode(raw), [raw]);
 
@@ -514,3 +549,4 @@ export default function AllianceGuidesPage() {
     </div>
   );
 }
+
