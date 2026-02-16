@@ -11,7 +11,7 @@ function normCode(v: string) {
   return v.trim().toUpperCase();
 }
 
-function looksLikeMissingColumn(msg: string, col: string) {
+function missingCol(msg: string, col: string) {
   const m = (msg || "").toLowerCase();
   const c = (col || "").toLowerCase();
   return (
@@ -30,7 +30,8 @@ export default function OwnerAlliancesPage() {
   const [newName, setNewName] = useState("");
   const [newEnabled, setNewEnabled] = useState(true);
 
-  const [codeCol, setCodeCol] = useState<"code" | "id">("code");
+  // supports either schema: alliances.code or alliances.id
+  const [keyCol, setKeyCol] = useState<"code" | "id">("code");
   const [hasEnabled, setHasEnabled] = useState(true);
 
   const refetch = async () => {
@@ -39,7 +40,7 @@ export default function OwnerAlliancesPage() {
     // try: code + enabled
     let r1 = await supabase.from("alliances").select("code,name,enabled").order("code", { ascending: true });
     if (!r1.error) {
-      setCodeCol("code");
+      setKeyCol("code");
       setHasEnabled(true);
       setRows((r1.data ?? []) as any);
       setLoading(false);
@@ -47,10 +48,10 @@ export default function OwnerAlliancesPage() {
     }
 
     // fallback: code only
-    if (looksLikeMissingColumn(r1.error.message || "", "enabled")) {
+    if (missingCol(r1.error.message || "", "enabled")) {
       const r2 = await supabase.from("alliances").select("code,name").order("code", { ascending: true });
       if (!r2.error) {
-        setCodeCol("code");
+        setKeyCol("code");
         setHasEnabled(false);
         setRows(((r2.data ?? []) as any[]).map((x) => ({ ...x, enabled: true })));
         setLoading(false);
@@ -59,21 +60,21 @@ export default function OwnerAlliancesPage() {
       r1 = r2 as any;
     }
 
-    // if no "code" column, try "id"
-    if (looksLikeMissingColumn(r1.error?.message || "", "code")) {
+    // if code column not present, use id column
+    if (missingCol(r1.error?.message || "", "code")) {
       let r3 = await supabase.from("alliances").select("id,name,enabled").order("id", { ascending: true });
       if (!r3.error) {
-        setCodeCol("id");
+        setKeyCol("id");
         setHasEnabled(true);
         setRows(((r3.data ?? []) as any[]).map((x) => ({ code: x.id, name: x.name, enabled: x.enabled })));
         setLoading(false);
         return;
       }
 
-      if (looksLikeMissingColumn(r3.error.message || "", "enabled")) {
+      if (missingCol(r3.error.message || "", "enabled")) {
         const r4 = await supabase.from("alliances").select("id,name").order("id", { ascending: true });
         if (!r4.error) {
-          setCodeCol("id");
+          setKeyCol("id");
           setHasEnabled(false);
           setRows(((r4.data ?? []) as any[]).map((x) => ({ code: x.id, name: x.name, enabled: true })));
           setLoading(false);
@@ -105,8 +106,8 @@ export default function OwnerAlliancesPage() {
     if (!code) return alert("Alliance code required (example: OZR, TYZ)");
     if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
 
-    // CRITICAL: never send state_id (prevents int/uuid mismatch)
-    const base: any = { [codeCol]: code, name };
+    // IMPORTANT: never send state_id (prevents the int/uuid mismatch)
+    const base: any = { [keyCol]: code, name };
 
     const attempts: any[] = [];
     if (hasEnabled) attempts.push({ ...base, enabled: newEnabled });
@@ -123,7 +124,11 @@ export default function OwnerAlliancesPage() {
         return;
       }
       lastErr = res.error;
-      if (looksLikeMissingColumn(res.error.message || "", "enabled")) continue;
+
+      // if enabled doesn't exist, try next attempt
+      if (missingCol(res.error.message || "", "enabled")) continue;
+
+      // otherwise stop
       break;
     }
 
@@ -137,7 +142,7 @@ export default function OwnerAlliancesPage() {
     if (next == null) return;
     const name = next.trim() || code;
 
-    const { error } = await supabase.from("alliances").update({ name }).eq(codeCol, code);
+    const { error } = await supabase.from("alliances").update({ name }).eq(keyCol, code);
     if (error) {
       console.error(error);
       alert(error.message);
@@ -148,7 +153,7 @@ export default function OwnerAlliancesPage() {
 
   const toggleEnabled = async (code: string, enabled: boolean) => {
     if (!hasEnabled) return alert("Enabled flag not supported by your alliances schema.");
-    const res = await supabase.from("alliances").update({ enabled }).eq(codeCol, code);
+    const res = await supabase.from("alliances").update({ enabled }).eq(keyCol, code);
     if (res.error) {
       console.error(res.error);
       alert(res.error.message);
@@ -159,7 +164,7 @@ export default function OwnerAlliancesPage() {
 
   const deleteAlliance = async (code: string) => {
     if (!confirm(`Delete alliance ${code}? This may fail if referenced by members/events.`)) return;
-    const { error } = await supabase.from("alliances").delete().eq(codeCol, code);
+    const { error } = await supabase.from("alliances").delete().eq(keyCol, code);
     if (error) {
       console.error(error);
       alert(error.message);
@@ -203,10 +208,6 @@ export default function OwnerAlliancesPage() {
           <button onClick={createAlliance}>➕ Create</button>
           <button onClick={refetch}>↻ Refresh</button>
         </div>
-
-        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-          Direct link: <code>/owner/alliances</code>
-        </div>
       </div>
 
       <div style={{ marginTop: 14, border: "1px solid #333", borderRadius: 10, padding: 12, maxWidth: 900 }}>
@@ -245,6 +246,10 @@ export default function OwnerAlliancesPage() {
             })}
           </div>
         )}
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
+        Direct link: <code>/owner/alliances</code>
       </div>
     </div>
   );
