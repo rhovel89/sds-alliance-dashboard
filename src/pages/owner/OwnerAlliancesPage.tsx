@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-const STATE_ID = Number(import.meta.env.VITE_STATE_ID ?? 789);
 
 type AllianceRow = {
   code: string;
@@ -10,6 +9,59 @@ type AllianceRow = {
 
 function normCode(v: string) {
   return v.trim().toUpperCase();
+}
+
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+}
+
+async function resolveStateIdUuid(): Promise<string | null> {
+  // Prefer explicit UUID env if you ever add one
+  const envUuid = String((import.meta as any).env?.VITE_STATE_UUID ?? "").trim();
+  if (envUuid && isUuid(envUuid)) return envUuid;
+
+  // Your current env appears to be numeric like 789
+  const rawId = String((import.meta as any).env?.VITE_STATE_ID ?? "").trim();
+  const rawCode = String((import.meta as any).env?.VITE_STATE_CODE ?? "").trim();
+
+  // If VITE_STATE_ID is actually a UUID, accept it
+  if (rawId && isUuid(rawId)) return rawId;
+
+  // Otherwise treat as state code like S789 (common pattern)
+  const stateCode = (rawCode || (rawId ? `S${rawId}` : "")).trim().toUpperCase();
+
+  const tryColumn = async (col: "state_code" | "code" | "tag") => {
+    if (!stateCode) return null;
+    const sel = `id,${col}`;
+    const { data, error } = await supabase
+      .from("states")
+      .select(sel)
+      .eq(col as any, stateCode)
+      .maybeSingle();
+
+    if (error) {
+      // If column doesn't exist or other issue, we just return null and fall back.
+      return null;
+    }
+    return (data as any)?.id ?? null;
+  };
+
+  // Try the most likely column names for your schema
+  for (const col of ["state_code", "code", "tag"] as const) {
+    const id = await tryColumn(col);
+    if (id) return id;
+  }
+
+  // Final fallback: first row in states
+  const { data, error } = await supabase
+    .from("states")
+    .select("id")
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return null;
+  return (data as any)?.id ?? null;
 }
 
 export default function OwnerAlliancesPage() {
@@ -67,16 +119,26 @@ export default function OwnerAlliancesPage() {
   const createAlliance = async () => {
     const code = normCode(newCode);
     const name = newName.trim() || code;
+
     if (!code) return alert("Alliance code required (example: SDS)");
     if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
 
-    // try with enabled, fallback without enabled
+    // Resolve the UUID state_id (your DB expects UUID)
+    const stateId = await resolveStateIdUuid();
+    if (!stateId) {
+      return alert("Could not find a state UUID in table 'states'. Ensure states has a row for your state.");
+    }
 
-    const resA = await supabase.from("alliances").insert({ code, name, state_id: STATE_ID, enabled: newEnabled });
+    const basePayload: any = { code, name, state_id: stateId };
+
+    // try with enabled, fallback without enabled
+    const resA = await supabase.from("alliances").insert({ ...basePayload, enabled: newEnabled });
+
     if (resA.error) {
       const msg = (resA.error.message || "").toLowerCase();
+
       if (msg.includes("enabled")) {
-        const resB = await supabase.from("alliances").insert({ code, name, state_id: STATE_ID });
+        const resB = await supabase.from("alliances").insert(basePayload);
         if (resB.error) {
           console.error(resB.error);
           alert(resB.error.message);
