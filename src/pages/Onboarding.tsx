@@ -10,6 +10,63 @@ type Alliance = {
 const RANKS = ["R1", "R2", "R3", "R4", "R5"];
 
 export default function Onboarding() {
+  // --- BEGIN AUTO-REDIRECT: SKIP ONBOARDING IF APPROVED+ASSIGNED ---
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const uid = data?.user?.id;
+        if (!uid) return;
+
+        // Resolve player_id for this auth user
+        let playerId: string | null = null;
+
+        // 1) Preferred: player_auth_links (user_id -> player_id)
+        const { data: link } = await supabase
+          .from("player_auth_links")
+          .select("player_id")
+          .eq("user_id", uid)
+          .maybeSingle();
+
+        playerId = (link as any)?.player_id ?? null;
+
+        // 2) Fallback: players.auth_user_id -> players.id
+        if (!playerId) {
+          const { data: p } = await supabase
+            .from("players")
+            .select("id")
+            .eq("auth_user_id", uid)
+            .maybeSingle();
+          playerId = (p as any)?.id ?? null;
+        }
+
+        if (!playerId) return;
+
+        // If they have at least one alliance membership, they’re approved+assigned -> skip onboarding
+        const { data: memberships } = await supabase
+          .from("player_alliances")
+          .select("id")
+          .eq("player_id", playerId)
+          .limit(1);
+
+        if (cancelled) return;
+
+        if (Array.isArray(memberships) && memberships.length > 0) {
+          window.location.replace("/dashboard");
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  // --- END AUTO-REDIRECT: SKIP ONBOARDING IF APPROVED+ASSIGNED ---
+
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
@@ -146,3 +203,4 @@ export default function Onboarding() {
     </div>
   );
 }
+
