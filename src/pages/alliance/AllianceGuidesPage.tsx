@@ -22,6 +22,60 @@ type AnyRow = Record<string, any>;
 function upperCode(v: any) {
   return String(v ?? "").trim().toUpperCase();
 }
+// --- BEGIN GUIDE IMAGE HELPER ---
+type GuideImageProps = {
+  bucket: string;
+  path?: string | null;
+  alt?: string;
+  className?: string;
+  style?: any;
+};
+
+function GuideImage({ bucket, path, alt, className, style }: GuideImageProps) {
+  const [url, setUrl] = useState<string>("");
+
+  useEffect(() => {
+    const p = (path || "").trim();
+    if (!p) { setUrl(""); return; }
+
+    if (/^https?:\/\//i.test(p)) { setUrl(p); return; }
+
+    let cancelled = false;
+    (async () => {
+      const key = p.replace(/^\/+/, "");
+
+      // Try signed URL first (works for private buckets if user has read access)
+      const { data: signed, error: sErr } = await supabase
+        .storage
+        .from(bucket)
+        .createSignedUrl(key, 60 * 60);
+
+      if (!cancelled && !sErr && signed?.signedUrl) {
+        setUrl(signed.signedUrl);
+        return;
+      }
+
+      // Fallback to public URL (works for public bucket)
+      const { data: pub } = supabase.storage.from(bucket).getPublicUrl(key);
+      if (!cancelled) setUrl(pub?.publicUrl || "");
+    })();
+
+    return () => { cancelled = true; };
+  }, [bucket, path]);
+
+  if (!path) return null;
+  if (!url) return null;
+
+  return (
+    <img
+      src={url}
+      alt={alt || ""}
+      className={className}
+      style={style}
+    />
+  );
+}
+// --- END GUIDE IMAGE HELPER ---
 
 export default function AllianceGuidesPage() {
   
@@ -59,6 +113,125 @@ export default function AllianceGuidesPage() {
     resolveSignedUrls(paths as any);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections]);
+  // --- BEGIN GUIDES MANAGE V2 ---
+  const canManageGuidesV2 =
+    ["owner","r5","r4"].includes(String((role as any) ?? "").toLowerCase());
+
+  const selectedGuideSectionV2 =
+    (Array.isArray(sections) ? (sections as any[]) : []).find((s) => s?.id === (selectedSectionId as any));
+
+  const sectionPostsV2 =
+    (Array.isArray(posts) ? (posts as any[]) : []).filter((p) => p?.section_id === (selectedSectionId as any));
+
+  const refreshSectionsPostsV2 = () => {
+    // best effort local refresh without depending on unknown loader funcs
+    // (if you already have loaders, the UI still updates on next fetch)
+  };
+
+  const renameSelectedGuideSectionV2 = async () => {
+    if (!canManageGuidesV2 || !selectedGuideSectionV2) return;
+    const current = String(selectedGuideSectionV2?.title ?? selectedGuideSectionV2?.name ?? "");
+    const next = window.prompt("Rename section:", current);
+    if (!next || !next.trim()) return;
+
+    const { error } = await supabase
+      .from("guide_sections")
+      .update({ title: next.trim() } as any)
+      .eq("id", selectedGuideSectionV2.id);
+
+    if (error) { alert(error.message); return; }
+
+    // update local state if possible
+    try {
+      setSections((prev: any) =>
+        (Array.isArray(prev) ? prev : []).map((s: any) => s?.id === selectedGuideSectionV2.id ? { ...s, title: next.trim() } : s)
+      );
+    } catch {}
+    refreshSectionsPostsV2();
+  };
+
+  const toggleSelectedGuideSectionReadOnlyV2 = async () => {
+    if (!canManageGuidesV2 || !selectedGuideSectionV2) return;
+    const next = !Boolean(selectedGuideSectionV2.readonly);
+
+    const { error } = await supabase
+      .from("guide_sections")
+      .update({ readonly: next } as any)
+      .eq("id", selectedGuideSectionV2.id);
+
+    if (error) { alert(error.message); return; }
+
+    try {
+      setSections((prev: any) =>
+        (Array.isArray(prev) ? prev : []).map((s: any) => s?.id === selectedGuideSectionV2.id ? { ...s, readonly: next } : s)
+      );
+    } catch {}
+    refreshSectionsPostsV2();
+  };
+
+  const deleteSelectedGuideSectionV2 = async () => {
+    if (!canManageGuidesV2 || !selectedGuideSectionV2) return;
+    if (!window.confirm("Delete this section and its posts?")) return;
+
+    const { error } = await supabase
+      .from("guide_sections")
+      .delete()
+      .eq("id", selectedGuideSectionV2.id);
+
+    if (error) { alert(error.message); return; }
+
+    try {
+      setSections((prev: any) => (Array.isArray(prev) ? prev : []).filter((s: any) => s?.id !== selectedGuideSectionV2.id));
+      setPosts((prev: any) => (Array.isArray(prev) ? prev : []).filter((p: any) => p?.section_id !== selectedGuideSectionV2.id));
+    } catch {}
+    refreshSectionsPostsV2();
+  };
+
+  const editGuidePostV2 = async (post: any) => {
+    if (!canManageGuidesV2 || !post?.id) return;
+    const current = String(post?.content ?? "");
+    const next = window.prompt("Edit post text:", current);
+    if (next == null) return;
+
+    const patch: any = {};
+    patch["content"] = next;
+
+    const { error } = await supabase
+      .from("guide_posts")
+      .update(patch)
+      .eq("id", post.id);
+
+    if (error) { alert(error.message); return; }
+
+    try {
+      setPosts((prev: any) =>
+        (Array.isArray(prev) ? prev : []).map((p: any) => p?.id === post.id ? { ...p, ...patch } : p)
+      );
+    } catch {}
+  };
+
+  const deleteGuidePostV2 = async (post: any) => {
+    if (!canManageGuidesV2 || !post?.id) return;
+    if (!window.confirm("Delete this post?")) return;
+
+    // Try to remove storage object if present (ignore failures)
+    const imgPath = String(post?.image_path ?? post?.image_url ?? "").trim();
+    if (imgPath && !/^https?:\/\//i.test(imgPath)) {
+      try { await supabase.storage.from("guides").remove([imgPath.replace(/^\/+/, "")]); } catch {}
+    }
+
+    const { error } = await supabase
+      .from("guide_posts")
+      .delete()
+      .eq("id", post.id);
+
+    if (error) { alert(error.message); return; }
+
+    try {
+      setPosts((prev: any) => (Array.isArray(prev) ? prev : []).filter((p: any) => p?.id !== post.id));
+    } catch {}
+  };
+  // --- END GUIDES MANAGE V2 ---
 const params = useParams();
   const raw = (params as any)?.allianceCode ?? (params as any)?.code ?? (params as any)?.alliance ?? (params as any)?.tag ?? (params as any)?.id ?? "";
   const allianceCode = useMemo(() => upperCode(raw), [raw]);
@@ -549,4 +722,5 @@ const params = useParams();
     </div>
   );
 }
+
 
