@@ -1,0 +1,202 @@
+-- Permissions registry
+create table if not exists public.permission_keys (
+  key text primary key,
+  label text not null,
+  feature text not null,
+  created_at timestamptz not null default now()
+);
+
+-- Seed base permissions (safe)
+insert into public.permission_keys (key, label, feature) values
+('calendar.view','View calendar','calendar'),
+('calendar.edit','Edit calendar','calendar'),
+('roster.view','View roster','roster'),
+('roster.edit','Edit roster','roster'),
+('discord.view','View discord settings','discord'),
+('discord.manage','Manage discord settings','discord'),
+('alliances.view','View alliances','alliances'),
+('alliances.manage','Manage alliances','alliances'),
+('players.view','View players','players'),
+('players.manage','Manage players','players'),
+('hqmap.view','View HQ map','hqmap'),
+('hqmap.edit','Edit HQ map','hqmap'),
+('state.view','View state dashboard','state'),
+('state.manage','Manage state dashboard','state')
+on conflict (key) do nothing;
+
+-- Alliance roles (per alliance)
+create table if not exists public.alliance_roles (
+  id uuid primary key default gen_random_uuid(),
+  alliance_code text not null references public.alliances(code) on delete cascade,
+  role_key text not null,
+  display_name text not null,
+  is_system boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(alliance_code, role_key)
+);
+
+-- Role -> permissions
+create table if not exists public.alliance_role_permissions (
+  alliance_role_id uuid not null references public.alliance_roles(id) on delete cascade,
+  permission_key text not null references public.permission_keys(key) on delete cascade,
+  primary key (alliance_role_id, permission_key)
+);
+
+-- Optional: store a custom role on membership rows (does NOT replace existing "role" column)
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='player_alliances' and column_name='role_key'
+  ) then
+    alter table public.player_alliances add column role_key text;
+  end if;
+exception when others then
+  null;
+end $$;
+
+-- RLS: readable by authenticated; writable only by app admins (Owner)
+alter table public.permission_keys enable row level security;
+alter table public.alliance_roles enable row level security;
+alter table public.alliance_role_permissions enable row level security;
+
+drop policy if exists permission_keys_select on public.permission_keys;
+create policy permission_keys_select on public.permission_keys
+for select to authenticated using (true);
+
+drop policy if exists alliance_roles_select on public.alliance_roles;
+create policy alliance_roles_select on public.alliance_roles
+for select to authenticated using (true);
+
+drop policy if exists alliance_role_permissions_select on public.alliance_role_permissions;
+create policy alliance_role_permissions_select on public.alliance_role_permissions
+for select to authenticated using (true);
+
+-- Admin-only write policies
+drop policy if exists alliance_roles_admin_write on public.alliance_roles;
+create policy alliance_roles_admin_write on public.alliance_roles
+for all to authenticated
+using (exists(select 1 from public.app_admins a where a.user_id = auth.uid()))
+with check (exists(select 1 from public.app_admins a where a.user_id = auth.uid()));
+
+drop policy if exists alliance_role_permissions_admin_write on public.alliance_role_permissions;
+create policy alliance_role_permissions_admin_write on public.alliance_role_permissions
+for all to authenticated
+using (exists(select 1 from public.app_admins a where a.user_id = auth.uid()))
+with check (exists(select 1 from public.app_admins a where a.user_id = auth.uid()));
+
+-- Ensure alliance_roles has the standard columns used by the app (safe, additive)
+alter table public.alliance_roles
+  add column if not exists role_key text;
+
+alter table public.alliance_roles
+  add column if not exists display_name text;
+
+alter table public.alliance_roles
+  add column if not exists is_system boolean not null default false;
+
+-- Backfill from legacy column names if present (safe)
+do $$
+begin
+  -- If older schema used "role" instead of "role_key"
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='alliance_roles' and column_name='role'
+  ) then
+    update public.alliance_roles
+    set role_key = upper(btrim(role::text))
+    where (role_key is null or btrim(role_key) = '')
+      and role is not null and btrim(role::text) <> '';
+  end if;
+
+  -- If older schema used "name" instead of "display_name"
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='alliance_roles' and column_name='name'
+  ) then
+    update public.alliance_roles
+    set display_name = btrim(name::text)
+    where (display_name is null or btrim(display_name) = '')
+      and name is not null and btrim(name::text) <> '';
+  end if;
+
+  -- Final fallback: if display_name still empty, use role_key
+  update public.alliance_roles
+  set display_name = role_key
+  where (display_name is null or btrim(display_name) = '')
+    and role_key is not null and btrim(role_key) <> '';
+end $$; -- Seed system roles for each alliance (safe)
+-- NOTE: public.alliance_roles may use a different alliance key column name in older schemas.
+-- This block detects the right column and seeds roles accordingly.
+do $$
+declare
+  role_col text := null;
+  alliances_col text := null;
+begin
+  -- Which column does alliance_roles use for the alliance key?
+  if exists (select 1 from information_schema.columns where table_schema='public' and table_name='alliance_roles' and column_name='alliance_code') then
+    role_col := 'alliance_code';
+  elsif exists (select 1 from information_schema.columns where table_schema='public' and table_name='alliance_roles' and column_name='alliance_id') then
+    role_col := 'alliance_id';
+  elsif exists (select 1 from information_schema.columns where table_schema='public' and table_name='alliance_roles' and column_name='alliance_tag') then
+    role_col := 'alliance_tag';
+  elsif exists (select 1 from information_schema.columns where table_schema='public' and table_name='alliance_roles' and column_name='tag') then
+    role_col := 'tag';
+  elsif exists (select 1 from information_schema.columns where table_schema='public' and table_name='alliance_roles' and column_name='code') then
+    role_col := 'code';
+  end if;
+
+  -- Which column does alliances use for the alliance key?
+  if exists (select 1 from information_schema.columns where table_schema='public' and table_name='alliances' and column_name='alliance_id') then
+    alliances_col := 'alliance_id';
+  elsif exists (select 1 from information_schema.columns where table_schema='public' and table_name='alliances' and column_name='code') then
+    alliances_col := 'code';
+  elsif exists (select 1 from information_schema.columns where table_schema='public' and table_name='alliances' and column_name='tag') then
+    alliances_col := 'tag';
+  end if;
+
+  if role_col is null then
+    raise exception 'public.alliance_roles missing alliance identifier column (expected: alliance_code/alliance_id/alliance_tag/tag/code)';
+  end if;
+
+  if alliances_col is null then
+    raise exception 'public.alliances missing alliance identifier column (expected: alliance_id/code/tag)';
+  end if;
+
+  execute format($sql$
+    insert into public.alliance_roles (%I, "name", rank, role_key, display_name, is_system)
+    select distinct
+      upper(btrim(a.%I::text)) as alliance_key,
+      r.display_name as name,
+            r.rank,
+            r.role_key,
+      r.display_name,
+      true
+    from public.alliances a
+    cross join (values
+      ('owner','Owner',1),
+      ('r5','R5',3),
+      ('r4','R4',4),
+      ('member','Member',5),
+      ('viewer','Viewer',6),
+      ('state_leader','State Leader',2)
+    ) as r(role_key, display_name, rank)
+    where a.%I is not null and btrim(a.%I::text) <> ''
+    on conflict do nothing;
+  $sql$, role_col, alliances_col, alliances_col, alliances_col);
+end $$;
+-- Best-effort schema cache refresh
+do $$
+begin
+  perform pg_notify('pgrst', 'reload schema');
+exception when others then
+  null;
+end $$;
+
+
+
+
+
+
+
