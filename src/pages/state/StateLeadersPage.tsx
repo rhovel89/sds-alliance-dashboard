@@ -73,89 +73,156 @@ export default function StateLeadersPage() {
       }
     }
 
-    setNameByUserId({});
-  };
 const { isAdmin, loading } = useIsAppAdmin();
   const [rows, setRows] = useState<Row[]>([]);
   // --- BEGIN STATE LEADER NAME LOOKUP ---
-  const [nameByUserId, setNameByUserId] = useState<Record<string, string>>({});
+  
+const [nameByUserId, setNameByUserId] = useState<Record<string, string>>({});
 
-  const leaderLabel = (userId?: string | null) => {
-    const id = (userId || `).trim();
-    if (!id) return `;
-    return nameByUserId[id] ?? id;
-  };
+  
+const leaderLabel = (userId?: string | null) => {
+  
+  const id = (userId || "").trim();
+  
+  if (!id) return "";
+  
+  return nameByUserId[id] ?? id;
+  
+};
 
-  const loadLeaderNames = async (userIds: string[]) => {
-    const ids = Array.from(new Set((userIds || []).map((x) => (x || `).trim()).filter(Boolean)));
-    if (ids.length === 0) { setNameByUserId({}); return; }
+  
+const loadLeaderNames = async (userIds: string[]) => {
+  
+  const ids = Array.from(new Set((userIds || []).map((x) => (x || "").trim()).filter(Boolean)));
+  
+  if (ids.length === 0) { setNameByUserId({}); return; }
 
-    // 1) Best: players.auth_user_id -> game_name
-    {
-      const { data, error } = await supabase
-        .from("players")
-        .select("auth_user_id, game_name")
-        .in("auth_user_id", ids);
+  
+  // 1) Best: players.auth_user_id -> game_name
+  
+  {
+  
+    const { data, error } = await supabase
+  
+      .from("players")
+  
+      .select("auth_user_id, game_name")
+  
+      .in("auth_user_id", ids);
 
-      if (!error && data) {
-        const map: Record<string, string> = {};
-        for (const row of data as any[]) {
-          const uid = row.auth_user_id;
-          const gn = row.game_name;
-          if (uid && gn) map[uid] = gn;
-        }
-        if (Object.keys(map).length > 0) { setNameByUserId(map); return; }
+  
+    if (!error && data) {
+  
+      const map: Record<string, string> = {};
+  
+      for (const row of data as any[]) {
+  
+        const uid = row.auth_user_id;
+  
+        const gn = row.game_name;
+  
+        if (uid && gn) map[uid] = gn;
+  
       }
+  
+      if (Object.keys(map).length > 0) { setNameByUserId(map); return; }
+  
     }
+  
+  }
 
-    // 2) Fallback: player_auth_links(user_id -> player_id) + players(id -> game_name)
-    {
-      const { data: links, error: linkErr } = await supabase
-        .from("player_auth_links")
-        .select("user_id, player_id")
-        .in("user_id", ids);
+  
+  // 2) Fallback: player_auth_links(user_id -> player_id) + players(id -> game_name)
+  
+  {
+  
+    const { data: links, error: linkErr } = await supabase
+  
+      .from("player_auth_links")
+  
+      .select("user_id, player_id")
+  
+      .in("user_id", ids);
 
-      if (!linkErr && links && links.length > 0) {
-        const userToPlayer: Record<string, string> = {};
-        const playerIds: string[] = [];
-        for (const l of links as any[]) {
-          if (l.user_id && l.player_id) {
-            userToPlayer[l.user_id] = l.player_id;
-            playerIds.push(l.player_id);
-          }
+  
+    if (!linkErr && links && links.length > 0) {
+  
+      const userToPlayer: Record<string, string> = {};
+  
+      const playerIds: string[] = [];
+  
+      for (const l of links as any[]) {
+  
+        if (l.user_id && l.player_id) {
+  
+          userToPlayer[l.user_id] = l.player_id;
+  
+          playerIds.push(l.player_id);
+  
         }
-        const uniqPlayerIds = Array.from(new Set(playerIds));
-        if (uniqPlayerIds.length > 0) {
-          const { data: players, error: pErr } = await supabase
-            .from("players")
-            .select("id, game_name")
-            .in("id", uniqPlayerIds);
-
-          if (!pErr && players) {
-            const playerIdToName: Record<string, string> = {};
-            for (const p of players as any[]) {
-              if (p.id && p.game_name) playerIdToName[p.id] = p.game_name;
-            }
-            const map: Record<string, string> = {};
-            for (const uid of Object.keys(userToPlayer)) {
-              const pid = userToPlayer[uid];
-              const gn = playerIdToName[pid];
-              if (gn) map[uid] = gn;
-            }
-            if (Object.keys(map).length > 0) { setNameByUserId(map); return; }
-          }
-        }
+  
       }
+  
+      const uniqPlayerIds = Array.from(new Set(playerIds));
+  
+      if (uniqPlayerIds.length > 0) {
+  
+        const { data: players, error: pErr } = await supabase
+  
+          .from("players")
+  
+          .select("id, game_name")
+  
+          .in("id", uniqPlayerIds);
+
+  
+        if (!pErr && players) {
+  
+          const playerIdToName: Record<string, string> = {};
+  
+          for (const p of players as any[]) {
+  
+            if (p.id && p.game_name) playerIdToName[p.id] = p.game_name;
+  
+          }
+  
+          const map: Record<string, string> = {};
+  
+          for (const uid of Object.keys(userToPlayer)) {
+  
+            const pid = userToPlayer[uid];
+  
+            const gn = playerIdToName[pid];
+  
+            if (gn) map[uid] = gn;
+  
+          }
+  
+          if (Object.keys(map).length > 0) { setNameByUserId(map); return; }
+  
+        }
+  
+      }
+  
     }
+  
+  }
 
-    setNameByUserId({});
-  };
+  
+  setNameByUserId({});
+  
+};
 
-  useEffect(() => {
-    const ids = (rows || []).map((r: any) => (r?.user_id ?? r?.auth_user_id ?? r?.user_uuid)).filter(Boolean);
-    loadLeaderNames(ids as any);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows]);
+  
+useEffect(() => {
+  
+  const ids = (rows || []).map((r: any) => (r?.user_id ?? r?.auth_user_id ?? r?.user_uuid)).filter(Boolean);
+  
+  loadLeaderNames(ids as any);
+  
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
+}, [rows]);
   // --- END STATE LEADER NAME LOOKUP ---
   const [userId, setUserId] = useState("");
   const [busy, setBusy] = useState(false);
