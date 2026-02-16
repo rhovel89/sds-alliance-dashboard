@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../lib/supabaseClient";
 
 const TABLE_SECTIONS = "guide_sections";
 const TABLE_POSTS = "guide_posts";
 const TABLE_IMAGES = "guide_attachments";
 const STORAGE_BUCKET = "alliance-guides";
 
-// Column names (detected / fallback)
+// Column names (fallback-friendly)
 const COL_ALLIANCE = "alliance_code";
 const COL_SECTION_ID_IN_POSTS = "section_id";
 const COL_SECTION_TITLE = "title";
@@ -22,7 +22,9 @@ type AnyRow = Record<string, any>;
 function upperCode(v: any) {
   return String(v ?? "").trim().toUpperCase();
 }
-// --- BEGIN GUIDE IMAGE HELPER ---
+
+// Image helper: accepts either a full http(s) URL OR a storage path inside STORAGE_BUCKET.
+// Tries signed URL first, then falls back to public URL.
 type GuideImageProps = {
   bucket: string;
   path?: string | null;
@@ -44,18 +46,22 @@ function GuideImage({ bucket, path, alt, className, style }: GuideImageProps) {
     (async () => {
       const key = p.replace(/^\/+/, "");
 
-      // Try signed URL first (works for private buckets if user has read access)
-      const { data: signed, error: sErr } = await supabase
-        .storage
-        .from(bucket)
-        .createSignedUrl(key, 60 * 60);
+      // Signed URL (private bucket support)
+      try {
+        const { data: signed, error: sErr } = await supabase
+          .storage
+          .from(bucket)
+          .createSignedUrl(key, 60 * 60);
 
-      if (!cancelled && !sErr && signed?.signedUrl) {
-        setUrl(signed.signedUrl);
-        return;
+        if (!cancelled && !sErr && signed?.signedUrl) {
+          setUrl(signed.signedUrl);
+          return;
+        }
+      } catch {
+        // ignore
       }
 
-      // Fallback to public URL (works for public bucket)
+      // Public URL fallback
       const { data: pub } = supabase.storage.from(bucket).getPublicUrl(key);
       if (!cancelled) setUrl(pub?.publicUrl || "");
     })();
@@ -63,8 +69,7 @@ function GuideImage({ bucket, path, alt, className, style }: GuideImageProps) {
     return () => { cancelled = true; };
   }, [bucket, path]);
 
-  if (!path) return null;
-  if (!url) return null;
+  if (!path || !url) return null;
 
   return (
     <img
@@ -75,165 +80,17 @@ function GuideImage({ bucket, path, alt, className, style }: GuideImageProps) {
     />
   );
 }
-// --- END GUIDE IMAGE HELPER ---
 
 export default function AllianceGuidesPage() {
-  
-  // --- BEGIN GUIDE SIGNED IMAGE URLS ---
-  const GUIDE_BUCKET = "guides";
-  const [imageUrlByPath, setImageUrlByPath] = useState<Record<string, string>>({});
+  const params = useParams();
+  const raw =
+    (params as any)?.allianceCode ??
+    (params as any)?.code ??
+    (params as any)?.alliance ??
+    (params as any)?.tag ??
+    (params as any)?.id ??
+    "";
 
-  const postImagePath = (p: any): string | null => {
-    return (p?.image_path ?? p?.image_url ?? p?.image ?? p?.storage_path ?? null) as any;
-  };
-
-  const resolveSignedUrls = async (paths: string[]) => {
-    const uniq = Array.from(new Set((paths || []).map((x) => (x || "").trim()).filter(Boolean)));
-    if (uniq.length === 0) { setImageUrlByPath({}); return; }
-
-    const next: Record<string, string> = {};
-    for (const p of uniq) {
-      try {
-        const { data, error } = await supabase.storage.from(GUIDE_BUCKET).createSignedUrl(p, 60 * 60);
-        if (!error && data?.signedUrl) next[p] = data.signedUrl;
-      } catch {}
-    }
-    setImageUrlByPath(next);
-  };
-
-  const guideImgSrc = (post: any): string => {
-    const p = postImagePath(post);
-    if (!p) return "";
-    return imageUrlByPath[p] ?? p; // fallback shows path if URL missing
-  };
-  // --- END GUIDE SIGNED IMAGE URLS ---
-
-  useEffect(() => {
-    const paths = Array.from(new Set(((sections ?? []) as any[]).map((p) => postImagePath(p)).filter(Boolean)));
-    resolveSignedUrls(paths as any);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections]);
-  // --- BEGIN GUIDES MANAGE V2 ---
-  const canManageGuidesV2 =
-    ["owner","r5","r4"].includes(String((role as any) ?? "").toLowerCase());
-
-  const selectedGuideSectionV2 =
-    (Array.isArray(sections) ? (sections as any[]) : []).find((s) => s?.id === (selectedSectionId as any));
-
-  const sectionPostsV2 =
-    (Array.isArray(posts) ? (posts as any[]) : []).filter((p) => p?.section_id === (selectedSectionId as any));
-
-  const refreshSectionsPostsV2 = () => {
-    // best effort local refresh without depending on unknown loader funcs
-    // (if you already have loaders, the UI still updates on next fetch)
-  };
-
-  const renameSelectedGuideSectionV2 = async () => {
-    if (!canManageGuidesV2 || !selectedGuideSectionV2) return;
-    const current = String(selectedGuideSectionV2?.title ?? selectedGuideSectionV2?.name ?? "");
-    const next = window.prompt("Rename section:", current);
-    if (!next || !next.trim()) return;
-
-    const { error } = await supabase
-      .from("guide_sections")
-      .update({ title: next.trim() } as any)
-      .eq("id", selectedGuideSectionV2.id);
-
-    if (error) { alert(error.message); return; }
-
-    // update local state if possible
-    try {
-      setSections((prev: any) =>
-        (Array.isArray(prev) ? prev : []).map((s: any) => s?.id === selectedGuideSectionV2.id ? { ...s, title: next.trim() } : s)
-      );
-    } catch {}
-    refreshSectionsPostsV2();
-  };
-
-  const toggleSelectedGuideSectionReadOnlyV2 = async () => {
-    if (!canManageGuidesV2 || !selectedGuideSectionV2) return;
-    const next = !Boolean(selectedGuideSectionV2.readonly);
-
-    const { error } = await supabase
-      .from("guide_sections")
-      .update({ readonly: next } as any)
-      .eq("id", selectedGuideSectionV2.id);
-
-    if (error) { alert(error.message); return; }
-
-    try {
-      setSections((prev: any) =>
-        (Array.isArray(prev) ? prev : []).map((s: any) => s?.id === selectedGuideSectionV2.id ? { ...s, readonly: next } : s)
-      );
-    } catch {}
-    refreshSectionsPostsV2();
-  };
-
-  const deleteSelectedGuideSectionV2 = async () => {
-    if (!canManageGuidesV2 || !selectedGuideSectionV2) return;
-    if (!window.confirm("Delete this section and its posts?")) return;
-
-    const { error } = await supabase
-      .from("guide_sections")
-      .delete()
-      .eq("id", selectedGuideSectionV2.id);
-
-    if (error) { alert(error.message); return; }
-
-    try {
-      setSections((prev: any) => (Array.isArray(prev) ? prev : []).filter((s: any) => s?.id !== selectedGuideSectionV2.id));
-      setPosts((prev: any) => (Array.isArray(prev) ? prev : []).filter((p: any) => p?.section_id !== selectedGuideSectionV2.id));
-    } catch {}
-    refreshSectionsPostsV2();
-  };
-
-  const editGuidePostV2 = async (post: any) => {
-    if (!canManageGuidesV2 || !post?.id) return;
-    const current = String(post?.content ?? "");
-    const next = window.prompt("Edit post text:", current);
-    if (next == null) return;
-
-    const patch: any = {};
-    patch["content"] = next;
-
-    const { error } = await supabase
-      .from("guide_posts")
-      .update(patch)
-      .eq("id", post.id);
-
-    if (error) { alert(error.message); return; }
-
-    try {
-      setPosts((prev: any) =>
-        (Array.isArray(prev) ? prev : []).map((p: any) => p?.id === post.id ? { ...p, ...patch } : p)
-      );
-    } catch {}
-  };
-
-  const deleteGuidePostV2 = async (post: any) => {
-    if (!canManageGuidesV2 || !post?.id) return;
-    if (!window.confirm("Delete this post?")) return;
-
-    // Try to remove storage object if present (ignore failures)
-    const imgPath = String(post?.image_path ?? post?.image_url ?? "").trim();
-    if (imgPath && !/^https?:\/\//i.test(imgPath)) {
-      try { await supabase.storage.from("guides").remove([imgPath.replace(/^\/+/, "")]); } catch {}
-    }
-
-    const { error } = await supabase
-      .from("guide_posts")
-      .delete()
-      .eq("id", post.id);
-
-    if (error) { alert(error.message); return; }
-
-    try {
-      setPosts((prev: any) => (Array.isArray(prev) ? prev : []).filter((p: any) => p?.id !== post.id));
-    } catch {}
-  };
-  // --- END GUIDES MANAGE V2 ---
-const params = useParams();
-  const raw = (params as any)?.allianceCode ?? (params as any)?.code ?? (params as any)?.alliance ?? (params as any)?.tag ?? (params as any)?.id ?? "";
   const allianceCode = useMemo(() => upperCode(raw), [raw]);
 
   const [loading, setLoading] = useState(true);
@@ -243,12 +100,14 @@ const params = useParams();
   const [isAppAdmin, setIsAppAdmin] = useState(false);
   const [role, setRole] = useState<string | null>(null);
 
-  const canManageGuides = isAppAdmin || ["owner", "r5", "r4"].includes(String(role ?? "").toLowerCase());
+  const canManageGuides =
+    isAppAdmin || ["owner", "r5", "r4"].includes(String(role ?? "").toLowerCase());
 
   const [sections, setSections] = useState<AnyRow[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-
   const [posts, setPosts] = useState<AnyRow[]>([]);
+  const [attachmentsByPostId, setAttachmentsByPostId] = useState<Record<string, AnyRow[]>>({});
+
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [newPostBody, setNewPostBody] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
@@ -259,13 +118,14 @@ const params = useParams();
   );
 
   const isSelectedReadOnly = Boolean(
-    selectedSection?.[COL_SECTION_READONLY] ??
-      selectedSection?.readonly ??
-      selectedSection?.read_only ??
-      selectedSection?.is_readonly ??
+    (selectedSection as any)?.[COL_SECTION_READONLY] ??
+      (selectedSection as any)?.readonly ??
+      (selectedSection as any)?.read_only ??
+      (selectedSection as any)?.is_readonly ??
       false
   );
 
+  // Auth + role
   useEffect(() => {
     let cancelled = false;
 
@@ -279,7 +139,7 @@ const params = useParams();
         if (cancelled) return;
         setUserId(uid);
 
-        // Best-effort: app admin check (works if your RPC is is_app_admin())
+        // Best-effort: app admin check
         try {
           const { data } = await supabase.rpc("is_app_admin");
           if (typeof data === "boolean") setIsAppAdmin(data);
@@ -313,9 +173,7 @@ const params = useParams();
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [allianceCode]);
 
   const loadSections = async () => {
@@ -356,7 +214,35 @@ const params = useParams();
       return;
     }
 
-    setPosts((data ?? []) as AnyRow[]);
+    const postRows = (data ?? []) as AnyRow[];
+    setPosts(postRows);
+
+    // Load attachments for these posts (so images show)
+    try {
+      const ids = postRows.map((p) => p?.id).filter(Boolean);
+      if (ids.length === 0) { setAttachmentsByPostId({}); return; }
+
+      const { data: imgs, error: imgErr } = await supabase
+        .from(TABLE_IMAGES)
+        .select("*")
+        .in(COL_IMG_POST_ID, ids);
+
+      if (imgErr) {
+        // not fatal (table/policy might block)
+        return;
+      }
+
+      const grouped: Record<string, AnyRow[]> = {};
+      for (const r of (imgs ?? []) as AnyRow[]) {
+        const pid = String(r?.[COL_IMG_POST_ID] ?? r?.post_id ?? "");
+        if (!pid) continue;
+        if (!grouped[pid]) grouped[pid] = [];
+        grouped[pid].push(r);
+      }
+      setAttachmentsByPostId(grouped);
+    } catch {
+      // ignore
+    }
   };
 
   useEffect(() => {
@@ -396,7 +282,7 @@ const params = useParams();
   const renameSelectedSection = async () => {
     if (!canManageGuides || !selectedSection) return;
     const current = String(
-      selectedSection?.[COL_SECTION_TITLE] ?? selectedSection?.title ?? selectedSection?.name ?? ""
+      (selectedSection as any)?.[COL_SECTION_TITLE] ?? (selectedSection as any)?.title ?? (selectedSection as any)?.name ?? ""
     );
     const next = window.prompt("Rename section:", current);
     if (!next) return;
@@ -408,7 +294,7 @@ const params = useParams();
     const patch: AnyRow = {};
     patch[COL_SECTION_TITLE] = title;
 
-    const { error } = await supabase.from(TABLE_SECTIONS).update(patch).eq("id", selectedSection.id);
+    const { error } = await supabase.from(TABLE_SECTIONS).update(patch).eq("id", (selectedSection as any).id);
     if (error) {
       setErr(error.message);
       return;
@@ -425,7 +311,7 @@ const params = useParams();
     const patch: AnyRow = {};
     patch[COL_SECTION_READONLY] = !isSelectedReadOnly;
 
-    const { error } = await supabase.from(TABLE_SECTIONS).update(patch).eq("id", selectedSection.id);
+    const { error } = await supabase.from(TABLE_SECTIONS).update(patch).eq("id", (selectedSection as any).id);
     if (error) {
       setErr(error.message);
       return;
@@ -440,9 +326,8 @@ const params = useParams();
 
     setErr(null);
 
-    // Best-effort: delete posts first (and images if your schema requires)
-    await supabase.from(TABLE_POSTS).delete().eq(COL_SECTION_ID_IN_POSTS, selectedSection.id);
-    const { error } = await supabase.from(TABLE_SECTIONS).delete().eq("id", selectedSection.id);
+    await supabase.from(TABLE_POSTS).delete().eq(COL_SECTION_ID_IN_POSTS, (selectedSection as any).id);
+    const { error } = await supabase.from(TABLE_SECTIONS).delete().eq("id", (selectedSection as any).id);
     if (error) {
       setErr(error.message);
       return;
@@ -450,6 +335,7 @@ const params = useParams();
 
     setSelectedSectionId(null);
     setPosts([]);
+    setAttachmentsByPostId({});
     await loadSections();
   };
 
@@ -473,7 +359,7 @@ const params = useParams();
       return;
     }
 
-    // Optional image upload
+    // Upload images (store PATH in DB, not public URL — then UI can sign it)
     if (data?.id && uploadFiles.length > 0) {
       for (const f of uploadFiles) {
         try {
@@ -483,19 +369,13 @@ const params = useParams();
           const up = await supabase.storage.from(STORAGE_BUCKET).upload(path, f, { upsert: false });
           if (up.error) throw up.error;
 
-          const pub = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-          const url = pub?.data?.publicUrl;
+          const imgRow: AnyRow = {};
+          imgRow[COL_IMG_POST_ID] = data.id;
+          imgRow[COL_IMG_URL] = path; // <— store path, not public url
 
-          if (url) {
-            const imgRow: AnyRow = {};
-            imgRow[COL_IMG_POST_ID] = data.id;
-            imgRow[COL_IMG_URL] = url;
-
-            // If images table doesn't exist / RLS blocks it, this will error—keep going.
-            await supabase.from(TABLE_IMAGES).insert(imgRow);
-          }
-        } catch (e) {
-          // ignore upload errors per-file; keep post
+          await supabase.from(TABLE_IMAGES).insert(imgRow);
+        } catch {
+          // ignore per-file upload errors
         }
       }
     }
@@ -527,7 +407,6 @@ const params = useParams();
     if (!canManageGuides || !post?.id) return;
     if (!window.confirm("Delete this post?")) return;
 
-    // Best-effort: delete images rows first
     try { await supabase.from(TABLE_IMAGES).delete().eq(COL_IMG_POST_ID, post.id); } catch {}
 
     const { error } = await supabase.from(TABLE_POSTS).delete().eq("id", post.id);
@@ -563,9 +442,7 @@ const params = useParams();
         <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <b>Sections</b>
-            <span style={{ opacity: 0.7, fontSize: 12 }}>
-              {canManageGuides ? "Manage" : "Read"}
-            </span>
+            <span style={{ opacity: 0.7, fontSize: 12 }}>{canManageGuides ? "Manage" : "Read"}</span>
           </div>
 
           {canManageGuides ? (
@@ -618,7 +495,7 @@ const params = useParams();
             <div>
               <b>
                 {selectedSection
-                  ? String(selectedSection?.[COL_SECTION_TITLE] ?? selectedSection?.title ?? selectedSection?.name ?? "Section")
+                  ? String((selectedSection as any)?.[COL_SECTION_TITLE] ?? (selectedSection as any)?.title ?? (selectedSection as any)?.name ?? "Section")
                   : "Select a section"}
               </b>
               {selectedSection ? (
@@ -651,43 +528,31 @@ const params = useParams();
                 {(posts ?? []).map((p: any) => {
                   const id = String(p?.id);
                   const body = String(p?.[COL_POST_BODY] ?? p?.content ?? p?.body ?? "");
+                  const imgs = attachmentsByPostId[id] ?? [];
+
                   return (
                     <div
                       key={id}
                       style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}
                     >
-        {/* --- BEGIN GUIDES MANAGE UI V2 --- */}
-        {canManageGuidesV2 && selectedGuideSectionV2 && (
-          <div style={{ border: '1px solid rgba(255,255,255,0.12)', padding: 12, borderRadius: 8, marginBottom: 12 }}>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <strong>Manage Section:</strong>
-              <button onClick={renameSelectedGuideSectionV2}>Rename</button>
-              <button onClick={toggleSelectedGuideSectionReadOnlyV2}>
-                {selectedGuideSectionV2.readonly ? 'Make Discussion' : 'Make Read-only'}
-              </button>
-              <button onClick={deleteSelectedGuideSectionV2} style={{ color: 'crimson' }}>Delete</button>
-            </div>
-          </div>
-        )}
-
-        {canManageGuidesV2 && selectedGuideSectionV2 && (
-          <details style={{ marginBottom: 12 }}>
-            <summary style={{ cursor: 'pointer' }}>Manage Posts</summary>
-            <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-              {sectionPostsV2.map((p: any) => (
-                <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {String(p?.body ?? p?.content ?? p?.text ?? '').slice(0, 90)}
-                  </span>
-                  <button onClick={() => editGuidePostV2(p)}>Edit</button>
-                  <button onClick={() => deleteGuidePostV2(p)} style={{ color: 'crimson' }}>Delete</button>
-                </div>
-              ))}
-            </div>
-          </details>
-        )}
-        {/* --- END GUIDES MANAGE UI V2 --- */}
                       <div style={{ whiteSpace: "pre-wrap" }}>{body}</div>
+
+                      {imgs.length > 0 ? (
+                        <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                          {imgs.map((att: any, idx: number) => {
+                            const path = String(att?.[COL_IMG_URL] ?? att?.url ?? att?.path ?? "").trim();
+                            return (
+                              <GuideImage
+                                key={`${id}-${idx}`}
+                                bucket={STORAGE_BUCKET}
+                                path={path}
+                                alt="Guide attachment"
+                                style={{ maxWidth: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.10)" }}
+                              />
+                            );
+                          })}
+                        </div>
+                      ) : null}
 
                       {canManageGuides ? (
                         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
@@ -719,32 +584,23 @@ const params = useParams();
                   style={{ width: "100%", padding: 10, borderRadius: 12 }}
                 />
 
-                {canManageGuides ? (
-                  <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  {canManageGuides ? (
                     <input
                       type="file"
                       multiple
                       onChange={(e) => setUploadFiles(Array.from(e.target.files ?? []))}
                     />
-                    <button
-                      onClick={createPost}
-                      disabled={!newPostBody.trim() || (!selectedSectionId)}
-                      style={{ padding: "8px 12px", borderRadius: 10 }}
-                    >
-                      Post
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
-                    <button
-                      onClick={createPost}
-                      disabled={!newPostBody.trim() || (isSelectedReadOnly && !canManageGuides) || (!selectedSectionId)}
-                      style={{ padding: "8px 12px", borderRadius: 10 }}
-                    >
-                      Post
-                    </button>
-                  </div>
-                )}
+                  ) : <span />}
+
+                  <button
+                    onClick={createPost}
+                    disabled={!newPostBody.trim() || (!selectedSectionId) || (isSelectedReadOnly && !canManageGuides)}
+                    style={{ padding: "8px 12px", borderRadius: 10 }}
+                  >
+                    Post
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -753,5 +609,3 @@ const params = useParams();
     </div>
   );
 }
-
-
