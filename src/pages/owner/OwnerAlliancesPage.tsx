@@ -71,34 +71,12 @@ export default function OwnerAlliancesPage() {
     if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
 
     // try with enabled, fallback without enabled
-// --- BEGIN STATE_ID INT FIX ---
-const __stateIdCandidate: any = ;
-const __stateIdParsed = (typeof __stateIdCandidate === 'number')
-  ? __stateIdCandidate
-  : (typeof __stateIdCandidate === 'string' && /^[0-9]+$/.test(__stateIdCandidate.trim()))
-    ? parseInt(__stateIdCandidate.trim(), 10)
-    : null;
 
-let stateIdToUse: number | null = __stateIdParsed;
-if (!stateIdToUse) {
-  const { data: __st, error: __stErr } = await supabase
-    .from('states')
-    .select('id')
-    .order('id', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (__stErr) throw __stErr;
-  stateIdToUse = (__st as any)?.id ?? null;
-}
-if (!stateIdToUse) throw new Error('No state found in states table');
-// --- END STATE_ID INT FIX ---
-
-    const resA = await supabase.from("alliances").insert({ code, name, enabled: newEnabled });
-    state_id: 1,
+    const resA = await supabase.from("alliances").insert({ code, name, state_id: STATE_ID, enabled: newEnabled });
     if (resA.error) {
       const msg = (resA.error.message || "").toLowerCase();
       if (msg.includes("enabled")) {
-        const resB = await supabase.from("alliances").insert({ code, name });
+        const resB = await supabase.from("alliances").insert({ code, name, state_id: STATE_ID });
         if (resB.error) {
           console.error(resB.error);
           alert(resB.error.message);
@@ -234,4 +212,3 @@ if (!stateIdToUse) throw new Error('No state found in states table');
     </div>
   );
 }
-state_id: stateIdToUse,
