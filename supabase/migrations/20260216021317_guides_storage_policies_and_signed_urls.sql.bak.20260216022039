@@ -1,0 +1,97 @@
+-- Guides images must be readable to show in UI.
+-- Path convention assumed: <ALLIANCE_CODE>/<section_id>/<filename>
+
+-- Ensure guides bucket exists (private bucket; reads controlled by RLS policies below)
+insert into storage.buckets (id, name, public)
+values ('guides', 'guides', false)
+on conflict (id) do update
+set name = excluded.name;
+
+-- Make sure RLS is on (safe)
+alter table storage.objects enable row level security;
+
+do $$
+begin
+  -- READ: alliance members + app admins can view images in the guides bucket
+  begin
+    create policy guides_objects_select
+    on storage.objects
+    for select
+    using (
+      bucket_id = 'guides'
+      and (
+        public.is_app_admin(auth.uid())
+        or public.sa_is_alliance_member(upper(split_part(name, '/', 1)))
+      )
+    );
+  exception when duplicate_object then
+    null;
+  end;
+
+  -- WRITE: owner/r5/r4 + app admins can upload
+  begin
+    create policy guides_objects_insert
+    on storage.objects
+    for insert
+    with check (
+      bucket_id = 'guides'
+      and (
+        public.is_app_admin(auth.uid())
+        or public.sa_is_alliance_role(
+          upper(split_part(name, '/', 1)),
+          array['owner','r5','r4']
+        )
+      )
+    );
+  exception when duplicate_object then
+    null;
+  end;
+
+  -- UPDATE: owner/r5/r4 + app admins can modify
+  begin
+    create policy guides_objects_update
+    on storage.objects
+    for update
+    using (
+      bucket_id = 'guides'
+      and (
+        public.is_app_admin(auth.uid())
+        or public.sa_is_alliance_role(
+          upper(split_part(name, '/', 1)),
+          array['owner','r5','r4']
+        )
+      )
+    )
+    with check (
+      bucket_id = 'guides'
+      and (
+        public.is_app_admin(auth.uid())
+        or public.sa_is_alliance_role(
+          upper(split_part(name, '/', 1)),
+          array['owner','r5','r4']
+        )
+      )
+    );
+  exception when duplicate_object then
+    null;
+  end;
+
+  -- DELETE: owner/r5/r4 + app admins can delete
+  begin
+    create policy guides_objects_delete
+    on storage.objects
+    for delete
+    using (
+      bucket_id = 'guides'
+      and (
+        public.is_app_admin(auth.uid())
+        or public.sa_is_alliance_role(
+          upper(split_part(name, '/', 1)),
+          array['owner','r5','r4']
+        )
+      )
+    );
+  exception when duplicate_object then
+    null;
+  end;
+end $$;
