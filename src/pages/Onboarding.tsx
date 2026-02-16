@@ -10,6 +10,65 @@ type Alliance = {
 const RANKS = ["R1", "R2", "R3", "R4", "R5"];
 
 export default function Onboarding() {
+  // --- BEGIN AUTO-REDIRECT IF APPROVED ---
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data: userRes } = await supabase.auth.getUser();
+        const uid = userRes?.user?.id;
+        if (!uid) return;
+
+        let playerId: string | null = null;
+
+        // 1) player_auth_links -> player_id
+        {
+          const { data, error } = await supabase
+            .from("player_auth_links")
+            .select("player_id")
+            .eq("user_id", uid)
+            .maybeSingle();
+
+          if (!error && data?.player_id) playerId = data.player_id;
+        }
+
+        // 2) fallback: players.auth_user_id -> id
+        if (!playerId) {
+          const { data, error } = await supabase
+            .from("players")
+            .select("id")
+            .eq("auth_user_id", uid)
+            .maybeSingle();
+
+          if (!error && data?.id) playerId = data.id;
+        }
+
+        if (!playerId) return;
+
+        // 3) if assigned to at least 1 alliance -> they are past onboarding
+        const { data: pa, error: paErr } = await supabase
+          .from("player_alliances")
+          .select("alliance_code")
+          .eq("player_id", playerId)
+          .limit(1);
+
+        if (!paErr && pa && pa.length > 0 && !cancelled) {
+          navigate("/dashboard", { replace: true });
+        }
+      } catch {
+        // ignore; onboarding continues normally
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
+  // --- END AUTO-REDIRECT IF APPROVED ---
+
   // --- BEGIN AUTO-REDIRECT: SKIP ONBOARDING IF APPROVED+ASSIGNED ---
   useEffect(() => {
     let cancelled = false;
@@ -203,4 +262,5 @@ export default function Onboarding() {
     </div>
   );
 }
+
 
