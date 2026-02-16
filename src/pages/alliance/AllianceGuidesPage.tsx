@@ -1,713 +1,510 @@
 import { useEffect, useMemo, useState } from "react";
-
-{canManageGuides && selectedGuideSection ? (
-  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-    <button onClick={renameSelectedGuideSection}>Rename Section</button>
-    <button onClick={toggleSelectedGuideSectionReadOnly}>
-      {selectedGuideSection.readonly ? "Set Discussion" : "Set Read-only"}
-    </button>
-    <button onClick={deleteSelectedGuideSection}>Delete Section</button>
-  </div>
-) : null}
-
-{canManageGuides && Array.isArray(posts) && posts.length > 0 ? (
-  <details style={{ marginBottom: 12 }}>
-    <summary style={{ cursor: "pointer" }}>Manage posts</summary>
-    <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-      {posts.map((p: any) => (
-        <div
-          key={p.id}
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            justifyContent: "space-between",
-            border: "1px solid rgba(255,255,255,0.14)",
-            padding: 8,
-            borderRadius: 8,
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>{String(p.created_at ?? "")}</div>
-            <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {String(
-                p.body ?? p.body ?? p.content ?? p.text ?? p.message ?? ""
-              )}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button onClick={() => editGuidePost(p)}>Edit</button>
-            <button onClick={() => deleteGuidePost(p)}>Delete</button>
-          </div>
-        </div>
-      ))}
-    </div>
-  </details>
-) : null}
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 
-type Section = {
-  id: string;
-  alliance_code: string;
-  title: string;
-  description?: string | null;
-  mode: "readonly" | "discussion";
-  created_at?: string | null;
-  updated_at?: string | null;
-};
+const TABLE_SECTIONS = "guide_sections";
+const TABLE_POSTS = "guide_posts";
+const TABLE_IMAGES = "guide_attachments";
+const STORAGE_BUCKET = "alliance-guides";
 
-type Post = {
-  id: string;
-  section_id: string;
-  parent_id?: string | null;
-  body: string;
-  created_at?: string | null;
-};
+// Column names (detected / fallback)
+const COL_ALLIANCE = "alliance_code";
+const COL_SECTION_ID_IN_POSTS = "section_id";
+const COL_SECTION_TITLE = "title";
+const COL_SECTION_READONLY = "readonly";
+const COL_POST_BODY = "body";
+const COL_POST_CREATED_BY = "created_by";
+const COL_IMG_POST_ID = "post_id";
+const COL_IMG_URL = "url";
 
-type Attachment = {
-  id: string;
-  post_id: string;
-  object_path: string;
-  mime_type?: string | null;
-};
+type AnyRow = Record<string, any>;
 
-function getAllianceCodeFromParams(params: Record<string, string | undefined>) {
-  // --- BEGIN GUIDES ADMIN ACTIONS ---
-  // Admin controls for Alliance Guides (Owner/R4/R5). UI-only.
-  // NOTE: These do not change schema. They update/delete using existing tables/columns.
-
-  const canManageGuides =
-    (typeof isAdmin === "boolean" && isAdmin) ||
-    ["owner", "r5", "r4"].includes(String(role ?? "").toLowerCase());
-
-  const selectedGuideSection = (sections as any[])?.find((s) => s?.id === selectedSectionId);
-
-  const renameSelectedGuideSection = async () => {
-    if (!canManageGuides || !selectedGuideSection) return;
-    const current =
-      selectedGuideSection.title ??
-      selectedGuideSection.title ??
-      selectedGuideSection.name ??
-      selectedGuideSection.display_name ??
-      "";
-    const next = window.prompt("Rename section", String(current ?? ""));
-    if (!next) return;
-
-    const { error } = await supabase
-      .from("guide_sections")
-      .update({ title: next })
-      .eq("id", selectedGuideSection.id);
-
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
-    }
-
-    setSections((prev: any[]) =>
-      (prev || []).map((s: any) =>
-        s?.id === selectedGuideSection.id
-          ? { ...s, title: next, title: next, name: next, display_name: next }
-          : s
-      )
-    );
-  };
-
-  const toggleSelectedGuideSectionReadOnly = async () => {
-    if (!canManageGuides || !selectedGuideSection) return;
-    const current = Boolean(selectedGuideSection.readonly);
-    const next = !current;
-
-    const { error } = await supabase
-      .from("guide_sections")
-      .update({ readonly: next })
-      .eq("id", selectedGuideSection.id);
-
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
-    }
-
-    setSections((prev: any[]) =>
-      (prev || []).map((s: any) =>
-        s?.id === selectedGuideSection.id ? { ...s, readonly: next } : s
-      )
-    );
-  };
-
-  const deleteSelectedGuideSection = async () => {
-    if (!canManageGuides || !selectedGuideSection) return;
-    const label =
-      selectedGuideSection.title ??
-      selectedGuideSection.title ??
-      selectedGuideSection.name ??
-      selectedGuideSection.display_name ??
-      "(section)";
-
-    if (!window.confirm(`Delete section "${label}"?\n\nThis will remove its posts too.`)) return;
-
-    const { error } = await supabase
-      .from("guide_sections")
-      .delete()
-      .eq("id", selectedGuideSection.id);
-
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
-    }
-
-    setSections((prev: any[]) => (prev || []).filter((s: any) => s?.id !== selectedGuideSection.id));
-    setPosts((prev: any[]) =>
-      (prev || []).filter((p: any) => {
-        const sid = p?.section_id ?? p?.sectionId;
-        return sid !== selectedGuideSection.id;
-      })
-    );
-    setSelectedSectionId(null as any);
-  };
-
-  const editGuidePost = async (post: any) => {
-    if (!canManageGuides || !post?.id) return;
-    const current =
-      post.body ??
-      post.body ??
-      post.content ??
-      post.text ??
-      post.message ??
-      "";
-    const next = window.prompt("Edit post", String(current ?? ""));
-    if (next === null) return;
-
-    const { error } = await supabase
-      .from("guide_posts")
-      .update({ body: next })
-      .eq("id", post.id);
-
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
-    }
-
-    setPosts((prev: any[]) =>
-      (prev || []).map((p: any) =>
-        p?.id === post.id
-          ? { ...p, body: next, body: next, content: next, text: next, message: next }
-          : p
-      )
-    );
-  };
-
-  const deleteGuidePost = async (post: any) => {
-    if (!canManageGuides || !post?.id) return;
-    if (!window.confirm("Delete this post?")) return;
-
-    const { error } = await supabase.from("guide_posts").delete().eq("id", post.id);
-
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
-    }
-
-    setPosts((prev: any[]) => (prev || []).filter((p: any) => p?.id !== post.id));
-  };
-  // --- END GUIDES ADMIN ACTIONS ---return (params.code || params.allianceCode || params.tag || (Object.values(params)[0] ?? "") || "").toString();}
-
-function useQuery() {
-  const { search } = useLocation();
-  return useMemo(() => new URLSearchParams(search), [search]);
-}
-
-async function isAppAdmin(userId: string) {
-  try {
-    const { data, error } = await supabase.rpc("is_app_admin" as any, { uid: userId } as any);
-    if (!error) return !!data;
-  } catch {}
-  try {
-    const { data } = await supabase.from("app_admins").select("user_id").eq("user_id", userId).maybeSingle();
-    return !!data;
-  } catch {}
-  return false;
-}
-
-async function getPlayerId(userId: string): Promise<string | null> {
-  try {
-    const { data } = await supabase.from("players").select("id").eq("auth_user_id", userId).maybeSingle();
-    if (data?.id) return data.id as string;
-  } catch {}
-  try {
-    const { data } = await supabase.from("player_auth_links").select("player_id").eq("user_id", userId).maybeSingle();
-    if (data?.player_id) return data.player_id as string;
-  } catch {}
-  return null;
-}
-
-async function getAllianceRole(userId: string, allianceCode: string): Promise<string | null> {
-  const pid = await getPlayerId(userId);
-  if (!pid) return null;
-  try {
-    const { data } = await supabase
-      .from("player_alliances")
-      .select("role")
-      .eq("player_id", pid)
-      .eq("alliance_code", allianceCode.toUpperCase())
-      .maybeSingle();
-    return (data?.role ?? null) as any;
-  {/* --- BEGIN GUIDES MANAGE UI --- */}
-  {canManageGuides && selectedGuideSection ? (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-      <button onClick={renameSelectedGuideSection}>Rename Section</button>
-      <button onClick={toggleSelectedGuideSectionReadOnly}>
-        {(selectedGuideSection?.readonly ?? selectedGuideSection?.is_read_only ?? selectedGuideSection?.read_only)
-          ? "Set Discussion"
-          : "Set Read-only"}
-      </button>
-      <button onClick={deleteSelectedGuideSection}>Delete Section</button>
-    </div>
-  ) : null}
-
-  {canManageGuides && Array.isArray(posts) && posts.length > 0 ? (
-    <details style={{ marginBottom: 12 }}>
-      <summary style={{ cursor: "pointer" }}>Manage posts</summary>
-      <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-        {posts.map((p: any) => (
-          <div
-            key={p.id}
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              justifyContent: "space-between",
-              border: "1px solid rgba(255,255,255,0.14)",
-              padding: 8,
-              borderRadius: 8,
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>{String(p.created_at ?? "")}</div>
-              <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {String(p.content ?? p.body ?? p.text ?? p.message ?? "")}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-              <button onClick={() => editGuidePost(p)}>Edit</button>
-              <button onClick={() => deleteGuidePost(p)}>Delete</button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </details>
-  ) : null}
-  {/* --- END GUIDES MANAGE UI --- */}
-  } catch {
-    return null;
-  }
-}
-
-async function signedUrl(path: string) {
-  try {
-    const { data, error } = await supabase.storage.from("alliance-guides").createSignedUrl(path, 60 * 60);
-    if (error) return null;
-    return data?.signedUrl ?? null;
-  } catch {
-    return null;
-  }
+function upperCode(v: any) {
+  return String(v ?? "").trim().toUpperCase();
 }
 
 export default function AllianceGuidesPage() {
   const params = useParams();
-  const q = useQuery();
-  const allianceCode = useMemo(() => getAllianceCodeFromParams(params as any).toUpperCase().trim(), [params]);
-
-  const [sections, setSections] = useState<Section[]>([]);
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(q.get("section"));
-  const [selectedSection, setSelectedSection] = useState<Section | null>(null);
-
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [attachments, setAttachments] = useState<Record<string, { url: string, path: string }[]>>({});
+  const raw = (params as any)?.allianceCode ?? (params as any)?.code ?? (params as any)?.alliance ?? (params as any)?.tag ?? (params as any)?.id ?? "";
+  const allianceCode = useMemo(() => upperCode(raw), [raw]);
 
   const [loading, setLoading] = useState(true);
-  const [canManage, setCanManage] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-  const [newTitle, setNewTitle] = useState("");
-  const [newDesc, setNewDesc] = useState("");
-  const [newMode, setNewMode] = useState<"readonly"|"discussion">("discussion");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isAppAdmin, setIsAppAdmin] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
 
-  const [threadBody, setThreadBody] = useState("");
-  const [replyBody, setReplyBody] = useState<Record<string,string>>({});
+  const canManageGuides = isAppAdmin || ["owner", "r5", "r4"].includes(String(role ?? "").toLowerCase());
 
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadForPostId, setUploadForPostId] = useState<string | null>(null);
+  const [sections, setSections] = useState<AnyRow[]>([]);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
 
-  const loadPerms = async () => {
-    try {
-      const { data: u } = await supabase.auth.getUser();
-      const uid = u?.user?.id ?? null;
-      if (!uid) { setCanManage(false); return; }
-      const admin = await isAppAdmin(uid);
-      if (admin) { setCanManage(true); return; }
-      const role = (await getAllianceRole(uid, allianceCode))?.toLowerCase() ?? "";
-      setCanManage(role === "owner" || role === "r5" || role === "r4");
-    } catch {
-      setCanManage(false);
-    }
-  };
+  const [posts, setPosts] = useState<AnyRow[]>([]);
+  const [newSectionTitle, setNewSectionTitle] = useState("");
+  const [newPostBody, setNewPostBody] = useState("");
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+
+  const selectedSection = useMemo(
+    () => (sections || []).find((s: any) => String(s?.id) === String(selectedSectionId)),
+    [sections, selectedSectionId]
+  );
+
+  const isSelectedReadOnly = Boolean(
+    selectedSection?.[COL_SECTION_READONLY] ??
+      selectedSection?.readonly ??
+      selectedSection?.read_only ??
+      selectedSection?.is_readonly ??
+      false
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      setErr(null);
+
+      try {
+        const { data: u } = await supabase.auth.getUser();
+        const uid = u?.user?.id ?? null;
+        if (cancelled) return;
+        setUserId(uid);
+
+        // Best-effort: app admin check (works if your RPC is is_app_admin())
+        try {
+          const { data } = await supabase.rpc("is_app_admin");
+          if (typeof data === "boolean") setIsAppAdmin(data);
+        } catch {
+          // ignore
+        }
+
+        // Determine alliance role from player_alliances via players(auth_user_id)
+        if (uid && allianceCode) {
+          const { data: p, error: pErr } = await supabase
+            .from("players")
+            .select("id")
+            .eq("auth_user_id", uid)
+            .maybeSingle();
+
+          if (!pErr && p?.id) {
+            const { data: pa, error: paErr } = await supabase
+              .from("player_alliances")
+              .select("role")
+              .eq("player_id", p.id)
+              .eq("alliance_code", allianceCode)
+              .maybeSingle();
+
+            if (!paErr) setRole(pa?.role ?? null);
+          }
+        }
+      } catch (e: any) {
+        setErr(e?.message ?? String(e));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [allianceCode]);
 
   const loadSections = async () => {
+    setErr(null);
+    if (!allianceCode) return;
+
     const { data, error } = await supabase
-      .from("guide_sections")
-      .select("id, alliance_code, title, description, mode, created_at, updated_at")
-      .eq("alliance_code", allianceCode)
-      .order("updated_at", { ascending: false });
-    if (error) throw error;
+      .from(TABLE_SECTIONS)
+      .select("*")
+      .eq(COL_ALLIANCE, allianceCode)
+      .order("created_at", { ascending: true });
 
-    const list = (data as any) ?? [];
-    setSections(list);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
 
-    const current = selectedSectionId || q.get("section");
-    if (!current && list[0]?.id) setSelectedSectionId(list[0].id);
+    const rows = (data ?? []) as AnyRow[];
+    setSections(rows);
+
+    if (!selectedSectionId && rows.length > 0) {
+      setSelectedSectionId(String(rows[0]?.id));
+    }
   };
 
-  const loadPostsForSection = async (sectionId: string) => {
-    const { data: sData } = await supabase
-      .from("guide_sections")
-      .select("id, alliance_code, title, description, mode, created_at, updated_at")
-      .eq("id", sectionId)
-      .maybeSingle();
-    setSelectedSection((sData as any) ?? null);
+  const loadPosts = async (sectionId: string) => {
+    setErr(null);
+    if (!sectionId) return;
 
     const { data, error } = await supabase
-      .from("guide_posts")
-      .select("id, section_id, parent_id, body, created_at")
-      .eq("section_id", sectionId)
+      .from(TABLE_POSTS)
+      .select("*")
+      .eq(COL_SECTION_ID_IN_POSTS, sectionId)
       .order("created_at", { ascending: true });
-    if (error) throw error;
 
-    const p = (data as any) ?? [];
-    setPosts(p);
-
-    const ids = p.map((x: any) => x.id).filter(Boolean);
-    if (ids.length === 0) { setAttachments({}); return; }
-
-    const { data: aData } = await supabase
-      .from("guide_attachments")
-      .select("id, post_id, object_path, mime_type")
-      .in("post_id", ids);
-
-    const grouped: Record<string, { url: string, path: string }[]> = {};
-    for (const a of (aData as any[]) ?? []) {
-      const url = await signedUrl(a.object_path);
-      if (!url) continue;
-      grouped[a.post_id] = grouped[a.post_id] ?? [];
-      grouped[a.post_id].push({ url, path: a.object_path });
+    if (error) {
+      setErr(error.message);
+      return;
     }
-    setAttachments(grouped);
+
+    setPosts((data ?? []) as AnyRow[]);
   };
 
   useEffect(() => {
     if (!allianceCode) return;
-    (async () => {
-      setLoading(true);
-      try {
-        await loadPerms();
-        await loadSections();
-        if (selectedSectionId) await loadPostsForSection(selectedSectionId);
-      } finally {
-        setLoading(false);
-      }
-    })();
-
-    const ch1 = supabase
-      .channel("guides_" + allianceCode)
-      .on("postgres_changes", { event: "*", schema: "public", table: "guide_sections", filter: "alliance_code=eq." + allianceCode }, () => loadSections())
-      .subscribe();
-
-    return () => { supabase.removeChannel(ch1); };
+    loadSections();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allianceCode]);
 
   useEffect(() => {
     if (!selectedSectionId) return;
-    loadPostsForSection(selectedSectionId);
-
-    const ch = supabase
-      .channel("posts_" + selectedSectionId)
-      .on("postgres_changes", { event: "*", schema: "public", table: "guide_posts", filter: "section_id=eq." + selectedSectionId }, () => loadPostsForSection(selectedSectionId))
-      .subscribe();
-
-    return () => { supabase.removeChannel(ch); };
+    loadPosts(selectedSectionId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSectionId]);
 
   const createSection = async () => {
-    if (!newTitle.trim()) return;
-    try {
-      const { error } = await supabase.from("guide_sections").insert({
-        alliance_code: allianceCode,
-        title: newTitle.trim(),
-        description: newDesc.trim() || null,
-        mode: newMode,
-        updated_at: new Date().toISOString(),
-      } as any);
-      if (error) throw error;
-      setNewTitle(""); setNewDesc(""); setNewMode("discussion");
-      await loadSections();
-    } catch (e) {
-      console.error(e);
-      alert("Create section failed (permissions or DB).");
+    if (!canManageGuides) return;
+    const title = newSectionTitle.trim();
+    if (!title) return;
+
+    setErr(null);
+
+    const payload: AnyRow = {};
+    payload[COL_ALLIANCE] = allianceCode;
+    payload[COL_SECTION_TITLE] = title;
+    payload[COL_SECTION_READONLY] = false;
+
+    const { error } = await supabase.from(TABLE_SECTIONS).insert(payload);
+    if (error) {
+      setErr(error.message);
+      return;
     }
+
+    setNewSectionTitle("");
+    await loadSections();
   };
 
-  const updateMode = async (sectionId: string, mode: "readonly"|"discussion") => {
-    try {
-      const { error } = await supabase.from("guide_sections").update({
-        mode,
-        updated_at: new Date().toISOString(),
-      } as any).eq("id", sectionId);
-      if (error) throw error;
-      await loadSections();
-      await loadPostsForSection(sectionId);
-    } catch (e) {
-      console.error(e);
-      alert("Update mode failed (permissions or DB).");
+  const renameSelectedSection = async () => {
+    if (!canManageGuides || !selectedSection) return;
+    const current = String(
+      selectedSection?.[COL_SECTION_TITLE] ?? selectedSection?.title ?? selectedSection?.name ?? ""
+    );
+    const next = window.prompt("Rename section:", current);
+    if (!next) return;
+    const title = next.trim();
+    if (!title) return;
+
+    setErr(null);
+
+    const patch: AnyRow = {};
+    patch[COL_SECTION_TITLE] = title;
+
+    const { error } = await supabase.from(TABLE_SECTIONS).update(patch).eq("id", selectedSection.id);
+    if (error) {
+      setErr(error.message);
+      return;
     }
+
+    await loadSections();
   };
 
-  const createThread = async () => {
-    if (!selectedSectionId || !threadBody.trim()) return;
-    try {
-      const { data, error } = await supabase.from("guide_posts").insert({
-        section_id: selectedSectionId,
-        parent_id: null,
-        body: threadBody.trim(),
-      } as any).select("id").maybeSingle();
-      if (error) throw error;
-      setThreadBody("");
-      if (data?.id) setUploadForPostId(data.id);
-      await loadPostsForSection(selectedSectionId);
-    } catch (e) {
-      console.error(e);
-      alert("Post failed (permissions or DB).");
+  const toggleSelectedSectionReadOnly = async () => {
+    if (!canManageGuides || !selectedSection) return;
+
+    setErr(null);
+
+    const patch: AnyRow = {};
+    patch[COL_SECTION_READONLY] = !isSelectedReadOnly;
+
+    const { error } = await supabase.from(TABLE_SECTIONS).update(patch).eq("id", selectedSection.id);
+    if (error) {
+      setErr(error.message);
+      return;
     }
+
+    await loadSections();
   };
 
-  const createReply = async (parentId: string) => {
+  const deleteSelectedSection = async () => {
+    if (!canManageGuides || !selectedSection) return;
+    if (!window.confirm("Delete this section and all posts inside it?")) return;
+
+    setErr(null);
+
+    // Best-effort: delete posts first (and images if your schema requires)
+    await supabase.from(TABLE_POSTS).delete().eq(COL_SECTION_ID_IN_POSTS, selectedSection.id);
+    const { error } = await supabase.from(TABLE_SECTIONS).delete().eq("id", selectedSection.id);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+
+    setSelectedSectionId(null);
+    setPosts([]);
+    await loadSections();
+  };
+
+  const createPost = async () => {
     if (!selectedSectionId) return;
-    const b = (replyBody[parentId] ?? "").trim();
-    if (!b) return;
-    try {
-      const { data, error } = await supabase.from("guide_posts").insert({
-        section_id: selectedSectionId,
-        parent_id: parentId,
-        body: b,
-      } as any).select("id").maybeSingle();
-      if (error) throw error;
-      setReplyBody((p) => ({ ...p, [parentId]: "" }));
-      if (data?.id) setUploadForPostId(data.id);
-      await loadPostsForSection(selectedSectionId);
-    } catch (e) {
-      console.error(e);
-      alert("Reply failed (permissions or DB).");
+    if (isSelectedReadOnly && !canManageGuides) return;
+
+    const body = newPostBody.trim();
+    if (!body) return;
+
+    setErr(null);
+
+    const payload: AnyRow = {};
+    payload[COL_SECTION_ID_IN_POSTS] = selectedSectionId;
+    payload[COL_POST_BODY] = body;
+    if (userId) payload[COL_POST_CREATED_BY] = userId;
+
+    const { data, error } = await supabase.from(TABLE_POSTS).insert(payload).select("*").maybeSingle();
+    if (error) {
+      setErr(error.message);
+      return;
     }
+
+    // Optional image upload
+    if (data?.id && uploadFiles.length > 0) {
+      for (const f of uploadFiles) {
+        try {
+          const safeName = `${Date.now()}_${f.name}`.replace(/\s+/g, "_");
+          const path = `${allianceCode}/${selectedSectionId}/${data.id}/${safeName}`;
+
+          const up = await supabase.storage.from(STORAGE_BUCKET).upload(path, f, { upsert: false });
+          if (up.error) throw up.error;
+
+          const pub = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+          const url = pub?.data?.publicUrl;
+
+          if (url) {
+            const imgRow: AnyRow = {};
+            imgRow[COL_IMG_POST_ID] = data.id;
+            imgRow[COL_IMG_URL] = url;
+
+            // If images table doesn't exist / RLS blocks it, this will error—keep going.
+            await supabase.from(TABLE_IMAGES).insert(imgRow);
+          }
+        } catch (e) {
+          // ignore upload errors per-file; keep post
+        }
+      }
+    }
+
+    setNewPostBody("");
+    setUploadFiles([]);
+    await loadPosts(selectedSectionId);
   };
 
-  const uploadImage = async () => {
-    if (!uploadFile || !uploadForPostId || !selectedSectionId) return;
-    try {
-      const safeName = uploadFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const uuid = (crypto as any).randomUUID ? crypto.randomUUID() : (Date.now().toString() + "_" + Math.random().toString(16).slice(2));
-      const path = `${allianceCode}/${selectedSectionId}/${uploadForPostId}/${uuid}_${safeName}`;
+  const editPost = async (post: AnyRow) => {
+    if (!canManageGuides || !post?.id) return;
+    const current = String(post?.[COL_POST_BODY] ?? post?.content ?? post?.body ?? "");
+    const next = window.prompt("Edit post:", current);
+    if (next === null) return;
 
-      const { error: upErr } = await supabase.storage.from("alliance-guides").upload(path, uploadFile, { upsert: false, contentType: uploadFile.type });
-      if (upErr) throw upErr;
+    const patch: AnyRow = {};
+    patch[COL_POST_BODY] = next;
 
-      const { error: aErr } = await supabase.from("guide_attachments").insert({
-        post_id: uploadForPostId,
-        object_path: path,
-        mime_type: uploadFile.type,
-      } as any);
-      if (aErr) throw aErr;
-
-      setUploadFile(null);
-      setUploadForPostId(null);
-      await loadPostsForSection(selectedSectionId);
-    } catch (e) {
-      console.error(e);
-      alert("Upload failed (bucket/policies/permissions).");
+    const { error } = await supabase.from(TABLE_POSTS).update(patch).eq("id", post.id);
+    if (error) {
+      setErr(error.message);
+      return;
     }
+
+    if (selectedSectionId) await loadPosts(selectedSectionId);
   };
 
-  const roots = posts.filter((p) => !p.parent_id);
-  const repliesByParent: Record<string, Post[]> = {};
-  for (const p of posts) {
-    if (p.parent_id) {
-      repliesByParent[p.parent_id] = repliesByParent[p.parent_id] ?? [];
-      repliesByParent[p.parent_id].push(p);
+  const deletePost = async (post: AnyRow) => {
+    if (!canManageGuides || !post?.id) return;
+    if (!window.confirm("Delete this post?")) return;
+
+    // Best-effort: delete images rows first
+    try { await supabase.from(TABLE_IMAGES).delete().eq(COL_IMG_POST_ID, post.id); } catch {}
+
+    const { error } = await supabase.from(TABLE_POSTS).delete().eq("id", post.id);
+    if (error) {
+      setErr(error.message);
+      return;
     }
+
+    if (selectedSectionId) await loadPosts(selectedSectionId);
+  };
+
+  if (loading) {
+    return <div style={{ padding: 16 }}>Loading Guides…</div>;
   }
 
   return (
-    <div style={{ padding: 18, maxWidth: 1200, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>📓 Guides</h2>
-        <a href={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ textDecoration: "none" }}>← Back</a>
+    <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <h2 style={{ margin: 0 }}>📓 Alliance Guides</h2>
+        <Link to={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ opacity: 0.85 }}>
+          ← Back to Dashboard
+        </Link>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 12, marginTop: 14 }}>
-        <div style={{ border: "1px solid rgba(255,255,255,0.18)", borderRadius: 14, padding: 12 }}>
-          <div style={{ fontWeight: 900, marginBottom: 10 }}>Sections</div>
-          <div style={{ display: "grid", gap: 8 }}>
-            {sections.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => setSelectedSectionId(s.id)}
-                style={{
-                  textAlign: "left",
-                  padding: 10,
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: selectedSectionId === s.id ? "rgba(255,255,255,0.08)" : "transparent",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ fontWeight: 900 }}>{s.title}</div>
-                <div style={{ opacity: 0.75, marginTop: 3 }}>{s.mode === "readonly" ? "🔒 Read-only" : "💬 Discussion"}</div>
-              </button>
-            ))}
+      {err ? (
+        <div style={{ marginTop: 12, padding: 12, border: "1px solid rgba(255,0,0,0.35)", borderRadius: 10 }}>
+          <b>Error:</b> {err}
+        </div>
+      ) : null}
+
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "320px 1fr", gap: 16 }}>
+        {/* LEFT: sections */}
+        <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <b>Sections</b>
+            <span style={{ opacity: 0.7, fontSize: 12 }}>
+              {canManageGuides ? "Manage" : "Read"}
+            </span>
           </div>
 
-          {canManage ? (
-            <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 12 }}>
-              <div style={{ fontWeight: 900, marginBottom: 8 }}>New section</div>
-              <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Title" style={{ width: "100%", padding: 10, borderRadius: 10, marginBottom: 8 }} />
-              <textarea value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Description (optional)" rows={3} style={{ width: "100%", padding: 10, borderRadius: 10, marginBottom: 8 }} />
-              <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
-                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input type="radio" checked={newMode === "discussion"} onChange={() => setNewMode("discussion")} />
-                  Discussion
-                </label>
-                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input type="radio" checked={newMode === "readonly"} onChange={() => setNewMode("readonly")} />
-                  Read-only
-                </label>
-              </div>
-              <button onClick={createSection} disabled={!newTitle.trim()} style={{ padding: "10px 12px", borderRadius: 10 }}>
-                Create section
+          {canManageGuides ? (
+            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+              <input
+                value={newSectionTitle}
+                onChange={(e) => setNewSectionTitle(e.target.value)}
+                placeholder="New section title…"
+                style={{ flex: 1, padding: 8, borderRadius: 10 }}
+              />
+              <button onClick={createSection} style={{ padding: "8px 10px", borderRadius: 10 }}>
+                Add
               </button>
             </div>
           ) : null}
+
+          <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
+            {(sections ?? []).map((s: any) => {
+              const id = String(s?.id);
+              const title = String(s?.[COL_SECTION_TITLE] ?? s?.title ?? s?.name ?? "Untitled");
+              const ro = Boolean(s?.[COL_SECTION_READONLY] ?? s?.readonly ?? s?.read_only ?? s?.is_readonly ?? false);
+
+              const active = id === String(selectedSectionId);
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSelectedSectionId(id)}
+                  style={{
+                    textAlign: "left",
+                    padding: "10px 10px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: active ? "rgba(255,255,255,0.06)" : "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                    <span style={{ fontWeight: 600 }}>{title}</span>
+                    <span style={{ opacity: 0.7, fontSize: 12 }}>{ro ? "Read-only" : "Discussion"}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div style={{ border: "1px solid rgba(255,255,255,0.18)", borderRadius: 14, padding: 12 }}>
-          {!selectedSection ? (
-            <div style={{ padding: 10, opacity: 0.85 }}>Select a section…</div>
-          ) : (
-            <>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-                <div>
-                  <div style={{ fontWeight: 900, fontSize: 18 }}>{selectedSection.title}</div>
-                  {selectedSection.description ? <div style={{ opacity: 0.85, marginTop: 6 }}>{selectedSection.description}</div> : null}
-                  <div style={{ opacity: 0.7, marginTop: 8 }}>
-                    Mode: {selectedSection.mode === "readonly" ? "🔒 Read-only" : "💬 Discussion"}
-                  </div>
-                </div>
-
-                {canManage ? (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button onClick={() => updateMode(selectedSection.id, "discussion")} style={{ padding: "8px 10px", borderRadius: 10 }}>
-                      Set Discussion
-                    </button>
-                    <button onClick={() => updateMode(selectedSection.id, "readonly")} style={{ padding: "8px 10px", borderRadius: 10 }}>
-                      Set Read-only
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-
-              <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 12 }}>
-                <div style={{ fontWeight: 900, marginBottom: 8 }}>New thread</div>
-                <textarea value={threadBody} onChange={(e) => setThreadBody(e.target.value)} rows={4} placeholder="Write a new topic…" style={{ width: "100%", padding: 10, borderRadius: 10, marginBottom: 8 }} />
-                <button onClick={createThread} disabled={!threadBody.trim()} style={{ padding: "10px 12px", borderRadius: 10 }}>
-                  Post
-                </button>
-              </div>
-
-              {uploadForPostId ? (
-                <div style={{ marginTop: 12, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-                  <div style={{ fontWeight: 900, marginBottom: 8 }}>Upload image (optional)</div>
-                  <input type="file" accept="image/*" onChange={(e) => setUploadFile((e.target.files?.[0] ?? null) as any)} />
-                  <div style={{ marginTop: 10 }}>
-                    <button onClick={uploadImage} disabled={!uploadFile} style={{ padding: "10px 12px", borderRadius: 10 }}>
-                      Upload
-                    </button>
-                    <button onClick={() => { setUploadFile(null); setUploadForPostId(null); }} style={{ marginLeft: 8, padding: "10px 12px", borderRadius: 10 }}>
-                      Skip
-                    </button>
-                  </div>
+        {/* RIGHT: posts */}
+        <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div>
+              <b>
+                {selectedSection
+                  ? String(selectedSection?.[COL_SECTION_TITLE] ?? selectedSection?.title ?? selectedSection?.name ?? "Section")
+                  : "Select a section"}
+              </b>
+              {selectedSection ? (
+                <div style={{ opacity: 0.7, fontSize: 12 }}>
+                  Mode: {isSelectedReadOnly ? "Read-only" : "Discussion"}
                 </div>
               ) : null}
+            </div>
 
-              <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
-                {loading ? <div style={{ padding: 10 }}>Loading…</div> : null}
+            {selectedSection && canManageGuides ? (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <button onClick={renameSelectedSection} style={{ padding: "8px 10px", borderRadius: 10 }}>
+                  Rename
+                </button>
+                <button onClick={toggleSelectedSectionReadOnly} style={{ padding: "8px 10px", borderRadius: 10 }}>
+                  {isSelectedReadOnly ? "Make Discussion" : "Make Read-only"}
+                </button>
+                <button onClick={deleteSelectedSection} style={{ padding: "8px 10px", borderRadius: 10 }}>
+                  Delete
+                </button>
+              </div>
+            ) : null}
+          </div>
 
-                {roots.length === 0 ? (
-                  <div style={{ padding: 10, opacity: 0.85 }}>No threads yet.</div>
-                ) : (
-                  roots.map((t) => (
-                    <div key={t.id} style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 12 }}>
-                      <div style={{ fontWeight: 900 }}>Thread</div>
-                      <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{t.body}</div>
+          {!selectedSection ? (
+            <div style={{ marginTop: 14, opacity: 0.75 }}>Pick a section on the left.</div>
+          ) : (
+            <>
+              <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+                {(posts ?? []).map((p: any) => {
+                  const id = String(p?.id);
+                  const body = String(p?.[COL_POST_BODY] ?? p?.content ?? p?.body ?? "");
+                  return (
+                    <div
+                      key={id}
+                      style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}
+                    >
+                      <div style={{ whiteSpace: "pre-wrap" }}>{body}</div>
 
-                      {attachments[t.id]?.length ? (
-                        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                          {attachments[t.id].map((a, idx) => (
-                            <a key={idx} href={a.url} target="_blank" rel="noreferrer">
-                              <img src={a.url} style={{ width: 140, height: "auto", borderRadius: 10, border: "1px solid rgba(255,255,255,0.18)" }} />
-                            </a>
-                          ))}
-                        </div>
-                      ) : null}
-
-                      <div style={{ opacity: 0.6, marginTop: 8, fontSize: 12 }}>
-                        {t.created_at ? new Date(t.created_at).toLocaleString() : ""}
-                      </div>
-
-                      <div style={{ marginTop: 10, paddingLeft: 10, borderLeft: "2px solid rgba(255,255,255,0.10)", display: "grid", gap: 10 }}>
-                        {(repliesByParent[t.id] ?? []).map((r) => (
-                          <div key={r.id} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 10 }}>
-                            <div style={{ whiteSpace: "pre-wrap" }}>{r.body}</div>
-                            {attachments[r.id]?.length ? (
-                              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                                {attachments[r.id].map((a, idx) => (
-                                  <a key={idx} href={a.url} target="_blank" rel="noreferrer">
-                                    <img src={a.url} style={{ width: 120, height: "auto", borderRadius: 10, border: "1px solid rgba(255,255,255,0.18)" }} />
-                                  </a>
-                                ))}
-                              </div>
-                            ) : null}
-                          </div>
-                        ))}
-
-                        <div>
-                          <textarea
-                            value={replyBody[t.id] ?? ""}
-                            onChange={(e) => setReplyBody((p) => ({ ...p, [t.id]: e.target.value }))}
-                            rows={2}
-                            placeholder="Reply…"
-                            style={{ width: "100%", padding: 10, borderRadius: 10, marginBottom: 8 }}
-                          />
-                          <button onClick={() => createReply(t.id)} disabled={!(replyBody[t.id] ?? "").trim()} style={{ padding: "10px 12px", borderRadius: 10 }}>
-                            Reply
+                      {canManageGuides ? (
+                        <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                          <button onClick={() => editPost(p)} style={{ padding: "6px 10px", borderRadius: 10 }}>
+                            Edit
+                          </button>
+                          <button onClick={() => deletePost(p)} style={{ padding: "6px 10px", borderRadius: 10 }}>
+                            Delete
                           </button>
                         </div>
-                      </div>
+                      ) : null}
                     </div>
-                  ))
+                  );
+                })}
+              </div>
+
+              {/* New post */}
+              <div style={{ marginTop: 14, borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 12 }}>
+                <div style={{ opacity: 0.85, fontWeight: 600, marginBottom: 6 }}>
+                  {isSelectedReadOnly && !canManageGuides ? "Read-only section" : "New post"}
+                </div>
+
+                <textarea
+                  value={newPostBody}
+                  onChange={(e) => setNewPostBody(e.target.value)}
+                  placeholder={isSelectedReadOnly && !canManageGuides ? "Posting disabled…" : "Write something…"}
+                  disabled={isSelectedReadOnly && !canManageGuides}
+                  rows={4}
+                  style={{ width: "100%", padding: 10, borderRadius: 12 }}
+                />
+
+                {canManageGuides ? (
+                  <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={(e) => setUploadFiles(Array.from(e.target.files ?? []))}
+                    />
+                    <button
+                      onClick={createPost}
+                      disabled={!newPostBody.trim() || (!selectedSectionId)}
+                      style={{ padding: "8px 12px", borderRadius: 10 }}
+                    >
+                      Post
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      onClick={createPost}
+                      disabled={!newPostBody.trim() || (isSelectedReadOnly && !canManageGuides) || (!selectedSectionId)}
+                      style={{ padding: "8px 12px", borderRadius: 10 }}
+                    >
+                      Post
+                    </button>
+                  </div>
                 )}
               </div>
             </>
@@ -717,6 +514,3 @@ export default function AllianceGuidesPage() {
     </div>
   );
 }
-
-
-
