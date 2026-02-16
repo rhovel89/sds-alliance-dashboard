@@ -22,6 +22,80 @@ function normCode(v: string) {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+async function detectAllianceStateIdKind(): Promise<"uuid" | "int" | "unknown"> {
+  const { data, error } = await supabase
+    .from("alliances")
+    .select("state_id")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return "unknown";
+
+  const v: any = (data as any)?.state_id;
+  if (typeof v === "number") return "int";
+  if (typeof v === "string" && UUID_RE.test(v)) return "uuid";
+  return "unknown";
+}
+
+async function resolveStateIdForAlliances(
+  kind: "uuid" | "int" | "unknown"
+): Promise<string | number | null> {
+  // If env is a UUID and we need UUID, use it
+  if (kind === "uuid" && UUID_RE.test(RAW_STATE)) return RAW_STATE;
+
+  const tryByCol = async (col: string) => {
+    const { data, error } = await supabase
+      .from("states")
+      .select("*")
+      .eq(col as any, STATE_CODE)
+      .limit(1);
+
+    if (error) return null;
+    return (data || [])[0] ?? null;
+  };
+
+  // Try likely columns without assuming schema
+  let row: any =
+    (await tryByCol("state_code")) ??
+    (await tryByCol("code")) ??
+    null;
+
+  // Fallback: first row
+  if (!row) {
+    const { data, error } = await supabase.from("states").select("*").limit(1);
+    if (error) throw error;
+    row = (data || [])[0] ?? null;
+  }
+  if (!row) return null;
+
+  if (kind === "uuid") {
+    for (const k of Object.keys(row)) {
+      const val = row[k];
+      if (typeof val === "string" && UUID_RE.test(val)) return val;
+    }
+    return null;
+  }
+
+  if (kind === "int") {
+    for (const k of Object.keys(row)) {
+      const val = row[k];
+      if (typeof val === "number" && Number.isFinite(val)) return val;
+      if (typeof val === "string" && /^[0-9]+$/.test(val.trim())) return parseInt(val.trim(), 10);
+    }
+    if (/^[0-9]+$/.test(RAW_STATE)) return parseInt(RAW_STATE, 10);
+    return null;
+  }
+
+  // unknown: try env numeric first, then uuid
+  if (/^[0-9]+$/.test(RAW_STATE)) return parseInt(RAW_STATE, 10);
+  if (UUID_RE.test(RAW_STATE)) return RAW_STATE;
+  return null;
+}
+
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 let _cachedStateUuid: string | null = null;
 
 async function resolveStateUuid(): Promise<string> {
@@ -292,3 +366,4 @@ export default function OwnerAlliancesPage() {
     </div>
   );
 }
+
