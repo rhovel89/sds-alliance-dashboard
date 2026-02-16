@@ -91,6 +91,20 @@ export default function OwnerDashboardPage() {
   return (
     <div className={styles.page}>
       <h2 className={styles.title}>🧟 Owner Dashboard</h2>
+      <div style={{ marginTop: 12 }}>
+        <a
+          href="/owner/roles"
+          style={{
+            display: "inline-block",
+            padding: "10px 14px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.18)",
+            textDecoration: "none",
+          }}
+        >
+          🛡️ Roles & Permissions
+        </a>
+      </div>
       <div className={styles.subtext}>
         Quick access to requests, approvals, players, alliances, and Discord reminders.
       </div>
