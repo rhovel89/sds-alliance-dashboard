@@ -113,13 +113,9 @@ export default function AppRoutes() {
       <Route path="/owner/roles" element={<OwnerRolesPermissionsV2Page />} />
       <Route path="/dashboard/:code/announcements" element={<AllianceAnnouncementsPage />} />
       <Route path="/dashboard/:code/guides" element={<AllianceGuidesPage />} />
-      <Route path="/dashboard/:allianceCode/announcements" element={<AllianceAnnouncementsPage />} />
-      <Route path="/dashboard/:allianceCode/guides" element={<AllianceGuidesPage />} />
 </Routes>
   );
 }
-
-
 
 
 
