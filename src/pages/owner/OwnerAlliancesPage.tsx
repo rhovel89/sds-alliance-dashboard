@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+const STATE_ID = Number(import.meta.env.VITE_STATE_ID ?? 789);
 
 type AllianceRow = {
   code: string;
@@ -210,3 +211,4 @@ export default function OwnerAlliancesPage() {
     </div>
   );
 }
+
