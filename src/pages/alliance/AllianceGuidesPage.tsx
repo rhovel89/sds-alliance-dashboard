@@ -656,6 +656,37 @@ const params = useParams();
                       key={id}
                       style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}
                     >
+        {/* --- BEGIN GUIDES MANAGE UI V2 --- */}
+        {canManageGuidesV2 && selectedGuideSectionV2 && (
+          <div style={{ border: '1px solid rgba(255,255,255,0.12)', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <strong>Manage Section:</strong>
+              <button onClick={renameSelectedGuideSectionV2}>Rename</button>
+              <button onClick={toggleSelectedGuideSectionReadOnlyV2}>
+                {selectedGuideSectionV2.readonly ? 'Make Discussion' : 'Make Read-only'}
+              </button>
+              <button onClick={deleteSelectedGuideSectionV2} style={{ color: 'crimson' }}>Delete</button>
+            </div>
+          </div>
+        )}
+
+        {canManageGuidesV2 && selectedGuideSectionV2 && (
+          <details style={{ marginBottom: 12 }}>
+            <summary style={{ cursor: 'pointer' }}>Manage Posts</summary>
+            <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+              {sectionPostsV2.map((p: any) => (
+                <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {String(p?.body ?? p?.content ?? p?.text ?? '').slice(0, 90)}
+                  </span>
+                  <button onClick={() => editGuidePostV2(p)}>Edit</button>
+                  <button onClick={() => deleteGuidePostV2(p)} style={{ color: 'crimson' }}>Delete</button>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+        {/* --- END GUIDES MANAGE UI V2 --- */}
                       <div style={{ whiteSpace: "pre-wrap" }}>{body}</div>
 
                       {canManageGuides ? (
