@@ -131,6 +131,9 @@ with check (public.is_app_admin(auth.uid()));
 -- -------------------------
 -- Seed permission keys (safe upsert)
 -- -------------------------
+-- Ensure newer columns exist on older schemas (safe, additive)
+alter table public.permission_keys
+  add column if not exists category text;
 insert into public.permission_keys(key, label, category) values
   ('calendar.view', 'View Calendar', 'Calendar'),
   ('calendar.edit', 'Create/Edit/Delete Calendar Events', 'Calendar'),
@@ -163,4 +166,5 @@ begin
 exception when others then
   null;
 end $$;
+
 
