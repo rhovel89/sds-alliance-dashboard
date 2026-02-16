@@ -38,7 +38,17 @@ async function copyText(text: string) {
 }
 
 export default function OwnerMembershipManagerPage() {
-  const [alliances, setAlliances] = useState<AllianceRow[]>([]);
+  
+  const getPlayerLabel = (m: any) =>
+    m?.players?.game_name ??
+    m?.players?.name ??
+    m?.player?.game_name ??
+    m?.player?.name ??
+    m?.game_name ??
+    m?.name ??
+    m?.player_id ??
+    "Unknown";
+const [alliances, setAlliances] = useState<AllianceRow[]>([]);
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [memberships, setMemberships] = useState<MembershipRow[]>([]);
 
@@ -83,7 +93,7 @@ export default function OwnerMembershipManagerPage() {
     if (!code) return setMemberships([]);
     const { data, error } = await supabase
       .from("player_alliances")
-      .select("id,player_id,alliance_code,role")
+      .select("id,player_id,alliance_code,role, players(id, game_name, name)")
       .eq("alliance_code", code)
       .order("role", { ascending: true });
 
@@ -420,3 +430,4 @@ export default function OwnerMembershipManagerPage() {
     </div>
   );
 }
+
