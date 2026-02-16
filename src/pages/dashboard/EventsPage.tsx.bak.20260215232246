@@ -6,10 +6,8 @@ import { useAlliance } from "../context/AllianceContext";
 import { supabase } from "../lib/supabaseClient";
 import { normalizeEvents } from "../components/events/normalizeEvents";
 import "../styles/events-calendar.css";
-import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 
 export default function EventsPage() {
-  const { isAdmin: canEditCalendar } = useIsAppAdmin();
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const { alliance_id, loading } = useAlliance();
   const [events, setEvents] = useState<any[]>([]);
