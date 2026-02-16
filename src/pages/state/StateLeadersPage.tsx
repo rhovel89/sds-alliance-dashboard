@@ -5,7 +5,7 @@ import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 type Row = { user_id: string; created_at: string };
 
 export default function StateLeadersPage() {
-  
+
   const [nameByUserId, setNameByUserId] = useState<Record<string, string>>({});
 
   const leaderLabel = (userId?: string | null) => {
@@ -18,7 +18,7 @@ export default function StateLeadersPage() {
     const ids = Array.from(new Set((userIds || []).map((x) => (x || "").trim()).filter(Boolean)));
     if (ids.length === 0) { setNameByUserId({}); return; }
 
-    // 1) Best: link table -> players (if relationships exist)
+    // 1) Best: player_auth_links -> players (if relationship exists)
     {
       const { data, error } = await supabase
         .from("player_auth_links")
@@ -29,14 +29,14 @@ export default function StateLeadersPage() {
         const map: Record<string, string> = {};
         for (const row of data as any[]) {
           const uid = row.user_id;
-          const gn = row.players?.game_name || row.players?.name;
+          const gn = row.players?.game_name;
           if (uid && gn) map[uid] = gn;
         }
         if (Object.keys(map).length > 0) { setNameByUserId(map); return; }
       }
     }
 
-    // 2) Fallback: players has auth_user_id
+    // 2) Fallback: players.auth_user_id
     {
       const { data, error } = await supabase
         .from("players")
@@ -54,7 +54,7 @@ export default function StateLeadersPage() {
       }
     }
 
-    // 3) Last fallback: players has user_id
+    // 3) Last fallback: players.user_id
     {
       const { data, error } = await supabase
         .from("players")
@@ -74,12 +74,6 @@ export default function StateLeadersPage() {
 
     setNameByUserId({});
   };
-
-  useEffect(() => {
-    const ids = ((rows ?? []) as any[]).map((r) => (r as any)?.user_id).filter(Boolean);
-    loadLeaderNames(ids as any);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows]);
 const { isAdmin, loading } = useIsAppAdmin();
   const [rows, setRows] = useState<Row[]>([]);
   const [userId, setUserId] = useState("");
@@ -96,6 +90,8 @@ const { isAdmin, loading } = useIsAppAdmin();
       return;
     }
     setRows((res.data ?? []) as Row[]);
+      loadLeaderNames((((res.data ?? []) as Row[]) ?? []).map((r: any) => r?.user_id).filter(Boolean));
+
   };
 
   useEffect(() => {
@@ -179,5 +175,6 @@ const { isAdmin, loading } = useIsAppAdmin();
     </div>
   );
 }
+
 
 
