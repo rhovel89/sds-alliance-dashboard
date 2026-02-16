@@ -8,7 +8,7 @@ type AllianceRow = {
 };
 
 function normCode(v: string) {
-  return v.trim().toUpperCase();
+  return (v || "").trim().toUpperCase();
 }
 
 export default function OwnerAlliancesPage() {
@@ -22,7 +22,6 @@ export default function OwnerAlliancesPage() {
   const refetch = async () => {
     setLoading(true);
 
-    // try with enabled; fallback if column doesn't exist
     let data: any[] | null = null;
 
     const resA = await supabase
@@ -46,7 +45,6 @@ export default function OwnerAlliancesPage() {
           setLoading(false);
           return;
         }
-
         data = (resB.data as any[]).map((r) => ({ ...r, enabled: true }));
       } else {
         console.error(resA.error);
@@ -62,33 +60,38 @@ export default function OwnerAlliancesPage() {
 
   useEffect(() => {
     refetch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const createAlliance = async () => {
     const code = normCode(newCode);
-    const name = newName.trim() || code;
+    const name = (newName || "").trim() || code;
 
     if (!code) return alert("Alliance code required (example: OZR)");
-    if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
-
-    // IMPORTANT: Do NOT send state_id here (your DB currently expects integer, and UI was sending uuid).
-    // If you later want to set state_id, do it in a separate admin action with the correct type.
-    let res = await supabase.from("alliances").insert({ code, name, enabled: newEnabled });
-
-    if (res.error) {
-      const msg = (res.error.message || "").toLowerCase();
-
-      // fallback if enabled column doesn't exist
-      if (msg.includes("enabled")) {
-        res = await supabase.from("alliances").insert({ code, name });
-      }
+    // Code must be URL-safe: letters+numbers only
+    if (!/^[A-Z0-9]{2,12}$/.test(code)) {
+      return alert("Code must be 2–12 chars (A–Z, 0–9). Example: OZR");
     }
 
-    if (res.error) {
-      console.error(res.error);
-      alert(res.error.message);
-      return;
+    // IMPORTANT:
+    // Do NOT send state_id here. Your DB already allows NULL (you have rows with NULL),
+    // and state_id type differs across environments causing 400s.
+    const payloadWithEnabled: any = { code, name, enabled: newEnabled };
+
+    const resA = await supabase.from("alliances").insert(payloadWithEnabled);
+    if (resA.error) {
+      const msg = (resA.error.message || "").toLowerCase();
+      if (msg.includes("enabled")) {
+        const resB = await supabase.from("alliances").insert({ code, name });
+        if (resB.error) {
+          console.error(resB.error);
+          alert(resB.error.message);
+          return;
+        }
+      } else {
+        console.error(resA.error);
+        alert(resA.error.message);
+        return;
+      }
     }
 
     setNewCode("");
@@ -101,8 +104,8 @@ export default function OwnerAlliancesPage() {
     const current = rows.find((r) => r.code === code);
     const next = prompt("Alliance name:", current?.name || code);
     if (next == null) return;
-    const name = next.trim() || code;
 
+    const name = next.trim() || code;
     const { error } = await supabase.from("alliances").update({ name }).eq("code", code);
     if (error) {
       console.error(error);
@@ -124,7 +127,6 @@ export default function OwnerAlliancesPage() {
 
   const deleteAlliance = async (code: string) => {
     if (!confirm(`Delete alliance ${code}? This may fail if referenced by members/events.`)) return;
-
     const { error } = await supabase.from("alliances").delete().eq("code", code);
     if (error) {
       console.error(error);
@@ -145,19 +147,18 @@ export default function OwnerAlliancesPage() {
           <label style={{ display: "grid", gap: 6 }}>
             <span>Code</span>
             <input
-              type="text"
-              inputMode="text"
               value={newCode}
               onChange={(e) => setNewCode(e.target.value)}
               placeholder="OZR"
-              autoCapitalize="characters"
             />
+            <span style={{ fontSize: 12, opacity: 0.7 }}>
+              Code is used in URLs, so it must be letters/numbers only.
+            </span>
           </label>
 
           <label style={{ display: "grid", gap: 6 }}>
             <span>Name</span>
             <input
-              type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="OzR MindHunters"
@@ -174,7 +175,8 @@ export default function OwnerAlliancesPage() {
         </div>
 
         <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-          New alliances immediately work at: <code>/dashboard/&lt;CODE&gt;/calendar</code> and <code>/dashboard/&lt;CODE&gt;/hq-map</code>
+          New alliances immediately work at: <code>/dashboard/&lt;CODE&gt;/calendar</code> and{" "}
+          <code>/dashboard/&lt;CODE&gt;/hq-map</code>
         </div>
       </div>
 
