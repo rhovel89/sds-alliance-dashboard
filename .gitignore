@@ -14,3 +14,7 @@ SAFE-SNAPSHOT-*
 # local debug backups
 *.bak_*
 
+
+# Script backups
+*.bak.*
+
