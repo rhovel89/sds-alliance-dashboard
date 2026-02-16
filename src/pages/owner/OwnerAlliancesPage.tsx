@@ -1,28 +1,5 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-
-/**
- * Converts state selector value into states.id (INT).
- * Accepts: int, numeric-string, or state_uuid (UUID).
- */
-const resolveStateId = async (supabase: any, v: any): Promise<number | null> => {
-  if (v === null || v === undefined) return null;
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-
-  const s = String(v).trim();
-  if (/^[0-9]+$/.test(s)) return parseInt(s, 10);
-
-  // Treat as UUID -> lookup states.id
-  const { data, error } = await supabase
-    .from("states")
-    .select("id")
-    .eq("state_uuid", s)
-    .maybeSingle();
-
-  if (error) throw error;
-  return (data as any)?.id ?? null;
-};
-
 const STATE_ID = Number(import.meta.env.VITE_STATE_ID ?? 789);
 
 type AllianceRow = {
@@ -49,7 +26,6 @@ export default function OwnerAlliancesPage() {
     // try with enabled; fallback if column doesn't exist
     let data: any[] | null = null;
 
-    const stateIdInt = await resolveStateId(supabase, stateIdToUse);
     const resA = await supabase
       .from("alliances")
       .select("code,name,enabled")
@@ -95,27 +71,6 @@ export default function OwnerAlliancesPage() {
     if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
 
     // try with enabled, fallback without enabled
-// --- BEGIN STATE_ID INT FIX ---
-const __stateIdCandidate: any = ;
-const __stateIdParsed = (typeof __stateIdCandidate === 'number')
-  ? __stateIdCandidate
-  : (typeof __stateIdCandidate === 'string' && /^[0-9]+$/.test(__stateIdCandidate.trim()))
-    ? parseInt(__stateIdCandidate.trim(), 10)
-    : null;
-
-let stateIdToUse: number | null = __stateIdParsed;
-if (!stateIdToUse) {
-  const { data: __st, error: __stErr } = await supabase
-    .from('states')
-    .select('id')
-    .order('id', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (__stErr) throw __stErr;
-  stateIdToUse = (__st as any)?.id ?? null;
-}
-if (!stateIdToUse) throw new Error('No state found in states table');
-// --- END STATE_ID INT FIX ---
 
     const resA = await supabase.from("alliances").insert({ code, name, enabled: newEnabled });
     if (resA.error) {
@@ -257,5 +212,4 @@ if (!stateIdToUse) throw new Error('No state found in states table');
     </div>
   );
 }
-state_id: stateIdInt ?? 1,
-
+state_id: 1,
