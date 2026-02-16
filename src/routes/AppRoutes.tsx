@@ -35,13 +35,16 @@ import StateLeadersPage from "../pages/state/StateLeadersPage";
 import OwnerRolesPermissionsV2Page from "../pages/owner/OwnerRolesPermissionsV2Page";
 import AllianceAnnouncementsPage from "../pages/alliance/AllianceAnnouncementsPage";
 import AllianceGuidesPage from "../pages/alliance/AllianceGuidesPage";
+import PlayerDashboardPage from "../pages/PlayerDashboardPage";
+import PlayerDashboardPage from "../pages/player/PlayerDashboardPage";
+import LandingRedirectPage from "../pages/LandingRedirectPage";
 
 export default function AppRoutes() {
   return (
     <Routes>
 
       {/* Public */}
-      <Route path="/" element={<Login />} />
+      <Route path="/" element={<LandingRedirectPage />} />
       <Route path="/dashboard" element={<AuthCallback />} />
 
       {/* Owner */}
@@ -115,6 +118,7 @@ export default function AppRoutes() {
       <Route path="/dashboard/:code/guides" element={<AllianceGuidesPage />} />
       <Route path="/dashboard/:allianceCode/announcements" element={<AllianceAnnouncementsPage />} />
       <Route path="/dashboard/:allianceCode/guides" element={<AllianceGuidesPage />} />
+      <Route path="/me" element={<PlayerDashboardPage />} />
 </Routes>
   );
 }
