@@ -36,7 +36,7 @@ export default function OwnerAlliancesPage() {
   const refetch = async () => {
     setLoading(true);
 
-    // 1) try: code + enabled
+    // try: code + enabled
     let r1 = await supabase.from("alliances").select("code,name,enabled").order("code", { ascending: true });
     if (!r1.error) {
       setCodeCol("code");
@@ -46,7 +46,7 @@ export default function OwnerAlliancesPage() {
       return;
     }
 
-    // 2) fallback: code only (no enabled column)
+    // fallback: code only
     if (looksLikeMissingColumn(r1.error.message || "", "enabled")) {
       const r2 = await supabase.from("alliances").select("code,name").order("code", { ascending: true });
       if (!r2.error) {
@@ -59,7 +59,7 @@ export default function OwnerAlliancesPage() {
       r1 = r2 as any;
     }
 
-    // 3) if no "code" column, try "id"
+    // if no "code" column, try "id"
     if (looksLikeMissingColumn(r1.error?.message || "", "code")) {
       let r3 = await supabase.from("alliances").select("id,name,enabled").order("id", { ascending: true });
       if (!r3.error) {
@@ -105,10 +105,9 @@ export default function OwnerAlliancesPage() {
     if (!code) return alert("Alliance code required (example: OZR, TYZ)");
     if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
 
-    // IMPORTANT: do NOT send state_id at all
+    // CRITICAL: never send state_id (prevents int/uuid mismatch)
     const base: any = { [codeCol]: code, name };
 
-    // try with enabled if supported, else without
     const attempts: any[] = [];
     if (hasEnabled) attempts.push({ ...base, enabled: newEnabled });
     attempts.push({ ...base });
@@ -148,7 +147,7 @@ export default function OwnerAlliancesPage() {
   };
 
   const toggleEnabled = async (code: string, enabled: boolean) => {
-    if (!hasEnabled) return alert("Enabled flag is not supported by your alliances table schema.");
+    if (!hasEnabled) return alert("Enabled flag not supported by your alliances schema.");
     const res = await supabase.from("alliances").update({ enabled }).eq(codeCol, code);
     if (res.error) {
       console.error(res.error);
@@ -206,7 +205,7 @@ export default function OwnerAlliancesPage() {
         </div>
 
         <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-          New alliances immediately work at: <code>/dashboard/&lt;CODE&gt;/calendar</code> and <code>/dashboard/&lt;CODE&gt;/hq-map</code>
+          Direct link: <code>/owner/alliances</code>
         </div>
       </div>
 
@@ -246,10 +245,6 @@ export default function OwnerAlliancesPage() {
             })}
           </div>
         )}
-      </div>
-
-      <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-        Direct link: <code>/owner/alliances</code>
       </div>
     </div>
   );
