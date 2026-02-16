@@ -38,7 +38,6 @@ import AllianceGuidesPage from "../pages/alliance/AllianceGuidesPage";
 import PlayerDashboardPage from "../pages/PlayerDashboardPage";
 import PlayerDashboardPage from "../pages/player/PlayerDashboardPage";
 import LandingRedirectPage from "../pages/LandingRedirectPage";
-import OwnerAccessControlPage from "../pages/owner/OwnerAccessControlPage";
 
 export default function AppRoutes() {
   return (
@@ -120,11 +119,9 @@ export default function AppRoutes() {
       <Route path="/dashboard/:allianceCode/announcements" element={<AllianceAnnouncementsPage />} />
       <Route path="/dashboard/:allianceCode/guides" element={<AllianceGuidesPage />} />
       <Route path="/me" element={<PlayerDashboardPage />} />
-      <Route path="/owner/access-control" element={<OwnerAccessControlPage />} />
 </Routes>
   );
 }
-
 
 
 
