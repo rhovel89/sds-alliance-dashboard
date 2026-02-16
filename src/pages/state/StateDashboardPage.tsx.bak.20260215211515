@@ -3,16 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 
-type AllianceAny = Record<string, any>;
+type AllianceRow = { code?: string; alliance_id?: string; tag?: string; name?: string };
 type PlayerRow = { id: string; game_name?: string | null; name?: string | null };
-type PlayerAllianceRow = { role?: string | null };
+type PlayerAllianceRow = { alliance_code?: string; alliance_id?: string; role?: string | null };
 
-function pickAllianceCode(a: AllianceAny): string {
-  return String(a.code ?? a.alliance_id ?? a.tag ?? a.alliance_code ?? "").toUpperCase().trim();
-}
-
-function pickAllianceName(a: AllianceAny): string {
-  return String(a.name ?? a.alliance_name ?? a.display_name ?? a.title ?? "").trim();
+function pickAllianceCode(a: AllianceRow): string {
+  return String(a.code ?? a.alliance_id ?? a.tag ?? "").toUpperCase().trim();
 }
 
 export default function StateDashboardPage() {
@@ -24,7 +20,7 @@ export default function StateDashboardPage() {
 
   const [player, setPlayer] = useState<PlayerRow | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
-  const [alliances, setAlliances] = useState<AllianceAny[]>([]);
+  const [alliances, setAlliances] = useState<AllianceRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   const canViewState = useMemo(() => {
@@ -32,31 +28,6 @@ export default function StateDashboardPage() {
     const r = roles.map((x) => (x || "").toLowerCase());
     return r.includes("state_leader") || r.includes("owner");
   }, [isAdmin, roles]);
-
-  async function fetchAlliancesSafe(): Promise<AllianceAny[]> {
-    // Try common schemas. Avoid ordering server-side (order will 400 if column doesn't exist).
-    const tries = [
-      "code,name",
-      "code,alliance_name",
-      "code,display_name",
-      "alliance_id,name",
-      "alliance_id,alliance_name",
-      "alliance_id,display_name",
-      "tag,name",
-      "tag,alliance_name",
-      "tag,display_name",
-    ];
-
-    for (const sel of tries) {
-      const r = await supabase.from("alliances").select(sel);
-      if (!r.error) return (r.data as any) ?? [];
-    }
-
-    // Last resort
-    const last = await supabase.from("alliances").select("*");
-    if (last.error) throw new Error(last.error.message);
-    return (last.data as any) ?? [];
-  }
 
   useEffect(() => {
     (async () => {
@@ -91,7 +62,7 @@ export default function StateDashboardPage() {
       if (pRes.data?.id) {
         const rRes = await supabase
           .from("player_alliances")
-          .select("role")
+          .select("role,alliance_code,alliance_id")
           .eq("player_id", pRes.data.id);
 
         if (!rRes.error) {
@@ -100,30 +71,24 @@ export default function StateDashboardPage() {
         }
       }
 
-      // Fetch alliances (safe)
-      try {
-        const rows = await fetchAlliancesSafe();
+      // Fetch alliances for cards
+      const aRes = await supabase
+        .from("alliances")
+        .select("code,alliance_id,tag,name")
+        .order("name", { ascending: true });
 
-        const cleaned = rows
-          .map((a) => ({
-            ...a,
-            __code: pickAllianceCode(a),
-            __name: pickAllianceName(a) || pickAllianceCode(a) || "Alliance",
-          }))
-          .filter((a) => a.__code)
-          .sort((a, b) => String(a.__name).localeCompare(String(b.__name)));
-
-        setAlliances(cleaned);
-      } catch (e: any) {
-        setErr(e?.message || "Failed to load alliances.");
+      if (aRes.error) {
+        setErr(aRes.error.message);
+        setLoading(false);
+        return;
       }
 
+      setAlliances((aRes.data as any) ?? []);
       setLoading(false);
     })();
   }, [isAdmin]);
 
-  const displayName =
-    player?.game_name || player?.name || (userId ? `User ${userId.slice(0, 8)}…` : "Guest");
+  const displayName = player?.game_name || player?.name || (userId ? `User ${userId.slice(0, 8)}…` : "Guest");
 
   return (
     <div style={{ padding: 24 }}>
@@ -149,7 +114,9 @@ export default function StateDashboardPage() {
         ) : err ? (
           <div style={{ color: "#ff8080" }}>{err}</div>
         ) : canViewState ? (
-          <div style={{ opacity: 0.9 }}>✅ Access granted (Admin / Owner / State Leader).</div>
+          <div style={{ opacity: 0.9 }}>
+            ✅ Access granted (Admin / Owner / State Leader).
+          </div>
         ) : (
           <div style={{ opacity: 0.9 }}>
             ⛔ You’re logged in, but you don’t have State access yet.
@@ -178,8 +145,8 @@ export default function StateDashboardPage() {
 
             <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
               {alliances.map((a) => {
-                const code = a.__code as string;
-                const name = a.__name as string;
+                const code = pickAllianceCode(a);
+                if (!code) return null;
 
                 return (
                   <div
@@ -188,11 +155,11 @@ export default function StateDashboardPage() {
                       border: "1px solid #333",
                       borderRadius: 14,
                       padding: 14,
-                      background: "rgba(0,0,0,0.25)",
+                      background: "rgba(0,0,0,0.25)"
                     }}
                   >
                     <div style={{ fontWeight: 900, fontSize: 16 }}>
-                      [{code}] {name}
+                      [{code}] {a.name || "Alliance"}
                     </div>
 
                     <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -200,7 +167,7 @@ export default function StateDashboardPage() {
                     </div>
 
                     <div style={{ marginTop: 10, opacity: 0.75, fontSize: 12 }}>
-                      (More state tools coming here.)
+                      (More state tools will be added here: state announcements, cross-alliance ops, permissions.)
                     </div>
                   </div>
                 );
