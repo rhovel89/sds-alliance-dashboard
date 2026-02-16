@@ -3,7 +3,6 @@ import { supabase } from "../../lib/supabaseClient";
 import AllianceSwitcher from "./AllianceSwitcher";
 import AuthControls from "./AuthControls";
 import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
-import { Link } from "react-router-dom";
 
 export default function TopNav() {
   
