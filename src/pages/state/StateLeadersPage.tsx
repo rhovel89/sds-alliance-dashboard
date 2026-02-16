@@ -1,279 +1,141 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 
-type Row = { user_id: string; created_at: string };
+type LeaderRow = Record<string, any>;
 
 export default function StateLeadersPage() {
+  const { isAdmin, loading } = useIsAppAdmin();
 
-  
+  const [rows, setRows] = useState<LeaderRow[]>([]);
+  const [nameByUserId, setNameByUserId] = useState<Record<string, string>>({});
+  const [err, setErr] = useState<string | null>(null);
 
+  const refetch = async () => {
+    setErr(null);
 
+    const { data, error } = await supabase
+      .from("state_leaders")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-
-    const id = (userId || "").trim();
-    if (!id) return "";
-    return nameByUserId[id] ?? id;
-  };
-
-    const ids = Array.from(new Set((userIds || []).map((x) => (x || "").trim()).filter(Boolean)));
-    if (ids.length === 0) { setNameByUserId({}); return; }
-
-    // 1) Best: player_auth_links -> players (if relationship exists)
-    {
-      const { data, error } = await supabase
-        .from("player_auth_links")
-        .select("user_id, players(game_name)")
-        .in("user_id", ids);
-
-      if (!error && data) {
-        const map: Record<string, string> = {};
-        for (const row of data as any[]) {
-          const uid = row.user_id;
-          const gn = row.players?.game_name;
-          if (uid && gn) map[uid] = gn;
-        }
-        if (Object.keys(map).length > 0) { setNameByUserId(map); return; }
-      }
+    if (error) {
+      console.error(error);
+      setErr(error.message || "Failed to load state leaders.");
+      setRows([]);
+      return;
     }
 
-    // 2) Fallback: players.auth_user_id
+    setRows((data || []) as LeaderRow[]);
+  };
+
+  const userIds = useMemo(() => {
+    const ids = (rows || [])
+      .map((r) => String(r?.user_id || "").trim())
+      .filter(Boolean);
+    return Array.from(new Set(ids));
+  }, [rows]);
+
+  const loadLeaderNames = async (ids: string[]) => {
+    const uniq = Array.from(new Set((ids || []).map((x) => String(x || "").trim()).filter(Boolean)));
+    if (uniq.length === 0) { setNameByUserId({}); return; }
+
+    // 1) Best: players.auth_user_id -> game_name
     {
       const { data, error } = await supabase
         .from("players")
         .select("auth_user_id, game_name")
-        .in("auth_user_id" as any, ids);
+        .in("auth_user_id", uniq);
 
       if (!error && data) {
         const map: Record<string, string> = {};
         for (const row of data as any[]) {
-          const uid = row.auth_user_id;
-          const gn = row.game_name;
+          const uid = String(row?.auth_user_id || "").trim();
+          const gn = String(row?.game_name || "").trim();
           if (uid && gn) map[uid] = gn;
         }
         if (Object.keys(map).length > 0) { setNameByUserId(map); return; }
       }
     }
 
-    // 3) Last fallback: players.user_id
+    // 2) Fallback: player_auth_links(user_id -> player_id) then players(id -> game_name)
     {
-      const { data, error } = await supabase
-        .from("players")
-        .select("user_id, game_name")
-        .in("user_id" as any, ids);
+      const { data: links, error: linkErr } = await supabase
+        .from("player_auth_links")
+        .select("user_id, player_id")
+        .in("user_id", uniq);
 
-      if (!error && data) {
-        const map: Record<string, string> = {};
-        for (const row of data as any[]) {
-          const uid = row.user_id;
-          const gn = row.game_name;
-          if (uid && gn) map[uid] = gn;
-        }
-        if (Object.keys(map).length > 0) { setNameByUserId(map); return; }
-      }
-    }
+      if (!linkErr && links && (links as any[]).length > 0) {
+        const userToPlayer: Record<string, string> = {};
+        const playerIds: string[] = [];
 
-const { isAdmin, loading } = useIsAppAdmin();
-  const [rows, setRows] = useState<Row[]>([]);
-  // --- BEGIN STATE LEADER NAME LOOKUP ---
-  
-const [nameByUserId, setNameByUserId] = useState<Record<string, string>>({});
-
-  
-const leaderLabel = (userId?: string | null) => {
-  
-  const id = (userId || "").trim();
-  
-  if (!id) return "";
-  
-  return nameByUserId[id] ?? id;
-  
-};
-
-  
-const loadLeaderNames = async (userIds: string[]) => {
-  
-  const ids = Array.from(new Set((userIds || []).map((x) => (x || "").trim()).filter(Boolean)));
-  
-  if (ids.length === 0) { setNameByUserId({}); return; }
-
-  
-  // 1) Best: players.auth_user_id -> game_name
-  
-  {
-  
-    const { data, error } = await supabase
-  
-      .from("players")
-  
-      .select("auth_user_id, game_name")
-  
-      .in("auth_user_id", ids);
-
-  
-    if (!error && data) {
-  
-      const map: Record<string, string> = {};
-  
-      for (const row of data as any[]) {
-  
-        const uid = row.auth_user_id;
-  
-        const gn = row.game_name;
-  
-        if (uid && gn) map[uid] = gn;
-  
-      }
-  
-      if (Object.keys(map).length > 0) { setNameByUserId(map); return; }
-  
-    }
-  
-  }
-
-  
-  // 2) Fallback: player_auth_links(user_id -> player_id) + players(id -> game_name)
-  
-  {
-  
-    const { data: links, error: linkErr } = await supabase
-  
-      .from("player_auth_links")
-  
-      .select("user_id, player_id")
-  
-      .in("user_id", ids);
-
-  
-    if (!linkErr && links && links.length > 0) {
-  
-      const userToPlayer: Record<string, string> = {};
-  
-      const playerIds: string[] = [];
-  
-      for (const l of links as any[]) {
-  
-        if (l.user_id && l.player_id) {
-  
-          userToPlayer[l.user_id] = l.player_id;
-  
-          playerIds.push(l.player_id);
-  
-        }
-  
-      }
-  
-      const uniqPlayerIds = Array.from(new Set(playerIds));
-  
-      if (uniqPlayerIds.length > 0) {
-  
-        const { data: players, error: pErr } = await supabase
-  
-          .from("players")
-  
-          .select("id, game_name")
-  
-          .in("id", uniqPlayerIds);
-
-  
-        if (!pErr && players) {
-  
-          const playerIdToName: Record<string, string> = {};
-  
-          for (const p of players as any[]) {
-  
-            if (p.id && p.game_name) playerIdToName[p.id] = p.game_name;
-  
+        for (const l of links as any[]) {
+          const uid = String(l?.user_id || "").trim();
+          const pid = String(l?.player_id || "").trim();
+          if (uid && pid) {
+            userToPlayer[uid] = pid;
+            playerIds.push(pid);
           }
-  
-          const map: Record<string, string> = {};
-  
-          for (const uid of Object.keys(userToPlayer)) {
-  
-            const pid = userToPlayer[uid];
-  
-            const gn = playerIdToName[pid];
-  
-            if (gn) map[uid] = gn;
-  
-          }
-  
-          if (Object.keys(map).length > 0) { setNameByUserId(map); return; }
-  
         }
-  
+
+        const uniqPlayers = Array.from(new Set(playerIds)).filter(Boolean);
+        if (uniqPlayers.length > 0) {
+          const { data: players, error: pErr } = await supabase
+            .from("players")
+            .select("id, game_name")
+            .in("id", uniqPlayers);
+
+          if (!pErr && players) {
+            const pidToName: Record<string, string> = {};
+            for (const p of players as any[]) {
+              const pid = String(p?.id || "").trim();
+              const gn = String(p?.game_name || "").trim();
+              if (pid && gn) pidToName[pid] = gn;
+            }
+
+            const map: Record<string, string> = {};
+            for (const uid of Object.keys(userToPlayer)) {
+              const pid = userToPlayer[uid];
+              const gn = pidToName[pid];
+              if (gn) map[uid] = gn;
+            }
+
+            if (Object.keys(map).length > 0) { setNameByUserId(map); return; }
+          }
+        }
       }
-  
     }
-  
-  }
 
-  
-  setNameByUserId({});
-  
-};
+    // No mapping found; keep UUIDs
+    setNameByUserId({});
+  };
 
-  
-useEffect(() => {
-  
-  const ids = (rows || []).map((r: any) => (r?.user_id ?? r?.auth_user_id ?? r?.user_uuid)).filter(Boolean);
-  
-  loadLeaderNames(ids as any);
-  
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  
-}, [rows]);
-  // --- END STATE LEADER NAME LOOKUP ---
-  const [userId, setUserId] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const load = async () => {
-    const res = await supabase
-      .from("state_leaders")
-      .select("user_id,created_at")
-      .order("created_at", { ascending: false });
-
-    if (res.error) {
-      console.error(res.error);
-      return;
-    }
-    setRows((res.data ?? []) as Row[]);
-      loadLeaderNames((((res.data ?? []) as Row[]) ?? []).map((r: any) => r?.user_id).filter(Boolean));
-
+  const leaderLabel = (userId?: string | null) => {
+    const id = String(userId || "").trim();
+    if (!id) return "";
+    return nameByUserId[id] ?? id;
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    if (loading) return;
+    if (!isAdmin) return;
+    refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, isAdmin]);
 
-  const add = async () => {
-    const v = userId.trim();
-    if (!v) return;
-    setBusy(true);
-    const res = await supabase.from("state_leaders").insert({ user_id: v });
-    setBusy(false);
+  useEffect(() => {
+    if (loading) return;
+    if (!isAdmin) return;
+    loadLeaderNames(userIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, isAdmin, userIds.join("|")]);
 
-    if (res.error) {
-      console.error(res.error);
-      alert(res.error.message);
-      return;
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // ignore
     }
-    setUserId("");
-    await load();
-  };
-
-  const remove = async (id: string) => {
-    if (!confirm("Remove State Leader?")) return;
-    setBusy(true);
-    const res = await supabase.from("state_leaders").delete().eq("user_id", id);
-    setBusy(false);
-
-    if (res.error) {
-      console.error(res.error);
-      alert(res.error.message);
-      return;
-    }
-    await load();
   };
 
   if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
@@ -282,50 +144,81 @@ useEffect(() => {
     return (
       <div style={{ padding: 24 }}>
         <h2>State Leaders</h2>
-        <div style={{ opacity: 0.8 }}>Owner/Admin only.</div>
+        <div style={{ opacity: 0.8 }}>You do not have access to this page.</div>
       </div>
     );
   }
 
   return (
     <div style={{ padding: 24 }}>
-      <h2>👑 State Leaders (Owner/Admin)</h2>
+      <h2>👑 State Leaders</h2>
 
-      <div style={{ border: "1px solid #333", borderRadius: 10, padding: 14, maxWidth: 700 }}>
-        <div style={{ fontWeight: 800, marginBottom: 8 }}>Add State Leader by User UUID</div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <input
-            placeholder="User UUID"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            style={{ flex: 1 }}
-          />
-          <button onClick={add} disabled={busy}>Add</button>
-          <button onClick={load} disabled={busy}>Refresh</button>
+      {err ? (
+        <div style={{ marginTop: 10, padding: 10, border: "1px solid #700", borderRadius: 8 }}>
+          <strong>Error:</strong> {err}
         </div>
+      ) : null}
 
-        <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
-          {rows.length === 0 ? (
-            <div style={{ opacity: 0.75 }}>No state leaders yet.</div>
-          ) : (
-            rows.map((r) => (
-              <div key={leaderLabel(r.user_id)} style={{ border: "1px solid #222", borderRadius: 10, padding: 10, display: "flex", justifyContent: "space-between", gap: 10 }}>
-                <div>
-                  <div style={{ fontWeight: 800 }}>{leaderLabel(r.user_id)}</div>
-                  <div style={{ opacity: 0.75, fontSize: 12 }}>{new Date(r.created_at).toLocaleString()}</div>
+      <div style={{ marginTop: 12 }}>
+        <button onClick={refetch}>Refresh</button>
+      </div>
+
+      <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+        {rows.length === 0 ? (
+          <div style={{ opacity: 0.75 }}>No state leaders found.</div>
+        ) : (
+          rows.map((r, idx) => {
+            const uid = String(r?.user_id || "").trim();
+            const name = leaderLabel(uid);
+
+            const position =
+              r?.position ??
+              r?.title ??
+              r?.role ??
+              r?.rank ??
+              r?.leader_role ??
+              "";
+
+            const alliance =
+              r?.alliance_code ??
+              r?.alliance_id ??
+              r?.alliance_tag ??
+              r?.tag ??
+              "";
+
+            return (
+              <div
+                key={String(r?.id || idx)}
+                style={{
+                  border: "1px solid #333",
+                  borderRadius: 10,
+                  padding: 12,
+                }}
+              >
+                <div style={{ fontWeight: 800, fontSize: 16 }}>
+                  {name}
                 </div>
-                <button onClick={() => remove(r.user_id)} disabled={busy}>Remove</button>
+
+                <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
+                  UUID: {uid || "(missing)"}
+                  {uid ? (
+                    <button style={{ marginLeft: 10 }} onClick={() => copy(uid)}>
+                      Copy
+                    </button>
+                  ) : null}
+                </div>
+
+                {(position || alliance) ? (
+                  <div style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 13 }}>
+                    {position ? <div><strong>Role:</strong> {String(position)}</div> : null}
+                    {alliance ? <div><strong>Alliance:</strong> {String(alliance)}</div> : null}
+                  </div>
+                ) : null}
               </div>
-            ))
-          )}
-        </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
-
-
-
-
-
-
-
+}
