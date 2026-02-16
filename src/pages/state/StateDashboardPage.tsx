@@ -1,214 +1,136 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
+import { useIsStateLeader } from "../../hooks/useIsStateLeader";
 
-type AllianceAny = Record<string, any>;
-type PlayerRow = { id: string; game_name?: string | null; name?: string | null };
-type PlayerAllianceRow = { role?: string | null };
+type Announcement = {
+  id: string;
+  title: string;
+  body: string;
+  created_at: string;
+};
 
-function pickAllianceCode(a: AllianceAny): string {
-  return String(a.code ?? a.alliance_id ?? a.tag ?? a.alliance_code ?? "").toUpperCase().trim();
-}
-
-function pickAllianceName(a: AllianceAny): string {
-  return String(a.name ?? a.alliance_name ?? a.display_name ?? a.title ?? "").trim();
-}
+type AllianceRow = {
+  code: string;
+  name: string;
+};
 
 export default function StateDashboardPage() {
-  const nav = useNavigate();
-  const { isAdmin } = useIsAppAdmin();
+  const { isStateLeader } = useIsStateLeader();
 
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [alliances, setAlliances] = useState<AllianceRow[]>([]);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const [player, setPlayer] = useState<PlayerRow | null>(null);
-  const [roles, setRoles] = useState<string[]>([]);
-  const [alliances, setAlliances] = useState<AllianceAny[]>([]);
-  const [err, setErr] = useState<string | null>(null);
+  const load = async () => {
+    const a1 = await supabase
+      .from("state_announcements")
+      .select("id,title,body,created_at")
+      .order("created_at", { ascending: false })
+      .limit(10);
 
-  const canViewState = useMemo(() => {
-    if (isAdmin) return true;
-    const r = roles.map((x) => (x || "").toLowerCase());
-    return r.includes("state_leader") || r.includes("owner");
-  }, [isAdmin, roles]);
+    if (!a1.error) setAnnouncements((a1.data ?? []) as Announcement[]);
 
-  async function fetchAlliancesSafe(): Promise<AllianceAny[]> {
-    // Try common schemas. Avoid ordering server-side (order will 400 if column doesn't exist).
-    const tries = [
-      "code,name",
-      "code,alliance_name",
-      "code,display_name",
-      "alliance_id,name",
-      "alliance_id,alliance_name",
-      "alliance_id,display_name",
-      "tag,name",
-      "tag,alliance_name",
-      "tag,display_name",
-    ];
+    // IMPORTANT: keep this select minimal to avoid schema mismatches
+    const a2 = await supabase
+      .from("alliances")
+      .select("code,name")
+      .order("name", { ascending: true });
 
-    for (const sel of tries) {
-      const r = await supabase.from("alliances").select(sel);
-      if (!r.error) return (r.data as any) ?? [];
-    }
-
-    // Last resort
-    const last = await supabase.from("alliances").select("*");
-    if (last.error) throw new Error(last.error.message);
-    return (last.data as any) ?? [];
-  }
+    if (!a2.error) setAlliances((a2.data ?? []) as AllianceRow[]);
+  };
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      setErr(null);
+    load();
+  }, []);
 
-      const { data: u } = await supabase.auth.getUser();
-      const uid = u?.user?.id ?? null;
-      setUserId(uid);
+  const post = async () => {
+    if (!isStateLeader) return;
+    const t = title.trim();
+    const b = body.trim();
+    if (!t || !b) return alert("Title + message required.");
 
-      if (!uid) {
-        setLoading(false);
-        return;
-      }
+    setBusy(true);
+    const res = await supabase.from("state_announcements").insert({ title: t, body: b });
+    setBusy(false);
 
-      // Find player row for this auth user
-      const pRes = await supabase
-        .from("players")
-        .select("id,game_name,name")
-        .eq("auth_user_id", uid)
-        .maybeSingle();
+    if (res.error) {
+      console.error(res.error);
+      alert(res.error.message);
+      return;
+    }
 
-      if (pRes.error) {
-        setErr(pRes.error.message);
-        setLoading(false);
-        return;
-      }
-
-      setPlayer((pRes.data as any) ?? null);
-
-      // Fetch roles across alliances (best-effort)
-      if (pRes.data?.id) {
-        const rRes = await supabase
-          .from("player_alliances")
-          .select("role")
-          .eq("player_id", pRes.data.id);
-
-        if (!rRes.error) {
-          const rs = (rRes.data ?? []).map((x: PlayerAllianceRow) => String(x.role ?? ""));
-          setRoles(rs.filter(Boolean));
-        }
-      }
-
-      // Fetch alliances (safe)
-      try {
-        const rows = await fetchAlliancesSafe();
-
-        const cleaned = rows
-          .map((a) => ({
-            ...a,
-            __code: pickAllianceCode(a),
-            __name: pickAllianceName(a) || pickAllianceCode(a) || "Alliance",
-          }))
-          .filter((a) => a.__code)
-          .sort((a, b) => String(a.__name).localeCompare(String(b.__name)));
-
-        setAlliances(cleaned);
-      } catch (e: any) {
-        setErr(e?.message || "Failed to load alliances.");
-      }
-
-      setLoading(false);
-    })();
-  }, [isAdmin]);
-
-  const displayName =
-    player?.game_name || player?.name || (userId ? `User ${userId.slice(0, 8)}…` : "Guest");
+    setTitle("");
+    setBody("");
+    await load();
+  };
 
   return (
     <div style={{ padding: 24 }}>
-      <div style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0 }}>🧟 State 789 — Command Center</h2>
-        <div style={{ opacity: 0.85 }}>
-          Logged in as <span style={{ fontWeight: 800 }}>{displayName}</span>
-          {isAdmin ? <span style={{ marginLeft: 10, opacity: 0.9 }}>🩸 Owner/Admin</span> : null}
+      <h2>🧟 State 789 Dashboard</h2>
+
+      <div style={{ marginTop: 12, display: "grid", gap: 16 }}>
+        <div style={{ border: "1px solid #333", borderRadius: 10, padding: 14 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>📢 State Announcements</div>
+
+          {isStateLeader ? (
+            <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+              <input
+                placeholder="Announcement title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+              <textarea
+                placeholder="Write your announcement..."
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                rows={4}
+              />
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={post} disabled={busy}>Post</button>
+                <button onClick={load} disabled={busy}>Refresh</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ opacity: 0.8, marginBottom: 10 }}>
+              You have view-only access. (State Leaders can post.)
+            </div>
+          )}
+
+          {announcements.length === 0 ? (
+            <div style={{ opacity: 0.75 }}>No announcements yet.</div>
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              {announcements.map((x) => (
+                <div key={x.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontWeight: 800 }}>{x.title}</div>
+                  <div style={{ opacity: 0.85, fontSize: 12, marginTop: 2 }}>
+                    {new Date(x.created_at).toLocaleString()}
+                  </div>
+                  <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{x.body}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ border: "1px solid #333", borderRadius: 10, padding: 14 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>🏰 Alliance Directory</div>
+          {alliances.length === 0 ? (
+            <div style={{ opacity: 0.75 }}>No alliances found.</div>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              {alliances.map((a) => (
+                <div key={a.code} style={{ border: "1px solid #222", borderRadius: 10, padding: 10 }}>
+                  <div style={{ fontWeight: 800 }}>{a.name}</div>
+                  <div style={{ opacity: 0.8, fontSize: 12 }}>{a.code}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      <div style={{ marginTop: 16, border: "1px solid #2a2a2a", borderRadius: 12, padding: 14 }}>
-        <div style={{ fontWeight: 800, marginBottom: 6 }}>State Access</div>
-        {loading ? (
-          <div style={{ opacity: 0.8 }}>Loading…</div>
-        ) : !userId ? (
-          <div style={{ opacity: 0.85 }}>
-            You must sign in to view the State Dashboard.{" "}
-            <button onClick={() => nav("/")} style={{ marginLeft: 10 }}>
-              Go Home
-            </button>
-          </div>
-        ) : err ? (
-          <div style={{ color: "#ff8080" }}>{err}</div>
-        ) : canViewState ? (
-          <div style={{ opacity: 0.9 }}>✅ Access granted (Admin / Owner / State Leader).</div>
-        ) : (
-          <div style={{ opacity: 0.9 }}>
-            ⛔ You’re logged in, but you don’t have State access yet.
-            <div style={{ marginTop: 8, opacity: 0.8 }}>
-              Ask an Owner to assign you the <b>state_leader</b> (or owner) role.
-            </div>
-          </div>
-        )}
-      </div>
-
-      {canViewState ? (
-        <>
-          <div style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {isAdmin ? (
-              <button onClick={() => nav("/owner")} title="Owner dashboard">
-                🩸 Owner Dashboard
-              </button>
-            ) : null}
-            <button onClick={() => nav("/dashboard")} title="My dashboards">
-              🧭 My Dashboards
-            </button>
-          </div>
-
-          <div style={{ marginTop: 22 }}>
-            <h3 style={{ marginBottom: 10 }}>Alliances in State 789</h3>
-
-            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
-              {alliances.map((a) => {
-                const code = a.__code as string;
-                const name = a.__name as string;
-
-                return (
-                  <div
-                    key={code}
-                    style={{
-                      border: "1px solid #333",
-                      borderRadius: 14,
-                      padding: 14,
-                      background: "rgba(0,0,0,0.25)",
-                    }}
-                  >
-                    <div style={{ fontWeight: 900, fontSize: 16 }}>
-                      [{code}] {name}
-                    </div>
-
-                    <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <button onClick={() => nav(`/dashboard/${code}`)}>Open Dashboard</button>
-                    </div>
-
-                    <div style={{ marginTop: 10, opacity: 0.75, fontSize: 12 }}>
-                      (More state tools coming here.)
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </>
-      ) : null}
     </div>
   );
 }

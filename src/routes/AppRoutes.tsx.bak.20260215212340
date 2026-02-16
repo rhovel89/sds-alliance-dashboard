@@ -31,7 +31,6 @@ import OwnerPlayersLinkPage from "../pages/owner/OwnerPlayersLinkPage";
 import RequireAdmin from "../components/auth/RequireAdmin";
 import OwnerStateManagerPage from "../pages/owner/OwnerStateManagerPage";
 import StateDashboardPage from "../pages/state/StateDashboardPage";
-import StateLeadersPage from "../pages/state/StateLeadersPage";
 
 export default function AppRoutes() {
   return (
@@ -106,11 +105,9 @@ export default function AppRoutes() {
               <Route path="/owner" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
         <Route path="/state" element={<StateDashboardPage />} />
   <Route path="/owner/state" element={<OwnerStateManagerPage />} />
-  <Route path="/owner/state-leaders" element={<StateLeadersPage />} />
 </Routes>
   );
 }
-
 
 
 
