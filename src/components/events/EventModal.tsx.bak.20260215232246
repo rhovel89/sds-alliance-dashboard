@@ -1,16 +1,10 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 
 export default function EventModal({ alliance_id, date, onClose, onSaved }: any) {
-  const { isAdmin: canEditCalendar } = useIsAppAdmin();
   const [title, setTitle] = useState("");
 
   async function save() {
-     if (!canEditCalendar) {
-       window.alert("Calendar is locked (Owner/Admin only).");
-       return;
-     }
     await supabase.from("alliance_events").insert({
       alliance_id,
       title,

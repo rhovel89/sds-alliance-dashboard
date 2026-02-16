@@ -7,7 +7,6 @@ import { DayCell } from "./DayCell";
 import { AgendaPanel } from "./AgendaPanel";
 import { EventModal } from "./EventModal";
 import {
-import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
   deleteEvent,
   upsertEvent,
   listExceptionsForEventIds,
@@ -20,7 +19,6 @@ type Props = {
 };
 
 function isUuid(v: string): boolean {
-  const { isAdmin: canEditCalendar } = useIsAppAdmin();
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 }
 
