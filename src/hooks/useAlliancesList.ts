@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 export type AllianceListItem = {
   code: string;
-  name: string | null;
+  name: string;
   enabled?: boolean | null;
 };
 
@@ -12,79 +12,49 @@ export function useAlliancesList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
+  const refetch = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    // Try with enabled column first (some schemas might not have it)
-    const resA = await supabase
+    const { data, error } = await supabase
       .from("alliances")
       .select("code,name,enabled")
-      .order("code", { ascending: true });
+      .order("name", { ascending: true });
 
-    if (!resA.error) {
-      const rows = (resA.data || []) as any[];
-      const filtered = rows.filter((r) => r.enabled !== false);
-      setAlliances(
-        filtered.map((r) => ({
-          code: String(r.code || "").toUpperCase(),
-          name: r.name ?? null,
-          enabled: r.enabled ?? true,
-        }))
-      );
+    if (error) {
+      setError(error.message);
       setLoading(false);
       return;
     }
 
-    // Fallback if "enabled" doesn't exist
-    const msg = (resA.error.message || "").toLowerCase();
-    if (msg.includes("enabled")) {
-      const resB = await supabase
-        .from("alliances")
-        .select("code,name")
-        .order("code", { ascending: true });
-
-      if (resB.error) {
-        setError(resB.error.message);
-        setLoading(false);
-        return;
-      }
-
-      const rows = (resB.data || []) as any[];
-      setAlliances(
-        rows.map((r) => ({
-          code: String(r.code || "").toUpperCase(),
-          name: r.name ?? null,
-          enabled: true,
-        }))
-      );
-      setLoading(false);
-      return;
-    }
-
-    setError(resA.error.message);
+    setAlliances((data ?? []) as AllianceListItem[]);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
-    load();
+    refetch();
+  }, [refetch]);
 
-    const ch = supabase
-      .channel("alliances-live")
+  useEffect(() => {
+    const channel = supabase
+      .channel("rt-alliances")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "alliances" },
         () => {
-          load();
+          // re-fetch on any change
+          refetch();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(ch);
+      supabase.removeChannel(channel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refetch]);
 
-  return { alliances, loading, error, refresh: load };
+  return useMemo(
+    () => ({ alliances, loading, error, refetch }),
+    [alliances, loading, error, refetch]
+  );
 }
