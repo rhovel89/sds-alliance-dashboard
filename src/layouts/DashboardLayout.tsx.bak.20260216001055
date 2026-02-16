@@ -2,7 +2,6 @@ import { Outlet, NavLink, useParams, Navigate } from "react-router-dom";
 import "../styles/dashboard-zombie.css";
 import AllianceAnnouncementsPanel from "../components/announcements/AllianceAnnouncementsPanel";
 import AllianceGuidesPanel from "../components/guides/AllianceGuidesPanel";
-import AllianceDashboardExtras from "../components/alliance/AllianceDashboardExtras";
 
 export default function DashboardLayout() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
@@ -21,11 +20,6 @@ export default function DashboardLayout() {
   const base = `/dashboard/${upper}`;
 
   return (
-      {/* --- Added: Alliance Announcements + Guides --- */}
-      <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
-        <AllianceDashboardExtras />
-      </div>
-
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar zombie-animated zombie-sidebar">
         <h2 className="sidebar-title zombie-glow">
@@ -47,4 +41,3 @@ export default function DashboardLayout() {
     </div>
   );
 }
-

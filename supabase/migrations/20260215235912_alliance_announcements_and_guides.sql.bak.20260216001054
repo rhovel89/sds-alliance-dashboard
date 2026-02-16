@@ -1,13 +1,16 @@
 -- Alliance Announcements + Guides (per alliance)
--- FIXED: does NOT replace existing functions that conflict by parameter name.
--- Uses new helper functions: sa_current_player_id(), sa_is_alliance_member(), sa_is_alliance_role()
+-- - Announcements: readable by alliance members; writable by Owner/R5/R4 + app admins
+-- - Guides: sections (readonly/discussion); posts (threads+replies); attachments (images)
+-- - Storage bucket: alliance-guides (private) with RLS based on alliance membership + section mode
 
+-- Safety: require pgcrypto for gen_random_uuid (usually already present)
 create extension if not exists pgcrypto;
 
 -- -------------------------
--- Helper: sa_current_player_id()
+-- Helper: current_player_id()
+-- tries players.auth_user_id first, then player_auth_links.user_id
 -- -------------------------
-create or replace function public.sa_current_player_id()
+create or replace function public.current_player_id()
 returns uuid
 language plpgsql
 stable
@@ -17,9 +20,6 @@ as $$
 declare
   pid uuid;
 begin
-  pid := null;
-
-  -- Prefer players.auth_user_id
   begin
     select p.id into pid
     from public.players p
@@ -33,7 +33,6 @@ begin
     return pid;
   end if;
 
-  -- Fallback: player_auth_links.user_id -> player_id
   begin
     select l.player_id into pid
     from public.player_auth_links l
@@ -47,9 +46,9 @@ begin
 end $$;
 
 -- -------------------------
--- Helper: sa_is_alliance_member(code)
+-- Helper: is_alliance_member(code)
 -- -------------------------
-create or replace function public.sa_is_alliance_member(p_alliance_code text)
+create or replace function public.is_alliance_member(p_alliance_code text)
 returns boolean
 language sql
 stable
@@ -60,14 +59,15 @@ as $$
     select 1
     from public.player_alliances pa
     where pa.alliance_code = upper(btrim(p_alliance_code))
-      and pa.player_id = public.sa_current_player_id()
+      and pa.player_id = public.current_player_id()
   );
 $$;
 
 -- -------------------------
--- Helper: sa_is_alliance_role(code, roles[])
+-- Helper: is_alliance_role(code, roles[])
+-- roles are compared case-insensitive
 -- -------------------------
-create or replace function public.sa_is_alliance_role(p_alliance_code text, p_roles text[])
+create or replace function public.is_alliance_role(p_alliance_code text, p_roles text[])
 returns boolean
 language sql
 stable
@@ -78,7 +78,7 @@ as $$
     select 1
     from public.player_alliances pa
     where pa.alliance_code = upper(btrim(p_alliance_code))
-      and pa.player_id = public.sa_current_player_id()
+      and pa.player_id = public.current_player_id()
       and lower(pa.role) = any (select lower(x) from unnest(p_roles) as x)
   );
 $$;
@@ -109,7 +109,7 @@ on public.alliance_announcements
 for select
 to authenticated
 using (
-  public.sa_is_alliance_member(alliance_code)
+  public.is_alliance_member(alliance_code)
   or public.is_app_admin(auth.uid())
 );
 
@@ -119,16 +119,17 @@ for all
 to authenticated
 using (
   public.is_app_admin(auth.uid())
-  or public.sa_is_alliance_role(alliance_code, array['owner','r5','r4'])
+  or public.is_alliance_role(alliance_code, array['owner','r5','r4'])
 )
 with check (
   public.is_app_admin(auth.uid())
-  or public.sa_is_alliance_role(alliance_code, array['owner','r5','r4'])
+  or public.is_alliance_role(alliance_code, array['owner','r5','r4'])
 );
 
 -- =========================================================
 -- B) Guides Notebook (per alliance)
 -- =========================================================
+
 create table if not exists public.guide_sections (
   id uuid primary key default gen_random_uuid(),
   alliance_code text not null,
@@ -140,10 +141,12 @@ create table if not exists public.guide_sections (
   updated_at timestamptz not null default now()
 );
 
+-- Ensure mode is valid (safe if already exists)
 do $$
 begin
   begin
-    alter table public.guide_sections drop constraint if exists guide_sections_mode_check;
+    alter table public.guide_sections
+      drop constraint if exists guide_sections_mode_check;
   exception when others then null; end;
 
   begin
@@ -194,12 +197,13 @@ drop policy if exists guide_attachments_select on public.guide_attachments;
 drop policy if exists guide_attachments_insert on public.guide_attachments;
 drop policy if exists guide_attachments_delete on public.guide_attachments;
 
+-- Sections: read by members, write by Owner/R5/R4 + app admin
 create policy guide_sections_select
 on public.guide_sections
 for select
 to authenticated
 using (
-  public.sa_is_alliance_member(alliance_code)
+  public.is_alliance_member(alliance_code)
   or public.is_app_admin(auth.uid())
 );
 
@@ -209,13 +213,14 @@ for all
 to authenticated
 using (
   public.is_app_admin(auth.uid())
-  or public.sa_is_alliance_role(alliance_code, array['owner','r5','r4'])
+  or public.is_alliance_role(alliance_code, array['owner','r5','r4'])
 )
 with check (
   public.is_app_admin(auth.uid())
-  or public.sa_is_alliance_role(alliance_code, array['owner','r5','r4'])
+  or public.is_alliance_role(alliance_code, array['owner','r5','r4'])
 );
 
+-- Posts: read by members
 create policy guide_posts_select
 on public.guide_posts
 for select
@@ -224,10 +229,14 @@ using (
   exists (
     select 1 from public.guide_sections s
     where s.id = guide_posts.section_id
-      and (public.sa_is_alliance_member(s.alliance_code) or public.is_app_admin(auth.uid()))
+      and (public.is_alliance_member(s.alliance_code) or public.is_app_admin(auth.uid()))
   )
 );
 
+-- Insert rules:
+-- - app admin always
+-- - Owner/R5/R4 always (even readonly)
+-- - if section is discussion: any alliance member can post
 create policy guide_posts_insert
 on public.guide_posts
 for insert
@@ -237,16 +246,17 @@ with check (
   or exists (
     select 1 from public.guide_sections s
     where s.id = guide_posts.section_id
-      and public.sa_is_alliance_role(s.alliance_code, array['owner','r5','r4'])
+      and public.is_alliance_role(s.alliance_code, array['owner','r5','r4'])
   )
   or exists (
     select 1 from public.guide_sections s
     where s.id = guide_posts.section_id
       and s.mode = 'discussion'
-      and public.sa_is_alliance_member(s.alliance_code)
+      and public.is_alliance_member(s.alliance_code)
   )
 );
 
+-- Update: app admin OR Owner/R5/R4 OR author (only in discussion)
 create policy guide_posts_update
 on public.guide_posts
 for update
@@ -256,7 +266,7 @@ using (
   or exists (
     select 1 from public.guide_sections s
     where s.id = guide_posts.section_id
-      and public.sa_is_alliance_role(s.alliance_code, array['owner','r5','r4'])
+      and public.is_alliance_role(s.alliance_code, array['owner','r5','r4'])
   )
   or (
     guide_posts.created_by = auth.uid()
@@ -268,6 +278,7 @@ using (
 )
 with check (true);
 
+-- Delete: app admin OR Owner/R5/R4 OR author (discussion)
 create policy guide_posts_delete
 on public.guide_posts
 for delete
@@ -277,7 +288,7 @@ using (
   or exists (
     select 1 from public.guide_sections s
     where s.id = guide_posts.section_id
-      and public.sa_is_alliance_role(s.alliance_code, array['owner','r5','r4'])
+      and public.is_alliance_role(s.alliance_code, array['owner','r5','r4'])
   )
   or (
     guide_posts.created_by = auth.uid()
@@ -288,6 +299,7 @@ using (
   )
 );
 
+-- Attachments: readable by members (via post->section->alliance)
 create policy guide_attachments_select
 on public.guide_attachments
 for select
@@ -298,10 +310,11 @@ using (
     from public.guide_posts p
     join public.guide_sections s on s.id = p.section_id
     where p.id = guide_attachments.post_id
-      and (public.sa_is_alliance_member(s.alliance_code) or public.is_app_admin(auth.uid()))
+      and (public.is_alliance_member(s.alliance_code) or public.is_app_admin(auth.uid()))
   )
 );
 
+-- Insert attachments allowed if user can post in that section
 create policy guide_attachments_insert
 on public.guide_attachments
 for insert
@@ -314,8 +327,8 @@ with check (
     join public.guide_sections s on s.id = p.section_id
     where p.id = guide_attachments.post_id
       and (
-        public.sa_is_alliance_role(s.alliance_code, array['owner','r5','r4'])
-        or (s.mode='discussion' and public.sa_is_alliance_member(s.alliance_code))
+        public.is_alliance_role(s.alliance_code, array['owner','r5','r4'])
+        or (s.mode='discussion' and public.is_alliance_member(s.alliance_code))
       )
   )
 );
@@ -331,7 +344,7 @@ using (
     from public.guide_posts p
     join public.guide_sections s on s.id = p.section_id
     where p.id = guide_attachments.post_id
-      and public.sa_is_alliance_role(s.alliance_code, array['owner','r5','r4'])
+      and public.is_alliance_role(s.alliance_code, array['owner','r5','r4'])
   )
 );
 
@@ -341,8 +354,10 @@ using (
 -- object path convention used by UI:
 --   {ALLIANCE_CODE}/{SECTION_ID}/{POST_ID}/{UUID}_{FILENAME}
 -- =========================================================
+
 do $$
 begin
+  -- Create bucket row if it doesn't exist (schema may differ; swallow errors safely)
   begin
     if not exists (select 1 from storage.buckets where id = 'alliance-guides') then
       insert into storage.buckets (id, name, public)
@@ -353,6 +368,7 @@ begin
   end;
 end $$;
 
+-- Policies on storage.objects (RLS already enabled by Supabase)
 do $$
 begin
   begin execute 'drop policy if exists alliance_guides_objects_select on storage.objects'; exception when others then null; end;
@@ -369,11 +385,15 @@ begin
       bucket_id = 'alliance-guides'
       and (
         public.is_app_admin(auth.uid())
-        or public.sa_is_alliance_member(split_part(name,'/',1))
+        or public.is_alliance_member(split_part(name,'/',1))
       )
     )
   $p$;
 
+  -- insert allowed if:
+  -- - app admin OR
+  -- - section is readonly -> only Owner/R5/R4
+  -- - section is discussion -> members can upload too
   execute $p$
     create policy alliance_guides_objects_insert
     on storage.objects
@@ -388,8 +408,8 @@ begin
           where s.id::text = split_part(name,'/',2)
             and upper(btrim(s.alliance_code)) = upper(btrim(split_part(name,'/',1)))
             and (
-              public.sa_is_alliance_role(split_part(name,'/',1), array['owner','r5','r4'])
-              or (s.mode='discussion' and public.sa_is_alliance_member(split_part(name,'/',1)))
+              public.is_alliance_role(split_part(name,'/',1), array['owner','r5','r4'])
+              or (s.mode='discussion' and public.is_alliance_member(split_part(name,'/',1)))
             )
         )
       )
@@ -405,7 +425,7 @@ begin
       bucket_id = 'alliance-guides'
       and (
         public.is_app_admin(auth.uid())
-        or public.sa_is_alliance_role(split_part(name,'/',1), array['owner','r5','r4'])
+        or public.is_alliance_role(split_part(name,'/',1), array['owner','r5','r4'])
       )
     )
     with check (true)
@@ -420,12 +440,13 @@ begin
       bucket_id = 'alliance-guides'
       and (
         public.is_app_admin(auth.uid())
-        or public.sa_is_alliance_role(split_part(name,'/',1), array['owner','r5','r4'])
+        or public.is_alliance_role(split_part(name,'/',1), array['owner','r5','r4'])
       )
     )
   $p$;
 end $$;
 
+-- Best-effort schema cache refresh
 do $$
 begin
   begin
