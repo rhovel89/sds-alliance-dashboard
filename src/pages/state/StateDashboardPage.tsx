@@ -15,7 +15,52 @@ type AllianceRow = {
 };
 
 export default function StateDashboardPage() {
-  const { isStateLeader } = useIsStateLeader();
+  
+  const [nameByUserId, setNameByUserId] = useState<Record<string, string>>({});
+
+  const loadLeaderNames = async (userIds: string[]) => {
+    const ids = Array.from(new Set((userIds || []).filter(Boolean)));
+    if (ids.length === 0) {
+      setNameByUserId({});
+      return;
+    }
+
+    const attempts: Array<{ userCol: string; select: string }> = [
+      { userCol: "auth_user_id", select: "auth_user_id,game_name,name" },
+      { userCol: "auth_user_id", select: "auth_user_id,game_name" },
+      { userCol: "user_id", select: "user_id,game_name,name" },
+      { userCol: "user_id", select: "user_id,game_name" },
+    ];
+
+    for (const a of attempts) {
+      const { data, error } = await supabase
+        .from("players")
+        .select(a.select)
+        .in(a.userCol as any, ids);
+
+      if (!error && data) {
+        const map: Record<string, string> = {};
+        for (const row of data as any[]) {
+          const key = (row as any)[a.userCol];
+          const label = (row as any).game_name || (row as any).name || key;
+          if (key) map[key] = label;
+        }
+        setNameByUserId(map);
+        return;
+      }
+    }
+
+    setNameByUserId({});
+  };
+
+  useEffect(() => {
+    (async () => {
+      const ids = ((leaders ?? []) as any[]).map((r) => (r as any)?.user_id).filter(Boolean);
+      await loadLeaderNames(ids as any);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaders]);
+const { isStateLeader } = useIsStateLeader();
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [alliances, setAlliances] = useState<AllianceRow[]>([]);
@@ -134,3 +179,4 @@ export default function StateDashboardPage() {
     </div>
   );
 }
+
