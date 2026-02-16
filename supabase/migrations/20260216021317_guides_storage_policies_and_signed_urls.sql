@@ -1,0 +1,94 @@
+-- Guides images must be readable to show in UI.
+-- Path convention assumed: <ALLIANCE_CODE>/<section_id>/<filename>
+
+do \$\$
+declare
+  b text := 'guides';
+begin
+  -- SELECT (read) policy
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='storage' and tablename='objects' and policyname = 'guides_objects_select_' || b
+  ) then
+    execute format(\\$
+      create policy %I
+      on storage.objects
+      for select
+      using (
+        bucket_id = %L
+        and (
+          is_app_admin(auth.uid())
+          or sa_is_alliance_member( upper(split_part(name, '/', 1)) )
+        )
+      );
+    \\$, 'guides_objects_select_' || b, b);
+  end if;
+
+  -- INSERT (upload) policy
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='storage' and tablename='objects' and policyname = 'guides_objects_insert_' || b
+  ) then
+    execute format(\\$
+      create policy %I
+      on storage.objects
+      for insert
+      with check (
+        bucket_id = %L
+        and (
+          is_app_admin(auth.uid())
+          or sa_is_alliance_role( upper(split_part(name, '/', 1)), array['owner','r5','r4'] )
+        )
+      );
+    \\$, 'guides_objects_insert_' || b, b);
+  end if;
+
+  -- UPDATE policy (optional, but safe to include)
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='storage' and tablename='objects' and policyname = 'guides_objects_update_' || b
+  ) then
+    execute format(\\$
+      create policy %I
+      on storage.objects
+      for update
+      using (
+        bucket_id = %L
+        and (
+          is_app_admin(auth.uid())
+          or sa_is_alliance_role( upper(split_part(name, '/', 1)), array['owner','r5','r4'] )
+        )
+      )
+      with check (
+        bucket_id = %L
+        and (
+          is_app_admin(auth.uid())
+          or sa_is_alliance_role( upper(split_part(name, '/', 1)), array['owner','r5','r4'] )
+        )
+      );
+    \\$, 'guides_objects_update_' || b, b, b);
+  end if;
+
+  -- DELETE policy
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='storage' and tablename='objects' and policyname = 'guides_objects_delete_' || b
+  ) then
+    execute format(\\$
+      create policy %I
+      on storage.objects
+      for delete
+      using (
+        bucket_id = %L
+        and (
+          is_app_admin(auth.uid())
+          or sa_is_alliance_role( upper(split_part(name, '/', 1)), array['owner','r5','r4'] )
+        )
+      );
+    \\$, 'guides_objects_delete_' || b, b);
+  end if;
+
+  -- Best-effort schema reload for PostgREST
+  perform pg_notify('pgrst', 'reload schema');
+end
+\$\$;
