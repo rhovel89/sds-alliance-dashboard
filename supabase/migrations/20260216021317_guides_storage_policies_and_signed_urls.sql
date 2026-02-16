@@ -1,94 +1,97 @@
 -- Guides images must be readable to show in UI.
 -- Path convention assumed: <ALLIANCE_CODE>/<section_id>/<filename>
 
-do \$\$
-declare
-  b text := 'guides';
+-- Ensure guides bucket exists (private bucket; reads controlled by RLS policies below)
+insert into storage.buckets (id, name, public)
+values ('guides', 'guides', false)
+on conflict (id) do update
+set name = excluded.name;
+
+-- Make sure RLS is on (safe)
+-- (removed) storage.objects RLS already enabled in Supabase hosted storage
+do $$
 begin
-  -- SELECT (read) policy
-  if not exists (
-    select 1 from pg_policies
-    where schemaname='storage' and tablename='objects' and policyname = 'guides_objects_select_' || b
-  ) then
-    execute format(\\$
-      create policy %I
-      on storage.objects
-      for select
-      using (
-        bucket_id = %L
-        and (
-          is_app_admin(auth.uid())
-          or sa_is_alliance_member( upper(split_part(name, '/', 1)) )
-        )
-      );
-    \\$, 'guides_objects_select_' || b, b);
-  end if;
+  -- READ: alliance members + app admins can view images in the guides bucket
+  begin
+    create policy guides_objects_select
+    on storage.objects
+    for select
+    using (
+      bucket_id = 'guides'
+      and (
+        public.is_app_admin(auth.uid())
+        or public.sa_is_alliance_member(upper(split_part(name, '/', 1)))
+      )
+    );
+  exception when duplicate_object then
+    null;
+  end;
 
-  -- INSERT (upload) policy
-  if not exists (
-    select 1 from pg_policies
-    where schemaname='storage' and tablename='objects' and policyname = 'guides_objects_insert_' || b
-  ) then
-    execute format(\\$
-      create policy %I
-      on storage.objects
-      for insert
-      with check (
-        bucket_id = %L
-        and (
-          is_app_admin(auth.uid())
-          or sa_is_alliance_role( upper(split_part(name, '/', 1)), array['owner','r5','r4'] )
-        )
-      );
-    \\$, 'guides_objects_insert_' || b, b);
-  end if;
-
-  -- UPDATE policy (optional, but safe to include)
-  if not exists (
-    select 1 from pg_policies
-    where schemaname='storage' and tablename='objects' and policyname = 'guides_objects_update_' || b
-  ) then
-    execute format(\\$
-      create policy %I
-      on storage.objects
-      for update
-      using (
-        bucket_id = %L
-        and (
-          is_app_admin(auth.uid())
-          or sa_is_alliance_role( upper(split_part(name, '/', 1)), array['owner','r5','r4'] )
+  -- WRITE: owner/r5/r4 + app admins can upload
+  begin
+    create policy guides_objects_insert
+    on storage.objects
+    for insert
+    with check (
+      bucket_id = 'guides'
+      and (
+        public.is_app_admin(auth.uid())
+        or public.sa_is_alliance_role(
+          upper(split_part(name, '/', 1)),
+          array['owner','r5','r4']
         )
       )
-      with check (
-        bucket_id = %L
-        and (
-          is_app_admin(auth.uid())
-          or sa_is_alliance_role( upper(split_part(name, '/', 1)), array['owner','r5','r4'] )
-        )
-      );
-    \\$, 'guides_objects_update_' || b, b, b);
-  end if;
+    );
+  exception when duplicate_object then
+    null;
+  end;
 
-  -- DELETE policy
-  if not exists (
-    select 1 from pg_policies
-    where schemaname='storage' and tablename='objects' and policyname = 'guides_objects_delete_' || b
-  ) then
-    execute format(\\$
-      create policy %I
-      on storage.objects
-      for delete
-      using (
-        bucket_id = %L
-        and (
-          is_app_admin(auth.uid())
-          or sa_is_alliance_role( upper(split_part(name, '/', 1)), array['owner','r5','r4'] )
+  -- UPDATE: owner/r5/r4 + app admins can modify
+  begin
+    create policy guides_objects_update
+    on storage.objects
+    for update
+    using (
+      bucket_id = 'guides'
+      and (
+        public.is_app_admin(auth.uid())
+        or public.sa_is_alliance_role(
+          upper(split_part(name, '/', 1)),
+          array['owner','r5','r4']
         )
-      );
-    \\$, 'guides_objects_delete_' || b, b);
-  end if;
+      )
+    )
+    with check (
+      bucket_id = 'guides'
+      and (
+        public.is_app_admin(auth.uid())
+        or public.sa_is_alliance_role(
+          upper(split_part(name, '/', 1)),
+          array['owner','r5','r4']
+        )
+      )
+    );
+  exception when duplicate_object then
+    null;
+  end;
 
-  -- Best-effort schema reload for PostgREST
-  perform pg_notify('pgrst', 'reload schema');
-end
-\$\$;
+  -- DELETE: owner/r5/r4 + app admins can delete
+  begin
+    create policy guides_objects_delete
+    on storage.objects
+    for delete
+    using (
+      bucket_id = 'guides'
+      and (
+        public.is_app_admin(auth.uid())
+        or public.sa_is_alliance_role(
+          upper(split_part(name, '/', 1)),
+          array['owner','r5','r4']
+        )
+      )
+    );
+  exception when duplicate_object then
+    null;
+  end;
+end $$;
+
