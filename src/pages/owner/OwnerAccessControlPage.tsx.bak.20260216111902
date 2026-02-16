@@ -12,7 +12,7 @@ const FALLBACK_ROLES: RoleDef[] = [
   { role_key: "r4", display_name: "R4" },
   { role_key: "member", display_name: "Member" },
   { role_key: "viewer", display_name: "Viewer" },
-  { role_key: "state_leader", display_name: "State Leader" },
+  { role_key: "state_leader", display_name: "State Leader" }
 ];
 
 function norm(s?: string | null) { return String(s ?? "").trim(); }
@@ -77,7 +77,7 @@ export default function OwnerAccessControlPage() {
         player_id: r.player_id,
         role: r.role,
         game_name: r.players?.game_name,
-        name: r.players?.name,
+        name: r.players?.name
       }));
       setMembers(rows);
       return;
@@ -140,7 +140,7 @@ export default function OwnerAccessControlPage() {
         key: String(r.key ?? r.permission_key ?? r.id ?? ""),
         label: r.label ?? r.name ?? r.key,
         feature: r.feature,
-        category: r.category,
+        category: r.category
       }))
       .filter((x) => x.key);
 
@@ -396,7 +396,7 @@ export default function OwnerAccessControlPage() {
                 alignItems: "center",
                 padding: 10,
                 border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 8,
+                borderRadius: 8
               }}
             >
               <input
