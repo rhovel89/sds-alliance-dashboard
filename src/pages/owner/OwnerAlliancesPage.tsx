@@ -1,60 +1,24 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "../../lib/supabase";
 
 type AllianceRow = {
   code: string;
   name: string | null;
   enabled?: boolean | null;
-  state_id?: any;
 };
 
 function normCode(v: string) {
   return v.trim().toUpperCase();
 }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-// Detect whether alliances.state_id is uuid or int by looking at an existing non-null value.
-// Then reuse that same state's id for new alliances (this app is single-state).
-async function detectAllianceStateIdKind(): Promise<"uuid" | "int" | "unknown"> {
-  const { data, error } = await supabase
-    .from("alliances")
-    .select("state_id")
-    .not("state_id", "is", null)
-    .limit(1)
-    .maybeSingle();
-
-  if (error) return "unknown";
-  const v: any = (data as any)?.state_id;
-  if (typeof v === "number") return "int";
-  if (typeof v === "string" && UUID_RE.test(v)) return "uuid";
-  return "unknown";
-}
-
-// Returns a state_id value that matches the DB column type (uuid or int), or null if none exists.
-async function resolveStateIdForAlliances(kind: "uuid" | "int" | "unknown"): Promise<string | number | null> {
-  if (kind === "unknown") return null;
-
-  const { data, error } = await supabase
-    .from("alliances")
-    .select("state_id")
-    .not("state_id", "is", null)
-    .limit(1)
-    .maybeSingle();
-
-  if (error) return null;
-  const v: any = (data as any)?.state_id;
-
-  if (kind === "int") {
-    if (typeof v === "number") return v;
-    if (typeof v === "string" && /^[0-9]+$/.test(v.trim())) return parseInt(v.trim(), 10);
-    return null;
-  }
-
-  // uuid
-  if (typeof v === "string" && UUID_RE.test(v)) return v;
-  return null;
+function looksLikeMissingColumn(msg: string, col: string) {
+  const m = (msg || "").toLowerCase();
+  return (
+    m.includes(`'${col.toLowerCase()}'`) ||
+    m.includes(`"${col.toLowerCase()}"`) ||
+    (m.includes("could not find") && m.includes(col.toLowerCase())) ||
+    (m.includes("column") && m.includes(col.toLowerCase()) && m.includes("does not exist"))
+  );
 }
 
 export default function OwnerAlliancesPage() {
@@ -65,101 +29,157 @@ export default function OwnerAlliancesPage() {
   const [newName, setNewName] = useState("");
   const [newEnabled, setNewEnabled] = useState(true);
 
+  // Detect schema differences
+  const [codeCol, setCodeCol] = useState<"code" | "id">("code");
+  const [hasEnabled, setHasEnabled] = useState(true);
+
   const refetch = async () => {
     setLoading(true);
 
-    // try with enabled; fallback if column doesn't exist
-    let data: any[] | null = null;
-
-    const resA = await supabase
+    // 1) Try: code + enabled
+    let res = await supabase
       .from("alliances")
-      .select("code,name,enabled,state_id")
+      .select("code,name,enabled")
       .order("code", { ascending: true });
 
-    if (!resA.error) {
-      data = resA.data as any[];
-    } else {
-      const msg = (resA.error.message || "").toLowerCase();
-      if (msg.includes("enabled")) {
-        const resB = await supabase
-          .from("alliances")
-          .select("code,name,state_id")
-          .order("code", { ascending: true });
+    if (!res.error) {
+      setCodeCol("code");
+      setHasEnabled(true);
+      setRows((res.data ?? []) as any);
+      setLoading(false);
+      return;
+    }
 
-        if (resB.error) {
-          console.error(resB.error);
-          alert(resB.error.message);
-          setLoading(false);
-          return;
-        }
-        data = (resB.data as any[]).map((r) => ({ ...r, enabled: true }));
-      } else {
-        console.error(resA.error);
-        alert(resA.error.message);
+    // 2) Fallback: code (no enabled)
+    if (looksLikeMissingColumn(res.error.message || "", "enabled")) {
+      const res2 = await supabase
+        .from("alliances")
+        .select("code,name")
+        .order("code", { ascending: true });
+
+      if (!res2.error) {
+        setCodeCol("code");
+        setHasEnabled(false);
+        setRows(((res2.data ?? []) as any[]).map((r) => ({ ...r, enabled: true })));
         setLoading(false);
         return;
       }
+
+      // If code missing too, fall through
+      res = res2 as any;
     }
 
-    setRows((data || []) as AllianceRow[]);
+    // 3) If `code` column doesn't exist, try `id` instead (common when PK is named id)
+    if (looksLikeMissingColumn(res.error?.message || "", "code")) {
+      // 3a) id + enabled
+      let res3 = await supabase
+        .from("alliances")
+        .select("id,name,enabled")
+        .order("id", { ascending: true });
+
+      if (!res3.error) {
+        setCodeCol("id");
+        setHasEnabled(true);
+        setRows(((res3.data ?? []) as any[]).map((r) => ({ code: r.id, name: r.name, enabled: r.enabled })));
+        setLoading(false);
+        return;
+      }
+
+      // 3b) id (no enabled)
+      if (looksLikeMissingColumn(res3.error.message || "", "enabled")) {
+        const res4 = await supabase
+          .from("alliances")
+          .select("id,name")
+          .order("id", { ascending: true });
+
+        if (!res4.error) {
+          setCodeCol("id");
+          setHasEnabled(false);
+          setRows(((res4.data ?? []) as any[]).map((r) => ({ code: r.id, name: r.name, enabled: true })));
+          setLoading(false);
+          return;
+        }
+
+        res3 = res4 as any;
+      }
+
+      console.error(res3.error);
+      alert(res3.error?.message || "Failed to load alliances");
+      setLoading(false);
+      return;
+    }
+
+    // 4) Otherwise show error
+    console.error(res.error);
+    alert(res.error?.message || "Failed to load alliances");
     setLoading(false);
   };
 
   useEffect(() => {
     refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const createAlliance = async () => {
-    // Let you type OzR; we'll normalize to OZR automatically
     const code = normCode(newCode);
     const name = newName.trim() || code;
 
-    if (!code) return alert("Alliance code required (example: SDS)");
-    // Allow letters+numbers only, 2–12 chars
+    if (!code) return alert("Alliance code required (example: SDS, OZR)");
     if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
 
-    // Determine state_id type and reuse a known-good state_id from an existing alliance
-    const kind = await detectAllianceStateIdKind();
-    const stateId = await resolveStateIdForAlliances(kind);
+    // IMPORTANT: Do NOT send state_id from UI (prevents UUID/int mismatches)
+    const base: any = { [codeCol]: code, name };
+    const attempts: any[] = [];
 
-    // try with enabled, fallback without enabled
-    const payloadA: any = { code, name, enabled: newEnabled };
-    if (stateId !== null) payloadA.state_id = stateId;
+    if (hasEnabled) attempts.push({ ...base, enabled: newEnabled });
+    attempts.push({ ...base }); // fallback without enabled
 
-    const resA = await supabase.from("alliances").insert(payloadA);
-
-    if (resA.error) {
-      const msg = (resA.error.message || "").toLowerCase();
-      if (msg.includes("enabled")) {
-        const payloadB: any = { code, name };
-        if (stateId !== null) payloadB.state_id = stateId;
-
-        const resB = await supabase.from("alliances").insert(payloadB);
-        if (resB.error) {
-          console.error(resB.error);
-          alert(resB.error.message);
-          return;
-        }
-      } else {
-        console.error(resA.error);
-        alert(resA.error.message);
+    let lastErr: any = null;
+    for (const payload of attempts) {
+      const r = await supabase.from("alliances").insert(payload);
+      if (!r.error) {
+        setNewCode("");
+        setNewName("");
+        setNewEnabled(true);
+        await refetch();
         return;
       }
+
+      lastErr = r.error;
+
+      // If enabled column missing, continue to next attempt (without enabled)
+      if (looksLikeMissingColumn(r.error.message || "", "enabled")) continue;
+
+      // If code/id mismatch, try switching column once
+      if (looksLikeMissingColumn(r.error.message || "", "code") && codeCol !== "id") {
+        setCodeCol("id");
+        const rr = await supabase.from("alliances").insert({ id: code, name, ...(hasEnabled ? { enabled: newEnabled } : {}) });
+        if (!rr.error) { await refetch(); return; }
+        lastErr = rr.error;
+      }
+      if (looksLikeMissingColumn(r.error.message || "", "id") && codeCol !== "code") {
+        setCodeCol("code");
+        const rr = await supabase.from("alliances").insert({ code, name, ...(hasEnabled ? { enabled: newEnabled } : {}) });
+        if (!rr.error) { await refetch(); return; }
+        lastErr = rr.error;
+      }
+
+      // Any other error: stop
+      break;
     }
 
-    setNewCode("");
-    setNewName("");
-    setNewEnabled(true);
-    await refetch();
+    console.error(lastErr);
+    alert(lastErr?.message || "Failed to create alliance");
   };
 
   const renameAlliance = async (code: string) => {
     const current = rows.find((r) => r.code === code);
     const next = prompt("Alliance name:", current?.name || code);
     if (next == null) return;
-    const name = next.trim() || code;
 
-    const { error } = await supabase.from("alliances").update({ name }).eq("code", code);
+    const name = next.trim() || code;
+    const { error } = await supabase.from("alliances").update({ name }).eq(codeCol, code);
+
     if (error) {
       console.error(error);
       alert(error.message);
@@ -169,7 +189,8 @@ export default function OwnerAlliancesPage() {
   };
 
   const toggleEnabled = async (code: string, enabled: boolean) => {
-    const res = await supabase.from("alliances").update({ enabled }).eq("code", code);
+    if (!hasEnabled) return alert("Enabled flag is not supported by your alliances table schema.");
+    const res = await supabase.from("alliances").update({ enabled }).eq(codeCol, code);
     if (res.error) {
       console.error(res.error);
       alert(res.error.message);
@@ -180,8 +201,7 @@ export default function OwnerAlliancesPage() {
 
   const deleteAlliance = async (code: string) => {
     if (!confirm(`Delete alliance ${code}? This may fail if referenced by members/events.`)) return;
-
-    const { error } = await supabase.from("alliances").delete().eq("code", code);
+    const { error } = await supabase.from("alliances").delete().eq(codeCol, code);
     if (error) {
       console.error(error);
       alert(error.message);
@@ -200,7 +220,14 @@ export default function OwnerAlliancesPage() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
           <label style={{ display: "grid", gap: 6 }}>
             <span>Code</span>
-            <input value={newCode} onChange={(e) => setNewCode(e.target.value)} placeholder="OzR" />
+            <input
+              type="text"
+              inputMode="text"
+              autoCapitalize="characters"
+              value={newCode}
+              onChange={(e) => setNewCode(e.target.value)}
+              placeholder="OZR"
+            />
           </label>
 
           <label style={{ display: "grid", gap: 6 }}>
@@ -208,10 +235,12 @@ export default function OwnerAlliancesPage() {
             <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="OzR MindHunters" />
           </label>
 
-          <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
-            <input type="checkbox" checked={newEnabled} onChange={(e) => setNewEnabled(e.target.checked)} />
-            Enabled
-          </label>
+          {hasEnabled ? (
+            <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+              <input type="checkbox" checked={newEnabled} onChange={(e) => setNewEnabled(e.target.checked)} />
+              Enabled
+            </label>
+          ) : null}
 
           <button onClick={createAlliance}>➕ Create</button>
           <button onClick={refetch}>↻ Refresh</button>
@@ -242,13 +271,9 @@ export default function OwnerAlliancesPage() {
                     </div>
 
                     <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                      {"enabled" in r ? (
+                      {hasEnabled ? (
                         <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input
-                            type="checkbox"
-                            checked={enabled}
-                            onChange={(e) => toggleEnabled(r.code, e.target.checked)}
-                          />
+                          <input type="checkbox" checked={enabled} onChange={(e) => toggleEnabled(r.code, e.target.checked)} />
                           Enabled
                         </label>
                       ) : null}
