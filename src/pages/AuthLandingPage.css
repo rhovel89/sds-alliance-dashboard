@@ -70,22 +70,61 @@
   opacity: 0.55;
 }
 
-/* Subtle fog movement */
+/* Subtle fog movement (stronger, layered) */
 .fog {
   position: absolute;
-  inset: -30%;
+  inset: -38%;
   background:
-    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.06), transparent 55%),
-    radial-gradient(circle at 70% 55%, rgba(255,255,255,0.05), transparent 60%),
-    radial-gradient(circle at 45% 80%, rgba(255,255,255,0.04), transparent 65%);
-  filter: blur(12px);
-  opacity: 0.22;
-  animation: fogDrift 16s ease-in-out infinite;
+    radial-gradient(circle at 18% 28%, rgba(255,255,255,0.08), transparent 58%),
+    radial-gradient(circle at 72% 50%, rgba(255,255,255,0.07), transparent 62%),
+    radial-gradient(circle at 48% 82%, rgba(255,255,255,0.06), transparent 66%),
+    linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.45));
+  filter: blur(16px);
+  opacity: 0.34;
+  animation: fogDrift 18s ease-in-out infinite;
 }
+
+/* two extra moving fog layers using pseudo-elements */
+.fog::before,
+.fog::after {
+  content: "";
+  position: absolute;
+  inset: -22%;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(255,255,255,0.07), transparent 60%),
+    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.06), transparent 64%),
+    radial-gradient(circle at 50% 90%, rgba(255,255,255,0.05), transparent 70%);
+  filter: blur(18px);
+  opacity: 0.26;
+}
+
+.fog::before {
+  animation: fogDrift2 24s ease-in-out infinite;
+  transform: translate3d(0,0,0) scale(1.06);
+}
+
+.fog::after {
+  animation: fogDrift3 30s ease-in-out infinite;
+  transform: translate3d(0,0,0) scale(1.10);
+  opacity: 0.20;
+}
+
 @keyframes fogDrift {
-  0%   { transform: translate3d(-2%, -1%, 0) scale(1.02); }
-  50%  { transform: translate3d(2%, 1%, 0) scale(1.04); }
-  100% { transform: translate3d(-2%, -1%, 0) scale(1.02); }
+  0%   { transform: translate3d(-2%, -1%, 0) scale(1.04); }
+  50%  { transform: translate3d(2%, 1.5%, 0) scale(1.08); }
+  100% { transform: translate3d(-2%, -1%, 0) scale(1.04); }
+}
+
+@keyframes fogDrift2 {
+  0%   { transform: translate3d(2%, 1%, 0) scale(1.06); }
+  50%  { transform: translate3d(-2.5%, -1.5%, 0) scale(1.10); }
+  100% { transform: translate3d(2%, 1%, 0) scale(1.06); }
+}
+
+@keyframes fogDrift3 {
+  0%   { transform: translate3d(-1%, 2%, 0) scale(1.10); }
+  50%  { transform: translate3d(2%, -2%, 0) scale(1.14); }
+  100% { transform: translate3d(-1%, 2%, 0) scale(1.10); }
 }
 
 /* Film grain + vignette */
@@ -108,25 +147,37 @@
 .flicker {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.22);
   opacity: 0.10;
-  animation: flicker 6.5s infinite;
+  mix-blend-mode: multiply;
+  animation: flicker 4.9s infinite;
 }
+
+/* More cinematic flicker spikes (brief dark dips + occasional bright snap) */
 @keyframes flicker {
-  0% { opacity: .06; }
-  3% { opacity: .18; }
-  4% { opacity: .05; }
-  8% { opacity: .14; }
-  9% { opacity: .07; }
-  15% { opacity: .20; }
-  16% { opacity: .06; }
-  42% { opacity: .10; }
-  43% { opacity: .22; }
-  44% { opacity: .08; }
-  70% { opacity: .12; }
-  71% { opacity: .28; }
-  72% { opacity: .10; }
-  100% { opacity: .08; }
+  0%   { opacity: .07; }
+  2%   { opacity: .20; }
+  3%   { opacity: .06; }
+  6%   { opacity: .16; }
+  7%   { opacity: .08; }
+  12%  { opacity: .26; }
+  13%  { opacity: .09; }
+  28%  { opacity: .12; }
+  29%  { opacity: .30; }
+  30%  { opacity: .10; }
+  44%  { opacity: .14; }
+  45%  { opacity: .34; }
+  46%  { opacity: .10; }
+  60%  { opacity: .16; }
+  61%  { opacity: .38; }
+  62%  { opacity: .11; }
+  76%  { opacity: .13; }
+  77%  { opacity: .32; }
+  78%  { opacity: .09; }
+  92%  { opacity: .18; }
+  93%  { opacity: .42; }
+  94%  { opacity: .12; }
+  100% { opacity: .09; }
 }
 
 /* Stylized blood drips at top */
@@ -334,3 +385,4 @@
   .fog, .flicker, .bloodDrips { animation: none !important; }
   .btn { transition: none; }
 }
+
