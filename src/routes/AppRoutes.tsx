@@ -44,6 +44,7 @@ import AuthLandingPage from "../pages/AuthLandingPage";
 import OnboardingGate from "../pages/OnboardingGate";
 import OwnerPlayerDashboardViewPage from "../pages/owner/OwnerPlayerDashboardViewPage";
 import MePage from "../pages/MePage";
+import PlayerProfilePage from "../pages/PlayerProfilePage";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -125,10 +126,12 @@ export default function AppRoutes() {
       <Route path="/dashboard/:allianceCode/guides" element={<AllianceGuidesPage />} />
       <Route path="/me" element={<PlayerDashboardPage />} />
       <Route path="/owner/access-control" element={<OwnerAccessControlPage />} />
-        <Route path="/owner/player-dashboard/:playerId" element={<OwnerPlayerDashboardViewPage />} />
+        <Route path="/owner/player-dashboard/:playerId" element={<OwnerPlayerDashboardViewPage />} />        <Route path="/dashboard/:allianceCode/me" element={<PlayerProfilePage />} />
+
 </Routes>
   );
 }
+
 
 
 
