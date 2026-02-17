@@ -39,7 +39,7 @@ begin
       execute $p$
         create policy pap_write_own
         on public.player_alliance_profiles
-        for insert, update, delete
+        for all
         using (
           exists (
             select 1 from public.players me
@@ -78,7 +78,7 @@ begin
       execute $p$
         create policy phq_write_own
         on public.player_hqs
-        for insert, update, delete
+        for all
         using (user_id = auth.uid())
         with check (user_id = auth.uid())
       $p$;
@@ -146,7 +146,7 @@ begin
         execute format($p$
           create policy ahqm_write_managers
           on public.alliance_hq_map
-          for insert, update, delete
+          for all
           using (
             %s
             exists (
@@ -174,7 +174,7 @@ begin
         execute format($p$
           create policy ahqm_write_managers
           on public.alliance_hq_map
-          for insert, update, delete
+          for all
           using (
             %s
             exists (
@@ -234,7 +234,7 @@ begin
         execute format($p$
           create policy ae_write_managers
           on public.alliance_events
-          for insert, update, delete
+          for all
           using (
             %s
             exists (
@@ -286,7 +286,7 @@ begin
         execute format($p$
           create policy ae_write_managers
           on public.alliance_events
-          for insert, update, delete
+          for all
           using (
             %s
             exists (
@@ -339,7 +339,7 @@ begin
         execute format($p$
           create policy ae_write_managers
           on public.alliance_events
-          for insert, update, delete
+          for all
           using (
             %s
             exists (
@@ -368,3 +368,4 @@ begin
   end if;
 
 end $$;
+
