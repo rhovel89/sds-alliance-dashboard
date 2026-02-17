@@ -45,6 +45,8 @@ import OnboardingGate from "../pages/OnboardingGate";
 import OwnerPlayerDashboardViewPage from "../pages/owner/OwnerPlayerDashboardViewPage";
 import MePage from "../pages/MePage";
 import PlayerProfilePage from "../pages/PlayerProfilePage";
+import AllianceHQMapViewPage from "../pages/AllianceHQMapViewPage";
+import AllianceCalendarViewPage from "../pages/AllianceCalendarViewPage";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -126,11 +128,14 @@ export default function AppRoutes() {
       <Route path="/dashboard/:allianceCode/guides" element={<AllianceGuidesPage />} />
       <Route path="/me" element={<PlayerDashboardPage />} />
       <Route path="/owner/access-control" element={<OwnerAccessControlPage />} />
-        <Route path="/owner/player-dashboard/:playerId" element={<OwnerPlayerDashboardViewPage />} />        <Route path="/dashboard/:allianceCode/me" element={<PlayerProfilePage />} />
+        <Route path="/owner/player-dashboard/:playerId" element={<OwnerPlayerDashboardViewPage />} />        <Route path="/dashboard/:allianceCode/me" element={<PlayerProfilePage />} />        <Route path="/dashboard/:allianceCode/hq-map-view" element={<AllianceHQMapViewPage />} />        <Route path="/dashboard/:allianceCode/calendar-view" element={<AllianceCalendarViewPage />} />
+
+
 
 </Routes>
   );
 }
+
 
 
 
