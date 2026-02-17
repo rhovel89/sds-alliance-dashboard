@@ -1,28 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
 type TroopType = "Shooter" | "Rider" | "Fighter";
-type TroopTier =
-  | "T5" | "T6" | "T7" | "T8" | "T9" | "T10" | "T11" | "T12" | "T13" | "T14";
+type TroopTier = "T5" | "T6" | "T7" | "T8" | "T9" | "T10" | "T11" | "T12" | "T13" | "T14";
 
 const TROOP_TYPES: TroopType[] = ["Shooter", "Rider", "Fighter"];
 const TROOP_TIERS: TroopTier[] = ["T5","T6","T7","T8","T9","T10","T11","T12","T13","T14"];
 
-type ProfileRow = Record<string, any>;
-type HqRow = Record<string, any>;
+type AnyRow = Record<string, any>;
 
 function upper(v: any) {
   return String(v ?? "").trim().toUpperCase();
 }
-
 function toIntOrNull(v: any) {
-  if (v === null || v === undefined) return null;
-  const s = String(v).trim();
+  const s = String(v ?? "").trim();
   if (!s) return null;
   const n = parseInt(s, 10);
   return Number.isFinite(n) ? n : null;
 }
+
+type UiHq = {
+  _tmpId: string;
+  id?: string;
+  hqName: string;
+  hqLevel: string;
+  marchSize: string;
+  rallySize: string;
+};
 
 export default function PlayerProfilePage() {
   const params = useParams();
@@ -35,23 +40,22 @@ export default function PlayerProfilePage() {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
 
-  // Profile fields (per alliance)
+  const [memberships, setMemberships] = useState<{ alliance_code: string; role?: string | null }[]>([]);
+
+  // Profile fields
   const [gameName, setGameName] = useState("");
   const [troopType, setTroopType] = useState<TroopType>("Shooter");
   const [troopTier, setTroopTier] = useState<TroopTier>("T10");
 
-  // HQs (unlimited per alliance)
-  type UiHq = {
-    _tmpId: string;
-    id?: string;
-    hqName: string;
-    hqLevel: string;
-    marchSize: string;
-    rallySize: string;
-  };
+  // HQ rows
   const [hqs, setHqs] = useState<UiHq[]>([]);
 
-  // Load current user -> players.id -> profile + HQs
+  // Autosave state
+  const [dirty, setDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const skipNextAutosave = useRef(false);
+
+  // Load: auth -> players.id -> memberships -> profile -> hqs
   useEffect(() => {
     let cancelled = false;
 
@@ -67,7 +71,6 @@ export default function PlayerProfilePage() {
           return;
         }
 
-        // players row
         const { data: p, error: pErr } = await supabase
           .from("players")
           .select("id")
@@ -81,45 +84,36 @@ export default function PlayerProfilePage() {
           return;
         }
         if (cancelled) return;
-        setPlayerId(pid);
+        setPlayerId(String(pid));
 
-        // profile row (try alliance_code first)
-        let prof: ProfileRow | null = null;
+        // memberships (for quick switching)
+        try {
+          const { data: ms } = await supabase
+            .from("player_alliances")
+            .select("alliance_code,role")
+            .eq("player_id", pid)
+            .order("alliance_code", { ascending: true });
+          if (!cancelled) setMemberships((ms as any) ?? []);
+        } catch {}
 
-        const r1 = await supabase
+        // profile (per alliance)
+        const { data: prof, error: profErr } = await supabase
           .from("player_alliance_profiles")
           .select("*")
           .eq("player_id", pid)
           .eq("alliance_code", allianceCode)
           .maybeSingle();
 
-        if (!r1.error) {
-          prof = (r1.data as any) ?? null;
-        } else {
-          // fallback: some schemas might use alliance_id or code
-          const msg = String(r1.error.message || "").toLowerCase();
-          if (msg.includes("alliance_code")) {
-            const r2 = await supabase
-              .from("player_alliance_profiles")
-              .select("*")
-              .eq("player_id", pid)
-              .eq("alliance", allianceCode)
-              .maybeSingle();
-            if (!r2.error) prof = (r2.data as any) ?? null;
-          } else {
-            throw r1.error;
-          }
-        }
+        if (profErr) throw profErr;
 
         if (cancelled) return;
 
         if (prof?.id) {
           setProfileId(String(prof.id));
-          setGameName(String(prof.game_name ?? prof.gameName ?? ""));
-          setTroopType((prof.troop_type ?? prof.troopType ?? "Shooter") as any);
-          setTroopTier((prof.troop_tier ?? prof.troopTier ?? "T10") as any);
+          setGameName(String(prof.game_name ?? ""));
+          setTroopType((prof.troop_type ?? "Shooter") as any);
+          setTroopTier((prof.troop_tier ?? "T10") as any);
 
-          // HQs
           const { data: hqRows, error: hqErr } = await supabase
             .from("player_hqs")
             .select("*")
@@ -131,21 +125,25 @@ export default function PlayerProfilePage() {
           const ui = (hqRows ?? []).map((r: any, i: number) => ({
             _tmpId: String(r.id ?? `row_${i}`),
             id: r.id,
-            hqName: String(r.hq_name ?? r.hqName ?? ""),
-            hqLevel: String(r.hq_level ?? r.hqLevel ?? ""),
-            marchSize: String(r.march_size ?? r.marchSize ?? r.march_size_without_heros ?? r.march_size_without_heroes ?? ""),
-            rallySize: String(r.rally_size ?? r.rallySize ?? ""),
+            hqName: String(r.hq_name ?? ""),
+            hqLevel: String(r.hq_level ?? ""),
+            marchSize: String(r.march_size ?? ""),
+            rallySize: String(r.rally_size ?? ""),
           }));
 
-          setHqs(ui.length ? ui : [{
-            _tmpId: String(Date.now()),
-            hqName: "",
-            hqLevel: "",
-            marchSize: "",
-            rallySize: "",
-          }]);
+          setHqs(
+            ui.length
+              ? ui
+              : [{
+                  _tmpId: String(Date.now()),
+                  hqName: "",
+                  hqLevel: "",
+                  marchSize: "",
+                  rallySize: "",
+                }]
+          );
         } else {
-          // no profile yet — start with one HQ row
+          // new profile
           setProfileId(null);
           setGameName("");
           setTroopType("Shooter");
@@ -158,6 +156,9 @@ export default function PlayerProfilePage() {
             rallySize: "",
           }]);
         }
+
+        setDirty(false);
+        setLastSavedAt(null);
       } catch (e: any) {
         setErr(e?.message ?? String(e));
       } finally {
@@ -179,48 +180,54 @@ export default function PlayerProfilePage() {
         rallySize: "",
       },
     ]);
+    setDirty(true);
   };
 
   const removeHq = async (tmpId: string) => {
     const row = (hqs ?? []).find((x) => x._tmpId === tmpId);
     setHqs((prev) => (prev ?? []).filter((x) => x._tmpId !== tmpId));
+    setDirty(true);
 
-    // best-effort delete on server if it existed
+    // best-effort delete on server if existed
     if (row?.id) {
-      try {
-        await supabase.from("player_hqs").delete().eq("id", row.id);
-      } catch {}
+      try { await supabase.from("player_hqs").delete().eq("id", row.id); } catch {}
     }
   };
 
-  const saveAll = async () => {
+  const saveAll = async (opts?: { silent?: boolean }) => {
     if (!playerId) return;
     if (!allianceCode) return;
 
-    // basic validation
-    const gn = gameName.trim();
-    if (!gn) return alert("Game Name is required.");
+    const silent = Boolean(opts?.silent);
 
-    const cleanedHqs = (hqs ?? []).map((h) => ({
+    const gn = gameName.trim();
+    if (!gn) {
+      if (!silent) alert("Game Name is required.");
+      return;
+    }
+
+    const cleaned = (hqs ?? []).map((h) => ({
       ...h,
       hqName: (h.hqName ?? "").trim(),
     }));
 
-    if (cleanedHqs.some((h) => !h.hqName)) {
-      return alert("Each HQ needs an HQ Name (you can add multiple HQs).");
+    if (cleaned.some((h) => !h.hqName)) {
+      if (!silent) alert("Each HQ needs an HQ Name.");
+      return;
     }
 
     setSaving(true);
     setErr(null);
 
     try {
-      // Create/update profile
-      const profilePayload: any = {
+      // 1) profile: update-if-exists else insert
+      const payload: AnyRow = {
         player_id: playerId,
         alliance_code: allianceCode,
         game_name: gn,
         troop_type: troopType,
         troop_tier: troopTier,
+        updated_at: new Date().toISOString(),
       };
 
       let profId = profileId;
@@ -228,106 +235,142 @@ export default function PlayerProfilePage() {
       if (profId) {
         const { error } = await supabase
           .from("player_alliance_profiles")
-          .update(profilePayload)
+          .update(payload)
           .eq("id", profId);
 
-        if (error) {
-          // fallback if column names differ a bit
-          const msg = String(error.message || "").toLowerCase();
-          if (msg.includes("alliance_code")) {
-            const altPayload: any = {
-              player_id: playerId,
-              alliance: allianceCode,
-              game_name: gn,
-              troop_type: troopType,
-              troop_tier: troopTier,
-            };
-            const u2 = await supabase.from("player_alliance_profiles").update(altPayload).eq("id", profId);
-            if (u2.error) throw u2.error;
-          } else {
-            throw error;
-          }
-        }
+        if (error) throw error;
       } else {
         const { data, error } = await supabase
           .from("player_alliance_profiles")
-          .insert(profilePayload)
+          .insert({ ...payload, created_at: new Date().toISOString() })
           .select("id")
           .maybeSingle();
 
-        if (error) {
-          const msg = String(error.message || "").toLowerCase();
-          if (msg.includes("alliance_code")) {
-            const altPayload: any = {
-              player_id: playerId,
-              alliance: allianceCode,
-              game_name: gn,
-              troop_type: troopType,
-              troop_tier: troopTier,
-            };
-            const r2 = await supabase.from("player_alliance_profiles").insert(altPayload).select("id").maybeSingle();
-            if (r2.error) throw r2.error;
-            profId = String((r2.data as any)?.id ?? "");
-          } else {
-            throw error;
-          }
-        } else {
-          profId = String((data as any)?.id ?? "");
-        }
+        if (error) throw error;
 
-        if (!profId) throw new Error("Profile insert succeeded but returned no id.");
+        profId = String((data as any)?.id ?? "");
+        if (!profId) throw new Error("Profile insert returned no id.");
         setProfileId(profId);
       }
 
-      // Upsert HQ rows
-      for (const h of cleanedHqs) {
-        const hqPayload: any = {
+      // 2) HQs
+      for (const h of cleaned) {
+        const hqPayload: AnyRow = {
           profile_id: profId,
           hq_name: h.hqName,
           hq_level: toIntOrNull(h.hqLevel),
           march_size: toIntOrNull(h.marchSize),
           rally_size: toIntOrNull(h.rallySize),
+          updated_at: new Date().toISOString(),
         };
 
         if (h.id) {
           const { error } = await supabase.from("player_hqs").update(hqPayload).eq("id", h.id);
           if (error) throw error;
         } else {
-          const { data, error } = await supabase.from("player_hqs").insert(hqPayload).select("id").maybeSingle();
+          const { data, error } = await supabase
+            .from("player_hqs")
+            .insert({ ...hqPayload, created_at: new Date().toISOString() })
+            .select("id")
+            .maybeSingle();
+
           if (error) throw error;
+
           const newId = String((data as any)?.id ?? "");
           if (newId) {
+            skipNextAutosave.current = true; // prevent autosave loop from ID assignment
             setHqs((prev) => (prev ?? []).map((x) => x._tmpId === h._tmpId ? { ...x, id: newId } : x));
           }
         }
       }
 
-      alert("✅ Saved!");
+      setDirty(false);
+      setLastSavedAt(Date.now());
+      if (!silent) alert("✅ Saved!");
     } catch (e: any) {
       console.error(e);
       setErr(e?.message ?? String(e));
-      alert(e?.message ?? String(e));
+      if (!silent) alert(e?.message ?? String(e));
     } finally {
       setSaving(false);
     }
   };
 
+  // Mark dirty on changes
+  useEffect(() => {
+    if (loading) return;
+    setDirty(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameName, troopType, troopTier, JSON.stringify(hqs.map(h => [h.id,h.hqName,h.hqLevel,h.marchSize,h.rallySize]))]);
+
+  // Autosave (debounced)
+  useEffect(() => {
+    if (loading) return;
+    if (saving) return;
+    if (!dirty) return;
+
+    if (skipNextAutosave.current) {
+      skipNextAutosave.current = false;
+      return;
+    }
+
+    const t = window.setTimeout(() => {
+      saveAll({ silent: true });
+    }, 1200);
+
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, saving, loading, gameName, troopType, troopTier, JSON.stringify(hqs.map(h => [h.id,h.hqName,h.hqLevel,h.marchSize,h.rallySize]))]);
+
   if (loading) {
     return <div style={{ padding: 18 }}>Loading your profile…</div>;
   }
 
+  const savedLabel =
+    saving ? "Saving…" :
+    (dirty ? "Unsaved changes" :
+      (lastSavedAt ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}` : "Up to date"));
+
   return (
     <div style={{ padding: 18, maxWidth: 980, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <h2 style={{ margin: 0 }}>👤 My Profile & HQs — {allianceCode}</h2>
-        <Link to={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ opacity: 0.85 }}>
-          ← Back to Dashboard
-        </Link>
+        <div>
+          <h2 style={{ margin: 0 }}>👤 My Profile & HQs — {allianceCode}</h2>
+          <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>{savedLabel}</div>
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <button onClick={() => saveAll()} disabled={saving} style={{ padding: "10px 14px", borderRadius: 12 }}>
+            Save now
+          </button>
+          <Link to={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ opacity: 0.85 }}>
+            ← Back to Dashboard
+          </Link>
+        </div>
       </div>
 
       {err ? (
         <div style={{ marginTop: 12, padding: 12, border: "1px solid rgba(255,0,0,0.35)", borderRadius: 12 }}>
           <b>Error:</b> {err}
+        </div>
+      ) : null}
+
+      {memberships?.length ? (
+        <div style={{ marginTop: 12, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 12 }}>
+          <b>My Alliances</b>
+          <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {memberships.map((m) => (
+              <Link
+                key={m.alliance_code}
+                to={`/dashboard/${encodeURIComponent(String(m.alliance_code))}`}
+                style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)" }}
+              >
+                {String(m.alliance_code).toUpperCase()}{m.role ? ` (${String(m.role)})` : ""}
+              </Link>
+            ))}
+          </div>
+          <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
+            Each alliance has its own profile + HQ list.
+          </div>
         </div>
       ) : null}
 
@@ -354,10 +397,8 @@ export default function PlayerProfilePage() {
             </select>
           </label>
 
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button onClick={saveAll} disabled={saving} style={{ padding: "10px 14px", borderRadius: 12 }}>
-              {saving ? "Saving…" : "Save Profile + HQs"}
-            </button>
+          <div style={{ fontSize: 12, opacity: 0.75 }}>
+            Alliance: <b>{allianceCode}</b>
           </div>
         </div>
       </div>
@@ -405,7 +446,7 @@ export default function PlayerProfilePage() {
         </div>
 
         <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-          Tip: If you’re in multiple alliances, you’ll have separate profiles/HQs per alliance.
+          Refresh-proof: this data is stored in Supabase and reloads on refresh.
         </div>
       </div>
     </div>
