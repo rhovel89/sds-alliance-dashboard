@@ -1,321 +1,312 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { supabase } from "../lib/supabaseClient";
+import { Link, useSearchParams } from "react-router-dom";
 
-type AnyRow = Record<string, any>;
+import PlayerAllianceProfilePanel from "../components/player/PlayerAllianceProfilePanel";
+
+type Membership = {
+  alliance_code: string;
+  role: string | null;
+};
+
+type Announcement = {
+  id: string;
+  title: string | null;
+  body: string | null;
+  pinned?: boolean | null;
+  created_at?: string | null;
+};
+
+type GuideSection = {
+  id: string;
+  title: string | null;
+  updated_at?: string | null;
+};
 
 function upper(v: any) {
   return String(v ?? "").trim().toUpperCase();
 }
 
-function isManagerRole(role: any) {
-  const r = String(role ?? "").trim().toLowerCase();
-  return r === "owner" || r === "r4" || r === "r5";
+function isManagerRole(role?: string | null) {
+  const r = String(role ?? "").toLowerCase();
+  return ["owner", "r4", "r5"].includes(r);
 }
 
 export default function PlayerDashboardPage() {
+  const [sp, setSp] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
 
-  const [memberships, setMemberships] = useState<{ alliance_code: string; role?: string | null }[]>([]);
-  const [announcements, setAnnouncements] = useState<AnyRow[]>([]);
-  const [guideSections, setGuideSections] = useState<AnyRow[]>([]);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [selectedAlliance, setSelectedAlliance] = useState<string>("");
 
-  const allianceCodes = useMemo(
-    () => Array.from(new Set((memberships || []).map((m) => upper(m.alliance_code)).filter(Boolean))),
-    [memberships]
-  );
+  const role = useMemo(() => {
+    const m = memberships.find((x) => upper(x.alliance_code) === upper(selectedAlliance));
+    return m?.role ?? null;
+  }, [memberships, selectedAlliance]);
 
-  const managerAlliances = useMemo(
-    () => (memberships || []).filter((m) => isManagerRole(m.role)).map((m) => upper(m.alliance_code)),
-    [memberships]
-  );
+  const isManager = useMemo(() => isManagerRole(role), [role]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [sections, setSections] = useState<GuideSection[]>([]);
 
-    (async () => {
-      setLoading(true);
-      setErr(null);
+  const pickAlliance = (code: string) => {
+    const c = upper(code);
+    setSelectedAlliance(c);
+    const next = new URLSearchParams(sp);
+    next.set("alliance", c);
+    setSp(next, { replace: true });
+  };
 
-      try {
-        const { data: u, error: uErr } = await supabase.auth.getUser();
-        if (uErr) throw uErr;
-        const uid = u?.user?.id ?? null;
-        if (!uid) {
-          setUserId(null);
-          setPlayerId(null);
-          setMemberships([]);
-          setAnnouncements([]);
-          setGuideSections([]);
-          setLoading(false);
-          return;
+  const loadBasics = async () => {
+    setLoading(true);
+    setErr(null);
+
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id ?? null;
+      setUserId(uid);
+
+      if (!uid) {
+        setErr("Please sign in.");
+        setLoading(false);
+        return;
+      }
+
+      // Ensure player row exists (best effort)
+      let pid: string | null = null;
+      const p1 = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
+      if (!p1.error && p1.data?.id) {
+        pid = String(p1.data.id);
+      } else {
+        try {
+          const ins = await supabase.from("players").insert({ auth_user_id: uid } as any).select("id").maybeSingle();
+          if (!ins.error && ins.data?.id) pid = String(ins.data.id);
+        } catch {
+          // ignore
         }
-        if (cancelled) return;
-        setUserId(uid);
+      }
+      setPlayerId(pid);
 
-        // Fetch player id
-        const { data: p, error: pErr } = await supabase
-          .from("players")
-          .select("id")
-          .eq("auth_user_id", uid)
-          .maybeSingle();
-
-        if (pErr) throw pErr;
-        const pid = (p as any)?.id ?? null;
-        setPlayerId(pid);
-
-        if (!pid) {
-          // Not forcing onboarding here (safe). Just show a message.
-          setMemberships([]);
-          setAnnouncements([]);
-          setGuideSections([]);
-          setLoading(false);
-          return;
-        }
-
-        // Memberships
-        const { data: mem, error: memErr } = await supabase
+      // Memberships (player_alliances)
+      if (pid) {
+        const mRes = await supabase
           .from("player_alliances")
           .select("alliance_code,role")
-          .eq("player_id", pid);
+          .eq("player_id", pid)
+          .order("alliance_code", { ascending: true });
 
-        if (memErr) throw memErr;
+        if (mRes.error) throw mRes.error;
 
-        const ms = (mem ?? []) as any[];
-        const cleaned = ms
-          .map((m) => ({ alliance_code: upper(m.alliance_code), role: m.role ?? null }))
-          .filter((m) => m.alliance_code);
+        const ms = (mRes.data ?? []).map((r: any) => ({
+          alliance_code: upper(r.alliance_code),
+          role: (r.role ?? null) as any,
+        })) as Membership[];
 
-        setMemberships(cleaned);
+        setMemberships(ms);
 
-        const codes = Array.from(new Set(cleaned.map((m) => m.alliance_code)));
-        if (codes.length === 0) {
-          setAnnouncements([]);
-          setGuideSections([]);
-          setLoading(false);
-          return;
-        }
-
-        // Announcements (grab a pool then group in UI)
-        const { data: anns, error: aErr } = await supabase
-          .from("alliance_announcements")
-          .select("id,alliance_code,title,body,pinned,created_at")
-          .in("alliance_code", codes)
-          .order("pinned", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(80);
-
-        if (aErr) {
-          // don't hard-fail if this table is blocked by RLS; just show no announcements
-          setAnnouncements([]);
-        } else {
-          setAnnouncements((anns ?? []) as AnyRow[]);
-        }
-
-        // Guides sections (latest)
-        const { data: gs, error: gErr } = await supabase
-          .from("guide_sections")
-          .select("id,alliance_code,title,updated_at,readonly")
-          .in("alliance_code", codes)
-          .order("updated_at", { ascending: false })
-          .limit(80);
-
-        if (gErr) {
-          setGuideSections([]);
-        } else {
-          setGuideSections((gs ?? []) as AnyRow[]);
-        }
-
-        setLoading(false);
-      } catch (e: any) {
-        setErr(e?.message ?? String(e));
-        setLoading(false);
+        // pick selected alliance from query param or first
+        const fromQuery = upper(sp.get("alliance"));
+        const initial = fromQuery || ms[0]?.alliance_code || "";
+        setSelectedAlliance(initial);
+      } else {
+        setMemberships([]);
+        setSelectedAlliance("");
       }
-    })();
+    } catch (e: any) {
+      console.error(e);
+      setErr(e?.message ?? String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return () => { cancelled = true; };
+  const loadFeed = async (allianceCode: string) => {
+    const code = upper(allianceCode);
+    if (!code) {
+      setAnnouncements([]);
+      setSections([]);
+      return;
+    }
+
+    // Announcements preview
+    const aRes = await supabase
+      .from("alliance_announcements")
+      .select("id,alliance_code,title,body,pinned,created_at")
+      .eq("alliance_code", code)
+      .order("pinned", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (!aRes.error) setAnnouncements((aRes.data ?? []) as any);
+
+    // Guides preview
+    const gRes = await supabase
+      .from("guide_sections")
+      .select("id,alliance_code,title,updated_at")
+      .eq("alliance_code", code)
+      .order("updated_at", { ascending: false })
+      .limit(6);
+
+    if (!gRes.error) setSections((gRes.data ?? []) as any);
+  };
+
+  useEffect(() => {
+    loadBasics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <div style={{ padding: 16 }}>Loading your dashboard…</div>;
+  useEffect(() => {
+    if (!selectedAlliance) return;
+    loadFeed(selectedAlliance);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAlliance]);
 
-  // Not logged in
-  if (!userId) {
-    return (
-      <div style={{ padding: 16, maxWidth: 980, margin: "0 auto" }}>
-        <h2 style={{ marginTop: 0 }}>👤 My Dashboard</h2>
-        <div style={{ opacity: 0.8 }}>Please sign in to continue.</div>
-        <div style={{ marginTop: 12 }}>
-          <Link to="/" style={{ textDecoration: "underline" }}>Go to Login</Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Logged in but no player row
-  if (!playerId) {
-    return (
-      <div style={{ padding: 16, maxWidth: 980, margin: "0 auto" }}>
-        <h2 style={{ marginTop: 0 }}>👤 My Dashboard</h2>
-        <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-          <b>Almost there.</b>
-          <div style={{ marginTop: 6, opacity: 0.85 }}>
-            Your player profile hasn’t been created yet (players table row missing).
-          </div>
-          <div style={{ marginTop: 10 }}>
-            <Link to="/onboarding" style={{ textDecoration: "underline" }}>
-              Go to Onboarding
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const annByAlliance: Record<string, AnyRow[]> = {};
-  for (const a of announcements) {
-    const code = upper(a?.alliance_code);
-    if (!code) continue;
-    if (!annByAlliance[code]) annByAlliance[code] = [];
-    if (annByAlliance[code].length < 5) annByAlliance[code].push(a);
-  }
-
-  const guidesByAlliance: Record<string, AnyRow[]> = {};
-  for (const s of guideSections) {
-    const code = upper(s?.alliance_code);
-    if (!code) continue;
-    if (!guidesByAlliance[code]) guidesByAlliance[code] = [];
-    if (guidesByAlliance[code].length < 6) guidesByAlliance[code].push(s);
-  }
+  if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <h2 style={{ margin: 0 }}>👤 My Dashboard</h2>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link to="/me" style={{ opacity: 0.9, textDecoration: "underline" }}>Edit My Profile / HQs</Link>
-          <button
-            onClick={async () => { try { await supabase.auth.signOut(); window.location.href = "/"; } catch {} }}
-            style={{ padding: "6px 10px", borderRadius: 10 }}
-          >
-            Sign out
-          </button>
+        <h2 style={{ margin: 0 }}>🧍‍♂️ Your Dashboard (ME)</h2>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <Link to="/owner" style={{ opacity: 0.85 }}>Owner</Link>
+          <Link to="/state" style={{ opacity: 0.85 }}>State</Link>
         </div>
       </div>
 
       {err ? (
-        <div style={{ marginTop: 12, padding: 12, border: "1px solid rgba(255,0,0,0.35)", borderRadius: 12 }}>
+        <div style={{ marginTop: 12, padding: 12, border: "1px solid rgba(255,0,0,0.35)", borderRadius: 10 }}>
           <b>Error:</b> {err}
         </div>
       ) : null}
 
-      {/* Manager dashboards (only if role qualifies) */}
-      {managerAlliances.length > 0 ? (
-        <div style={{ marginTop: 12, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-          <div style={{ fontWeight: 800 }}>🔐 Manager Dashboards</div>
-          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {managerAlliances.map((code) => (
-              <Link
-                key={code}
-                to={`/dashboard/${encodeURIComponent(code)}`}
-                style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.18)" }}
-              >
-                {code} (R4/R5/Owner)
-              </Link>
-            ))}
-          </div>
+      {memberships.length === 0 ? (
+        <div style={{ marginTop: 14, opacity: 0.85 }}>
+          You are not assigned to any alliance yet. Ask your Owner/R4/R5 to assign you.
         </div>
-      ) : null}
+      ) : (
+        <>
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ opacity: 0.8 }}>Alliance</span>
+              <select value={selectedAlliance} onChange={(e) => pickAlliance(e.target.value)}>
+                {memberships.map((m) => (
+                  <option key={m.alliance_code} value={m.alliance_code}>
+                    {m.alliance_code}{m.role ? ` (${String(m.role)})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-      {/* Alliances overview */}
-      <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
-        {allianceCodes.length === 0 ? (
-          <div style={{ opacity: 0.8 }}>You are not assigned to any alliances yet.</div>
-        ) : (
-          allianceCodes.map((code) => {
-            const role = memberships.find((m) => upper(m.alliance_code) === code)?.role ?? null;
-            const isMgr = isManagerRole(role);
+            {selectedAlliance ? (
+              <>
+                <Link
+                  to={`/dashboard/${encodeURIComponent(selectedAlliance)}/announcements`}
+                  style={{ opacity: 0.9 }}
+                >
+                  Announcements
+                </Link>
 
-            return (
-              <div key={code} style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ fontWeight: 900, fontSize: 18 }}>{code}</div>
-                    <div style={{ opacity: 0.75, marginTop: 2 }}>
-                      Role: <b>{String(role ?? "Member")}</b>
+                <Link
+                  to={`/dashboard/${encodeURIComponent(selectedAlliance)}/guides`}
+                  style={{ opacity: 0.9 }}
+                >
+                  Guides
+                </Link>
+
+                <Link
+                  to={`/dashboard/${encodeURIComponent(selectedAlliance)}/hq-map${isManager ? "" : "?view=1"}`}
+                  style={{ opacity: 0.9 }}
+                >
+                  HQ Map {isManager ? "" : "(View)"}
+                </Link>
+
+                <Link
+                  to={`/dashboard/${encodeURIComponent(selectedAlliance)}/calendar${isManager ? "" : "?view=1"}`}
+                  style={{ opacity: 0.9 }}
+                >
+                  Calendar {isManager ? "" : "(View)"}
+                </Link>
+
+                {isManager ? (
+                  <Link
+                    to={`/dashboard/${encodeURIComponent(selectedAlliance)}`}
+                    style={{ fontWeight: 900 }}
+                  >
+                    ⚔️ Manage Alliance Dashboard
+                  </Link>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+
+          {/* Profile + HQs */}
+          {userId && playerId && selectedAlliance ? (
+            <div style={{ marginTop: 14 }}>
+              <PlayerAllianceProfilePanel
+                allianceCode={selectedAlliance}
+                userId={userId}
+                playerId={playerId}
+                role={role}
+              />
+            </div>
+          ) : null}
+
+          {/* Feed cards */}
+          <div style={{ marginTop: 14, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+            <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontWeight: 900 }}>📣 Latest Announcements</div>
+              {announcements.length === 0 ? (
+                <div style={{ marginTop: 10, opacity: 0.75 }}>No announcements yet.</div>
+              ) : (
+                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                  {announcements.map((a) => (
+                    <div key={a.id} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: 10 }}>
+                      <div style={{ fontWeight: 800 }}>
+                        {a.title || "Announcement"} {a.pinned ? "📌" : ""}
+                      </div>
+                      <div style={{ opacity: 0.85, whiteSpace: "pre-wrap" }}>
+                        {(a.body || "").slice(0, 220)}{(a.body || "").length > 220 ? "…" : ""}
+                      </div>
                     </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <Link to={`/dashboard/${encodeURIComponent(code)}/guides`} style={{ textDecoration: "underline" }}>
-                      Guides
-                    </Link>
-                    <Link to={`/dashboard/${encodeURIComponent(code)}/hq-map-view`} style={{ textDecoration: "underline" }}>
-                      HQ Map (view)
-                    </Link>
-                    <Link to={`/dashboard/${encodeURIComponent(code)}/calendar-view`} style={{ textDecoration: "underline" }}>
-                      Calendar (view)
-                    </Link>
-                    {isMgr ? (
-                      <Link to={`/dashboard/${encodeURIComponent(code)}`} style={{ textDecoration: "underline" }}>
-                        Manager Dashboard
-                      </Link>
-                    ) : null}
-                  </div>
+                  ))}
                 </div>
-
-                {/* Announcements preview */}
+              )}
+              {selectedAlliance ? (
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ fontWeight: 800, opacity: 0.9 }}>📢 Announcements</div>
-                  {(annByAlliance[code] ?? []).length === 0 ? (
-                    <div style={{ marginTop: 6, opacity: 0.7, fontSize: 13 }}>No announcements found (or access blocked).</div>
-                  ) : (
-                    <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-                      {(annByAlliance[code] ?? []).map((a: any) => (
-                        <div key={String(a?.id)} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: 10 }}>
-                          <div style={{ fontWeight: 800 }}>
-                            {String(a?.title ?? "Untitled")}
-                            {a?.pinned ? <span style={{ marginLeft: 8, fontSize: 12, opacity: 0.75 }}>(Pinned)</span> : null}
-                          </div>
-                          {a?.body ? (
-                            <div style={{ marginTop: 6, opacity: 0.85, whiteSpace: "pre-wrap" }}>
-                              {String(a.body).slice(0, 220)}{String(a.body).length > 220 ? "…" : ""}
-                            </div>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/announcements`}>View all</Link>
                 </div>
+              ) : null}
+            </div>
 
-                {/* Guides preview */}
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ fontWeight: 800, opacity: 0.9 }}>📓 Guides</div>
-                  {(guidesByAlliance[code] ?? []).length === 0 ? (
-                    <div style={{ marginTop: 6, opacity: 0.7, fontSize: 13 }}>No guide sections found (or access blocked).</div>
-                  ) : (
-                    <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                      {(guidesByAlliance[code] ?? []).map((s: any) => (
-                        <div key={String(s?.id)} style={{ opacity: 0.9 }}>
-                          • {String(s?.title ?? "Untitled")}
-                          {s?.readonly ? <span style={{ marginLeft: 6, fontSize: 12, opacity: 0.7 }}>(Read-only)</span> : null}
-                        </div>
-                      ))}
+            <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontWeight: 900 }}>📓 Latest Guides</div>
+              {sections.length === 0 ? (
+                <div style={{ marginTop: 10, opacity: 0.75 }}>No guide sections yet.</div>
+              ) : (
+                <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                  {sections.map((s) => (
+                    <div key={s.id} style={{ opacity: 0.9 }}>
+                      • {s.title || "Untitled"}
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+              )}
+              {selectedAlliance ? (
+                <div style={{ marginTop: 10 }}>
+                  <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/guides`}>Open guides</Link>
+                </div>
+              ) : null}
+            </div>
+          </div>
 
-      <div style={{ marginTop: 12, fontSize: 12, opacity: 0.7 }}>
-        Personal dashboard URL: <code>/dashboard/ME</code>
-      </div>
+          <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
+            Tip: Owners/R4/R5 have both a personal ME dashboard and a Manage Alliance Dashboard link.
+          </div>
+        </>
+      )}
     </div>
   );
 }
