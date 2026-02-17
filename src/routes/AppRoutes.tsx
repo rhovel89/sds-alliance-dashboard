@@ -66,7 +66,8 @@ export default function AppRoutes() {
       <Route path="/state/1" element={<StateDashboard />} />
 
       {/* Alliance Dashboard */}
-      <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
+              <Route path="/dashboard/ME" element={<PlayerDashboardPage />} />
+<Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
         
         <Route
           index
@@ -137,6 +138,7 @@ export default function AppRoutes() {
 </Routes>
   );
 }
+
 
 
 
