@@ -2,6 +2,7 @@ import { supabase } from "../lib/supabase";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useIsAppAdmin } from "../hooks/useIsAppAdmin";
+import { PlayerDashboardPanels } from "../features/playerDashboard/PlayerDashboardPanels";
 
 type Membership = { alliance_code: string; role?: string | null };
 
@@ -82,6 +83,7 @@ export default function PlayerDashboardPage() {
 
   return (
     <div style={{ padding: 24 }}>
+      <PlayerDashboardPanels />
       <h2>My Dashboard</h2>
       <div style={{ opacity: 0.8, marginBottom: 12 }}>
         Player: <strong>{gameName ?? "Unknown"}</strong>

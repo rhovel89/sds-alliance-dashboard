@@ -41,6 +41,8 @@ import LandingRedirectPage from "../pages/LandingRedirectPage";
 import OwnerAccessControlPage from "../pages/owner/OwnerAccessControlPage";
 
 import AuthLandingPage from "../pages/AuthLandingPage";
+import OnboardingGate from "../pages/OnboardingGate";
+import OwnerPlayerDashboardViewPage from "../pages/owner/OwnerPlayerDashboardViewPage";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -122,9 +124,13 @@ export default function AppRoutes() {
       <Route path="/dashboard/:allianceCode/guides" element={<AllianceGuidesPage />} />
       <Route path="/me" element={<PlayerDashboardPage />} />
       <Route path="/owner/access-control" element={<OwnerAccessControlPage />} />
+        <Route path="/owner/player-dashboard/:playerId" element={<OwnerPlayerDashboardViewPage />} />
 </Routes>
   );
 }
+
+
+
 
 
 
