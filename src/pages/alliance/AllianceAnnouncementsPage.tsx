@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import PlayerProfileAndHqsPanel from "../../components/player/PlayerProfileAndHqsPanel";
 
 type Announcement = {
   id: string;
@@ -191,6 +192,11 @@ export default function AllianceAnnouncementsPage() {
           </div>
         )}
       </div>
+
+      {/* --- Player Profile & HQs --- */}
+      <PlayerProfileAndHqsPanel />
+      {/* --- /Player Profile & HQs --- */}
+
     </div>
   );
 }
