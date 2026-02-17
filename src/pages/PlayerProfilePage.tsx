@@ -346,6 +346,17 @@ export default function PlayerProfilePage() {
             ← Back to Dashboard
           </Link>
         </div>
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link to={`/dashboard/${encodeURIComponent(allianceCode)}/hq-map-view`} style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)" }}>
+            🗺️ HQ Map (view)
+          </Link>
+          <Link to={`/dashboard/${encodeURIComponent(allianceCode)}/calendar-view`} style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)" }}>
+            📅 Calendar (view)
+          </Link>
+          <Link to={`/dashboard/${encodeURIComponent(allianceCode)}/guides`} style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)" }}>
+            📓 Guides
+          </Link>
+        </div>
       </div>
 
       {err ? (
@@ -452,3 +463,4 @@ export default function PlayerProfilePage() {
     </div>
   );
 }
+
