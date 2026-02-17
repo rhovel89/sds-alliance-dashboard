@@ -5,6 +5,7 @@ import PlayerHqsPanel from "../components/player/PlayerHqsPanel";
 import PlayerDashboardPolish from "../components/player/PlayerDashboardPolish";
 import PlayerProfilePanel from "../components/player/PlayerProfilePanel";
 import PlayerHqsPanel from "../components/player/PlayerHqsPanel";
+import AllianceSwitcherCards from "../components/player/AllianceSwitcherCards";
 
 type PlayerAllianceRow = {
   alliance_code: string;
@@ -94,6 +95,8 @@ export default function PlayerDashboardPage() {
   if (!uid) {
     return (
       <div style={{ padding: 16 }}>
+        {/* Player Dashboard: Alliance Switcher + Live Cards */}
+        <AllianceSwitcherCards />
       <div style={{ padding: 16 }}>  <PlayerDashboardPolish />
       {/* --- BEGIN PLAYER PROFILE + HQs --- */}
       <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
@@ -178,5 +181,6 @@ export default function PlayerDashboardPage() {
     </div>
   );
 }
+
 
 
