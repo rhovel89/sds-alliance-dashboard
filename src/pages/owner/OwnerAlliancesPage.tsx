@@ -1,22 +1,25 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
+const STATE_ID = Number(import.meta.env.VITE_STATE_ID ?? 789);
+const DEFAULT_STATE_CODE = `S${STATE_ID}`;
+
 type AllianceRow = {
   code: string;
   name: string | null;
   enabled?: boolean | null;
+  state_code?: string | null;
 };
 
 function normCode(v: string) {
   return v.trim().toUpperCase();
 }
 
-function isMissingColumn(errMsg: string | undefined | null, col: string) {
-  const m = String(errMsg ?? "").toLowerCase();
-  return (
-    (m.includes("could not find") && m.includes(col.toLowerCase())) ||
-    (m.includes("column") && m.includes(col.toLowerCase()) && m.includes("does not exist"))
-  );
+function isMissingColumnMessage(msg: string, col: string) {
+  const m = (msg || "").toLowerCase();
+  const c = col.toLowerCase();
+  // PostgREST often says: Could not find the 'col' column of 'table' in the schema cache
+  return m.includes(`could not find the '${c}' column`) || (m.includes("could not find") && m.includes(c));
 }
 
 export default function OwnerAlliancesPage() {
@@ -30,68 +33,67 @@ export default function OwnerAlliancesPage() {
   const refetch = async () => {
     setLoading(true);
 
-    // try with enabled; fallback if column doesn't exist
-    const resA = await supabase
-      .from("alliances")
-      .select("code,name,enabled")
-      .order("code", { ascending: true });
+    // Try the richest select first; progressively fallback if columns don't exist
+    const trySelect = async (cols: string) => {
+      return await supabase.from("alliances").select(cols).order("code", { ascending: true });
+    };
 
-    if (!resA.error) {
-      setRows((resA.data ?? []) as any);
+    let res = await trySelect("code,name,enabled,state_code");
+    if (res.error && isMissingColumnMessage(res.error.message, "enabled")) {
+      res = await trySelect("code,name,state_code");
+    }
+    if (res.error && isMissingColumnMessage(res.error.message, "state_code")) {
+      res = await trySelect("code,name");
+    }
+    if (res.error) {
+      console.error(res.error);
+      alert(res.error.message);
       setLoading(false);
       return;
     }
 
-    if (isMissingColumn(resA.error.message, "enabled")) {
-      const resB = await supabase
-        .from("alliances")
-        .select("code,name")
-        .order("code", { ascending: true });
+    const data = (res.data ?? []) as any[];
+    // If enabled missing, treat as enabled = true for display
+    const normalized = data.map((r) => ({
+      code: r.code,
+      name: r.name ?? null,
+      enabled: "enabled" in r ? r.enabled : true,
+      state_code: r.state_code ?? null,
+    })) as AllianceRow[];
 
-      if (resB.error) {
-        console.error(resB.error);
-        alert(resB.error.message);
-        setLoading(false);
-        return;
-      }
-
-      setRows(((resB.data ?? []) as any[]).map((r) => ({ ...r, enabled: true })));
-      setLoading(false);
-      return;
-    }
-
-    console.error(resA.error);
-    alert(resA.error.message);
+    setRows(normalized);
     setLoading(false);
   };
 
   useEffect(() => {
     refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const createAlliance = async () => {
     const code = normCode(newCode);
-    const name = (newName.trim() || code);
+    const name = newName.trim() || code;
 
     if (!code) return alert("Alliance code required (example: OZR)");
     if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
 
-    // Insert with enabled if possible; fallback without enabled if schema doesn't have it
-    const resA = await supabase.from("alliances").insert({ code, name, enabled: newEnabled });
+    // Build payload WITHOUT state_id. We only set state_code if that column exists.
+    let payload: any = { code, name, enabled: newEnabled, state_code: DEFAULT_STATE_CODE };
 
-    if (resA.error) {
-      if (isMissingColumn(resA.error.message, "enabled")) {
-        const resB = await supabase.from("alliances").insert({ code, name });
-        if (resB.error) {
-          console.error(resB.error);
-          alert(resB.error.message);
-          return;
-        }
-      } else {
-        console.error(resA.error);
-        alert(resA.error.message);
-        return;
-      }
+    // Attempt insert with enabled + state_code
+    let ins = await supabase.from("alliances").insert(payload);
+    if (ins.error && isMissingColumnMessage(ins.error.message, "enabled")) {
+      delete payload.enabled;
+      ins = await supabase.from("alliances").insert(payload);
+    }
+    if (ins.error && isMissingColumnMessage(ins.error.message, "state_code")) {
+      delete payload.state_code;
+      ins = await supabase.from("alliances").insert(payload);
+    }
+    if (ins.error) {
+      console.error(ins.error);
+      alert(ins.error.message);
+      return;
     }
 
     setNewCode("");
@@ -118,6 +120,11 @@ export default function OwnerAlliancesPage() {
   const toggleEnabled = async (code: string, enabled: boolean) => {
     const res = await supabase.from("alliances").update({ enabled }).eq("code", code);
     if (res.error) {
+      // If column doesn't exist, just inform and do nothing
+      if (isMissingColumnMessage(res.error.message, "enabled")) {
+        alert("This database does not have an 'enabled' column on alliances.");
+        return;
+      }
       console.error(res.error);
       alert(res.error.message);
       return;
@@ -153,12 +160,17 @@ export default function OwnerAlliancesPage() {
               placeholder="OZR"
               inputMode="text"
               autoCapitalize="characters"
+              autoCorrect="off"
             />
           </label>
 
           <label style={{ display: "grid", gap: 6 }}>
             <span>Name</span>
-            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="OzR MindHunters" />
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="OzR MindHunters"
+            />
           </label>
 
           <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
