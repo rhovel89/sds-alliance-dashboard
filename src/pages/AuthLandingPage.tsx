@@ -8,6 +8,9 @@ export default function AuthLandingPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string>("");
   const [isError, setIsError] = useState(false);
+  const [videoOk, setVideoOk] = useState(true);
+
+  const VIDEO_SRC = "/auth/zombie-ambient.mp4";
 
   useEffect(() => {
     let cancelled = false;
@@ -20,7 +23,9 @@ export default function AuthLandingPage() {
         nav("/onboarding", { replace: true });
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [nav]);
 
   const signIn = async (provider: "google" | "discord") => {
@@ -34,7 +39,7 @@ export default function AuthLandingPage() {
       options: { redirectTo },
     });
 
-    // NOTE: On success, Supabase redirects away; you won't see code continue.
+    // On success, Supabase redirects away.
     if (error) {
       setMsg(error.message);
       setIsError(true);
@@ -44,6 +49,33 @@ export default function AuthLandingPage() {
 
   return (
     <div className="authRoot">
+      {/* Background video (optional). Put file at: public/auth/zombie-ambient.mp4 */}
+      <div className="bgVidWrap" aria-hidden="true">
+        {videoOk ? (
+          <video
+            className="bgVid"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            onError={() => setVideoOk(false)}
+          >
+            <source src={VIDEO_SRC} type="video/mp4" />
+          </video>
+        ) : null}
+      </div>
+
+      {/* Horror overlays */}
+      <div className="overlays" aria-hidden="true">
+        <div className="zombieTint" />
+        <div className="fog" />
+        <div className="bloodDrips" />
+        <div className="grain" />
+        <div className="flicker" />
+      </div>
+
+      {/* Foreground */}
       <div className="authShell">
         <div className="hero">
           <div className="brandRow">
@@ -55,7 +87,7 @@ export default function AuthLandingPage() {
           </div>
 
           <div className="tagline">
-            Step into your alliance’s war room — announcements, guides, HQ intel, and daily operations in one place.
+            An eerie war room for survivors — announcements, guides, HQ intel, and daily ops in one place.
           </div>
 
           <div className="heroGrid">
@@ -72,7 +104,7 @@ export default function AuthLandingPage() {
 
         <div className="card">
           <h2 className="cardTitle">Sign in to continue</h2>
-          <p className="cardText">Choose a provider. You’ll return here automatically after authentication.</p>
+          <p className="cardText">Choose a provider. You’ll return after authentication.</p>
 
           <div className="btnCol">
             <button className="btn" disabled={busy} onClick={() => signIn("google")}>
@@ -99,9 +131,7 @@ export default function AuthLandingPage() {
           </div>
 
           {msg ? (
-            <div className={"msg" + (isError ? " msgError" : "")}>
-              {msg}
-            </div>
+            <div className={"msg" + (isError ? " msgError" : "")}>{msg}</div>
           ) : null}
 
           <div className="finePrint">
