@@ -40,12 +40,13 @@ import PlayerDashboardPage from "../pages/player/PlayerDashboardPage";
 import LandingRedirectPage from "../pages/LandingRedirectPage";
 import OwnerAccessControlPage from "../pages/owner/OwnerAccessControlPage";
 
+import AuthLandingPage from "../pages/AuthLandingPage";
 export default function AppRoutes() {
   return (
     <Routes>
 
       {/* Public */}
-      <Route path="/" element={<LandingRedirectPage />} />
+      <Route path="/" element={<AuthLandingPage />} />
       <Route path="/dashboard" element={<AuthCallback />} />
 
       {/* Owner */}
@@ -124,6 +125,7 @@ export default function AppRoutes() {
 </Routes>
   );
 }
+
 
 
 
