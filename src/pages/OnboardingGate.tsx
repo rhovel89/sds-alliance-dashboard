@@ -4,11 +4,11 @@ import { supabase } from "../lib/supabaseClient";
 import Onboarding from "./Onboarding";
 
 /**
- * OnboardingGate
+ * OnboardingGate:
  * - If user is already assigned to an alliance, skip onboarding and go to /me
  * - Otherwise render the existing Onboarding page unchanged
  *
- * We detect "assigned" safely via:
+ * Detection is best-effort and safe:
  *   - player_alliances rows for the player's id, OR
  *   - alliance_members rows for auth.uid()
  */
@@ -29,7 +29,7 @@ export default function OnboardingGate() {
           return;
         }
 
-        // 1) Try player_alliances route: players(auth_user_id) -> player_alliances(player_id)
+        // 1) Try: players(auth_user_id) -> player_alliances(player_id)
         try {
           const { data: player, error: pErr } = await supabase
             .from("players")
@@ -49,11 +49,9 @@ export default function OnboardingGate() {
               return;
             }
           }
-        } catch {
-          // ignore and fall through
-        }
+        } catch {}
 
-        // 2) Fallback: alliance_members for this user (covers some schemas/owners)
+        // 2) Fallback: alliance_members for this user
         try {
           const { data: am, error: amErr } = await supabase
             .from("alliance_members")
@@ -65,9 +63,7 @@ export default function OnboardingGate() {
             nav("/me", { replace: true });
             return;
           }
-        } catch {
-          // ignore
-        }
+        } catch {}
 
       } finally {
         if (!cancelled) setChecking(false);
@@ -77,9 +73,6 @@ export default function OnboardingGate() {
     return () => { cancelled = true; };
   }, [nav]);
 
-  if (checking) {
-    return <div style={{ padding: 16 }}>Loading…</div>;
-  }
-
+  if (checking) return <div style={{ padding: 16 }}>Loading…</div>;
   return <Onboarding />;
 }
