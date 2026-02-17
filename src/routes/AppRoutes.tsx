@@ -124,13 +124,12 @@ export default function AppRoutes() {
   <Route path="/owner/state" element={<OwnerStateManagerPage />} />
   <Route path="/owner/state-leaders" element={<StateLeadersPage />} />
       <Route path="/owner/roles" element={<OwnerRolesPermissionsV2Page />} />
-      <Route path="/dashboard/:code/announcements" element={<DashboardGatecode
-      <Route path="/dashboard/:code/guides" element={<DashboardGatecode
-      <Route path="/dashboard/:allianceCode/announcements" element={<DashboardGateallianceCode
-      <Route path="/dashboard/:allianceCode/guides" element={<DashboardGateallianceCode
+      <Route path="/dashboard/:code/announcements" element={<AllianceAnnouncementsPage />} />
+      <Route path="/dashboard/:code/guides" element={<AllianceGuidesPage />} />
+      <Route path="/dashboard/:allianceCode/announcements" element={<AllianceAnnouncementsPage />} />
+      <Route path="/dashboard/:allianceCode/guides" element={<AllianceGuidesPage />} />
       <Route path="/me" element={<PlayerDashboardPage />} />
       <Route path="/owner/access-control" element={<OwnerAccessControlPage />} />
-        <Route path="/owner/player-dashboard/:playerId" element={<OwnerPlayerDashboardViewPage />} />        <Route path="/dashboard/:allianceCode/me" element={<DashboardGateallianceCode        <Route path="/dashboard/:allianceCode/hq-map-view" element={<DashboardGateallianceCode        <Route path="/dashboard/:allianceCode/calendar-view" element={<DashboardGateallianceCode        <Route path="/dashboard/ME" element={<PlayerDashboardPage />} />
 
 
 
@@ -138,6 +137,7 @@ export default function AppRoutes() {
 </Routes>
   );
 }
+
 
 
 
