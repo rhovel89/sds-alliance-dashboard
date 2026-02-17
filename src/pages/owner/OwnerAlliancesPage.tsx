@@ -1,24 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
-const STATE_ID = Number(import.meta.env.VITE_STATE_ID ?? 789);
-const DEFAULT_STATE_CODE = `S${STATE_ID}`;
+const STATE_NUM = Number(import.meta.env.VITE_STATE_ID ?? 789);
+const DEFAULT_STATE_CODE = `S${STATE_NUM}`;
 
 type AllianceRow = {
   code: string;
   name: string | null;
   enabled?: boolean | null;
-  state_code?: string | null;
 };
 
 function normCode(v: string) {
   return v.trim().toUpperCase();
 }
 
-function isMissingColumnMessage(msg: string, col: string) {
+function isMissingColumn(msg: string, col: string) {
   const m = (msg || "").toLowerCase();
   const c = col.toLowerCase();
-  // PostgREST often says: Could not find the 'col' column of 'table' in the schema cache
   return m.includes(`could not find the '${c}' column`) || (m.includes("could not find") && m.includes(c));
 }
 
@@ -30,19 +28,34 @@ export default function OwnerAlliancesPage() {
   const [newName, setNewName] = useState("");
   const [newEnabled, setNewEnabled] = useState(true);
 
+  // cache the state's UUID (alliances.state_id is uuid in your DB)
+  const [stateUuid, setStateUuid] = useState<string | null>(null);
+
+  const loadStateUuid = async () => {
+    // Try by state_id (int) first, then by state_code, then fallback to first row
+    let res = await supabase.from("states").select("id,state_id,state_code").eq("state_id", STATE_NUM).maybeSingle();
+    if (res.error && isMissingColumn(res.error.message, "state_id")) {
+      res = await supabase.from("states").select("id,state_code").eq("state_code", DEFAULT_STATE_CODE).maybeSingle();
+    }
+    if (res.error && isMissingColumn(res.error.message, "state_code")) {
+      res = await supabase.from("states").select("id").order("id", { ascending: true }).limit(1).maybeSingle();
+    }
+    if (res.error) {
+      console.error(res.error);
+      alert(`Could not load state UUID from states table: ${res.error.message}`);
+      return;
+    }
+    setStateUuid((res.data as any)?.id ?? null);
+  };
+
   const refetch = async () => {
     setLoading(true);
 
-    // Try the richest select first; progressively fallback if columns don't exist
-    const trySelect = async (cols: string) => {
-      return await supabase.from("alliances").select(cols).order("code", { ascending: true });
-    };
+    const trySelect = async (cols: string) =>
+      supabase.from("alliances").select(cols).order("code", { ascending: true });
 
-    let res = await trySelect("code,name,enabled,state_code");
-    if (res.error && isMissingColumnMessage(res.error.message, "enabled")) {
-      res = await trySelect("code,name,state_code");
-    }
-    if (res.error && isMissingColumnMessage(res.error.message, "state_code")) {
+    let res = await trySelect("code,name,enabled");
+    if (res.error && isMissingColumn(res.error.message, "enabled")) {
       res = await trySelect("code,name");
     }
     if (res.error) {
@@ -53,12 +66,10 @@ export default function OwnerAlliancesPage() {
     }
 
     const data = (res.data ?? []) as any[];
-    // If enabled missing, treat as enabled = true for display
     const normalized = data.map((r) => ({
       code: r.code,
       name: r.name ?? null,
       enabled: "enabled" in r ? r.enabled : true,
-      state_code: r.state_code ?? null,
     })) as AllianceRow[];
 
     setRows(normalized);
@@ -66,6 +77,7 @@ export default function OwnerAlliancesPage() {
   };
 
   useEffect(() => {
+    loadStateUuid();
     refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -77,16 +89,20 @@ export default function OwnerAlliancesPage() {
     if (!code) return alert("Alliance code required (example: OZR)");
     if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
 
-    // Build payload WITHOUT state_id. We only set state_code if that column exists.
-    let payload: any = { code, name, enabled: newEnabled, state_code: DEFAULT_STATE_CODE };
+    if (!stateUuid) {
+      await loadStateUuid();
+      if (!stateUuid) return alert("State UUID not loaded yet. Try again in a moment.");
+    }
 
-    // Attempt insert with enabled + state_code
+    // Insert with state_id (uuid) + state_code if column exists + enabled if exists
+    let payload: any = { code, name, enabled: newEnabled, state_id: stateUuid, state_code: DEFAULT_STATE_CODE };
+
     let ins = await supabase.from("alliances").insert(payload);
-    if (ins.error && isMissingColumnMessage(ins.error.message, "enabled")) {
+    if (ins.error && isMissingColumn(ins.error.message, "enabled")) {
       delete payload.enabled;
       ins = await supabase.from("alliances").insert(payload);
     }
-    if (ins.error && isMissingColumnMessage(ins.error.message, "state_code")) {
+    if (ins.error && isMissingColumn(ins.error.message, "state_code")) {
       delete payload.state_code;
       ins = await supabase.from("alliances").insert(payload);
     }
@@ -109,23 +125,17 @@ export default function OwnerAlliancesPage() {
     const name = next.trim() || code;
 
     const { error } = await supabase.from("alliances").update({ name }).eq("code", code);
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
-    }
+    if (error) return alert(error.message);
     await refetch();
   };
 
   const toggleEnabled = async (code: string, enabled: boolean) => {
     const res = await supabase.from("alliances").update({ enabled }).eq("code", code);
     if (res.error) {
-      // If column doesn't exist, just inform and do nothing
-      if (isMissingColumnMessage(res.error.message, "enabled")) {
+      if (isMissingColumn(res.error.message, "enabled")) {
         alert("This database does not have an 'enabled' column on alliances.");
         return;
       }
-      console.error(res.error);
       alert(res.error.message);
       return;
     }
@@ -134,13 +144,8 @@ export default function OwnerAlliancesPage() {
 
   const deleteAlliance = async (code: string) => {
     if (!confirm(`Delete alliance ${code}? This may fail if referenced by members/events.`)) return;
-
     const { error } = await supabase.from("alliances").delete().eq("code", code);
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
-    }
+    if (error) return alert(error.message);
     await refetch();
   };
 
@@ -180,10 +185,6 @@ export default function OwnerAlliancesPage() {
 
           <button onClick={createAlliance}>➕ Create</button>
           <button onClick={refetch}>↻ Refresh</button>
-        </div>
-
-        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-          New alliances immediately work at: <code>/dashboard/&lt;CODE&gt;/calendar</code> and <code>/dashboard/&lt;CODE&gt;/hq-map</code>
         </div>
       </div>
 
@@ -227,10 +228,6 @@ export default function OwnerAlliancesPage() {
             })}
           </div>
         )}
-      </div>
-
-      <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-        Direct link: <code>/owner/alliances</code>
       </div>
     </div>
   );
