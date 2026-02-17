@@ -157,7 +157,7 @@ begin
             join public.player_alliances pa on pa.player_id = me.id
             join public.alliances a on upper(a.code) = upper(pa.alliance_code)
             where me.auth_user_id = auth.uid()
-              and a.id = alliance_buildings.alliance_id
+              and a.id::text = alliance_buildings.alliance_id::text
           )
         )
       $p$;
@@ -179,7 +179,7 @@ begin
             join public.player_alliances pa on pa.player_id = me.id
             join public.alliances a on upper(a.code) = upper(pa.alliance_code)
             where me.auth_user_id = auth.uid()
-              and a.id = alliance_buildings.alliance_id
+              and a.id::text = alliance_buildings.alliance_id::text
               and lower(coalesce(pa.role,'')) in ('owner','r4','r5')
           )
         )
@@ -191,7 +191,7 @@ begin
             join public.player_alliances pa on pa.player_id = me.id
             join public.alliances a on upper(a.code) = upper(pa.alliance_code)
             where me.auth_user_id = auth.uid()
-              and a.id = alliance_buildings.alliance_id
+              and a.id::text = alliance_buildings.alliance_id::text
               and lower(coalesce(pa.role,'')) in ('owner','r4','r5')
           )
         )
@@ -222,7 +222,7 @@ begin
             join public.player_alliances pa on pa.player_id = me.id
             join public.alliances a on upper(a.code) = upper(pa.alliance_code)
             where me.auth_user_id = auth.uid()
-              and a.id = alliance_hq_cells.alliance_id
+              and a.id::text = alliance_hq_cells.alliance_id::text
           )
         )
       $p$;
@@ -244,7 +244,7 @@ begin
             join public.player_alliances pa on pa.player_id = me.id
             join public.alliances a on upper(a.code) = upper(pa.alliance_code)
             where me.auth_user_id = auth.uid()
-              and a.id = alliance_hq_cells.alliance_id
+              and a.id::text = alliance_hq_cells.alliance_id::text
               and lower(coalesce(pa.role,'')) in ('owner','r4','r5')
           )
         )
@@ -256,7 +256,7 @@ begin
             join public.player_alliances pa on pa.player_id = me.id
             join public.alliances a on upper(a.code) = upper(pa.alliance_code)
             where me.auth_user_id = auth.uid()
-              and a.id = alliance_hq_cells.alliance_id
+              and a.id::text = alliance_hq_cells.alliance_id::text
               and lower(coalesce(pa.role,'')) in ('owner','r4','r5')
           )
         )
@@ -395,3 +395,4 @@ begin
   end if;
 
 end $$;
+
