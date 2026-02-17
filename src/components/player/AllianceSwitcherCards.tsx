@@ -51,7 +51,6 @@ export default function AllianceSwitcherCards() {
 
   const viewParam = canManage ? "" : "?view=1";
 
-  // Keep local selection in sync with route
   useEffect(() => {
     if (routeAllianceCode) setSelected(routeAllianceCode);
   }, [routeAllianceCode]);
@@ -67,6 +66,7 @@ export default function AllianceSwitcherCards() {
       try {
         const { data: u, error: uErr } = await supabase.auth.getUser();
         if (uErr) throw uErr;
+
         const userId = u?.user?.id ?? null;
         if (!userId) {
           setUid(null);
@@ -74,19 +74,17 @@ export default function AllianceSwitcherCards() {
           setLoading(false);
           return;
         }
-        if (cancelled) return;
 
+        if (cancelled) return;
         setUid(userId);
 
-        // admin check (best effort)
+        // Admin check (best effort)
         try {
           const { data } = await supabase.rpc("is_app_admin");
           if (typeof data === "boolean") setIsAdmin(data);
-        } catch {
-          // ignore
-        }
+        } catch {}
 
-        // memberships (preferred path): players -> player_alliances -> alliances
+        // memberships (preferred): players -> player_alliances
         let codes: string[] = [];
         let roleByCode: Record<string, string> = {};
 
@@ -112,8 +110,8 @@ export default function AllianceSwitcherCards() {
           }
         }
 
-        // fallback: alliance_members -> alliances (if player_alliances path yields nothing)
-        if (codes.length === 0) {
+        // fallback: alliance_members -> alliances
+        if (codes.length -eq 0) {
           try {
             const { data: am, error: amErr } = await supabase
               .from("alliance_members")
@@ -121,6 +119,7 @@ export default function AllianceSwitcherCards() {
               .eq("user_id", userId);
 
             if (!amErr && Array.isArray(am) && am.length) {
+              $null = 1
               const ids = (am as any[]).map((r) => r?.alliance_id).filter(Boolean);
               const roleById: Record<string, string> = {};
               for (const r of am as any[]) {
@@ -133,18 +132,15 @@ export default function AllianceSwitcherCards() {
                 .in("id", ids);
 
               if (!aErr && Array.isArray(als)) {
-                const opts = (als as any[]).map((a) => {
+                for (const a of als as any[]) {
                   const c = upperCode(a?.code);
+                  if (!c) continue;
                   codes.push(c);
                   roleByCode[c] = roleById[String(a?.id)] ?? roleByCode[c] ?? null;
-                  return null;
-                });
-                void opts;
+                }
               }
             }
-          } catch {
-            // ignore
-          }
+          } catch {}
         }
 
         codes = Array.from(new Set(codes.map(upperCode).filter(Boolean)));
@@ -163,20 +159,17 @@ export default function AllianceSwitcherCards() {
 
         if (a2Err) throw a2Err;
 
-        const opts: AllianceOpt[] = (als2 ?? []).map((a: any) => {
-          const c = upperCode(a?.code);
-          return {
-            code: c,
-            name: a?.name ?? c,
-            role: roleByCode[c] ?? null,
-          };
-        }).sort((x, y) => x.code.localeCompare(y.code));
+        const opts: AllianceOpt[] = (als2 ?? [])
+          .map((a: any) => {
+            const c = upperCode(a?.code);
+            return { code: c, name: a?.name ?? c, role: roleByCode[c] ?? null };
+          })
+          .sort((x, y) => x.code.localeCompare(y.code));
 
         if (cancelled) return;
 
         setAlliances(opts);
 
-        // pick selected alliance:
         const last = upperCode(localStorage.getItem("player.lastAlliance") || "");
         const routeOk = routeAllianceCode && opts.some((o) => o.code === routeAllianceCode);
         const lastOk = last && opts.some((o) => o.code === last);
@@ -184,7 +177,6 @@ export default function AllianceSwitcherCards() {
         const pick = routeOk ? routeAllianceCode : (lastOk ? last : opts[0].code);
         setSelected(pick);
 
-        // If route has an invalid alliance code, navigate to the pick
         if (routeAllianceCode && !routeOk) {
           nav(`/dashboard/${encodeURIComponent(pick)}`, { replace: true });
         }
@@ -199,7 +191,7 @@ export default function AllianceSwitcherCards() {
     return () => { cancelled = true; };
   }, [nav, routeAllianceCode]);
 
-  // Load live cards for selected alliance
+  // Load live cards
   useEffect(() => {
     let cancelled = false;
 
@@ -223,13 +215,10 @@ export default function AllianceSwitcherCards() {
           .order("pinned", { ascending: false })
           .order("created_at", { ascending: false })
           .limit(5);
-
-        if (!cancelled) {
-          if (!error) setAnnouncements((data ?? []) as any[]);
-        }
+        if (!cancelled && !error) setAnnouncements((data ?? []) as any[]);
       } catch {}
 
-      // Guides sections
+      // Guides
       try {
         const { data, error } = await supabase
           .from("guide_sections")
@@ -237,13 +226,10 @@ export default function AllianceSwitcherCards() {
           .eq("alliance_code", upperCode(selected))
           .order("updated_at", { ascending: false })
           .limit(6);
-
-        if (!cancelled) {
-          if (!error) setGuides((data ?? []) as any[]);
-        }
+        if (!cancelled && !error) setGuides((data ?? []) as any[]);
       } catch {}
 
-      // My HQ slots (view-only map data)
+      // My HQ slots
       try {
         const { data, error } = await supabase
           .from("alliance_hq_map")
@@ -251,13 +237,10 @@ export default function AllianceSwitcherCards() {
           .eq("alliance_id", upperCode(selected))
           .eq("assigned_user_id", uid)
           .order("slot_number", { ascending: true });
-
-        if (!cancelled) {
-          if (!error) setMyHqSlots((data ?? []) as any[]);
-        }
+        if (!cancelled && !error) setMyHqSlots((data ?? []) as any[]);
       } catch {}
 
-      // Daily/Upcoming events (best effort — schema varies)
+      // Events preview (best effort)
       try {
         const todayIso = new Date().toISOString().slice(0, 10);
         const { data, error } = await supabase
@@ -267,13 +250,8 @@ export default function AllianceSwitcherCards() {
           .gte("date", todayIso)
           .order("date", { ascending: true })
           .limit(5);
-
-        if (!cancelled) {
-          if (!error) setEvents((data ?? []) as any[]);
-        }
-      } catch {
-        // ignore if column/table doesn't match
-      }
+        if (!cancelled && !error) setEvents((data ?? []) as any[]);
+      } catch {}
     })();
 
     return () => { cancelled = true; };
@@ -294,9 +272,7 @@ export default function AllianceSwitcherCards() {
     );
   }
 
-  if (!uid) {
-    return null; // user not logged in; auth landing handles this
-  }
+  if (!uid) return null;
 
   if (err) {
     return (
@@ -319,10 +295,11 @@ export default function AllianceSwitcherCards() {
 
   const code = upperCode(selected);
   const roleLabel = String(selectedAlliance?.role ?? "").trim();
+  const canManageFinal = roleCanManage(selectedAlliance?.role ?? null, isAdmin);
+  const viewParamFinal = canManageFinal ? "" : "?view=1";
 
   return (
     <div style={{ marginTop: 12 }}>
-      {/* Alliance Picker */}
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 900, fontSize: 18 }}>
           {selectedAlliance?.name || code} <span style={{ opacity: 0.75 }}>({code})</span>
@@ -330,11 +307,7 @@ export default function AllianceSwitcherCards() {
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ opacity: 0.75, fontSize: 12 }}>Alliance</span>
-          <select
-            value={code}
-            onChange={(e) => onPickAlliance(e.target.value)}
-            style={{ padding: "6px 10px", borderRadius: 10 }}
-          >
+          <select value={code} onChange={(e) => onPickAlliance(e.target.value)} style={{ padding: "6px 10px", borderRadius: 10 }}>
             {alliances.map((a) => (
               <option key={a.code} value={a.code}>
                 {a.code} — {a.name || a.code}
@@ -350,23 +323,16 @@ export default function AllianceSwitcherCards() {
         ) : null}
 
         {isAdmin ? (
-          <Link to="/state" style={{ marginLeft: "auto", opacity: 0.85 }}>
-            State Dashboard →
-          </Link>
+          <Link to="/state" style={{ marginLeft: "auto", opacity: 0.85 }}>State Dashboard →</Link>
         ) : null}
       </div>
 
-      {/* Live Cards */}
       <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
-        {/* Announcements */}
         <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
             <b>📣 Announcements</b>
-            <Link to={`/dashboard/${encodeURIComponent(code)}/announcements`} style={{ opacity: 0.75, fontSize: 12 }}>
-              View →
-            </Link>
+            <Link to={`/dashboard/${encodeURIComponent(code)}/announcements`} style={{ opacity: 0.75, fontSize: 12 }}>View →</Link>
           </div>
-
           {announcements.length === 0 ? (
             <div style={{ marginTop: 10, opacity: 0.7 }}>No announcements yet.</div>
           ) : (
@@ -377,7 +343,11 @@ export default function AllianceSwitcherCards() {
                     <div style={{ fontWeight: 800 }}>{String(a?.title ?? "Announcement")}</div>
                     {a?.pinned ? <span style={{ fontSize: 12, opacity: 0.75 }}>📌</span> : null}
                   </div>
-                  <div style={{ marginTop: 6, opacity: 0.8, fontSize: 13, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as any }}>
+                  <div style={{
+                    marginTop: 6, opacity: 0.8, fontSize: 13,
+                    overflow: "hidden", display: "-webkit-box",
+                    WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as any
+                  }}>
                     {String(a?.body ?? "")}
                   </div>
                 </div>
@@ -386,29 +356,25 @@ export default function AllianceSwitcherCards() {
           )}
         </div>
 
-        {/* Guides */}
         <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
             <b>📓 Guides</b>
-            <Link to={`/dashboard/${encodeURIComponent(code)}/guides`} style={{ opacity: 0.75, fontSize: 12 }}>
-              Open →
-            </Link>
+            <Link to={`/dashboard/${encodeURIComponent(code)}/guides`} style={{ opacity: 0.75, fontSize: 12 }}>Open →</Link>
           </div>
-
           {guides.length === 0 ? (
             <div style={{ marginTop: 10, opacity: 0.7 }}>No guide sections yet.</div>
           ) : (
             <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
               {guides.map((g: any) => (
-                <Link
-                  key={g.id}
-                  to={`/dashboard/${encodeURIComponent(code)}/guides?section=${encodeURIComponent(String(g.id))}`}
-                  style={{ textDecoration: "none" }}
-                >
+                <Link key={g.id} to={`/dashboard/${encodeURIComponent(code)}/guides?section=${encodeURIComponent(String(g.id))}`} style={{ textDecoration: "none" }}>
                   <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 10 }}>
                     <div style={{ fontWeight: 800, color: "inherit" }}>{String(g?.title ?? "Section")}</div>
                     {g?.description ? (
-                      <div style={{ marginTop: 6, opacity: 0.8, fontSize: 13, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any }}>
+                      <div style={{
+                        marginTop: 6, opacity: 0.8, fontSize: 13,
+                        overflow: "hidden", display: "-webkit-box",
+                        WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any
+                      }}>
                         {String(g.description)}
                       </div>
                     ) : null}
@@ -419,73 +385,51 @@ export default function AllianceSwitcherCards() {
           )}
         </div>
 
-        {/* HQ Map */}
         <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
             <b>🗺 HQ Map</b>
-            <Link to={`/dashboard/${encodeURIComponent(code)}/hq-map${viewParam}`} style={{ opacity: 0.75, fontSize: 12 }}>
-              {canManage ? "Manage →" : "View →"}
+            <Link to={`/dashboard/${encodeURIComponent(code)}/hq-map${viewParamFinal}`} style={{ opacity: 0.75, fontSize: 12 }}>
+              {canManageFinal ? "Manage →" : "View →"}
             </Link>
           </div>
-
           {myHqSlots.length === 0 ? (
-            <div style={{ marginTop: 10, opacity: 0.7 }}>
-              No HQ slot assigned to you yet.
-            </div>
+            <div style={{ marginTop: 10, opacity: 0.7 }}>No HQ slot assigned to you yet.</div>
           ) : (
             <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
               {myHqSlots.slice(0, 5).map((h: any) => (
                 <div key={h.id} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 10 }}>
-                  <div style={{ fontWeight: 800 }}>
-                    Slot {h?.slot_number ?? "?"}{h?.label ? ` — ${h.label}` : ""}
-                  </div>
+                  <div style={{ fontWeight: 800 }}>Slot {h?.slot_number ?? "?"}{h?.label ? ` — ${h.label}` : ""}</div>
                   <div style={{ marginTop: 6, opacity: 0.8, fontSize: 13 }}>
-                    Map Slot: ({h?.slot_x ?? "?"},{h?.slot_y ?? "?"}){" "}
-                    {h?.player_x != null && h?.player_y != null ? ` • Player HQ: (${h.player_x},${h.player_y})` : ""}
+                    Map Slot: ({h?.slot_x ?? "?"},{h?.slot_y ?? "?"})
+                    {h?.player_x != null -and h?.player_y != null ? ` • Player HQ: (${h.player_x},${h.player_y})` : ""}
                   </div>
                 </div>
               ))}
             </div>
           )}
-
-          {!canManage ? (
-            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
-              View-only (Owner/R4/R5 can manage).
-            </div>
-          ) : null}
+          {!canManageFinal ? <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>View-only (Owner/R4/R5 can manage).</div> : null}
         </div>
 
-        {/* Calendar */}
         <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
             <b>📅 Calendar</b>
-            <Link to={`/dashboard/${encodeURIComponent(code)}/calendar${viewParam}`} style={{ opacity: 0.75, fontSize: 12 }}>
-              {canManage ? "Manage →" : "View →"}
+            <Link to={`/dashboard/${encodeURIComponent(code)}/calendar${viewParamFinal}`} style={{ opacity: 0.75, fontSize: 12 }}>
+              {canManageFinal ? "Manage →" : "View →"}
             </Link>
           </div>
-
           {events.length === 0 ? (
-            <div style={{ marginTop: 10, opacity: 0.7 }}>
-              (Preview unavailable or no upcoming events.) Use Calendar to view.
-            </div>
+            <div style={{ marginTop: 10, opacity: 0.7 }}>(Preview unavailable or no upcoming events.) Use Calendar to view.</div>
           ) : (
             <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
               {events.slice(0, 4).map((ev: any) => (
                 <div key={String(ev?.id ?? Math.random())} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 10 }}>
                   <div style={{ fontWeight: 800 }}>{String(ev?.title ?? ev?.name ?? "Event")}</div>
-                  <div style={{ marginTop: 6, opacity: 0.8, fontSize: 13 }}>
-                    {String(ev?.date ?? ev?.start_at ?? ev?.starts_at ?? "")}
-                  </div>
+                  <div style={{ marginTop: 6, opacity: 0.8, fontSize: 13 }}>{String(ev?.date ?? ev?.start_at ?? ev?.starts_at ?? "")}</div>
                 </div>
               ))}
             </div>
           )}
-
-          {!canManage ? (
-            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
-              View-only (Owner/R4/R5 can manage).
-            </div>
-          ) : null}
+          {!canManageFinal ? <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>View-only (Owner/R4/R5 can manage).</div> : null}
         </div>
       </div>
     </div>
