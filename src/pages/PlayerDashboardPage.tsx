@@ -50,6 +50,11 @@ export default function PlayerDashboardPage() {
 
   const isManager = useMemo(() => isManagerRole(role), [role]);
 
+  const managerAlliances = useMemo(
+    () => memberships.filter((m) => isManagerRole(m.role)),
+    [memberships]
+  );
+
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [sections, setSections] = useState<GuideSection[]>([]);
 
@@ -234,7 +239,48 @@ export default function PlayerDashboardPage() {
             ) : null}
           </div>
 
-          {/* Profile + HQs */}
+                    {/* Manager Tools (Owner/R4/R5 only) */}
+          {managerAlliances.length > 0 ? (
+            <div style={{ marginTop: 10, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 900 }}>🛡️ Manager Tools</div>
+                <div style={{ opacity: 0.75, fontSize: 12 }}>Visible only to Owner/R4/R5</div>
+              </div>
+
+              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {managerAlliances.map((m) => (
+                  <Link
+                    key={m.alliance_code}
+                    to={`/dashboard/${encodeURIComponent(m.alliance_code)}`}
+                    style={{
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      borderRadius: 10,
+                      padding: "8px 10px",
+                      textDecoration: "none",
+                      fontWeight: 800,
+                      opacity: 0.95,
+                    }}
+                  >
+                    ⚔️ Manage {m.alliance_code}
+                  </Link>
+                ))}
+              </div>
+
+              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {selectedAlliance ? (
+                  <>
+                    <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/announcements`} style={{ opacity: 0.9 }}>
+                      Announcements
+                    </Link>
+                    <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/guides`} style={{ opacity: 0.9 }}>
+                      Guides
+                    </Link>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+{/* Profile + HQs */}
           {userId && playerId && selectedAlliance ? (
             <div style={{ marginTop: 14 }}>
               <PlayerAllianceProfilePanel
@@ -302,3 +348,4 @@ export default function PlayerDashboardPage() {
     </div>
   );
 }
+
