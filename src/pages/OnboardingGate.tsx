@@ -3,6 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import Onboarding from "./Onboarding";
 
+/**
+ * OnboardingGate
+ * - If user is already assigned to an alliance, skip onboarding and go to /me
+ * - Otherwise render the existing Onboarding page unchanged
+ *
+ * We detect "assigned" safely via:
+ *   - player_alliances rows for the player's id, OR
+ *   - alliance_members rows for auth.uid()
+ */
 export default function OnboardingGate() {
   const nav = useNavigate();
   const [checking, setChecking] = useState(true);
@@ -12,56 +21,65 @@ export default function OnboardingGate() {
 
     (async () => {
       try {
-        const { data: ures } = await supabase.auth.getUser();
-        const uid = ures?.user?.id ?? null;
+        const { data: uRes } = await supabase.auth.getUser();
+        const uid = uRes?.user?.id ?? null;
 
-        // Not signed in -> show onboarding (it usually contains the login UI / flow)
         if (!uid) {
           if (!cancelled) setChecking(false);
           return;
         }
 
-        const { data: p, error: pErr } = await supabase
-          .from("players")
-          .select("id")
-          .eq("auth_user_id", uid)
-          .maybeSingle();
+        // 1) Try player_alliances route: players(auth_user_id) -> player_alliances(player_id)
+        try {
+          const { data: player, error: pErr } = await supabase
+            .from("players")
+            .select("id")
+            .eq("auth_user_id", uid)
+            .maybeSingle();
 
-        if (pErr) throw pErr;
+          if (!pErr && player?.id) {
+            const { data: pa, error: paErr } = await supabase
+              .from("player_alliances")
+              .select("alliance_code")
+              .eq("player_id", player.id)
+              .limit(1);
 
-        const pid = (p as any)?.id ?? null;
-        if (!pid) {
-          if (!cancelled) setChecking(false);
-          return;
+            if (!paErr && (pa?.length ?? 0) > 0) {
+              nav("/me", { replace: true });
+              return;
+            }
+          }
+        } catch {
+          // ignore and fall through
         }
 
-        const { data: pa, error: paErr } = await supabase
-          .from("player_alliances")
-          .select("alliance_code")
-          .eq("player_id", pid)
-          .limit(1);
+        // 2) Fallback: alliance_members for this user (covers some schemas/owners)
+        try {
+          const { data: am, error: amErr } = await supabase
+            .from("alliance_members")
+            .select("alliance_id")
+            .eq("user_id", uid)
+            .limit(1);
 
-        if (paErr) throw paErr;
-
-        const hasAlliance = Array.isArray(pa) && pa.length > 0;
-
-        // If already assigned, never show onboarding again
-        if (hasAlliance) {
-          nav("/me", { replace: true });
-          return;
+          if (!amErr && (am?.length ?? 0) > 0) {
+            nav("/me", { replace: true });
+            return;
+          }
+        } catch {
+          // ignore
         }
 
-        if (!cancelled) setChecking(false);
-      } catch {
+      } finally {
         if (!cancelled) setChecking(false);
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [nav]);
 
-  if (checking) return <div style={{ padding: 16 }}>Checking your status…</div>;
+  if (checking) {
+    return <div style={{ padding: 16 }}>Loading…</div>;
+  }
+
   return <Onboarding />;
 }
