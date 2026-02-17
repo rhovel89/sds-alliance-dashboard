@@ -43,6 +43,7 @@ import OwnerAccessControlPage from "../pages/owner/OwnerAccessControlPage";
 import AuthLandingPage from "../pages/AuthLandingPage";
 import OnboardingGate from "../pages/OnboardingGate";
 import OwnerPlayerDashboardViewPage from "../pages/owner/OwnerPlayerDashboardViewPage";
+import MePage from "../pages/MePage";
 export default function AppRoutes() {
   return (
     <Routes>

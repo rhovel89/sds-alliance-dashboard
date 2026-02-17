@@ -1,0 +1,104 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
+
+type Sess = any;
+
+export default function Onboarding() {
+  const nav = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<Sess>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (error) setErr(error.message);
+        setSession(data?.session ?? null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+      if (!mounted) return;
+      setSession(sess);
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      try { sub?.subscription?.unsubscribe(); } catch {}
+    };
+  }, []);
+
+  const signIn = async (provider: "google" | "discord") => {
+    setErr(null);
+    const redirectTo = window.location.origin + "/onboarding";
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo },
+    });
+    if (error) setErr(error.message);
+  };
+
+  const signOut = async () => {
+    setErr(null);
+    const { error } = await supabase.auth.signOut();
+    if (error) setErr(error.message);
+  };
+
+  if (loading) {
+    return <div style={{ padding: 24 }}>Loading…</div>;
+  }
+
+  if (!session) {
+    return (
+      <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
+        <h2 style={{ marginTop: 0 }}>Welcome</h2>
+        <p style={{ opacity: 0.85 }}>Please sign in to continue.</p>
+
+        {err ? (
+          <div style={{ marginTop: 12, padding: 12, border: "1px solid rgba(255,0,0,0.35)", borderRadius: 10 }}>
+            <b>Error:</b> {err}
+          </div>
+        ) : null}
+
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 14 }}>
+          <button onClick={() => signIn("google")} style={{ padding: "10px 14px", borderRadius: 10 }}>
+            Sign in with Google
+          </button>
+          <button onClick={() => signIn("discord")} style={{ padding: "10px 14px", borderRadius: 10 }}>
+            Sign in with Discord
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
+      <h2 style={{ marginTop: 0 }}>You're signed in</h2>
+      <p style={{ opacity: 0.85 }}>Continue to your dashboard.</p>
+
+      {err ? (
+        <div style={{ marginTop: 12, padding: 12, border: "1px solid rgba(255,0,0,0.35)", borderRadius: 10 }}>
+          <b>Error:</b> {err}
+        </div>
+      ) : null}
+
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 14 }}>
+        <button onClick={() => nav("/dashboard")} style={{ padding: "10px 14px", borderRadius: 10 }}>
+          Go to Dashboard
+        </button>
+        <button onClick={signOut} style={{ padding: "10px 14px", borderRadius: 10 }}>
+          Sign out
+        </button>
+      </div>
+    </div>
+  );
+}
