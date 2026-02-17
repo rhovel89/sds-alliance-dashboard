@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import PlayerHqsPanel from "../components/player/PlayerHqsPanel";
+import PlayerDashboardPolish from "../components/player/PlayerDashboardPolish";
+import PlayerProfilePanel from "../components/player/PlayerProfilePanel";
+import PlayerHqsPanel from "../components/player/PlayerHqsPanel";
 
 type PlayerAllianceRow = {
   alliance_code: string;
@@ -91,6 +94,23 @@ export default function PlayerDashboardPage() {
   if (!uid) {
     return (
       <div style={{ padding: 16 }}>
+      <div style={{ padding: 16 }}>  <PlayerDashboardPolish />
+      {/* --- BEGIN PLAYER PROFILE + HQs --- */}
+      <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+        <PlayerProfilePanel {...({ allianceCode: (() => {
+  const parts = (typeof window !== "undefined" ? window.location.pathname.split("/").filter(Boolean) : []);
+  const di = parts.indexOf("dashboard");
+  const code = di >= 0 ? parts[di + 1] : "";
+  return String(code || "").trim().toUpperCase();
+})() } as any)} />
+        <PlayerHqsPanel {...({ allianceCode: (() => {
+  const parts = (typeof window !== "undefined" ? window.location.pathname.split("/").filter(Boolean) : []);
+  const di = parts.indexOf("dashboard");
+  const code = di >= 0 ? parts[di + 1] : "";
+  return String(code || "").trim().toUpperCase();
+})() } as any)} />
+      </div>
+      {/* --- END PLAYER PROFILE + HQs --- */}
         <h2>Player Dashboard</h2>
         <div style={{ opacity: 0.85 }}>Please sign in.</div>
         <div style={{ marginTop: 10 }}>
@@ -158,3 +178,5 @@ export default function PlayerDashboardPage() {
     </div>
   );
 }
+
+
