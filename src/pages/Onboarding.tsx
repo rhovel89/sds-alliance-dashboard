@@ -5,6 +5,30 @@ import { supabase } from "../lib/supabaseClient";
 type Sess = any;
 
 export default function Onboarding() {
+
+  // --- BEGIN ADMIN ONBOARDING BYPASS ---
+ navigate = useNavigate();
+(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: u } = await supabase.auth.getUser();
+        const uid = u?.user?.id ?? null;
+        if (!uid) return;
+        let isAdmin = false;
+        try {
+          const { data } = await supabase.rpc("is_app_admin");
+          if (typeof data === "boolean") isAdmin = data;
+        } catch {}
+        if (!cancelled -and isAdmin) {
+          navigate("/owner", { replace: true });
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [navigate]);
+  // --- END ADMIN ONBOARDING BYPASS ---
+
  navigate = useNavigate();
 
   // --- BEGIN SKIP ONBOARDING IF ALREADY ASSIGNED ---
@@ -141,4 +165,5 @@ export default function Onboarding() {
     </div>
   );
 }
+
 
