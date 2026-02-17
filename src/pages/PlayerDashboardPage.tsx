@@ -58,7 +58,6 @@ export default function PlayerDashboardPage() {
         setPlayerId(pid);
 
         if (!pid) {
-          // Not onboarded yet
           setAlliances([]);
           setLoading(false);
           return;
@@ -89,7 +88,6 @@ export default function PlayerDashboardPage() {
 
   if (loading) return <div style={{ padding: 16 }}>Loading your dashboard…</div>;
 
-  // Not logged in
   if (!uid) {
     return (
       <div style={{ padding: 16 }}>
@@ -102,7 +100,6 @@ export default function PlayerDashboardPage() {
     );
   }
 
-  // Logged in but not onboarded/approved/assigned
   if (!playerId || allianceCodes.length === 0) {
     return (
       <div style={{ padding: 16 }}>
@@ -147,10 +144,10 @@ export default function PlayerDashboardPage() {
             {allianceCodes.map((c) => (
               <div key={c} style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                 <b style={{ minWidth: 60 }}>{c}</b>
-                <a href={\/dashboard/\\}>Open Dashboard →</a>
-                <a href={\/dashboard/\/hq-map\}>HQ Map →</a>
-                <a href={\/dashboard/\/calendar\}>Daily Events →</a>
-                <a href={\/dashboard/\/guides\}>Guides →</a>
+                <a href={`/dashboard/${encodeURIComponent(c)}`}>Open Dashboard →</a>
+                <a href={`/dashboard/${encodeURIComponent(c)}/hq-map`}>HQ Map →</a>
+                <a href={`/dashboard/${encodeURIComponent(c)}/calendar`}>Daily Events →</a>
+                <a href={`/dashboard/${encodeURIComponent(c)}/guides`}>Guides →</a>
               </div>
             ))}
           </div>

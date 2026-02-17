@@ -20,7 +20,10 @@ export default function PlayerHqsPanel(props: { userId: string; allianceCodes: s
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const allianceSet = useMemo(() => new Set((allianceCodes || []).map((x) => String(x || "").toUpperCase())), [allianceCodes]);
+  const allianceSet = useMemo(
+    () => new Set((allianceCodes || []).map((x) => String(x || "").toUpperCase())),
+    [allianceCodes]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -30,7 +33,6 @@ export default function PlayerHqsPanel(props: { userId: string; allianceCodes: s
       setErr(null);
 
       try {
-        // Pull all HQ rows assigned to this user (then filter to their alliances client-side)
         const { data, error } = await supabase
           .from("alliance_hq_map")
           .select("id,alliance_id,label,slot_number,slot_x,slot_y,player_x,player_y,player_hq_id,updated_at,assigned_user_id")
@@ -94,10 +96,10 @@ export default function PlayerHqsPanel(props: { userId: string; allianceCodes: s
               </div>
 
               <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <a href={\/dashboard/\/hq-map\} style={{ opacity: 0.9 }}>
+                <a href={`/dashboard/${encodeURIComponent(a)}/hq-map`} style={{ opacity: 0.9 }}>
                   View HQ Map →
                 </a>
-                <a href={\/dashboard/\/calendar\} style={{ opacity: 0.9 }}>
+                <a href={`/dashboard/${encodeURIComponent(a)}/calendar`} style={{ opacity: 0.9 }}>
                   View Events →
                 </a>
               </div>
