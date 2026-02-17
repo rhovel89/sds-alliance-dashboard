@@ -52,18 +52,7 @@ export default function AuthLandingPage() {
       {/* Background video (optional). Put file at: public/auth/zombie-ambient.mp4 */}
       <div className="bgVidWrap" aria-hidden="true">
         {videoOk ? (
-          <video
-            className="bgVid"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            onError={() => setVideoOk(false)}
-          >
-            <source src={VIDEO_SRC} type="video/mp4" />
-          </video>
-        ) : null}
+) : null}
       </div>
 
       {/* Horror overlays */}
@@ -142,3 +131,4 @@ export default function AuthLandingPage() {
     </div>
   );
 }
+
