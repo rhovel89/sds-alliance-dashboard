@@ -8,8 +8,6 @@ export default function AuthLandingPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string>("");
   const [isError, setIsError] = useState(false);
-  const [videoOk, setVideoOk] = useState(true);
-
   const VIDEO_SRC = "/auth/zombie-ambient.mp4";
 
   useEffect(() => {
@@ -51,8 +49,7 @@ export default function AuthLandingPage() {
     <div className="authRoot">
       {/* Background video (optional). Put file at: public/auth/zombie-ambient.mp4 */}
       <div className="bgVidWrap" aria-hidden="true">
-        {videoOk ? (
-) : null}
+        {null}
       </div>
 
       {/* Horror overlays */}
@@ -131,4 +128,5 @@ export default function AuthLandingPage() {
     </div>
   );
 }
+
 
