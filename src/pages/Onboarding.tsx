@@ -5,6 +5,45 @@ import { supabase } from "../lib/supabaseClient";
 type Sess = any;
 
 export default function Onboarding() {
+ navigate = useNavigate();
+
+  // --- BEGIN SKIP ONBOARDING IF ALREADY ASSIGNED ---
+(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: u } = await supabase.auth.getUser();
+        const uid = u?.user?.id;
+        if (!uid || cancelled) return;
+
+        const { data: player, error: pErr } = await supabase
+          .from("players")
+          .select("id")
+          .eq("auth_user_id", uid)
+          .maybeSingle();
+
+        if (cancelled) return;
+        if (pErr || !player?.id) return;
+
+        const { data: pa, error: paErr } = await supabase
+          .from("player_alliances")
+          .select("alliance_code")
+          .eq("player_id", player.id)
+          .limit(1);
+
+        if (cancelled) return;
+        if (paErr) return;
+
+        const code = (pa && pa[0] && pa[0].alliance_code) ? String(pa[0].alliance_code).trim().toUpperCase() : "";
+        if (code) navigate(/dashboard/, { replace: true });
+      } catch {
+        // ignore
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [navigate]);
+  // --- END SKIP ONBOARDING IF ALREADY ASSIGNED ---
+
   const nav = useNavigate();
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Sess>(null);
@@ -102,3 +141,4 @@ export default function Onboarding() {
     </div>
   );
 }
+
