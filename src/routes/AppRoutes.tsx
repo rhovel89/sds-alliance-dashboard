@@ -47,6 +47,7 @@ import MePage from "../pages/MePage";
 import PlayerProfilePage from "../pages/PlayerProfilePage";
 import AllianceHQMapViewPage from "../pages/AllianceHQMapViewPage";
 import AllianceCalendarViewPage from "../pages/AllianceCalendarViewPage";
+import DashboardGate from "../pages/DashboardGate";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -122,19 +123,21 @@ export default function AppRoutes() {
   <Route path="/owner/state" element={<OwnerStateManagerPage />} />
   <Route path="/owner/state-leaders" element={<StateLeadersPage />} />
       <Route path="/owner/roles" element={<OwnerRolesPermissionsV2Page />} />
-      <Route path="/dashboard/:code/announcements" element={<AllianceAnnouncementsPage />} />
-      <Route path="/dashboard/:code/guides" element={<AllianceGuidesPage />} />
-      <Route path="/dashboard/:allianceCode/announcements" element={<AllianceAnnouncementsPage />} />
-      <Route path="/dashboard/:allianceCode/guides" element={<AllianceGuidesPage />} />
+      <Route path="/dashboard/:code/announcements" element={<DashboardGatecode
+      <Route path="/dashboard/:code/guides" element={<DashboardGatecode
+      <Route path="/dashboard/:allianceCode/announcements" element={<DashboardGateallianceCode
+      <Route path="/dashboard/:allianceCode/guides" element={<DashboardGateallianceCode
       <Route path="/me" element={<PlayerDashboardPage />} />
       <Route path="/owner/access-control" element={<OwnerAccessControlPage />} />
-        <Route path="/owner/player-dashboard/:playerId" element={<OwnerPlayerDashboardViewPage />} />        <Route path="/dashboard/:allianceCode/me" element={<PlayerProfilePage />} />        <Route path="/dashboard/:allianceCode/hq-map-view" element={<AllianceHQMapViewPage />} />        <Route path="/dashboard/:allianceCode/calendar-view" element={<AllianceCalendarViewPage />} />
+        <Route path="/owner/player-dashboard/:playerId" element={<OwnerPlayerDashboardViewPage />} />        <Route path="/dashboard/:allianceCode/me" element={<DashboardGateallianceCode        <Route path="/dashboard/:allianceCode/hq-map-view" element={<DashboardGateallianceCode        <Route path="/dashboard/:allianceCode/calendar-view" element={<DashboardGateallianceCode        <Route path="/dashboard/ME" element={<PlayerDashboardPage />} />
+
 
 
 
 </Routes>
   );
 }
+
 
 
 
