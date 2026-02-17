@@ -1,24 +1,28 @@
 :root {
-  --bg0: #05060a;
-  --bg1: #080a12;
+  --bg0: #040507;
+  --bg1: #070915;
   --text: rgba(255,255,255,0.92);
   --muted: rgba(255,255,255,0.70);
   --border: rgba(255,255,255,0.14);
-  --glass: rgba(14, 16, 26, 0.55);
-  --glass2: rgba(10, 12, 20, 0.35);
-  --glow: rgba(120, 180, 255, 0.28);
-  --glow2: rgba(255, 170, 90, 0.18);
-  --accent: rgba(125, 190, 255, 1);
-  --danger: rgba(255, 80, 80, 1);
+  --glass: rgba(10, 12, 18, 0.58);
+  --glass2: rgba(8, 10, 14, 0.36);
+
+  --zombieGreen: rgba(120, 255, 150, 0.10);
+  --toxicGreen: rgba(40, 180, 110, 0.12);
+  --ember: rgba(255, 95, 35, 0.10);
+
+  --blood: rgba(150, 10, 18, 0.55);
+  --blood2: rgba(255, 30, 40, 0.16);
 }
 
 .authRoot {
   min-height: 100vh;
   color: var(--text);
-  background: radial-gradient(1200px 800px at 60% -10%, rgba(110,170,255,0.18), transparent 55%),
-              radial-gradient(900px 700px at 15% 25%, rgba(255,160,80,0.10), transparent 60%),
-              radial-gradient(1000px 900px at 85% 70%, rgba(120,255,210,0.08), transparent 60%),
-              linear-gradient(180deg, var(--bg0), var(--bg1));
+  background:
+    radial-gradient(1200px 800px at 55% -10%, rgba(120,255,150,0.10), transparent 55%),
+    radial-gradient(900px 700px at 20% 25%, rgba(255,95,35,0.08), transparent 60%),
+    radial-gradient(1000px 900px at 85% 70%, rgba(40,180,110,0.09), transparent 60%),
+    linear-gradient(180deg, var(--bg0), var(--bg1));
   display: grid;
   place-items: center;
   padding: 24px;
@@ -26,50 +30,145 @@
   position: relative;
 }
 
-.authRoot::before {
-  /* Film grain + subtle vignette */
-  content: "";
+/* Video layer */
+.bgVidWrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.bgVid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+
+  /* make it subtle + cinematic */
+  opacity: 0.32;
+  filter: grayscale(30%) contrast(110%) brightness(80%) saturate(120%);
+  transform: scale(1.03);
+}
+
+/* Overlays container */
+.overlays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Zombie tint + fog */
+.zombieTint {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(800px 500px at 35% 30%, var(--zombieGreen), transparent 60%),
+    radial-gradient(900px 650px at 80% 65%, var(--ember), transparent 62%),
+    linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.75));
+  mix-blend-mode: screen;
+  opacity: 0.55;
+}
+
+/* Subtle fog movement */
+.fog {
+  position: absolute;
+  inset: -30%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.06), transparent 55%),
+    radial-gradient(circle at 70% 55%, rgba(255,255,255,0.05), transparent 60%),
+    radial-gradient(circle at 45% 80%, rgba(255,255,255,0.04), transparent 65%);
+  filter: blur(12px);
+  opacity: 0.22;
+  animation: fogDrift 16s ease-in-out infinite;
+}
+@keyframes fogDrift {
+  0%   { transform: translate3d(-2%, -1%, 0) scale(1.02); }
+  50%  { transform: translate3d(2%, 1%, 0) scale(1.04); }
+  100% { transform: translate3d(-2%, -1%, 0) scale(1.02); }
+}
+
+/* Film grain + vignette */
+.grain {
   position: absolute;
   inset: -50%;
   background:
-    radial-gradient(closest-side at 50% 50%, transparent 0%, rgba(0,0,0,0.65) 120%),
+    radial-gradient(closest-side at 50% 50%, transparent 0%, rgba(0,0,0,0.68) 120%),
     repeating-radial-gradient(circle at 30% 20%,
       rgba(255,255,255,0.012) 0px,
       rgba(255,255,255,0.012) 1px,
       rgba(0,0,0,0.012) 2px,
       rgba(0,0,0,0.012) 3px);
-  opacity: 0.75;
+  opacity: 0.70;
   filter: contrast(120%) brightness(105%);
   transform: rotate(6deg);
-  pointer-events: none;
 }
 
-.authRoot::after {
-  /* Cinematic light sweep */
-  content: "";
+/* Flicker (errie) */
+.flicker {
   position: absolute;
-  inset: -40%;
-  background: linear-gradient(120deg, transparent 35%, rgba(255,255,255,0.08) 45%, transparent 55%);
-  opacity: 0.35;
-  transform: translateX(-30%) translateY(-10%) rotate(8deg);
-  animation: sweep 10s ease-in-out infinite;
-  pointer-events: none;
+  inset: 0;
+  background: rgba(0,0,0,0.10);
+  opacity: 0.10;
+  animation: flicker 6.5s infinite;
+}
+@keyframes flicker {
+  0% { opacity: .06; }
+  3% { opacity: .18; }
+  4% { opacity: .05; }
+  8% { opacity: .14; }
+  9% { opacity: .07; }
+  15% { opacity: .20; }
+  16% { opacity: .06; }
+  42% { opacity: .10; }
+  43% { opacity: .22; }
+  44% { opacity: .08; }
+  70% { opacity: .12; }
+  71% { opacity: .28; }
+  72% { opacity: .10; }
+  100% { opacity: .08; }
 }
 
-@keyframes sweep {
-  0%   { transform: translateX(-35%) translateY(-10%) rotate(8deg); opacity: 0.18; }
-  45%  { opacity: 0.35; }
-  50%  { transform: translateX(35%) translateY(6%) rotate(8deg); opacity: 0.28; }
-  100% { transform: translateX(-35%) translateY(-10%) rotate(8deg); opacity: 0.18; }
+/* Stylized blood drips at top */
+.bloodDrips {
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 34vh;
+  opacity: 0.55;
+  filter: blur(0.2px);
+  background:
+    /* glossy smear */
+    linear-gradient(180deg, rgba(255,30,40,0.08), transparent 55%),
+    /* drips */
+    radial-gradient(22px 60px at 8% 0%, var(--blood), transparent 70%),
+    radial-gradient(16px 90px at 16% 0%, var(--blood), transparent 70%),
+    radial-gradient(26px 120px at 26% 0%, var(--blood), transparent 72%),
+    radial-gradient(14px 80px at 39% 0%, var(--blood), transparent 70%),
+    radial-gradient(24px 140px at 52% 0%, var(--blood), transparent 72%),
+    radial-gradient(18px 110px at 63% 0%, var(--blood), transparent 72%),
+    radial-gradient(28px 150px at 74% 0%, var(--blood), transparent 72%),
+    radial-gradient(14px 80px at 86% 0%, var(--blood), transparent 70%),
+    radial-gradient(20px 120px at 93% 0%, var(--blood), transparent 72%);
+  transform: translateY(-10px);
+  animation: drip 10s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+@keyframes drip {
+  0%   { transform: translateY(-18px); opacity: 0.45; }
+  50%  { transform: translateY(2px); opacity: 0.60; }
+  100% { transform: translateY(-18px); opacity: 0.45; }
 }
 
+/* Foreground content */
 .authShell {
   width: min(980px, 100%);
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
   gap: 18px;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 @media (max-width: 900px) {
@@ -82,29 +181,17 @@
   padding: 26px;
   background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
   box-shadow:
-    0 30px 80px rgba(0,0,0,0.55),
+    0 30px 80px rgba(0,0,0,0.60),
     0 0 0 1px rgba(255,255,255,0.06) inset;
   backdrop-filter: blur(10px);
   position: relative;
   overflow: hidden;
 }
 
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  background: radial-gradient(800px 400px at 30% 20%, var(--glow), transparent 60%),
-              radial-gradient(700px 500px at 85% 70%, var(--glow2), transparent 60%);
-  opacity: 0.85;
-  pointer-events: none;
-}
-
 .brandRow {
   display: flex;
   align-items: center;
   gap: 12px;
-  position: relative;
-  z-index: 1;
 }
 
 .brandMark {
@@ -112,8 +199,9 @@
   height: 44px;
   border-radius: 14px;
   border: 1px solid rgba(255,255,255,0.18);
-  background: radial-gradient(circle at 30% 30%, rgba(125,190,255,0.55), rgba(0,0,0,0.0) 55%),
-              linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
+  background:
+    radial-gradient(circle at 30% 30%, rgba(120,255,150,0.35), rgba(0,0,0,0.0) 55%),
+    linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
   box-shadow: 0 18px 45px rgba(0,0,0,0.45);
 }
 
@@ -134,8 +222,7 @@
   margin-top: 18px;
   font-size: 14px;
   color: var(--muted);
-  position: relative;
-  z-index: 1;
+  line-height: 1.35;
 }
 
 .heroGrid {
@@ -143,8 +230,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  position: relative;
-  z-index: 1;
 }
 
 @media (max-width: 520px) {
@@ -165,7 +250,7 @@
 }
 
 .pillValue {
-  font-weight: 700;
+  font-weight: 800;
   margin: 0;
 }
 
@@ -175,18 +260,17 @@
   padding: 22px;
   background: linear-gradient(180deg, var(--glass), var(--glass2));
   box-shadow:
-    0 30px 80px rgba(0,0,0,0.55),
+    0 30px 80px rgba(0,0,0,0.60),
     0 0 0 1px rgba(255,255,255,0.05) inset;
   backdrop-filter: blur(12px);
   position: relative;
   overflow: hidden;
-  z-index: 1;
 }
 
 .cardTitle {
   margin: 0 0 6px 0;
   font-size: 16px;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .cardText {
@@ -196,10 +280,7 @@
   line-height: 1.4;
 }
 
-.btnCol {
-  display: grid;
-  gap: 10px;
-}
+.btnCol { display: grid; gap: 10px; }
 
 .btn {
   width: 100%;
@@ -213,7 +294,7 @@
   background: rgba(255,255,255,0.06);
   color: rgba(255,255,255,0.92);
   cursor: pointer;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.2px;
   transition: transform 120ms ease, background 120ms ease, border 120ms ease, box-shadow 120ms ease;
 }
@@ -225,20 +306,10 @@
   box-shadow: 0 12px 30px rgba(0,0,0,0.35);
 }
 
-.btn:active {
-  transform: translateY(0px);
-}
+.btn:active { transform: translateY(0px); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.icon {
-  width: 18px;
-  height: 18px;
-  display: inline-block;
-}
+.icon { width: 18px; height: 18px; display: inline-block; }
 
 .msg {
   margin-top: 12px;
@@ -250,9 +321,7 @@
   line-height: 1.35;
 }
 
-.msgError {
-  border-color: rgba(255,80,80,0.40);
-}
+.msgError { border-color: rgba(255,80,80,0.40); }
 
 .finePrint {
   margin-top: 12px;
@@ -262,6 +331,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .authRoot::after { animation: none; }
+  .fog, .flicker, .bloodDrips { animation: none !important; }
   .btn { transition: none; }
 }
