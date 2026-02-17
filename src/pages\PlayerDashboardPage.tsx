@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { supabase } from "../lib/supabaseClient";
 import PlayerAllianceProfilePanel from "../components/player/PlayerAllianceProfilePanel";
 
+import PlayerMeProfileAndHqsPanel from "../components/player/PlayerMeProfileAndHqsPanel";
 type Membership = {
   alliance_code: string;
   role: string | null;
@@ -169,6 +169,8 @@ export default function PlayerDashboardPage() {
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
+      {/* ME_PROFILE_HQS_PANEL */}
+      <PlayerMeProfileAndHqsPanel />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0 }}>🧍‍♂️ Your Dashboard (ME)</h2>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -203,11 +205,17 @@ export default function PlayerDashboardPage() {
 
             {selectedAlliance ? (
               <>
-                <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/announcements`} style={{ opacity: 0.9 }}>
+                <Link
+                  to={`/dashboard/${encodeURIComponent(selectedAlliance)}/announcements`}
+                  style={{ opacity: 0.9 }}
+                >
                   Announcements
                 </Link>
 
-                <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/guides`} style={{ opacity: 0.9 }}>
+                <Link
+                  to={`/dashboard/${encodeURIComponent(selectedAlliance)}/guides`}
+                  style={{ opacity: 0.9 }}
+                >
                   Guides
                 </Link>
 
@@ -226,7 +234,10 @@ export default function PlayerDashboardPage() {
                 </Link>
 
                 {isManager ? (
-                  <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}`} style={{ fontWeight: 900 }}>
+                  <Link
+                    to={`/dashboard/${encodeURIComponent(selectedAlliance)}`}
+                    style={{ fontWeight: 900 }}
+                  >
                     ⚔️ Manage Alliance Dashboard
                   </Link>
                 ) : null}
