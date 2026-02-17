@@ -10,6 +10,64 @@ type Alliance = {
 const RANKS = ["R1", "R2", "R3", "R4", "R5"];
 
 export default function Onboarding() {
+  // SA_ONBOARDING_BYPASS:
+  // If the player already has an alliance assignment, skip onboarding forever.
+  const saOnboardingNavigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data: u } = await supabase.auth.getUser();
+        const uid = u?.user?.id;
+        if (!uid) return;
+
+        // Prefer player_alliances via players.id (common in this app)
+        let hasAlliance = false;
+
+        const { data: player, error: pErr } = await supabase
+          .from("players")
+          .select("id")
+          .eq("auth_user_id", uid)
+          .maybeSingle();
+
+        if (!pErr && player?.id) {
+          const paRes = await supabase
+            .from("player_alliances")
+            .select("alliance_code")
+            .eq("player_id", player.id)
+            .limit(1);
+
+          if (!paRes.error) {
+            hasAlliance = Array.isArray(paRes.data) && paRes.data.length -gt 0;
+          }
+        }
+
+        // Fallback: alliance_members by auth uid (in case player_alliances isn't used)
+        if (-not hasAlliance) {
+          const amRes = await supabase
+            .from("alliance_members")
+            .select("alliance_id")
+            .eq("user_id", uid)
+            .limit(1);
+
+          if (!amRes.error) {
+            hasAlliance = Array.isArray(amRes.data) && amRes.data.length -gt 0;
+          }
+        }
+
+        if (hasAlliance -and -not cancelled) {
+          saOnboardingNavigate("/dashboard", { replace: true });
+        }
+      } catch {
+        # ignore
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [saOnboardingNavigate]);
+
   // --- BEGIN AUTO-REDIRECT IF APPROVED ---
   const navigate = useNavigate();
 
@@ -262,5 +320,6 @@ export default function Onboarding() {
     </div>
   );
 }
+
 
 
