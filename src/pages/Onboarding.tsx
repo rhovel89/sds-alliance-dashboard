@@ -2,6 +2,15 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
+const oauthSignIn = async (provider: "google" | "discord") => {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo: window.location.origin + "/onboarding" },
+  });
+  if (error) alert(error.message);
+};
+
+
 type Alliance = {
   id: string;
   name: string;
@@ -257,6 +266,10 @@ export default function Onboarding() {
 
   return (
     <div className="panel scanner">
+      <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+        <button onClick={() => oauthSignIn("google")}>Continue with Google</button>
+        <button onClick={() => oauthSignIn("discord")}>Continue with Discord</button>
+      </div>
       <h2>☣️ Survivor Intake</h2>
       <span className="quarantine-badge">IN QUARANTINE</span>
 
@@ -320,6 +333,10 @@ export default function Onboarding() {
     </div>
   );
 }
+
+
+
+
 
 
 
