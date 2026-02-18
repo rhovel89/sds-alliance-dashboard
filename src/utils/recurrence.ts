@@ -7,12 +7,25 @@ export type RecurrenceType = "daily" | "weekly" | "biweekly" | "monthly";
 export type CalendarEventRow = {
   id: string;
 
+  // common event columns your calendar UI uses
+  title?: string | null;
+  event_type?: string | null;
+  event_name?: string | null;
+
+  created_by?: string | null;
+  alliance_id?: string | null;
+
+  duration_minutes?: number | null;
+  timezone_origin?: string | null;
+
   // canonical
   start_time_utc?: string | null;
 
   // legacy helpers (some schemas store these)
   start_date?: string | null; // YYYY-MM-DD
   start_time?: string | null; // HH:mm
+  end_date?: string | null;   // YYYY-MM-DD
+  end_time?: string | null;   // HH:mm
 
   // recurrence
   recurring_enabled?: boolean | null;
@@ -20,7 +33,12 @@ export type CalendarEventRow = {
   recurrence_days?: string[] | null;
   recurrence_end_date?: string | null; // YYYY-MM-DD
 
-  // meta for expanded instances
+  // fallback names some older schemas use
+  recurrence?: string | null;
+  days_of_week?: string[] | null;
+
+  // meta for expanded instances (virtual occurrences)
+  instance_id?: string | null;
   _source_event_id?: string;
   _occurrence_time_utc?: string;
 };
@@ -183,3 +201,4 @@ export function expandEventsForMonth<T extends CalendarEventRow>(
 
   return out;
 }
+
