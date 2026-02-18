@@ -13,49 +13,48 @@ function safeStr(v: any) {
   return String(v ?? "").trim();
 }
 
-function upper(v: any) {
-  return safeStr(v).toUpperCase();
-}
+async function trySelect(table: string, select: string, withOrder: boolean) {
+  let q = supabase.from(table).select(select).limit(1000);
 
-async function tryLoadTable(table: string) {
-  // Try common column sets; ignore errors and fallback
-  const res = await supabase
-    .from(table)
-    .select("id,label,description,scope,key")
-    .order("scope", { ascending: true })
-    .order("key", { ascending: true })
-    .limit(1000);
+  // ordering can fail if scope/key columns don't exist on this table shape
+  if (withOrder) {
+    q = q.order("scope", { ascending: true }).order("key", { ascending: true });
+  }
 
+  const res = await q;
   return res;
 }
 
-const TABLE_CANDIDATES = [
-  "permissions_v2",
-  "permissions",
-  "alliance_permissions",
-  "app_permissions",
+// Keep the candidate table list short to reduce console noise.
+// The "permissions" table seems to exist in your project (400 earlier = shape mismatch).
+const TABLE_CANDIDATES = ["permissions", "permissions_v2", "alliance_permissions", "app_permissions"];
+
+// Try the most likely column shapes FIRST to reduce failing requests.
+// PostgREST supports alias:  label:name  and  key:code  etc.
+const SELECT_VARIANTS: Array<{ select: string; ordered: boolean }> = [
+  // Common: name + code
+  { select: "id,label:name,description,scope,key:code", ordered: true },
+  { select: "id,label:name,description,scope,key:code", ordered: false },
+
+  // Common: name + key
+  { select: "id,label:name,description,scope,key", ordered: true },
+  { select: "id,label:name,description,scope,key", ordered: false },
+
+  // Common: label + key
+  { select: "id,label,description,scope,key", ordered: true },
+  { select: "id,label,description,scope,key", ordered: false },
+
+  // Other variants seen in some schemas
+  { select: "id,label:name,description:details,scope,key:code", ordered: false },
+  { select: "id,label:title,description,scope,key:code", ordered: false },
+  { select: "id,label:name,description,scope,key:permission_key", ordered: false },
+  { select: "id,label:name,description,scope,key:perm_key", ordered: false },
 ];
-
-const SCOPE_OPTIONS = ["app", "state", "alliance", "player"] as const;
-
-const KEY_TEMPLATES = [
-  { label: "Alliance: Announcements View", scope: "alliance", key: "alliance.announcements.view" },
-  { label: "Alliance: Announcements Edit", scope: "alliance", key: "alliance.announcements.edit" },
-  { label: "Alliance: Guides View", scope: "alliance", key: "alliance.guides.view" },
-  { label: "Alliance: Guides Edit", scope: "alliance", key: "alliance.guides.edit" },
-  { label: "Alliance: HQ Map View", scope: "alliance", key: "alliance.hq_map.view" },
-  { label: "Alliance: HQ Map Edit", scope: "alliance", key: "alliance.hq_map.edit" },
-  { label: "Alliance: Calendar View", scope: "alliance", key: "alliance.calendar.view" },
-  { label: "Alliance: Calendar Edit", scope: "alliance", key: "alliance.calendar.edit" },
-  { label: "Alliance: Discord Settings Manage", scope: "alliance", key: "alliance.discord.manage" },
-  { label: "State: Dashboard View", scope: "state", key: "state.dashboard.view" },
-  { label: "State: Dashboard Edit", scope: "state", key: "state.dashboard.edit" },
-  { label: "Owner/Admin: Full Access", scope: "app", key: "app.admin" },
-] as const;
 
 export default function PermissionLibraryHelper() {
   const [loading, setLoading] = useState(true);
   const [tableUsed, setTableUsed] = useState<string | null>(null);
+  const [shapeUsed, setShapeUsed] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const [perms, setPerms] = useState<PermRow[]>([]);
@@ -70,10 +69,8 @@ export default function PermissionLibraryHelper() {
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     if (!qq) return perms;
-
     return perms.filter((p) => {
-      const s =
-        `${p.label ?? ""} ${p.description ?? ""} ${p.scope ?? ""} ${p.key ?? ""}`.toLowerCase();
+      const s = `${p.label ?? ""} ${p.description ?? ""} ${p.scope ?? ""} ${p.key ?? ""}`.toLowerCase();
       return s.includes(qq);
     });
   }, [perms, q]);
@@ -94,34 +91,47 @@ export default function PermissionLibraryHelper() {
       setLoading(true);
       setErr(null);
       setTableUsed(null);
+      setShapeUsed(null);
       setPerms([]);
 
       try {
         for (const t of TABLE_CANDIDATES) {
-          const r = await tryLoadTable(t);
-          if (!r.error) {
-            if (cancelled) return;
+          for (const v of SELECT_VARIANTS) {
+            const r: any = await trySelect(t, v.select, v.ordered);
 
-            const rows = (r.data ?? []) as any[];
-            setPerms(
-              rows.map((x) => ({
+            // 404 table not found -> try next table
+            if (r?.error?.code === "PGRST106" || (r?.status === 404)) {
+              break;
+            }
+
+            if (!r.error) {
+              if (cancelled) return;
+
+              const rows = (r.data ?? []) as any[];
+              const mapped: PermRow[] = rows.map((x) => ({
                 id: x.id,
                 label: x.label ?? null,
                 description: x.description ?? null,
                 scope: x.scope ?? null,
                 key: x.key ?? null,
-              }))
-            );
-            setTableUsed(t);
-            setLoading(false);
-            return;
+              }));
+
+              setPerms(mapped);
+              setTableUsed(t);
+              setShapeUsed(v.select + (v.ordered ? " (ordered)" : ""));
+              setLoading(false);
+              return;
+            }
+
+            // If a select/order variant fails (400), just try next variant.
+            // We don't throw because we are auto-detecting.
           }
         }
 
         if (!cancelled) {
           setErr(
-            "Could not load permissions. None of the known tables were readable: " +
-              TABLE_CANDIDATES.join(", ")
+            "Could not load permissions with any known table/shape. " +
+            "Open DevTools → Network → the failing request response body will usually say which column is missing."
           );
         }
       } catch (e: any) {
@@ -132,10 +142,25 @@ export default function PermissionLibraryHelper() {
     }
 
     load();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
+
+  const KEY_TEMPLATES = [
+    { label: "Alliance: Announcements View", scope: "alliance", key: "alliance.announcements.view" },
+    { label: "Alliance: Announcements Edit", scope: "alliance", key: "alliance.announcements.edit" },
+    { label: "Alliance: Guides View", scope: "alliance", key: "alliance.guides.view" },
+    { label: "Alliance: Guides Edit", scope: "alliance", key: "alliance.guides.edit" },
+    { label: "Alliance: HQ Map View", scope: "alliance", key: "alliance.hq_map.view" },
+    { label: "Alliance: HQ Map Edit", scope: "alliance", key: "alliance.hq_map.edit" },
+    { label: "Alliance: Calendar View", scope: "alliance", key: "alliance.calendar.view" },
+    { label: "Alliance: Calendar Edit", scope: "alliance", key: "alliance.calendar.edit" },
+    { label: "Alliance: Discord Settings Manage", scope: "alliance", key: "alliance.discord.manage" },
+    { label: "State: Dashboard View", scope: "state", key: "state.dashboard.view" },
+    { label: "State: Dashboard Edit", scope: "state", key: "state.dashboard.edit" },
+    { label: "Owner/Admin: Full Access", scope: "app", key: "app.admin" },
+  ] as const;
+
+  const SCOPE_OPTIONS = ["app", "state", "alliance", "player"] as const;
 
   return (
     <div style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
@@ -143,24 +168,14 @@ export default function PermissionLibraryHelper() {
         <div>
           <div style={{ fontWeight: 900 }}>🧩 Permission Helper (No Guessing)</div>
           <div style={{ opacity: 0.8, fontSize: 12 }}>
-            Pick from existing permissions, copy keys/scopes, or use templates.
-            Owner remains hard-coded full access (this helper does not change that).
+            Picks from existing permissions, copies keys/scopes, and provides safe templates.
           </div>
           {tableUsed ? (
-            <div style={{ opacity: 0.7, fontSize: 12 }}>Loaded from: <code>{tableUsed}</code></div>
+            <div style={{ opacity: 0.7, fontSize: 12 }}>
+              Loaded from: <code>{tableUsed}</code>
+              {shapeUsed ? <span> • shape: <code>{shapeUsed}</code></span> : null}
+            </div>
           ) : null}
-        </div>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <button
-            onClick={() => {
-              setQ("");
-              setSelectedKey("");
-            }}
-            style={{ padding: "8px 10px", borderRadius: 10 }}
-          >
-            Clear
-          </button>
         </div>
       </div>
 
