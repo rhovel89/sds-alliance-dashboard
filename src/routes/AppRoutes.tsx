@@ -37,6 +37,7 @@ import OwnerAccessControlPage from "../pages/owner/OwnerAccessControlPage";
 
 import StateDashboardPage from "../pages/state/StateDashboardPage";
 import StateLeadersPage from "../pages/state/StateLeadersPage";
+import OwnerDiscordSettingsPage from "../pages/owner/OwnerDiscordSettingsPage";
 
 function DashboardEntry() {
   const [sp] = useSearchParams();
