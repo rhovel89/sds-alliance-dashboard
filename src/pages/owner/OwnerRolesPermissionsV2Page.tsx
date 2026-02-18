@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import PermissionLibraryHelper from "../../components/owner/PermissionLibraryHelper";
 
 type RoleRow = {
   id: string;
@@ -251,6 +252,8 @@ export default function OwnerRolesPermissionsV2Page() {
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
+      <PermissionLibraryHelper />
+
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div>
           <h2 style={{ margin: 0 }}>🛡️ Roles & Permissions</h2>
@@ -429,3 +432,4 @@ export default function OwnerRolesPermissionsV2Page() {
     </div>
   );
 }
+
