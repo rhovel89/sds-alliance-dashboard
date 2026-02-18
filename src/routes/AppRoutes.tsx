@@ -7,10 +7,11 @@ import RequireAdmin from "../components/auth/RequireAdmin";
 import AuthLandingPage from "../pages/AuthLandingPage";
 import DashboardEntryPage from "../pages/DashboardEntryPage";
 import RequestAccessPage from "../pages/onboarding/RequestAccessPage";
-
 import Login from "../pages/Login";
 
 import PlayerDashboardPage from "../pages/PlayerDashboardPage";
+
+import MyDashboardsPage from "../pages/dashboard/MyDashboardsPage";
 
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
@@ -18,7 +19,6 @@ import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 import PermissionsPage from "../pages/dashboard/Permissions";
 import AllianceCalendarPage from "../pages/calendar/AllianceCalendarPage";
 
-import MyDashboardsPage from "../pages/dashboard/MyDashboardsPage";
 import StateDashboardPage from "../pages/state/StateDashboardPage";
 import StateLeadersPage from "../pages/state/StateLeadersPage";
 
@@ -39,6 +39,7 @@ import AllianceAnnouncementsPage from "../pages/alliance/AllianceAnnouncementsPa
 import AllianceGuidesPage from "../pages/alliance/AllianceGuidesPage";
 import StateDashboard from "../pages/StateDashboard";
 
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -49,10 +50,10 @@ export default function AppRoutes() {
       {/* Onboarding */}
       <Route path="/onboarding" element={<RequestAccessPage />} />
 
-      {/* Dashboards landing / auth callback entry */}
+      {/* /dashboard = auth callback OR dashboards list */}
       <Route path="/dashboard" element={<DashboardEntryPage />} />
 
-      {/* Everyone gets /me personal dashboard */}
+      {/* Personal dashboard */}
       <Route path="/me" element={<PlayerDashboardPage />} />
       <Route path="/dashboard/ME" element={<Navigate to="/me" replace />} />
 
@@ -73,11 +74,10 @@ export default function AppRoutes() {
 
       {/* State */}
       <Route path="/state" element={<StateDashboardPage />} />      <Route path="/state/1" element={<StateDashboard />} />
-
-      {/* OPTIONAL: keep direct dashboards page route (if you link to it elsewhere) */}
+      {/* Optional dashboards list alias */}
       <Route path="/dashboards" element={<MyDashboardsPage />} />
 
-      {/* Alliance Dashboard (THIS FIXES “Missing alliance”) */}
+      {/* Alliance Dashboard: NESTED (fixes Missing alliance) */}
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
         <Route
           index
