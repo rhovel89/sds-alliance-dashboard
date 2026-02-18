@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -14,6 +15,37 @@ type AccessRequest = {
 };
 
 export default function RequestAccessPage() {
+  // AUTO_REDIRECT_ME_AFTER_APPROVAL
+  // If the user is approved (has at least one player_alliances row), send them to /me to fill profile/HQs.
+  const nav = useNavigate();
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: u } = await supabase.auth.getUser();
+        const uid = u?.user?.id ?? null;
+        if (!uid) return;
+
+        const p = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
+        const pid = p?.data?.id ?? null;
+        if (!pid) return;
+
+        const m = await supabase
+          .from("player_alliances")
+          .select("alliance_code")
+          .eq("player_id", pid)
+          .limit(1);
+
+        const hasMembership = (!m.error) -and ((m.data ?? @()).Length -gt 0);
+        if (!cancelled -and $hasMembership) {
+          nav("/me", { replace: true });
+        }
+      } catch {
+        # ignore
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [nav]);
   const [userId, setUserId] = useState<string | null>(null);
   const [alliances, setAlliances] = useState<Alliance[]>([]);
   const [latest, setLatest] = useState<AccessRequest | null>(null);
@@ -220,3 +252,4 @@ export default function RequestAccessPage() {
     </div>
   );
 }
+
