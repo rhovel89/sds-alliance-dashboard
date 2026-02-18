@@ -2,78 +2,84 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
 type PermRow = {
-  id?: string;
+  id?: string | null;
   label?: string | null;
   description?: string | null;
   scope?: string | null;
   key?: string | null;
 };
 
-function safeStr(v: any) {
+function s(v: any) {
   return String(v ?? "").trim();
 }
 
-async function trySelect(table: string, select: string, withOrder: boolean) {
-  let q = supabase.from(table).select(select).limit(1000);
-
-  // ordering can fail if scope/key columns don't exist on this table shape
-  if (withOrder) {
-    q = q.order("scope", { ascending: true }).order("key", { ascending: true });
+function pick(obj: any, keys: string[]) {
+  for (const k of keys) {
+    if (obj && Object.prototype.hasOwnProperty.call(obj, k) && obj[k] !== undefined && obj[k] !== null) {
+      return obj[k];
+    }
   }
-
-  const res = await q;
-  return res;
+  return null;
 }
 
-// Keep the candidate table list short to reduce console noise.
-// The "permissions" table seems to exist in your project (400 earlier = shape mismatch).
-const TABLE_CANDIDATES = ["permissions", "permissions_v2", "alliance_permissions", "app_permissions"];
+function normalizeRow(x: any): PermRow {
+  const id =
+    pick(x, ["id", "uuid"]) ??
+    null;
 
-// Try the most likely column shapes FIRST to reduce failing requests.
-// PostgREST supports alias:  label:name  and  key:code  etc.
-const SELECT_VARIANTS: Array<{ select: string; ordered: boolean }> = [
-  // Common: name + code
-  { select: "id,label:name,description,scope,key:code", ordered: true },
-  { select: "id,label:name,description,scope,key:code", ordered: false },
+  const label =
+    pick(x, ["label", "name", "title", "display_name"]) ??
+    null;
 
-  // Common: name + key
-  { select: "id,label:name,description,scope,key", ordered: true },
-  { select: "id,label:name,description,scope,key", ordered: false },
+  const key =
+    pick(x, ["key", "code", "permission_key", "perm_key", "slug"]) ??
+    null;
 
-  // Common: label + key
-  { select: "id,label,description,scope,key", ordered: true },
-  { select: "id,label,description,scope,key", ordered: false },
+  const scope =
+    pick(x, ["scope", "permission_scope", "area", "domain", "category"]) ??
+    null;
 
-  // Other variants seen in some schemas
-  { select: "id,label:name,description:details,scope,key:code", ordered: false },
-  { select: "id,label:title,description,scope,key:code", ordered: false },
-  { select: "id,label:name,description,scope,key:permission_key", ordered: false },
-  { select: "id,label:name,description,scope,key:perm_key", ordered: false },
-];
+  const description =
+    pick(x, ["description", "details", "desc", "help", "notes"]) ??
+    null;
+
+  return {
+    id: id ? String(id) : null,
+    label: label ? String(label) : null,
+    key: key ? String(key) : null,
+    scope: scope ? String(scope) : null,
+    description: description ? String(description) : null,
+  };
+}
+
+// keep list small: the old version spammed a lot of failing calls
+const TABLE_CANDIDATES = ["permissions", "alliance_permissions", "app_permissions", "permissions_v2"];
 
 export default function PermissionLibraryHelper() {
   const [loading, setLoading] = useState(true);
-  const [tableUsed, setTableUsed] = useState<string | null>(null);
-  const [shapeUsed, setShapeUsed] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  const [tableUsed, setTableUsed] = useState<string | null>(null);
+  const [sampleCols, setSampleCols] = useState<string[]>([]);
 
   const [perms, setPerms] = useState<PermRow[]>([]);
   const [q, setQ] = useState("");
-  const [selectedKey, setSelectedKey] = useState<string>("");
-
-  const selected = useMemo(() => {
-    const k = safeStr(selectedKey);
-    return perms.find((p) => safeStr(p.key) === k) ?? null;
-  }, [perms, selectedKey]);
+  const [selectedKey, setSelectedKey] = useState("");
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     if (!qq) return perms;
     return perms.filter((p) => {
-      const s = `${p.label ?? ""} ${p.description ?? ""} ${p.scope ?? ""} ${p.key ?? ""}`.toLowerCase();
-      return s.includes(qq);
+      const blob = `${p.label ?? ""} ${p.description ?? ""} ${p.scope ?? ""} ${p.key ?? ""}`.toLowerCase();
+      return blob.includes(qq);
     });
   }, [perms, q]);
+
+  const selected = useMemo(() => {
+    const k = s(selectedKey);
+    if (!k) return null;
+    return perms.find((p) => s(p.key) === k) ?? null;
+  }, [perms, selectedKey]);
 
   const copy = async (txt: string) => {
     try {
@@ -91,48 +97,43 @@ export default function PermissionLibraryHelper() {
       setLoading(true);
       setErr(null);
       setTableUsed(null);
-      setShapeUsed(null);
+      setSampleCols([]);
       setPerms([]);
 
       try {
         for (const t of TABLE_CANDIDATES) {
-          for (const v of SELECT_VARIANTS) {
-            const r: any = await trySelect(t, v.select, v.ordered);
+          const r: any = await supabase.from(t).select("*").limit(1000);
 
-            // 404 table not found -> try next table
-            if (r?.error?.code === "PGRST106" || (r?.status === 404)) {
-              break;
-            }
+          // table not found
+          if (r?.status === 404 || r?.error?.code === "PGRST106") continue;
 
-            if (!r.error) {
-              if (cancelled) return;
+          // any other error (400/401/403/etc) -> try next table
+          if (r?.error) continue;
 
-              const rows = (r.data ?? []) as any[];
-              const mapped: PermRow[] = rows.map((x) => ({
-                id: x.id,
-                label: x.label ?? null,
-                description: x.description ?? null,
-                scope: x.scope ?? null,
-                key: x.key ?? null,
-              }));
+          const rows = (r.data ?? []) as any[];
+          const mapped = rows.map(normalizeRow);
 
-              setPerms(mapped);
-              setTableUsed(t);
-              setShapeUsed(v.select + (v.ordered ? " (ordered)" : ""));
-              setLoading(false);
-              return;
-            }
+          // Sort locally so we don't rely on DB column names
+          mapped.sort((a, b) => {
+            const as = s(a.scope).toLowerCase();
+            const bs = s(b.scope).toLowerCase();
+            if (as !== bs) return as.localeCompare(bs);
+            return s(a.key).toLowerCase().localeCompare(s(b.key).toLowerCase());
+          });
 
-            // If a select/order variant fails (400), just try next variant.
-            // We don't throw because we are auto-detecting.
+          // capture columns from first row for debugging
+          const cols = rows[0] ? Object.keys(rows[0]) : [];
+          if (!cancelled) {
+            setTableUsed(t);
+            setSampleCols(cols);
+            setPerms(mapped);
           }
+          setLoading(false);
+          return;
         }
 
         if (!cancelled) {
-          setErr(
-            "Could not load permissions with any known table/shape. " +
-            "Open DevTools → Network → the failing request response body will usually say which column is missing."
-          );
+          setErr("Could not load permissions. Likely: no permission table exists OR RLS is blocking reads for your user.");
         }
       } catch (e: any) {
         if (!cancelled) setErr(e?.message ?? String(e));
@@ -154,7 +155,7 @@ export default function PermissionLibraryHelper() {
     { label: "Alliance: HQ Map Edit", scope: "alliance", key: "alliance.hq_map.edit" },
     { label: "Alliance: Calendar View", scope: "alliance", key: "alliance.calendar.view" },
     { label: "Alliance: Calendar Edit", scope: "alliance", key: "alliance.calendar.edit" },
-    { label: "Alliance: Discord Settings Manage", scope: "alliance", key: "alliance.discord.manage" },
+    { label: "Alliance: Discord Manage", scope: "alliance", key: "alliance.discord.manage" },
     { label: "State: Dashboard View", scope: "state", key: "state.dashboard.view" },
     { label: "State: Dashboard Edit", scope: "state", key: "state.dashboard.edit" },
     { label: "Owner/Admin: Full Access", scope: "app", key: "app.admin" },
@@ -166,14 +167,14 @@ export default function PermissionLibraryHelper() {
     <div style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontWeight: 900 }}>🧩 Permission Helper (No Guessing)</div>
+          <div style={{ fontWeight: 900 }}>🧩 Permission Helper</div>
           <div style={{ opacity: 0.8, fontSize: 12 }}>
-            Picks from existing permissions, copies keys/scopes, and provides safe templates.
+            Loads permissions without guessing column names (prevents 400 spam).
           </div>
           {tableUsed ? (
             <div style={{ opacity: 0.7, fontSize: 12 }}>
               Loaded from: <code>{tableUsed}</code>
-              {shapeUsed ? <span> • shape: <code>{shapeUsed}</code></span> : null}
+              {sampleCols.length ? <span> • columns: <code>{sampleCols.join(", ")}</code></span> : null}
             </div>
           ) : null}
         </div>
@@ -185,23 +186,9 @@ export default function PermissionLibraryHelper() {
         </div>
       ) : null}
 
-      <details style={{ marginTop: 10 }} open>
-        <summary style={{ cursor: "pointer", fontWeight: 800 }}>How to use (fast)</summary>
-        <div style={{ marginTop: 10, opacity: 0.85, lineHeight: 1.4 }}>
-          <ol style={{ marginTop: 0 }}>
-            <li>Create permissions (Label + Scope + Key). Use templates if you’re unsure.</li>
-            <li>Create roles, then attach permissions using the matrix below.</li>
-            <li>Assign roles to players (Owner stays full access).</li>
-          </ol>
-          <div style={{ marginTop: 8, fontSize: 12, opacity: 0.85 }}>
-            <b>Key format tip:</b> <code>scope.area.action</code> (examples: <code>alliance.calendar.edit</code>, <code>alliance.hq_map.view</code>).
-          </div>
-        </div>
-      </details>
-
       <div style={{ marginTop: 12, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
         <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 12 }}>
-          <div style={{ fontWeight: 900 }}>📚 Existing permissions (search + dropdown)</div>
+          <div style={{ fontWeight: 900 }}>📚 Existing permissions (dropdown)</div>
 
           <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
             <input
@@ -220,13 +207,15 @@ export default function PermissionLibraryHelper() {
               <option value="">
                 {loading ? "Loading…" : filtered.length ? "Select a permission…" : "No permissions found"}
               </option>
-              {filtered.map((p) => {
-                const k = safeStr(p.key);
-                const label = safeStr(p.label) || "(no label)";
-                const scope = safeStr(p.scope) || "(no scope)";
+              {filtered.map((p, idx) => {
+                const k = s(p.key);
+                const label = s(p.label) || "(no label)";
+                const scope = s(p.scope) || "(no scope)";
+                // if key is missing, still show it but make value unique
+                const value = k || `__row_${idx}__`;
                 return (
-                  <option key={k || Math.random().toString(16)} value={k}>
-                    {label} — {scope} — {k}
+                  <option key={value} value={value}>
+                    {label} — {scope} — {k || "(missing key column)"}
                   </option>
                 );
               })}
@@ -243,30 +232,11 @@ export default function PermissionLibraryHelper() {
               </div>
 
               <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button onClick={() => copy(safeStr(selected.key))} style={{ padding: "8px 10px", borderRadius: 10 }}>
+                <button onClick={() => copy(s(selected.key))} style={{ padding: "8px 10px", borderRadius: 10 }}>
                   Copy Key
                 </button>
-                <button onClick={() => copy(safeStr(selected.scope))} style={{ padding: "8px 10px", borderRadius: 10 }}>
+                <button onClick={() => copy(s(selected.scope))} style={{ padding: "8px 10px", borderRadius: 10 }}>
                   Copy Scope
-                </button>
-                <button
-                  onClick={() =>
-                    copy(
-                      JSON.stringify(
-                        {
-                          label: selected.label ?? null,
-                          description: selected.description ?? null,
-                          scope: selected.scope ?? null,
-                          key: selected.key ?? null,
-                        },
-                        null,
-                        2
-                      )
-                    )
-                  }
-                  style={{ padding: "8px 10px", borderRadius: 10, fontWeight: 800 }}
-                >
-                  Copy JSON
                 </button>
               </div>
             </div>
@@ -274,40 +244,28 @@ export default function PermissionLibraryHelper() {
         </div>
 
         <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 12 }}>
-          <div style={{ fontWeight: 900 }}>🧱 Templates (safe defaults)</div>
+          <div style={{ fontWeight: 900 }}>🧱 Templates</div>
           <div style={{ marginTop: 8, opacity: 0.85, fontSize: 12 }}>
-            Use these when creating new permissions so the keys are consistent.
+            Use these when creating new permissions so keys are consistent.
           </div>
 
           <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
             <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ opacity: 0.8, fontSize: 12 }}>Scope options</span>
+              <span style={{ opacity: 0.8, fontSize: 12 }}>Scope</span>
               <select
-                onChange={(e) => {
-                  const s = e.target.value;
-                  if (!s) return;
-                  copy(s);
-                }}
+                onChange={(e) => { if (e.target.value) copy(e.target.value); }}
                 defaultValue=""
                 style={{ padding: 10, borderRadius: 10 }}
               >
                 <option value="">Copy a scope…</option>
-                {SCOPE_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
+                {SCOPE_OPTIONS.map((x) => <option key={x} value={x}>{x}</option>)}
               </select>
             </label>
 
             <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ opacity: 0.8, fontSize: 12 }}>Key templates</span>
+              <span style={{ opacity: 0.8, fontSize: 12 }}>Key template</span>
               <select
-                onChange={(e) => {
-                  const k = e.target.value;
-                  if (!k) return;
-                  copy(k);
-                }}
+                onChange={(e) => { if (e.target.value) copy(e.target.value); }}
                 defaultValue=""
                 style={{ padding: 10, borderRadius: 10 }}
               >
@@ -321,7 +279,7 @@ export default function PermissionLibraryHelper() {
             </label>
 
             <div style={{ fontSize: 12, opacity: 0.8 }}>
-              Tip: After copying, paste into the “Create Permission” fields below (Label / Scope / Key).
+              Tip: paste the copied values into the “Create Permission” fields.
             </div>
           </div>
         </div>
