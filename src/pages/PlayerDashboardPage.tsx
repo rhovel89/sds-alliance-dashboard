@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+
+import { rbacHasPermission } from "../lib/rbacClient";
 import { supabase } from "../lib/supabaseClient";
 import PlayerAllianceProfilePanel from "../components/player/PlayerAllianceProfilePanel";
 
@@ -43,7 +45,10 @@ export default function PlayerDashboardPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [sections, setSections] = useState<GuideSection[]>([]);
 
-  const pickAlliance = (code: string) => {
+  
+  const [canEditHqMap, setCanEditHqMap] = useState(false);
+  const [canEditCalendar, setCanEditCalendar] = useState(false);
+const pickAlliance = (code: string) => {
     const c = upper(code);
     setSelectedAlliance(c);
     const next = new URLSearchParams(sp);
@@ -178,6 +183,22 @@ export default function PlayerDashboardPage() {
   useEffect(() => { loadBasics(); /* eslint-disable-next-line */ }, []);
   useEffect(() => { if (selectedAlliance) loadFeed(selectedAlliance); /* eslint-disable-next-line */ }, [selectedAlliance]);
 
+  useEffect(() => {
+    if (!selectedAlliance) return;
+
+    (async () => {
+      const hqW = await rbacHasPermission(selectedAlliance, "hq_map.write");
+      const calW = await rbacHasPermission(selectedAlliance, "calendar.write");
+      setCanEditHqMap(Boolean(hqW) || isManager);
+      setCanEditCalendar(Boolean(calW) || isManager);
+    })().catch(() => {
+      // safe fallback to legacy role logic if RPC not ready
+      setCanEditHqMap(isManager);
+      setCanEditCalendar(isManager);
+    });
+  }, [selectedAlliance, isManager]);
+
+
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
 
   return (
@@ -223,11 +244,11 @@ export default function PlayerDashboardPage() {
                 <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/guides`} style={{ opacity: 0.9 }}>
                   Guides
                 </Link>
-                <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/hq-map${isManager ? "" : "?view=1"}`} style={{ opacity: 0.9 }}>
-                  HQ Map {isManager ? "" : "(View)"}
+                <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/hq-map${canEditHqMap ? "" : "?view=1"}`} style={{ opacity: 0.9 }}>
+                  HQ Map {canEditHqMap ? "" : "(View)"}
                 </Link>
-                <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/calendar${isManager ? "" : "?view=1"}`} style={{ opacity: 0.9 }}>
-                  Calendar {isManager ? "" : "(View)"}
+                <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/calendar${canEditCalendar ? "" : "?view=1"}`} style={{ opacity: 0.9 }}>
+                  Calendar {canEditCalendar ? "" : "(View)"}
                 </Link>
                 {isManager ? (
                   <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}`} style={{ fontWeight: 900 }}>
@@ -296,4 +317,5 @@ export default function PlayerDashboardPage() {
     </div>
   );
 }
+
 
