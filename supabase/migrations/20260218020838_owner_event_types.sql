@@ -22,7 +22,7 @@ create unique index if not exists alliance_event_types_uq
 create index if not exists alliance_event_types_alliance_idx
   on public.alliance_event_types(alliance_code);
 
-do \$\$
+do $$
 declare
   admin_prefix text := '';
 begin
@@ -39,7 +39,7 @@ begin
       select 1 from pg_policies
       where schemaname='public' and tablename='alliance_event_types' and policyname='aet_select_members'
     ) then
-      execute format(\/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/owner/OwnerMembershipsPage.tsx\$
+      execute format(\/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/owner/OwnerMembershipsPage.tsx$
         create policy aet_select_members
         on public.alliance_event_types
         for select
@@ -53,7 +53,7 @@ begin
               and upper(pa.alliance_code) = upper(alliance_event_types.alliance_code)
           )
         )
-      \/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/owner/OwnerMembershipsPage.tsx\$, admin_prefix);
+      \/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/owner/OwnerMembershipsPage.tsx$, admin_prefix);
     end if;
 
     -- WRITE: Owner/R4/R5 of that alliance (or admin)
@@ -61,7 +61,7 @@ begin
       select 1 from pg_policies
       where schemaname='public' and tablename='alliance_event_types' and policyname='aet_write_managers'
     ) then
-      execute format(\/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/owner/OwnerMembershipsPage.tsx\$
+      execute format(\/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/owner/OwnerMembershipsPage.tsx$
         create policy aet_write_managers
         on public.alliance_event_types
         for insert, update, delete
@@ -87,7 +87,8 @@ begin
               and lower(coalesce(pa.role,'')) in ('owner','r4','r5')
           )
         )
-      \/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/owner/OwnerMembershipsPage.tsx\$, admin_prefix, admin_prefix);
+      \/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/owner/OwnerMembershipsPage.tsx$, admin_prefix, admin_prefix);
     end if;
   end if;
-end \$\$;
+end $$;
+
