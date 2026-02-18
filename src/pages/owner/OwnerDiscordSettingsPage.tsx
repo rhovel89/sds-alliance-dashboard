@@ -168,7 +168,7 @@ export default function OwnerDiscordSettingsPage() {
             <div key={id} style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                 <div style={{ fontWeight: 900 }}>
-                  {code || "(no code)"} {name ? — deletePost : ""}
+                  {code || "(no code)"} {name ? `— ${name}` : ""}
                 </div>
                 <button onClick={() => save(id)} style={{ padding: "8px 10px", borderRadius: 10, fontWeight: 800 }}>
                   Save
@@ -194,4 +194,5 @@ export default function OwnerDiscordSettingsPage() {
     </div>
   );
 }
+
 
