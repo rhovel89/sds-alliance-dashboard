@@ -1,3 +1,4 @@
+import DashboardEntryPage from "../pages/DashboardEntryPage";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -45,8 +46,8 @@ export default function AppRoutes() {
       {/* Public */}
       <Route path="/" element={<AuthLandingPage />} />
 
+      <Route path="/dashboard" element={<DashboardEntryPage />} />
       {/* Auth callback (keep your existing flow) */}
-      <Route path="/dashboard" element={<AuthCallback />} />
 
       {/* Onboarding */}
       <Route path="/onboarding" element={<RequestAccessPage />} />
@@ -121,5 +122,6 @@ export default function AppRoutes() {
 </Routes>
   );
 }
+
 
 
