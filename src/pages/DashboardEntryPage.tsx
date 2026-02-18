@@ -1,28 +1,30 @@
 import { useMemo } from "react";
+import { useLocation } from "react-router-dom";
+
 import AuthCallback from "./AuthCallback";
 import MyDashboardsPage from "./dashboard/MyDashboardsPage";
 
-function hasAuthCallbackParams() {
-  try {
-    const search = window.location.search || "";
-    const hash = window.location.hash || "";
-
-    // PKCE callback commonly uses ?code=...
-    if (/\bcode=/.test(search)) return true;
-
-    // Implicit flow or some providers use tokens in hash
-    if (/\baccess_token=/.test(hash)) return true;
-    if (/\brefresh_token=/.test(hash)) return true;
-
-    // Sometimes errors appear here too
-    if (/\berror=/.test(search) || /\berror_description=/.test(search)) return true;
-    return false;
-  } catch {
-    return false;
-  }
-}
-
+/**
+ * /dashboard serves TWO purposes:
+ *  - Supabase OAuth callback (hash contains access_token/refresh_token OR query has code)
+ *  - Normal "My Dashboards" entry page
+ */
 export default function DashboardEntryPage() {
-  const isCallback = useMemo(() => hasAuthCallbackParams(), []);
-  return isCallback ? <AuthCallback /> : <MyDashboardsPage />;
+  const loc = useLocation();
+
+  const isAuthCallback = useMemo(() => {
+    const hash = String(loc.hash || "");
+    const qs = new URLSearchParams(loc.search || "");
+    return (
+      hash.includes("access_token=") ||
+      hash.includes("refresh_token=") ||
+      qs.has("code") ||
+      qs.has("error_description") ||
+      qs.has("error")
+    );
+  }, [loc.hash, loc.search]);
+
+  if (isAuthCallback) return <AuthCallback />;
+
+  return <MyDashboardsPage />;
 }

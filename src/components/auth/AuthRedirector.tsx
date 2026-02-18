@@ -1,66 +1,35 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
+/**
+ * IMPORTANT:
+ * Do NOT redirect on every page — that causes route loops (everything -> /me).
+ * We ONLY redirect from "/" to "/me" if the user is already signed in.
+ */
 export default function AuthRedirector() {
   const nav = useNavigate();
-  const [msg, setMsg] = useState("Checking access…");
+  const loc = useLocation();
 
   useEffect(() => {
     let cancelled = false;
 
-    async function go() {
-      try {
-        const { data } = await supabase.auth.getUser();
-        const uid = data?.user?.id ?? null;
+    async function run() {
+      // Only act on the public landing page
+      if (loc.pathname !== "/") return;
 
-        if (!uid) {
-          if (!cancelled) nav("/", { replace: true });
-          return;
-        }
+      const { data } = await supabase.auth.getUser();
+      const uid = data?.user?.id ?? null;
+      if (cancelled) return;
 
-        // Ensure players row exists
-        let pid: string | null = null;
-        const p1 = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
-        if (!p1.error && p1.data?.id) {
-          pid = String(p1.data.id);
-        } else {
-          const ins = await supabase
-            .from("players")
-            .insert({ auth_user_id: uid } as any)
-            .select("id")
-            .maybeSingle();
-          if (!ins.error && ins.data?.id) pid = String(ins.data.id);
-        }
-
-        if (!pid) {
-          if (!cancelled) nav("/onboarding", { replace: true });
-          return;
-        }
-
-        // If assigned to at least 1 alliance -> go to /me
-        setMsg("Loading your dashboard…");
-        const m = await supabase
-          .from("player_alliances")
-          .select("alliance_code", { head: true, count: "exact" })
-          .eq("player_id", pid);
-
-        const count = m.count ?? 0;
-        if (!cancelled) {
-          if (count > 0) nav("/me", { replace: true });
-          else nav("/onboarding", { replace: true });
-        }
-      } catch (e) {
-        console.error(e);
-        if (!cancelled) nav("/onboarding", { replace: true });
+      if (uid) {
+        nav("/me", { replace: true });
       }
     }
 
-    go();
-    return () => {
-      cancelled = true;
-    };
-  }, [nav]);
+    run();
+    return () => { cancelled = true; };
+  }, [loc.pathname, nav]);
 
-  return <div style={{ padding: 16 }}>{msg}</div>;
+  return null;
 }

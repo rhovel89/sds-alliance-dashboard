@@ -1,24 +1,25 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+
 import DashboardLayout from "../layouts/DashboardLayout";
 import RequireAlliance from "../components/RequireAlliance";
 import RequireAllianceAccess from "../components/auth/RequireAllianceAccess";
 import RequireAdmin from "../components/auth/RequireAdmin";
 
 import AuthLandingPage from "../pages/AuthLandingPage";
-import AuthCallback from "../pages/AuthCallback";
+import DashboardEntryPage from "../pages/DashboardEntryPage";
 import RequestAccessPage from "../pages/onboarding/RequestAccessPage";
-
-import MyDashboardsPage from "../pages/dashboard/MyDashboardsPage";
-import PlayerDashboardPage from "../pages/PlayerDashboardPage";
 
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
-import PermissionsPage from "../pages/dashboard/Permissions";
 import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
+import PermissionsPage from "../pages/dashboard/Permissions";
 import AllianceCalendarPage from "../pages/calendar/AllianceCalendarPage";
 import AllianceAnnouncementsPage from "../pages/alliance/AllianceAnnouncementsPage";
 import AllianceGuidesPage from "../pages/alliance/AllianceGuidesPage";
 
+import PlayerDashboardPage from "../pages/PlayerDashboardPage";
+
+// Owner / State pages (keep existing)
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
 import OwnerDashboardPage from "../pages/owner/OwnerDashboardPage";
 import OwnerAccessRequestsPage from "../pages/owner/OwnerAccessRequestsPage";
@@ -41,8 +42,8 @@ export default function AppRoutes() {
       {/* Public */}
       <Route path="/" element={<AuthLandingPage />} />
 
-      {/* OAuth callback ONLY */}
-      <Route path="/auth/callback" element={<AuthCallback />} />
+      {/* /dashboard = auth callback OR dashboards entry */}
+      <Route path="/dashboard" element={<DashboardEntryPage />} />
 
       {/* Onboarding */}
       <Route path="/onboarding" element={<RequestAccessPage />} />
@@ -51,45 +52,20 @@ export default function AppRoutes() {
       <Route path="/me" element={<PlayerDashboardPage />} />
       <Route path="/dashboard/ME" element={<PlayerDashboardPage />} />
 
-      {/* Dashboards hub */}
-      <Route path="/dashboard" element={<MyDashboardsPage />} />
-
-      {/* Alliance announcements / guides */}
-      <Route path="/dashboard/:code/announcements" element={<AllianceAnnouncementsPage />} />
-      <Route path="/dashboard/:code/guides" element={<AllianceGuidesPage />} />
-
-      {/* Alliance dashboard layout */}
+      {/* Alliance dashboard */}
       <Route path="/dashboard/:code" element={<DashboardLayout />}>
         <Route index element={<MyAlliance />} />
 
+        <Route path="announcements" element={<AllianceAnnouncementsPage />} />
+        <Route path="guides" element={<AllianceGuidesPage />} />
+
         <Route path="hq-map" element={<AllianceHQMap />} />
 
-        <Route
-          path="calendar"
-          element={
-            <RequireAllianceAccess>
-              <AllianceCalendarPage />
-            </RequireAllianceAccess>
-          }
-        />
+        {/* Members can view calendar. Managers can edit via your UI / view param logic. */}
+        <Route path="calendar" element={<RequireAllianceAccess><AllianceCalendarPage /></RequireAllianceAccess>} />
 
-        <Route
-          path="permissions"
-          element={
-            <RequireAlliance>
-              <PermissionsPage />
-            </RequireAlliance>
-          }
-        />
-
-        <Route
-          path="events"
-          element={
-            <RequireAlliance>
-              <EventsPage />
-            </RequireAlliance>
-          }
-        />
+        <Route path="permissions" element={<RequireAlliance><PermissionsPage /></RequireAlliance>} />
+        <Route path="events" element={<RequireAlliance><EventsPage /></RequireAlliance>} />
       </Route>
 
       {/* Owner */}
@@ -109,7 +85,9 @@ export default function AppRoutes() {
 
       {/* State */}
       <Route path="/state" element={<StateDashboardPage />} />
-      <Route path="/state-leaders" element={<StateLeadersPage />} />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

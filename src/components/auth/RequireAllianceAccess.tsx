@@ -1,145 +1,145 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+
+type Props = { children: ReactNode };
 
 function upper(v: any) {
   return String(v ?? "").trim().toUpperCase();
 }
 
-function looksLikeUuid(s: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+function pickAllianceFromParams(params: any): string {
+  const raw =
+    params?.code ??
+    params?.allianceCode ??
+    params?.alliance_id ??
+    params?.allianceId ??
+    params?.alliance ??
+    "";
+  return upper(raw);
 }
 
-function isManagerRole(role?: string | null) {
-  const r = String(role ?? "").toLowerCase();
-  return ["owner", "r4", "r5"].includes(r);
-}
-
-export default function RequireAllianceAccess({ children }: { children: ReactNode }) {
-  const params = useParams() as any;
+export default function RequireAllianceAccess({ children }: Props) {
+  const params = useParams();
   const loc = useLocation();
-  const nav = useNavigate();
+  const [sp] = useSearchParams();
+
+  const allianceCode = useMemo(() => pickAllianceFromParams(params), [params]);
 
   const [loading, setLoading] = useState(true);
+  const [allowed, setAllowed] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [allianceCode, setAllianceCode] = useState<string>("");
-
-  const viewOnly = useMemo(() => {
-    const sp = new URLSearchParams(loc.search || "");
-    return sp.get("view") === "1";
-  }, [loc.search]);
 
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
+    async function check() {
       setLoading(true);
       setErr(null);
-      setRole(null);
+      setAllowed(false);
 
-      const { data } = await supabase.auth.getUser();
-      const uid = data?.user?.id ?? null;
-
-      if (!uid) {
-        setErr("Please sign in.");
-        setLoading(false);
-        return;
-      }
-
-      // Try to infer code from params
-      const raw = String(params.allianceCode ?? params.code ?? params.alliance_id ?? params.allianceId ?? "");
-      let code = upper(raw);
-
-      // If the URL param is a UUID, resolve to alliance.code
-      if (code && looksLikeUuid(code)) {
-        try {
-          const a = await supabase.from("alliances").select("code").eq("id", code).maybeSingle();
-          if (!a.error && a.data?.code) code = upper(a.data.code);
-        } catch {}
-      }
-
-      if (!code) {
-        setErr("Missing alliance in URL.");
-        setLoading(false);
-        return;
-      }
-
-      setAllianceCode(code);
-
-      // Ensure we have player_id
-      let playerId: string | null = null;
       try {
-        const p = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
-        if (!p.error && p.data?.id) playerId = String(p.data.id);
-      } catch {}
+        const { data } = await supabase.auth.getUser();
+        const uid = data?.user?.id ?? null;
 
-      // 1) New model membership: player_alliances
-      let foundRole: string | null = null;
-      if (playerId) {
-        try {
-          const m = await supabase
-            .from("player_alliances")
-            .select("role,alliance_code")
-            .eq("player_id", playerId)
-            .eq("alliance_code", code)
-            .maybeSingle();
-
-          if (!m.error && m.data) foundRole = (m.data.role ?? null) as any;
-        } catch {}
-      }
-
-      // 2) Old model membership: alliance_members join alliances(code)
-      if (!foundRole) {
-        try {
-          const a = await supabase.from("alliances").select("id").eq("code", code).maybeSingle();
-          const aid = a?.data?.id ? String(a.data.id) : null;
-          if (aid) {
-            const am = await supabase
-              .from("alliance_members")
-              .select("role")
-              .eq("user_id", uid)
-              .eq("alliance_id", aid)
-              .maybeSingle();
-
-            if (!am.error && am.data) foundRole = (am.data.role ?? null) as any;
+        if (!uid) {
+          if (!cancelled) {
+            setLoading(false);
+            setAllowed(false);
           }
+          return;
+        }
+
+        if (!allianceCode) {
+          if (!cancelled) {
+            setLoading(false);
+            setErr("Missing alliance in URL (expected /dashboard/:CODE/...).");
+          }
+          return;
+        }
+
+        // allow admins
+        let isAdmin = false;
+        try {
+          const a = await supabase.rpc("is_app_admin");
+          if (typeof a.data === "boolean") isAdmin = a.data;
         } catch {}
+
+        if (isAdmin) {
+          if (!cancelled) {
+            setAllowed(true);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // find player's id
+        const p = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
+        if (p.error) throw p.error;
+
+        const playerId = p.data?.id ? String(p.data.id) : null;
+        if (!playerId) {
+          // not created yet -> onboarding
+          if (!cancelled) {
+            setAllowed(false);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // membership check (MEMBERS CAN VIEW)
+        const m = await supabase
+          .from("player_alliances")
+          .select("id,role,alliance_code")
+          .eq("player_id", playerId)
+          .eq("alliance_code", allianceCode)
+          .limit(1);
+
+        if (m.error) throw m.error;
+
+        const ok = (m.data ?? []).length > 0;
+
+        if (!cancelled) {
+          setAllowed(ok);
+          setLoading(false);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setErr(e?.message ?? String(e));
+          setAllowed(false);
+          setLoading(false);
+        }
       }
+    }
 
-      if (!foundRole) {
-        setErr(`Missing alliance assignment for ${code}. Ask your Owner/R4/R5 to assign you.`);
-        setLoading(false);
-        return;
-      }
-
-      setRole(foundRole);
-
-      // If not manager, force view mode
-      if (!isManagerRole(foundRole) && !viewOnly) {
-        const sp = new URLSearchParams(loc.search || "");
-        sp.set("view", "1");
-        nav(`${loc.pathname}?${sp.toString()}`, { replace: true });
-        setLoading(false);
-        return;
-      }
-
-      if (!cancelled) setLoading(false);
-    })();
-
+    check();
     return () => { cancelled = true; };
-  }, [params, loc.pathname, loc.search, nav, viewOnly]);
+  }, [allianceCode, loc.pathname]);
 
-  if (loading) return <div style={{ padding: 16 }}>Checking alliance access…</div>;
+  if (loading) {
+    return <div style={{ padding: 16 }}>Checking access…</div>;
+  }
+
+  // not signed in
+  // (do NOT send to /me; that creates loops)
+  // send to landing
+  // NOTE: we keep it simple
+  const signedInCheck = async () => (await supabase.auth.getUser()).data?.user?.id;
+  // can't await here; so just use allowed state above
+  // If you’re not allowed AND there’s no err, go onboarding
+  if (!allowed && !err) {
+    return <Navigate to="/onboarding" replace />;
+  }
 
   if (err) {
     return (
-      <div style={{ padding: 16 }}>
-        <div style={{ fontWeight: 900, marginBottom: 6 }}>Access issue</div>
-        <div style={{ opacity: 0.85 }}>{err}</div>
+      <div style={{ padding: 16, maxWidth: 900, margin: "0 auto" }}>
+        <div style={{ padding: 12, border: "1px solid rgba(255,0,0,0.35)", borderRadius: 12 }}>
+          <b>Access issue:</b> {err}
+        </div>
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link to="/me">Go to /me</Link>
           <Link to="/dashboard">Go to My Dashboards</Link>
+          <Link to="/me">Go to ME</Link>
           <Link to="/onboarding">Request Access</Link>
         </div>
       </div>
