@@ -1,128 +1,169 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
-type Membership = { alliance_id: string; role: string };
-type AllianceRow = { code: string; name: string; enabled: boolean };
+type Membership = { alliance_code: string; role: string | null };
 
-function getCurrentDashboardSegment(pathname: string) {
-  // /dashboard/:alliance_id/calendar  OR /dashboard/:alliance_id/hq-map
-  const parts = pathname.split("/").filter(Boolean);
-  if (parts[0] !== "dashboard") return "calendar";
-  // parts: ["dashboard", "SDS", "calendar"]
-  return parts[2] || "calendar";
+function upper(v: any) {
+  return String(v ?? "").trim().toUpperCase();
+}
+
+function isManagerRole(role?: string | null) {
+  const r = String(role ?? "").toLowerCase();
+  return ["owner", "r4", "r5"].includes(r);
+}
+
+function getAllianceFromParams(params: any): string {
+  return upper(params?.allianceCode ?? params?.alliance_id ?? params?.code ?? "");
 }
 
 export default function AllianceSwitcher() {
   const nav = useNavigate();
   const loc = useLocation();
+  const params = useParams();
 
-  const [userId, setUserId] = useState<string | null>(null);
-  const [memberships, setMemberships] = useState<Membership[]>([]);
-  const [alliances, setAlliances] = useState<Record<string, AllianceRow>>({});
   const [loading, setLoading] = useState(true);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [selected, setSelected] = useState<string>("");
 
-  const currentSegment = useMemo(() => getCurrentDashboardSegment(loc.pathname), [loc.pathname]);
+  const currentFromParams = useMemo(() => getAllianceFromParams(params), [params]);
+  const currentFromQuery = useMemo(() => {
+    const sp = new URLSearchParams(loc.search);
+    return upper(sp.get("alliance"));
+  }, [loc.search]);
 
-  const currentAlliance = useMemo(() => {
-    const parts = loc.pathname.split("/").filter(Boolean);
-    if (parts[0] === "dashboard" && parts[1]) return String(parts[1]).toUpperCase();
-    return "";
-  }, [loc.pathname]);
+  const selectedRole = useMemo(() => {
+    const m = memberships.find((x) => upper(x.alliance_code) === upper(selected));
+    return m?.role ?? null;
+  }, [memberships, selected]);
 
+  const isManager = useMemo(() => isManagerRole(selectedRole), [selectedRole]);
+
+  // Load memberships for current user
   useEffect(() => {
-    let alive = true;
+    let cancelled = false;
 
-    (async () => {
+    async function load() {
       setLoading(true);
+      try {
+        const { data } = await supabase.auth.getUser();
+        const uid = data?.user?.id ?? null;
 
-      const u = await supabase.auth.getUser();
-      const uid = u.data.user?.id ?? null;
+        if (!uid) {
+          if (!cancelled) {
+            setMemberships([]);
+            setSelected("");
+          }
+          return;
+        }
 
-      if (!alive) return;
-      setUserId(uid);
+        // Ensure player row exists
+        let pid: string | null = null;
+        const p1 = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
+        if (!p1.error && p1.data?.id) {
+          pid = String(p1.data.id);
+        } else {
+          const ins = await supabase.from("players").insert({ auth_user_id: uid } as any).select("id").maybeSingle();
+          if (!ins.error && ins.data?.id) pid = String(ins.data.id);
+        }
 
-      if (!uid) {
-        setMemberships([]);
-        setAlliances({});
-        setLoading(false);
-        return;
+        if (!pid) {
+          if (!cancelled) {
+            setMemberships([]);
+            setSelected("");
+          }
+          return;
+        }
+
+        const mRes = await supabase
+          .from("player_alliances")
+          .select("alliance_code,role")
+          .eq("player_id", pid)
+          .order("alliance_code", { ascending: true });
+
+        if (mRes.error) throw mRes.error;
+
+        const ms = (mRes.data ?? []).map((r: any) => ({
+          alliance_code: upper(r.alliance_code),
+          role: (r.role ?? null) as any,
+        })) as Membership[];
+
+        if (cancelled) return;
+
+        setMemberships(ms);
+
+        // Pick initial
+        const stored = upper(localStorage.getItem("selected_alliance"));
+        const initial =
+          currentFromParams ||
+          currentFromQuery ||
+          stored ||
+          ms[0]?.alliance_code ||
+          "";
+
+        setSelected(initial);
+        if (initial) localStorage.setItem("selected_alliance", initial);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
+    }
 
-      const m = await supabase
-        .from("alliance_memberships")
-        .select("alliance_id, role")
-        .eq("user_id", uid)
-        .order("alliance_id", { ascending: true });
-
-      if (!alive) return;
-
-      const mems = (m.data ?? []) as any as Membership[];
-      setMemberships(mems);
-
-      const codes = mems.map((x) => x.alliance_id);
-      if (codes.length) {
-        const a = await supabase
-          .from("alliances")
-          .select("code, name, enabled")
-          .in("code", codes);
-
-        if (!alive) return;
-
-        const map: Record<string, AllianceRow> = {};
-        (a.data ?? []).forEach((row: any) => {
-          map[String(row.code).toUpperCase()] = row as AllianceRow;
-        });
-        setAlliances(map);
-      } else {
-        setAlliances({});
-      }
-
-      setLoading(false);
-    })();
-
+    load();
     return () => {
-      alive = false;
+      cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) {
-    return <div style={{ opacity: 0.8, fontSize: 12 }}>Loading alliances…</div>;
-  }
+  // Keep in sync if URL params change (ex: navigating to /dashboard/OZ)
+  useEffect(() => {
+    const next = currentFromParams || currentFromQuery;
+    if (next && upper(next) !== upper(selected)) {
+      setSelected(upper(next));
+      localStorage.setItem("selected_alliance", upper(next));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFromParams, currentFromQuery]);
 
-  if (!userId) {
-    return <div style={{ opacity: 0.85, fontSize: 12 }}>Not signed in</div>;
-  }
+  const onChange = (codeRaw: string) => {
+    const code = upper(codeRaw);
+    setSelected(code);
+    localStorage.setItem("selected_alliance", code);
 
-  if (memberships.length === 0) {
-    return <div style={{ opacity: 0.85, fontSize: 12 }}>No alliance access</div>;
-  }
+    const path = loc.pathname;
+
+    // If user is currently inside /dashboard/<code>/..., keep the same sub-path when switching
+    if (path.startsWith("/dashboard/")) {
+      const rest = path.replace(/^\/dashboard\/[^/]+/, ""); // keep /calendar, /hq-map, etc
+      nav(`/dashboard/${encodeURIComponent(code)}${rest}${loc.search}`, { replace: true });
+      return;
+    }
+
+    // Otherwise, default to personal dashboard (ME)
+    const sp = new URLSearchParams(loc.search);
+    sp.set("alliance", code);
+    nav(`/me?${sp.toString()}`, { replace: true });
+  };
+
+  if (loading || memberships.length === 0) return null;
 
   return (
-    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-      <span style={{ fontSize: 12, opacity: 0.85 }}>Alliance:</span>
-
-      <select
-        value={currentAlliance || memberships[0].alliance_id}
-        onChange={(e) => {
-          const code = String(e.target.value).toUpperCase();
-          // keep same segment if possible
-          const seg = currentSegment || "calendar";
-          nav(`/dashboard/${code}/${seg}`);
-        }}
-      >
-        {memberships.map((m) => {
-          const code = String(m.alliance_id).toUpperCase();
-          const name = alliances[code]?.name || code;
-          return (
-            <option key={code} value={code}>
-              {code} — {name} ({m.role})
-            </option>
-          );
-        })}
+    <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <span style={{ opacity: 0.8, fontSize: 12 }}>Alliance</span>
+      <select value={selected} onChange={(e) => onChange(e.target.value)}>
+        {memberships.map((m) => (
+          <option key={m.alliance_code} value={m.alliance_code}>
+            {m.alliance_code}{m.role ? ` (${String(m.role)})` : ""}
+          </option>
+        ))}
       </select>
 
-      <a href="/dashboard" style={{ fontSize: 12 }}>My Dashboards</a>
-    </div>
+      {/* tiny hint so you can see role at a glance */}
+      <span style={{ opacity: 0.7, fontSize: 12 }}>
+        {isManager ? "Manager" : "Member"}
+      </span>
+    </label>
   );
 }
