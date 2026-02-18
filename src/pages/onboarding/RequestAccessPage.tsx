@@ -15,19 +15,25 @@ type AccessRequest = {
 };
 
 export default function RequestAccessPage() {
-  // AUTO_REDIRECT_ME_AFTER_APPROVAL
+    // AUTO_REDIRECT_ME_AFTER_APPROVAL
   // If the user is approved (has at least one player_alliances row), send them to /me to fill profile/HQs.
   const nav = useNavigate();
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       try {
         const { data: u } = await supabase.auth.getUser();
         const uid = u?.user?.id ?? null;
         if (!uid) return;
 
-        const p = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
-        const pid = p?.data?.id ?? null;
+        const p = await supabase
+          .from("players")
+          .select("id")
+          .eq("auth_user_id", uid)
+          .maybeSingle();
+
+        const pid = p.data?.id ?? null;
         if (!pid) return;
 
         const m = await supabase
@@ -36,17 +42,20 @@ export default function RequestAccessPage() {
           .eq("player_id", pid)
           .limit(1);
 
-        const hasMembership = (!m.error) -and ((m.data ?? @()).Length -gt 0);
-        if (!cancelled -and $hasMembership) {
+        const hasMembership = !m.error && ((m.data?.length ?? 0) > 0);
+        if (!cancelled && hasMembership) {
           nav("/me", { replace: true });
         }
       } catch {
-        # ignore
+        // ignore
       }
     })();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [nav]);
-  const [userId, setUserId] = useState<string | null>(null);
+const [userId, setUserId] = useState<string | null>(null);
   const [alliances, setAlliances] = useState<Alliance[]>([]);
   const [latest, setLatest] = useState<AccessRequest | null>(null);
 
@@ -252,4 +261,5 @@ export default function RequestAccessPage() {
     </div>
   );
 }
+
 
