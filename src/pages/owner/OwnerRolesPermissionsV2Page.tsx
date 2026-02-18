@@ -1,301 +1,431 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 
-type PermKey = { key: string; label: string; feature: string };
 type RoleRow = {
   id: string;
-  alliance_code: string;
-  role_key: string;
-  display_name: string;
-  rank: number;
-  is_system: boolean;
+  key: string;
+  label: string;
+  scope: string;
+  description: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
+type PermRow = {
+  id: string;
+  key: string;
+  description: string | null;
+  created_at?: string | null;
+};
+
+type RolePermRow = {
+  role_id: string;
+  permission_id: string;
+};
+
+function norm(v: any) {
+  return String(v ?? "").trim();
+}
+
+function upper(v: any) {
+  return norm(v).toUpperCase();
+}
+
+const SCOPES = ["alliance", "state", "app"] as const;
+
 export default function OwnerRolesPermissionsV2Page() {
-  const { isAdmin, loading } = useIsAppAdmin();
+  const [tab, setTab] = useState<"roles" | "perms" | "matrix">("roles");
 
-  const [allianceCode, setAllianceCode] = useState("");
-  const [permKeys, setPermKeys] = useState<PermKey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
+
   const [roles, setRoles] = useState<RoleRow[]>([]);
-  const [selectedRoleKey, setSelectedRoleKey] = useState<string>("");
+  const [perms, setPerms] = useState<PermRow[]>([]);
+  const [rp, setRp] = useState<RolePermRow[]>([]);
 
-  const [allowedByKey, setAllowedByKey] = useState<Record<string, boolean>>({});
-  const [busy, setBusy] = useState(false);
+  const rpSet = useMemo(() => {
+    const s = new Set<string>();
+    for (const x of rp) s.add(`${x.role_id}:${x.permission_id}`);
+    return s;
+  }, [rp]);
 
-  const grouped = useMemo(() => {
-    const map: Record<string, PermKey[]> = {};
-    for (const k of permKeys) {
-      const f = k.feature || "Other";
-      if (!map[f]) map[f] = [];
-      map[f].push(k);
-    }
-    return map;
-  }, [permKeys]);
+  const refresh = async () => {
+    setLoading(true);
+    setErr(null);
+    setHint(null);
 
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
-        .from("permission_keys_v2")
-        .select("key,label,feature")
-        .order("feature", { ascending: true })
+    try {
+      const r1 = await supabase
+        .from("app_roles")
+        .select("id,key,label,scope,description,created_at,updated_at")
+        .order("scope", { ascending: true })
         .order("key", { ascending: true });
 
-      if (!error && data) setPermKeys(data as any);
-    })();
+      if (r1.error) throw r1.error;
+
+      const p1 = await supabase
+        .from("app_permissions")
+        .select("id,key,description,created_at")
+        .order("key", { ascending: true });
+
+      if (p1.error) throw p1.error;
+
+      const rp1 = await supabase
+        .from("app_role_permissions")
+        .select("role_id,permission_id");
+
+      if (rp1.error) throw rp1.error;
+
+      setRoles((r1.data ?? []) as any);
+      setPerms((p1.data ?? []) as any);
+      setRp((rp1.data ?? []) as any);
+    } catch (e: any) {
+      setErr(e?.message ?? String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadRoles = async (codeRaw: string) => {
-    const c = (codeRaw || "").trim().toUpperCase();
-    if (!c) {
-      setRoles([]);
-      setSelectedRoleKey("");
-      setAllowedByKey({});
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("alliance_roles_v2")
-      .select("id,alliance_code,role_key,display_name,rank,is_system")
-      .eq("alliance_code", c)
-      .order("rank", { ascending: true })
-      .order("role_key", { ascending: true });
-
-    if (error) return;
-
-    const rows = (data || []) as any as RoleRow[];
-    setRoles(rows);
-
-    if (rows.length > 0) {
-      setSelectedRoleKey((prev) => prev || rows[0].role_key);
-    } else {
-      setSelectedRoleKey("");
-      setAllowedByKey({});
-    }
+  const toast = (m: string) => {
+    setHint(m);
+    setTimeout(() => setHint(null), 1400);
   };
 
-  const loadPerms = async (codeRaw: string, roleKeyRaw: string) => {
-    const c = (codeRaw || "").trim().toUpperCase();
-    const rk = (roleKeyRaw || "").trim();
-    if (!c || !rk) {
-      setAllowedByKey({});
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("alliance_role_permissions_v2")
-      .select("permission_key,allowed")
-      .eq("alliance_code", c)
-      .eq("role_key", rk);
-
-    if (error) return;
-
-    const map: Record<string, boolean> = {};
-    for (const r of (data || []) as any[]) map[r.permission_key] = !!r.allowed;
-    setAllowedByKey(map);
+  const addRole = () => {
+    const tmp: RoleRow = {
+      id: crypto.randomUUID(),
+      key: "",
+      label: "",
+      scope: "alliance",
+      description: null,
+      created_at: null,
+      updated_at: null,
+    };
+    setRoles((prev) => [tmp, ...prev]);
+    toast("Role draft added");
   };
 
-  useEffect(() => {
-    loadRoles(allianceCode);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allianceCode]);
-
-  useEffect(() => {
-    loadPerms(allianceCode, selectedRoleKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allianceCode, selectedRoleKey]);
-
-  const createRole = async () => {
-    const c = allianceCode.trim().toUpperCase();
-    if (!c) return window.alert("Enter Alliance Code first (e.g. WOC).");
-
-    const role_key = (window.prompt("Role key (e.g. r5, officer, recruiter):") || "").trim();
-    if (!role_key) return;
-
-    const display_name = (window.prompt("Display name (e.g. R5, Officer):") || "").trim() || role_key;
-
-    const rankRaw = (window.prompt("Rank (number). Lower = higher priority. Example: 10") || "10").trim();
-    const rankParsed = parseInt(rankRaw, 10);
-    const rank = Number.isFinite(rankParsed) ? rankParsed : 10;
-
-    setBusy(true);
+  const saveRole = async (r: RoleRow) => {
+    setErr(null);
     try {
-      const { error } = await supabase.from("alliance_roles_v2").insert({
-        alliance_code: c,
-        role_key,
-        display_name,
-        rank,
-        is_system: false,
-      });
+      const payload: any = {
+        id: r.id,
+        key: norm(r.key),
+        label: norm(r.label),
+        scope: norm(r.scope) || "alliance",
+        description: r.description ?? null,
+        updated_at: new Date().toISOString(),
+      };
 
-      if (error) return window.alert(error.message);
+      if (!payload.key || !payload.label) {
+        throw new Error("Role key + label are required.");
+      }
 
-      await loadRoles(c);
-      setSelectedRoleKey(role_key);
-    } finally {
-      setBusy(false);
+      const res = await supabase
+        .from("app_roles")
+        .upsert(payload)
+        .select("id,key,label,scope,description,created_at,updated_at")
+        .maybeSingle();
+
+      if (res.error) throw res.error;
+
+      if (res.data) {
+        setRoles((prev) => prev.map((x) => (x.id === r.id ? (res.data as any) : x)));
+      }
+
+      toast("Role saved ✅");
+    } catch (e: any) {
+      setErr(e?.message ?? String(e));
     }
   };
 
-  const deleteRole = async (rk: string) => {
-    const c = allianceCode.trim().toUpperCase();
-    if (!c) return;
+  const deleteRole = async (r: RoleRow) => {
+    if (!window.confirm(`Delete role "${r.key}"? This also removes its permission mappings.`)) return;
 
-    const ok = window.confirm('Delete role "' + rk + '" for ' + c + "?");
-    if (!ok) return;
-
-    setBusy(true);
+    setErr(null);
     try {
-      // delete permissions first (safe)
-      await supabase
-        .from("alliance_role_permissions_v2")
-        .delete()
-        .eq("alliance_code", c)
-        .eq("role_key", rk);
+      const res = await supabase.from("app_roles").delete().eq("id", r.id);
+      if (res.error) throw res.error;
 
-      const { error } = await supabase
-        .from("alliance_roles_v2")
-        .delete()
-        .eq("alliance_code", c)
-        .eq("role_key", rk)
-        .eq("is_system", false);
-
-      if (error) window.alert(error.message);
-
-      await loadRoles(c);
-      setSelectedRoleKey("");
-      setAllowedByKey({});
-    } finally {
-      setBusy(false);
+      setRoles((prev) => prev.filter((x) => x.id !== r.id));
+      setRp((prev) => prev.filter((x) => x.role_id !== r.id));
+      toast("Role deleted ✅");
+    } catch (e: any) {
+      setErr(e?.message ?? String(e));
     }
   };
 
-  const togglePerm = async (permKey: string, next: boolean) => {
-    const c = allianceCode.trim().toUpperCase();
-    const rk = selectedRoleKey;
-    if (!c || !rk) return;
+  const addPerm = () => {
+    const tmp: PermRow = {
+      id: crypto.randomUUID(),
+      key: "",
+      description: null,
+      created_at: null,
+    };
+    setPerms((prev) => [tmp, ...prev]);
+    toast("Permission draft added");
+  };
 
-    setAllowedByKey((prev) => ({ ...prev, [permKey]: next }));
+  const savePerm = async (p: PermRow) => {
+    setErr(null);
+    try {
+      const payload: any = {
+        id: p.id,
+        key: norm(p.key),
+        description: p.description ?? null,
+      };
 
-    const { error } = await supabase
-      .from("alliance_role_permissions_v2")
-      .upsert(
-        { alliance_code: c, role_key: rk, permission_key: permKey, allowed: next } as any,
-        { onConflict: "alliance_code,role_key,permission_key" }
-      );
+      if (!payload.key) throw new Error("Permission key is required.");
 
-    if (error) {
-      window.alert(error.message);
-      setAllowedByKey((prev) => ({ ...prev, [permKey]: !next }));
+      const res = await supabase
+        .from("app_permissions")
+        .upsert(payload)
+        .select("id,key,description,created_at")
+        .maybeSingle();
+
+      if (res.error) throw res.error;
+
+      if (res.data) {
+        setPerms((prev) => prev.map((x) => (x.id === p.id ? (res.data as any) : x)));
+      }
+
+      toast("Permission saved ✅");
+    } catch (e: any) {
+      setErr(e?.message ?? String(e));
     }
   };
 
-  if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
-  if (!isAdmin) return <div style={{ padding: 24 }}>Not authorized.</div>;
+  const deletePerm = async (p: PermRow) => {
+    if (!window.confirm(`Delete permission "${p.key}"?`)) return;
+
+    setErr(null);
+    try {
+      const res = await supabase.from("app_permissions").delete().eq("id", p.id);
+      if (res.error) throw res.error;
+
+      setPerms((prev) => prev.filter((x) => x.id !== p.id));
+      setRp((prev) => prev.filter((x) => x.permission_id !== p.id));
+      toast("Permission deleted ✅");
+    } catch (e: any) {
+      setErr(e?.message ?? String(e));
+    }
+  };
+
+  const toggleRolePerm = async (roleId: string, permId: string) => {
+    const key = `${roleId}:${permId}`;
+    const exists = rpSet.has(key);
+
+    setErr(null);
+    try {
+      if (exists) {
+        const del = await supabase
+          .from("app_role_permissions")
+          .delete()
+          .eq("role_id", roleId)
+          .eq("permission_id", permId);
+
+        if (del.error) throw del.error;
+
+        setRp((prev) => prev.filter((x) => !(x.role_id === roleId && x.permission_id === permId)));
+      } else {
+        const ins = await supabase
+          .from("app_role_permissions")
+          .insert({ role_id: roleId, permission_id: permId } as any);
+
+        if (ins.error) throw ins.error;
+
+        setRp((prev) => [...prev, { role_id: roleId, permission_id: permId }]);
+      }
+    } catch (e: any) {
+      setErr(e?.message ?? String(e));
+    }
+  };
+
+  if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
 
   return (
-    <div style={{ padding: 24, maxWidth: 980, margin: "0 auto" }}>
-      <h2 style={{ marginBottom: 8 }}>🛡️ Roles & Permissions (V2)</h2>
-      <p style={{ marginTop: 0, opacity: 0.85 }}>
-        This is the new v2 system. It does not change any existing working features until we wire it in.
-      </p>
-
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          Alliance Code:
-          <input
-            value={allianceCode}
-            onChange={(e) => setAllianceCode(e.target.value.toUpperCase())}
-            placeholder="WOC"
-            style={{ padding: "8px 10px", borderRadius: 8, minWidth: 120 }}
-          />
-        </label>
-
-        <button onClick={createRole} disabled={!allianceCode.trim() || busy} style={{ padding: "8px 12px", borderRadius: 10 }}>
-          + Add Role
-        </button>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 16, marginTop: 18 }}>
-        <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-          <div style={{ fontWeight: 700, marginBottom: 10 }}>Roles</div>
-
-          {roles.length === 0 ? (
-            <div style={{ opacity: 0.8 }}>No roles yet for this alliance.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {roles.map((r) => (
-                <div
-                  key={r.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "8px 10px",
-                    borderRadius: 10,
-                    border: selectedRoleKey === r.role_key ? "1px solid rgba(255,255,255,0.35)" : "1px solid rgba(255,255,255,0.12)",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setSelectedRoleKey(r.role_key)}
-                >
-                  <div>
-                    <div style={{ fontWeight: 700 }}>{r.display_name}</div>
-                    <div style={{ fontSize: 12, opacity: 0.8 }}>
-                      key: {r.role_key} · rank: {r.rank}
-                      {r.is_system ? " · system" : ""}
-                    </div>
-                  </div>
-
-                  {!r.is_system && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteRole(r.role_key);
-                      }}
-                      disabled={busy}
-                      style={{ padding: "6px 10px", borderRadius: 10 }}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+    <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div>
+          <h2 style={{ margin: 0 }}>🛡️ Roles & Permissions</h2>
+          <div style={{ opacity: 0.75, fontSize: 12 }}>/owner/roles</div>
         </div>
 
-        <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-          <div style={{ fontWeight: 700, marginBottom: 10 }}>
-            Permissions {selectedRoleKey ? <span style={{ opacity: 0.85 }}>(role: {selectedRoleKey})</span> : null}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <button onClick={() => setTab("roles")} style={{ padding: "8px 10px", borderRadius: 10, fontWeight: tab === "roles" ? 900 : 600 }}>
+            Roles
+          </button>
+          <button onClick={() => setTab("perms")} style={{ padding: "8px 10px", borderRadius: 10, fontWeight: tab === "perms" ? 900 : 600 }}>
+            Permissions
+          </button>
+          <button onClick={() => setTab("matrix")} style={{ padding: "8px 10px", borderRadius: 10, fontWeight: tab === "matrix" ? 900 : 600 }}>
+            Matrix
+          </button>
+          <button onClick={refresh} style={{ padding: "8px 10px", borderRadius: 10 }}>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {hint ? (
+        <div style={{ marginTop: 10, padding: 10, border: "1px solid rgba(0,255,120,0.25)", borderRadius: 10, opacity: 0.95 }}>
+          {hint}
+        </div>
+      ) : null}
+
+      {err ? (
+        <div style={{ marginTop: 10, padding: 10, border: "1px solid rgba(255,0,0,0.35)", borderRadius: 10 }}>
+          <b>Error:</b> {err}
+          <div style={{ marginTop: 6, opacity: 0.8, fontSize: 12 }}>
+            If this says a table doesn’t exist, run: <code>supabase db push</code> (migration was just added).
+          </div>
+        </div>
+      ) : null}
+
+      {tab === "roles" ? (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ fontWeight: 900 }}>Roles</div>
+            <button onClick={addRole} style={{ padding: "8px 10px", borderRadius: 10 }}>
+              + Add Role
+            </button>
           </div>
 
-          {!selectedRoleKey ? (
-            <div style={{ opacity: 0.8 }}>Select a role to edit permissions.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {Object.keys(grouped).map((feature) => (
-                <div key={feature} style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-                  <div style={{ fontWeight: 800, marginBottom: 8 }}>{feature}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-                    {grouped[feature].map((k) => {
-                      const checked = !!allowedByKey[k.key];
-                      return (
-                        <label key={k.key} style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                          <input type="checkbox" checked={checked} onChange={(e) => togglePerm(k.key, e.target.checked)} />
-                          <div>
-                            <div style={{ fontWeight: 700 }}>{k.label}</div>
-                            <div style={{ fontSize: 12, opacity: 0.8 }}>{k.key}</div>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
+          <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+            {roles.map((r) => (
+              <div key={r.id} style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ opacity: 0.8, fontSize: 12 }}>Key (unique)</span>
+                    <input value={r.key} onChange={(e) => setRoles((prev) => prev.map((x) => (x.id === r.id ? { ...x, key: e.target.value } : x)))} />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ opacity: 0.8, fontSize: 12 }}>Label</span>
+                    <input value={r.label} onChange={(e) => setRoles((prev) => prev.map((x) => (x.id === r.id ? { ...x, label: e.target.value } : x)))} />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ opacity: 0.8, fontSize: 12 }}>Scope</span>
+                    <select value={r.scope} onChange={(e) => setRoles((prev) => prev.map((x) => (x.id === r.id ? { ...x, scope: e.target.value } : x)))}>
+                      {SCOPES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ opacity: 0.8, fontSize: 12 }}>Description</span>
+                    <input
+                      value={r.description ?? ""}
+                      onChange={(e) => setRoles((prev) => prev.map((x) => (x.id === r.id ? { ...x, description: e.target.value || null } : x)))}
+                    />
+                  </label>
                 </div>
-              ))}
-            </div>
-          )}
+
+                <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={() => saveRole(r)} style={{ padding: "8px 10px", borderRadius: 10, fontWeight: 900 }}>
+                    Save
+                  </button>
+                  <button onClick={() => deleteRole(r)} style={{ padding: "8px 10px", borderRadius: 10 }}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
+
+      {tab === "perms" ? (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ fontWeight: 900 }}>Permissions</div>
+            <button onClick={addPerm} style={{ padding: "8px 10px", borderRadius: 10 }}>
+              + Add Permission
+            </button>
+          </div>
+
+          <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+            {perms.map((p) => (
+              <div key={p.id} style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ opacity: 0.8, fontSize: 12 }}>Key (unique)</span>
+                    <input value={p.key} onChange={(e) => setPerms((prev) => prev.map((x) => (x.id === p.id ? { ...x, key: e.target.value } : x)))} />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ opacity: 0.8, fontSize: 12 }}>Description</span>
+                    <input
+                      value={p.description ?? ""}
+                      onChange={(e) => setPerms((prev) => prev.map((x) => (x.id === p.id ? { ...x, description: e.target.value || null } : x)))}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={() => savePerm(p)} style={{ padding: "8px 10px", borderRadius: 10, fontWeight: 900 }}>
+                    Save
+                  </button>
+                  <button onClick={() => deletePerm(p)} style={{ padding: "8px 10px", borderRadius: 10 }}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {tab === "matrix" ? (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontWeight: 900 }}>Role ↔ Permission Matrix</div>
+          <div style={{ marginTop: 8, opacity: 0.8, fontSize: 12 }}>
+            Toggle checkboxes to grant/revoke permissions from roles.
+          </div>
+
+          <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+            {roles.map((r) => (
+              <div key={r.id} style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+                <div style={{ fontWeight: 900 }}>
+                  {upper(r.key)} <span style={{ opacity: 0.7, fontWeight: 600 }}>({r.label})</span>
+                </div>
+
+                <div style={{ marginTop: 10, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+                  {perms.map((p) => {
+                    const k = `${r.id}:${p.id}`;
+                    const checked = rpSet.has(k);
+                    return (
+                      <label key={p.id} style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleRolePerm(r.id, p.id)}
+                        />
+                        <div>
+                          <div style={{ fontWeight: 800 }}>{p.key}</div>
+                          {p.description ? <div style={{ opacity: 0.75, fontSize: 12 }}>{p.description}</div> : null}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
+            Note: This page creates/edits roles & permissions. Wiring them into live access checks can be done next (without breaking existing role gates).
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
