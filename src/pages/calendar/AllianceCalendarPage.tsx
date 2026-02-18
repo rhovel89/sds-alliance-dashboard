@@ -397,7 +397,7 @@ export default function AllianceCalendarPage() {
       <h2>📅 Alliance Calendar - {upperAlliance}</h2>
 
       {canEdit && (
-        <button onClick={() => { const base = makeEmptyForm(); const first = eventTypeOptions[0]?.value || base.event_type; setForm({ ...base, event_type: first }); setShowModal(true); }}>
+        <button onClick={() => { setForm(makeEmptyForm()); setShowModal(true); }}>
           + Create Event
         </button>
       )}
@@ -564,14 +564,11 @@ export default function AllianceCalendarPage() {
               <span>Event Type</span>
               <select
                 value={form.event_type}
-                onChange={(e) => setForm({ ...form, event_type: e.target.value })}
-              >
-                <option value="">-- Select --</option>
-                {optionsForCategory.map((t) => (
-                  <option key={t.id} value={t.name}>{t.name}</option>
+                onChange={(e) =>
+                {EVENT_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
                 ))}
-                <option value="__new__">+ Add new type...</option>
-              </select>
+</select>
             </label>
           </div>
 
@@ -629,4 +626,5 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
 
