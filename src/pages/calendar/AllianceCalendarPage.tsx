@@ -397,7 +397,7 @@ export default function AllianceCalendarPage() {
       <h2>📅 Alliance Calendar - {upperAlliance}</h2>
 
       {canEdit && (
-        <button onClick={() => { setForm(makeEmptyForm()); setShowModal(true); }}>
+        <button onClick={() => { const base = makeEmptyForm(); const first = eventTypeOptions[0]?.value || base.event_type; setForm({ ...base, event_type: first }); setShowModal(true); }}>
           + Create Event
         </button>
       )}
@@ -629,3 +629,4 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+

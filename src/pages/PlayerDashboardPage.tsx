@@ -251,9 +251,21 @@ const pickAlliance = (code: string) => {
                   Calendar {canEditCalendar ? "" : "(View)"}
                 </Link>
                 {isManager ? (
-                  <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}`} style={{ fontWeight: 900 }}>
-                    ⚔️ Manage Alliance Dashboard
-                  </Link>
+                  <>
+                    <Link
+                      to={`/dashboard/${encodeURIComponent(selectedAlliance)}`}
+                      style={{ fontWeight: 900 }}
+                    >
+                      ⚔️ Manage Alliance Dashboard
+                    </Link>
+
+                    <Link
+                      to={`/dashboard/${encodeURIComponent(selectedAlliance)}/event-types`}
+                      style={{ opacity: 0.9 }}
+                    >
+                      Event Types
+                    </Link>
+                  </>
                 ) : null}
               </>
             ) : null}
@@ -317,5 +329,6 @@ const pickAlliance = (code: string) => {
     </div>
   );
 }
+
 
 
