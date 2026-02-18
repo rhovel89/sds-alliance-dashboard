@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-
 import DashboardLayout from "../layouts/DashboardLayout";
 import RequireAlliance from "../components/RequireAlliance";
 import RequireAllianceAccess from "../components/auth/RequireAllianceAccess";
@@ -9,66 +8,55 @@ import AuthLandingPage from "../pages/AuthLandingPage";
 import DashboardEntryPage from "../pages/DashboardEntryPage";
 import RequestAccessPage from "../pages/onboarding/RequestAccessPage";
 
+import Login from "../pages/Login";
+
+import PlayerDashboardPage from "../pages/PlayerDashboardPage";
+
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
 import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 import PermissionsPage from "../pages/dashboard/Permissions";
 import AllianceCalendarPage from "../pages/calendar/AllianceCalendarPage";
-import AllianceAnnouncementsPage from "../pages/alliance/AllianceAnnouncementsPage";
-import AllianceGuidesPage from "../pages/alliance/AllianceGuidesPage";
 
-import PlayerDashboardPage from "../pages/PlayerDashboardPage";
+import MyDashboardsPage from "../pages/dashboard/MyDashboardsPage";
+import StateDashboardPage from "../pages/state/StateDashboardPage";
+import StateLeadersPage from "../pages/state/StateLeadersPage";
 
-// Owner / State pages (keep existing)
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
 import OwnerDashboardPage from "../pages/owner/OwnerDashboardPage";
+import OwnerMembershipManagerPage from "../pages/owner/OwnerMembershipManagerPage";
 import OwnerAccessRequestsPage from "../pages/owner/OwnerAccessRequestsPage";
 import OwnerMembershipsPage from "../pages/owner/OwnerMembershipsPage";
 import OwnerAlliancesPage from "../pages/owner/OwnerAlliancesPage";
 import OwnerPlayersPage from "../pages/owner/OwnerPlayersPage";
-import OwnerMembershipManagerPage from "../pages/owner/OwnerMembershipManagerPage";
 import OwnerRequestsProvisionPage from "../pages/owner/OwnerRequestsProvisionPage";
 import OwnerPlayersLinkPage from "../pages/owner/OwnerPlayersLinkPage";
 import OwnerStateManagerPage from "../pages/owner/OwnerStateManagerPage";
 import OwnerRolesPermissionsV2Page from "../pages/owner/OwnerRolesPermissionsV2Page";
 import OwnerAccessControlPage from "../pages/owner/OwnerAccessControlPage";
 
-import StateDashboardPage from "../pages/state/StateDashboardPage";
-import StateLeadersPage from "../pages/state/StateLeadersPage";
+import AllianceAnnouncementsPage from "../pages/alliance/AllianceAnnouncementsPage";
+import AllianceGuidesPage from "../pages/alliance/AllianceGuidesPage";
+import StateDashboard from "../pages/StateDashboard";
 
 export default function AppRoutes() {
   return (
     <Routes>
       {/* Public */}
       <Route path="/" element={<AuthLandingPage />} />
-
-      {/* /dashboard = auth callback OR dashboards entry */}
-      <Route path="/dashboard" element={<DashboardEntryPage />} />
+      <Route path="/login" element={<Login />} />
 
       {/* Onboarding */}
       <Route path="/onboarding" element={<RequestAccessPage />} />
 
-      {/* Personal dashboard */}
+      {/* Dashboards landing / auth callback entry */}
+      <Route path="/dashboard" element={<DashboardEntryPage />} />
+
+      {/* Everyone gets /me personal dashboard */}
       <Route path="/me" element={<PlayerDashboardPage />} />
-      <Route path="/dashboard/ME" element={<PlayerDashboardPage />} />
+      <Route path="/dashboard/ME" element={<Navigate to="/me" replace />} />
 
-      {/* Alliance dashboard */}
-      <Route path="/dashboard/:code" element={<DashboardLayout />}>
-        <Route index element={<MyAlliance />} />
-
-        <Route path="announcements" element={<AllianceAnnouncementsPage />} />
-        <Route path="guides" element={<AllianceGuidesPage />} />
-
-        <Route path="hq-map" element={<AllianceHQMap />} />
-
-        {/* Members can view calendar. Managers can edit via your UI / view param logic. */}
-        <Route path="calendar" element={<RequireAllianceAccess><AllianceCalendarPage /></RequireAllianceAccess>} />
-
-        <Route path="permissions" element={<RequireAlliance><PermissionsPage /></RequireAlliance>} />
-        <Route path="events" element={<RequireAlliance><EventsPage /></RequireAlliance>} />
-      </Route>
-
-      {/* Owner */}
+      {/* Owner/Admin */}
       <Route path="/owner" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
       <Route path="/owner/select" element={<RequireAdmin><OwnerDashboardSelect /></RequireAdmin>} />
       <Route path="/owner/requests" element={<RequireAdmin><OwnerAccessRequestsPage /></RequireAdmin>} />
@@ -84,10 +72,76 @@ export default function AppRoutes() {
       <Route path="/owner/access-control" element={<RequireAdmin><OwnerAccessControlPage /></RequireAdmin>} />
 
       {/* State */}
-      <Route path="/state" element={<StateDashboardPage />} />
+      <Route path="/state" element={<StateDashboardPage />} />      <Route path="/state/1" element={<StateDashboard />} />
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* OPTIONAL: keep direct dashboards page route (if you link to it elsewhere) */}
+      <Route path="/dashboards" element={<MyDashboardsPage />} />
+
+      {/* Alliance Dashboard (THIS FIXES “Missing alliance”) */}
+      <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
+        <Route
+          index
+          element={
+            <RequireAlliance>
+              <MyAlliance />
+            </RequireAlliance>
+          }
+        />
+
+        <Route
+          path="announcements"
+          element={
+            <RequireAlliance>
+              <AllianceAnnouncementsPage />
+            </RequireAlliance>
+          }
+        />
+
+        <Route
+          path="guides"
+          element={
+            <RequireAlliance>
+              <AllianceGuidesPage />
+            </RequireAlliance>
+          }
+        />
+
+        <Route
+          path="hq-map"
+          element={
+            <RequireAlliance>
+              <AllianceHQMap />
+            </RequireAlliance>
+          }
+        />
+
+        <Route
+          path="calendar"
+          element={
+            <RequireAllianceAccess>
+              <AllianceCalendarPage />
+            </RequireAllianceAccess>
+          }
+        />
+
+        <Route
+          path="permissions"
+          element={
+            <RequireAlliance>
+              <PermissionsPage />
+            </RequireAlliance>
+          }
+        />
+
+        <Route
+          path="events"
+          element={
+            <RequireAlliance>
+              <EventsPage />
+            </RequireAlliance>
+          }
+        />
+      </Route>
     </Routes>
   );
 }
