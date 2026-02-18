@@ -564,11 +564,13 @@ export default function AllianceCalendarPage() {
               <span>Event Type</span>
               <select
                 value={form.event_type}
-                onChange={(e) =>
+                onChange={(e) => setForm({ ...form, event_type: e.target.value })}
+              >
                 {EVENT_TYPES.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
-</select>
+                <option value="__new__">+ Add new type…</option>
+              </select>
             </label>
           </div>
 
@@ -626,5 +628,6 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
 
 
