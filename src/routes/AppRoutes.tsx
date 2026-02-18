@@ -50,6 +50,7 @@ function DashboardEntry() {
 
   return hasAuth ? <AuthCallback /> : <MyDashboardsPage />;
 }
+import OwnerEventTypesPage from "../pages/owner/OwnerEventTypesPage";
 
 export default function AppRoutes() {
   return (
@@ -81,6 +82,7 @@ export default function AppRoutes() {
       <Route path="/owner/state" element={<RequireAdmin><OwnerStateManagerPage /></RequireAdmin>} />
       <Route path="/owner/state-leaders" element={<RequireAdmin><StateLeadersPage /></RequireAdmin>} />
       <Route path="/owner/roles" element={<RequireAdmin><OwnerRolesPermissionsV2Page /></RequireAdmin>} />
+      <Route path="/owner/event-types" element={<RequireAdmin><OwnerEventTypesPage /></RequireAdmin>} />
       <Route path="/owner/access-control" element={<RequireAdmin><OwnerAccessControlPage /></RequireAdmin>} />
 
       {/* State */}
@@ -105,4 +107,5 @@ export default function AppRoutes() {
     </Routes>
   );
 }
+
 
