@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-
 import { supabase } from "../lib/supabaseClient";
+
 import PlayerAllianceProfilePanel from "../components/player/PlayerAllianceProfilePanel";
 
 type Membership = {
@@ -32,6 +32,17 @@ function isManagerRole(role?: string | null) {
   return ["owner", "r4", "r5"].includes(r);
 }
 
+function bestDate(v: any): Date | null {
+  if (!v) return null;
+  const d = new Date(String(v));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function fmt(d: Date | null) {
+  if (!d) return "";
+  try { return d.toLocaleString(); } catch { return d.toISOString(); }
+}
+
 export default function PlayerDashboardPage() {
   const [sp, setSp] = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -50,13 +61,13 @@ export default function PlayerDashboardPage() {
 
   const isManager = useMemo(() => isManagerRole(role), [role]);
 
-  const managerAlliances = useMemo(
-    () => memberships.filter((m) => isManagerRole(m.role)),
-    [memberships]
-  );
-
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [sections, setSections] = useState<GuideSection[]>([]);
+
+  // Live cards
+  const [myHqs, setMyHqs] = useState<any[]>([]);
+  const [mySlot, setMySlot] = useState<any | null>(null);
+  const [upcoming, setUpcoming] = useState<any[]>([]);
 
   const pickAlliance = (code: string) => {
     const c = upper(code);
@@ -129,6 +140,80 @@ export default function PlayerDashboardPage() {
     }
   };
 
+  const loadLiveCards = async (allianceCode: string) => {
+    const code = upper(allianceCode);
+    if (!code || !userId) {
+      setMyHqs([]);
+      setMySlot(null);
+      setUpcoming([]);
+      return;
+    }
+
+    // My HQs (player_hqs)
+    try {
+      const hRes = await supabase
+        .from("player_hqs")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("alliance_id", code)
+        .order("created_at", { ascending: true });
+
+      if (!hRes.error) setMyHqs(hRes.data ?? []);
+    } catch {}
+
+    // My assigned slot (alliance_hq_map) - best effort
+    try {
+      const sRes = await supabase
+        .from("alliance_hq_map")
+        .select("*")
+        .eq("alliance_id", code)
+        .eq("assigned_user_id", userId)
+        .maybeSingle();
+
+      if (!sRes.error) setMySlot(sRes.data ?? null);
+    } catch {}
+
+    // Upcoming events (alliance_events) - best effort (schema varies)
+    const now = new Date();
+    const take = (rows: any[]) => {
+      const parsed = (rows ?? []).map((r) => {
+        const d =
+          bestDate(r.starts_at) ||
+          bestDate(r.start_at) ||
+          bestDate(r.start_time) ||
+          bestDate(r.starts_on) ||
+          bestDate(r.date) ||
+          bestDate(r.event_date) ||
+          bestDate(r.created_at);
+
+        return { r, d };
+      });
+
+      const future = parsed
+        .filter((x) => x.d && x.d.getTime() >= now.getTime() - 60000)
+        .sort((a, b) => (a.d!.getTime() - b.d!.getTime()))
+        .slice(0, 3)
+        .map((x) => ({ ...x.r, _when: x.d }));
+
+      setUpcoming(future);
+    };
+
+    try {
+      // attempt alliance_code
+      const e1 = await supabase.from("alliance_events").select("*").eq("alliance_code", code).limit(50);
+      if (!e1.error) { take(e1.data ?? []); return; }
+    } catch {}
+
+    try {
+      // attempt alliance_id as text code
+      const e2 = await supabase.from("alliance_events").select("*").eq("alliance_id", code).limit(50);
+      if (!e2.error) { take(e2.data ?? []); return; }
+    } catch {}
+
+    // fallback none
+    setUpcoming([]);
+  };
+
   const loadFeed = async (allianceCode: string) => {
     const code = upper(allianceCode);
     if (!code) {
@@ -157,6 +242,8 @@ export default function PlayerDashboardPage() {
       .limit(6);
 
     if (!gRes.error) setSections((gRes.data ?? []) as any);
+
+    await loadLiveCards(code);
   };
 
   useEffect(() => {
@@ -168,7 +255,7 @@ export default function PlayerDashboardPage() {
     if (!selectedAlliance) return;
     loadFeed(selectedAlliance);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAlliance]);
+  }, [selectedAlliance, userId]);
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
 
@@ -178,6 +265,7 @@ export default function PlayerDashboardPage() {
         <h2 style={{ margin: 0 }}>🧍‍♂️ Your Dashboard (ME)</h2>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <Link to="/owner" style={{ opacity: 0.85 }}>Owner</Link>
+          <Link to="/owner/assignments" style={{ opacity: 0.85 }}>Assign Players</Link>
           <Link to="/state" style={{ opacity: 0.85 }}>State</Link>
         </div>
       </div>
@@ -239,48 +327,7 @@ export default function PlayerDashboardPage() {
             ) : null}
           </div>
 
-                    {/* Manager Tools (Owner/R4/R5 only) */}
-          {managerAlliances.length > 0 ? (
-            <div style={{ marginTop: 10, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <div style={{ fontWeight: 900 }}>🛡️ Manager Tools</div>
-                <div style={{ opacity: 0.75, fontSize: 12 }}>Visible only to Owner/R4/R5</div>
-              </div>
-
-              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {managerAlliances.map((m) => (
-                  <Link
-                    key={m.alliance_code}
-                    to={`/dashboard/${encodeURIComponent(m.alliance_code)}`}
-                    style={{
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      borderRadius: 10,
-                      padding: "8px 10px",
-                      textDecoration: "none",
-                      fontWeight: 800,
-                      opacity: 0.95,
-                    }}
-                  >
-                    ⚔️ Manage {m.alliance_code}
-                  </Link>
-                ))}
-              </div>
-
-              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {selectedAlliance ? (
-                  <>
-                    <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/announcements`} style={{ opacity: 0.9 }}>
-                      Announcements
-                    </Link>
-                    <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/guides`} style={{ opacity: 0.9 }}>
-                      Guides
-                    </Link>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-{/* Profile + HQs */}
+          {/* Profile + HQs */}
           {userId && playerId && selectedAlliance ? (
             <div style={{ marginTop: 14 }}>
               <PlayerAllianceProfilePanel
@@ -291,6 +338,60 @@ export default function PlayerDashboardPage() {
               />
             </div>
           ) : null}
+
+          {/* Live cards */}
+          <div style={{ marginTop: 14, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+            <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontWeight: 900 }}>🏰 My HQs</div>
+              {myHqs.length === 0 ? (
+                <div style={{ marginTop: 10, opacity: 0.75 }}>No HQs saved for this alliance yet.</div>
+              ) : (
+                <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                  {myHqs.slice(0, 4).map((h: any) => (
+                    <div key={String(h.id ?? h.hq_name ?? Math.random())} style={{ opacity: 0.9 }}>
+                      • {h.hq_name || "HQ"} {h.hq_level ? `(Lv ${h.hq_level})` : ""} {h.coord_x != null && h.coord_y != null ? `— (${h.coord_x}, ${h.coord_y})` : ""}
+                    </div>
+                  ))}
+                  {myHqs.length > 4 ? <div style={{ opacity: 0.7 }}>…and {myHqs.length - 4} more</div> : null}
+                </div>
+              )}
+            </div>
+
+            <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontWeight: 900 }}>🗺️ My HQ Slot</div>
+              {!mySlot ? (
+                <div style={{ marginTop: 10, opacity: 0.75 }}>No slot assignment found (yet).</div>
+              ) : (
+                <div style={{ marginTop: 10, opacity: 0.9 }}>
+                  Slot #{mySlot.slot_number ?? "—"} • Grid ({mySlot.slot_x ?? "?"},{mySlot.slot_y ?? "?"})<br />
+                  {mySlot.label ? <>Label: <b>{String(mySlot.label)}</b></> : null}
+                </div>
+              )}
+            </div>
+
+            <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontWeight: 900 }}>📅 Upcoming Events</div>
+              {upcoming.length === 0 ? (
+                <div style={{ marginTop: 10, opacity: 0.75 }}>No upcoming events found (or access blocked).</div>
+              ) : (
+                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                  {upcoming.map((e: any) => (
+                    <div key={String(e.id ?? e.title ?? Math.random())} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: 10 }}>
+                      <div style={{ fontWeight: 800 }}>{e.title || e.name || "Event"}</div>
+                      <div style={{ opacity: 0.85 }}>
+                        {fmt(e._when || null)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedAlliance ? (
+                <div style={{ marginTop: 10 }}>
+                  <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/calendar${isManager ? "" : "?view=1"}`}>Open calendar</Link>
+                </div>
+              ) : null}
+            </div>
+          </div>
 
           {/* Feed cards */}
           <div style={{ marginTop: 14, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
@@ -341,11 +442,10 @@ export default function PlayerDashboardPage() {
           </div>
 
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-            Tip: Owners/R4/R5 have both a personal ME dashboard and a Manage Alliance Dashboard link.
+            Tip: Everyone uses <b>/me</b>. Owners/R4/R5 also get a “Manage Alliance Dashboard” link.
           </div>
         </>
       )}
     </div>
   );
 }
-
