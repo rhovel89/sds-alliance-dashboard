@@ -1,30 +1,22 @@
 import { useMemo } from "react";
-import { useLocation } from "react-router-dom";
-
 import AuthCallback from "./AuthCallback";
 import MyDashboardsPage from "./dashboard/MyDashboardsPage";
 
-/**
- * /dashboard serves TWO purposes:
- *  - Supabase OAuth callback (hash contains access_token/refresh_token OR query has code)
- *  - Normal "My Dashboards" entry page
- */
+function looksLikeAuthCallback(): boolean {
+  try {
+    const q = window.location.search || "";
+    const h = window.location.hash || "";
+    // PKCE uses ?code=..., implicit uses #access_token=...
+    if (q.includes("code=")) return true;
+    if (h.includes("access_token=")) return true;
+    if (h.includes("error=") || q.includes("error=")) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export default function DashboardEntryPage() {
-  const loc = useLocation();
-
-  const isAuthCallback = useMemo(() => {
-    const hash = String(loc.hash || "");
-    const qs = new URLSearchParams(loc.search || "");
-    return (
-      hash.includes("access_token=") ||
-      hash.includes("refresh_token=") ||
-      qs.has("code") ||
-      qs.has("error_description") ||
-      qs.has("error")
-    );
-  }, [loc.hash, loc.search]);
-
-  if (isAuthCallback) return <AuthCallback />;
-
-  return <MyDashboardsPage />;
+  const isCb = useMemo(() => looksLikeAuthCallback(), []);
+  return isCb ? <AuthCallback /> : <MyDashboardsPage />;
 }
