@@ -1,136 +1,150 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { ReactNode, useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
-type MembershipRow = { alliance_id: string; role: string };
+function upper(v: any) {
+  return String(v ?? "").trim().toUpperCase();
+}
 
-export default function RequireAllianceAccess(props: { children: React.ReactNode }) {
-  const { alliance_id } = useParams<{ alliance_id: string }>();
-  const upperAlliance = (alliance_id || "").toUpperCase();
+function looksLikeUuid(s: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+}
+
+function isManagerRole(role?: string | null) {
+  const r = String(role ?? "").toLowerCase();
+  return ["owner", "r4", "r5"].includes(r);
+}
+
+export default function RequireAllianceAccess({ children }: { children: ReactNode }) {
+  const params = useParams() as any;
+  const loc = useLocation();
+  const nav = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [allianceCode, setAllianceCode] = useState<string>("");
+
+  const viewOnly = useMemo(() => {
+    const sp = new URLSearchParams(loc.search || "");
+    return sp.get("view") === "1";
+  }, [loc.search]);
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      try {
-        setLoading(true);
-        setError(null);
+      setLoading(true);
+      setErr(null);
+      setRole(null);
 
-        const u = await supabase.auth.getUser();
-        const uid = u.data.user?.id ?? null;
+      const { data } = await supabase.auth.getUser();
+      const uid = data?.user?.id ?? null;
 
-        if (!uid) {
-          if (!cancelled) {
-            setAllowed(false);
-            setLoading(false);
-          }
-          return;
-        }
-
-        // Admins always allowed (Owner override)
-        const adminRes = await supabase
-          .from("app_admins")
-          .select("user_id")
-          .eq("user_id", uid)
-          .maybeSingle();
-
-        if (adminRes.data) {
-          if (!cancelled) {
-            setAllowed(true);
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (!upperAlliance) {
-          if (!cancelled) {
-            setAllowed(false);
-            setLoading(false);
-          }
-          return;
-        }
-
-        // Membership check (UI gate only; RLS still enforces backend)
-        const m = await supabase
-          .from("alliance_memberships")
-          .select("alliance_id, role")
-          .eq("user_id", uid)
-          .eq("alliance_id", upperAlliance)
-          .maybeSingle<MembershipRow>();
-
-        if (m.error) {
-          if (!cancelled) {
-            setError(m.error.message);
-            setAllowed(false);
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (!cancelled) {
-          setAllowed(!!m.data);
-          setLoading(false);
-        }
-      } catch (e: any) {
-        if (!cancelled) {
-          setError(e?.message ?? "Unknown error");
-          setAllowed(false);
-          setLoading(false);
-        }
+      if (!uid) {
+        setErr("Please sign in.");
+        setLoading(false);
+        return;
       }
+
+      // Try to infer code from params
+      const raw = String(params.allianceCode ?? params.code ?? params.alliance_id ?? params.allianceId ?? "");
+      let code = upper(raw);
+
+      // If the URL param is a UUID, resolve to alliance.code
+      if (code && looksLikeUuid(code)) {
+        try {
+          const a = await supabase.from("alliances").select("code").eq("id", code).maybeSingle();
+          if (!a.error && a.data?.code) code = upper(a.data.code);
+        } catch {}
+      }
+
+      if (!code) {
+        setErr("Missing alliance in URL.");
+        setLoading(false);
+        return;
+      }
+
+      setAllianceCode(code);
+
+      // Ensure we have player_id
+      let playerId: string | null = null;
+      try {
+        const p = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
+        if (!p.error && p.data?.id) playerId = String(p.data.id);
+      } catch {}
+
+      // 1) New model membership: player_alliances
+      let foundRole: string | null = null;
+      if (playerId) {
+        try {
+          const m = await supabase
+            .from("player_alliances")
+            .select("role,alliance_code")
+            .eq("player_id", playerId)
+            .eq("alliance_code", code)
+            .maybeSingle();
+
+          if (!m.error && m.data) foundRole = (m.data.role ?? null) as any;
+        } catch {}
+      }
+
+      // 2) Old model membership: alliance_members join alliances(code)
+      if (!foundRole) {
+        try {
+          const a = await supabase.from("alliances").select("id").eq("code", code).maybeSingle();
+          const aid = a?.data?.id ? String(a.data.id) : null;
+          if (aid) {
+            const am = await supabase
+              .from("alliance_members")
+              .select("role")
+              .eq("user_id", uid)
+              .eq("alliance_id", aid)
+              .maybeSingle();
+
+            if (!am.error && am.data) foundRole = (am.data.role ?? null) as any;
+          }
+        } catch {}
+      }
+
+      if (!foundRole) {
+        setErr(`Missing alliance assignment for ${code}. Ask your Owner/R4/R5 to assign you.`);
+        setLoading(false);
+        return;
+      }
+
+      setRole(foundRole);
+
+      // If not manager, force view mode
+      if (!isManagerRole(foundRole) && !viewOnly) {
+        const sp = new URLSearchParams(loc.search || "");
+        sp.set("view", "1");
+        nav(`${loc.pathname}?${sp.toString()}`, { replace: true });
+        setLoading(false);
+        return;
+      }
+
+      if (!cancelled) setLoading(false);
     })();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [upperAlliance]);
+    return () => { cancelled = true; };
+  }, [params, loc.pathname, loc.search, nav, viewOnly]);
 
-  if (loading) {
-    return (
-      <div style={{ padding: 24 }}>
-        <h2>🧟 Access Check</h2>
-        <div>Checking alliance access…</div>
-      </div>
-    );
-  }
+  if (loading) return <div style={{ padding: 16 }}>Checking alliance access…</div>;
 
-  if (error) {
+  if (err) {
     return (
-      <div style={{ padding: 24 }}>
-        <h2>🧟 Access Check</h2>
-        <div style={{ border: "1px solid #733", borderRadius: 8, padding: 10 }}>
-          {error}
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <a href="/dashboard">Go to My Dashboards</a> • <a href="/onboarding">Request Access</a>
+      <div style={{ padding: 16 }}>
+        <div style={{ fontWeight: 900, marginBottom: 6 }}>Access issue</div>
+        <div style={{ opacity: 0.85 }}>{err}</div>
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link to="/me">Go to /me</Link>
+          <Link to="/dashboard">Go to My Dashboards</Link>
+          <Link to="/onboarding">Request Access</Link>
         </div>
       </div>
     );
   }
 
-  if (!allowed) {
-    return (
-      <div style={{ padding: 24 }}>
-        <h2>🧟 No Access — {upperAlliance}</h2>
-        <div style={{ opacity: 0.85, marginTop: 6 }}>
-          You don’t have approved access to this alliance dashboard yet.
-        </div>
-
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 14 }}>
-          <a href="/onboarding">Request Access</a>
-          <a href="/dashboard">My Dashboards</a>
-        </div>
-
-        <div style={{ opacity: 0.75, fontSize: 12, marginTop: 12 }}>
-          Note: permissions are enforced by Supabase RLS. This is only a friendly UI gate.
-        </div>
-      </div>
-    );
-  }
-
-  return <>{props.children}</>;
+  return <>{children}</>;
 }
