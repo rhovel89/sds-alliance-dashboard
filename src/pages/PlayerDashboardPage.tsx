@@ -23,6 +23,8 @@ type GuideSection = {
   updated_at?: string | null;
 };
 
+type AnyEvent = Record<string, any>;
+
 function upper(v: any) {
   return String(v ?? "").trim().toUpperCase();
 }
@@ -32,15 +34,20 @@ function isManagerRole(role?: string | null) {
   return ["owner", "r4", "r5"].includes(r);
 }
 
-function bestDate(v: any): Date | null {
-  if (!v) return null;
-  const d = new Date(String(v));
-  return isNaN(d.getTime()) ? null : d;
+function pickEventTitle(e: AnyEvent) {
+  return String(e?.title ?? e?.name ?? e?.label ?? "Event");
 }
 
-function fmt(d: Date | null) {
-  if (!d) return "";
-  try { return d.toLocaleString(); } catch { return d.toISOString(); }
+function pickEventStart(e: AnyEvent) {
+  return (
+    e?.starts_at ??
+    e?.start_time ??
+    e?.start_at ??
+    e?.start ??
+    e?.date ??
+    e?.created_at ??
+    null
+  );
 }
 
 export default function PlayerDashboardPage() {
@@ -50,6 +57,8 @@ export default function PlayerDashboardPage() {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
+  const [isAppAdmin, setIsAppAdmin] = useState(false);
+  const [hasStateRole, setHasStateRole] = useState(false);
 
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [selectedAlliance, setSelectedAlliance] = useState<string>("");
@@ -63,11 +72,8 @@ export default function PlayerDashboardPage() {
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [sections, setSections] = useState<GuideSection[]>([]);
-
-  // Live cards
+  const [events, setEvents] = useState<AnyEvent[]>([]);
   const [myHqs, setMyHqs] = useState<any[]>([]);
-  const [mySlot, setMySlot] = useState<any | null>(null);
-  const [upcoming, setUpcoming] = useState<any[]>([]);
 
   const pickAlliance = (code: string) => {
     const c = upper(code);
@@ -75,6 +81,23 @@ export default function PlayerDashboardPage() {
     const next = new URLSearchParams(sp);
     next.set("alliance", c);
     setSp(next, { replace: true });
+  };
+
+  const detectStateRole = async (uid: string) => {
+    // Best-effort: if table doesn't exist or blocked, we don't crash.
+    try {
+      const r = await supabase.from("user_state_roles").select("id").eq("user_id", uid).limit(1);
+      if (!r.error && (r.data ?? []).length > 0) return true;
+    } catch {}
+    try {
+      // fallback: user_roles with role text like "state_*" (if your schema has it)
+      const r2 = await supabase.from("user_roles").select("id,role").eq("user_id", uid).limit(50);
+      if (!r2.error) {
+        const anyState = (r2.data ?? []).some((x: any) => String(x?.role ?? "").toLowerCase().includes("state"));
+        if (anyState) return true;
+      }
+    } catch {}
+    return false;
   };
 
   const loadBasics = async () => {
@@ -92,6 +115,18 @@ export default function PlayerDashboardPage() {
         return;
       }
 
+      // admin check (best-effort)
+      try {
+        const a = await supabase.rpc("is_app_admin");
+        if (typeof a.data === "boolean") setIsAppAdmin(a.data);
+      } catch {}
+
+      // state role check (best-effort)
+      try {
+        const sr = await detectStateRole(uid);
+        setHasStateRole(sr);
+      } catch {}
+
       // Ensure player row exists (best effort)
       let pid: string | null = null;
       const p1 = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
@@ -101,9 +136,7 @@ export default function PlayerDashboardPage() {
         try {
           const ins = await supabase.from("players").insert({ auth_user_id: uid } as any).select("id").maybeSingle();
           if (!ins.error && ins.data?.id) pid = String(ins.data.id);
-        } catch {
-          // ignore
-        }
+        } catch {}
       }
       setPlayerId(pid);
 
@@ -140,78 +173,42 @@ export default function PlayerDashboardPage() {
     }
   };
 
-  const loadLiveCards = async (allianceCode: string) => {
-    const code = upper(allianceCode);
-    if (!code || !userId) {
-      setMyHqs([]);
-      setMySlot(null);
-      setUpcoming([]);
-      return;
-    }
+  const loadEventsPreview = async (code: string) => {
+    const c = upper(code);
+    if (!c) { setEvents([]); return; }
 
-    // My HQs (player_hqs)
+    // Try alliance_code, then alliance_id (text), then no filter.
     try {
-      const hRes = await supabase
+      const q1 = await supabase.from("alliance_events").select("*").eq("alliance_code", c).limit(6);
+      if (!q1.error) { setEvents((q1.data ?? []) as any); return; }
+    } catch {}
+
+    try {
+      const q2 = await supabase.from("alliance_events").select("*").eq("alliance_id", c).limit(6);
+      if (!q2.error) { setEvents((q2.data ?? []) as any); return; }
+    } catch {}
+
+    // if table missing or schema differs, fail silently
+    setEvents([]);
+  };
+
+  const loadMyHqsPreview = async (uid: string, allianceCode: string) => {
+    const c = upper(allianceCode);
+    if (!uid || !c) { setMyHqs([]); return; }
+
+    try {
+      const h = await supabase
         .from("player_hqs")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("alliance_id", code)
-        .order("created_at", { ascending: true });
+        .select("id,hq_name,hq_level,coord_x,coord_y,created_at")
+        .eq("user_id", uid)
+        .eq("alliance_id", c)
+        .order("created_at", { ascending: true })
+        .limit(8);
 
-      if (!hRes.error) setMyHqs(hRes.data ?? []);
-    } catch {}
-
-    // My assigned slot (alliance_hq_map) - best effort
-    try {
-      const sRes = await supabase
-        .from("alliance_hq_map")
-        .select("*")
-        .eq("alliance_id", code)
-        .eq("assigned_user_id", userId)
-        .maybeSingle();
-
-      if (!sRes.error) setMySlot(sRes.data ?? null);
-    } catch {}
-
-    // Upcoming events (alliance_events) - best effort (schema varies)
-    const now = new Date();
-    const take = (rows: any[]) => {
-      const parsed = (rows ?? []).map((r) => {
-        const d =
-          bestDate(r.starts_at) ||
-          bestDate(r.start_at) ||
-          bestDate(r.start_time) ||
-          bestDate(r.starts_on) ||
-          bestDate(r.date) ||
-          bestDate(r.event_date) ||
-          bestDate(r.created_at);
-
-        return { r, d };
-      });
-
-      const future = parsed
-        .filter((x) => x.d && x.d.getTime() >= now.getTime() - 60000)
-        .sort((a, b) => (a.d!.getTime() - b.d!.getTime()))
-        .slice(0, 3)
-        .map((x) => ({ ...x.r, _when: x.d }));
-
-      setUpcoming(future);
-    };
-
-    try {
-      // attempt alliance_code
-      const e1 = await supabase.from("alliance_events").select("*").eq("alliance_code", code).limit(50);
-      if (!e1.error) { take(e1.data ?? []); return; }
-    } catch {}
-
-    try {
-      // attempt alliance_id as text code
-      const e2 = await supabase.from("alliance_events").select("*").eq("alliance_id", code).limit(50);
-      if (!e2.error) { take(e2.data ?? []); return; }
-    } catch {}
-
-    // fallback none
-    setUpcoming([]);
+      if (!h.error) setMyHqs((h.data ?? []) as any);
+    } catch {
+      setMyHqs([]);
+    }
   };
 
   const loadFeed = async (allianceCode: string) => {
@@ -219,6 +216,7 @@ export default function PlayerDashboardPage() {
     if (!code) {
       setAnnouncements([]);
       setSections([]);
+      setEvents([]);
       return;
     }
 
@@ -243,7 +241,11 @@ export default function PlayerDashboardPage() {
 
     if (!gRes.error) setSections((gRes.data ?? []) as any);
 
-    await loadLiveCards(code);
+    // Events preview (best effort)
+    await loadEventsPreview(code);
+
+    // HQs preview (best effort)
+    if (userId) await loadMyHqsPreview(userId, code);
   };
 
   useEffect(() => {
@@ -255,18 +257,20 @@ export default function PlayerDashboardPage() {
     if (!selectedAlliance) return;
     loadFeed(selectedAlliance);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAlliance, userId]);
+  }, [selectedAlliance]);
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
+
+  const canSeeState = isAppAdmin || hasStateRole;
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0 }}>🧍‍♂️ Your Dashboard (ME)</h2>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <Link to="/owner" style={{ opacity: 0.85 }}>Owner</Link>
-          <Link to="/owner/assignments" style={{ opacity: 0.85 }}>Assign Players</Link>
-          <Link to="/state" style={{ opacity: 0.85 }}>State</Link>
+          {isAppAdmin ? <Link to="/owner" style={{ opacity: 0.85 }}>Owner</Link> : null}
+          {canSeeState ? <Link to="/state" style={{ opacity: 0.85 }}>State</Link> : null}
+          <Link to="/dashboard" style={{ opacity: 0.85 }}>Dashboards</Link>
         </div>
       </div>
 
@@ -299,7 +303,6 @@ export default function PlayerDashboardPage() {
                 <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/announcements`} style={{ opacity: 0.9 }}>
                   Announcements
                 </Link>
-
                 <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/guides`} style={{ opacity: 0.9 }}>
                   Guides
                 </Link>
@@ -338,60 +341,6 @@ export default function PlayerDashboardPage() {
               />
             </div>
           ) : null}
-
-          {/* Live cards */}
-          <div style={{ marginTop: 14, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-            <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-              <div style={{ fontWeight: 900 }}>🏰 My HQs</div>
-              {myHqs.length === 0 ? (
-                <div style={{ marginTop: 10, opacity: 0.75 }}>No HQs saved for this alliance yet.</div>
-              ) : (
-                <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                  {myHqs.slice(0, 4).map((h: any) => (
-                    <div key={String(h.id ?? h.hq_name ?? Math.random())} style={{ opacity: 0.9 }}>
-                      • {h.hq_name || "HQ"} {h.hq_level ? `(Lv ${h.hq_level})` : ""} {h.coord_x != null && h.coord_y != null ? `— (${h.coord_x}, ${h.coord_y})` : ""}
-                    </div>
-                  ))}
-                  {myHqs.length > 4 ? <div style={{ opacity: 0.7 }}>…and {myHqs.length - 4} more</div> : null}
-                </div>
-              )}
-            </div>
-
-            <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-              <div style={{ fontWeight: 900 }}>🗺️ My HQ Slot</div>
-              {!mySlot ? (
-                <div style={{ marginTop: 10, opacity: 0.75 }}>No slot assignment found (yet).</div>
-              ) : (
-                <div style={{ marginTop: 10, opacity: 0.9 }}>
-                  Slot #{mySlot.slot_number ?? "—"} • Grid ({mySlot.slot_x ?? "?"},{mySlot.slot_y ?? "?"})<br />
-                  {mySlot.label ? <>Label: <b>{String(mySlot.label)}</b></> : null}
-                </div>
-              )}
-            </div>
-
-            <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-              <div style={{ fontWeight: 900 }}>📅 Upcoming Events</div>
-              {upcoming.length === 0 ? (
-                <div style={{ marginTop: 10, opacity: 0.75 }}>No upcoming events found (or access blocked).</div>
-              ) : (
-                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                  {upcoming.map((e: any) => (
-                    <div key={String(e.id ?? e.title ?? Math.random())} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: 10 }}>
-                      <div style={{ fontWeight: 800 }}>{e.title || e.name || "Event"}</div>
-                      <div style={{ opacity: 0.85 }}>
-                        {fmt(e._when || null)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {selectedAlliance ? (
-                <div style={{ marginTop: 10 }}>
-                  <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/calendar${isManager ? "" : "?view=1"}`}>Open calendar</Link>
-                </div>
-              ) : null}
-            </div>
-          </div>
 
           {/* Feed cards */}
           <div style={{ marginTop: 14, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
@@ -439,10 +388,60 @@ export default function PlayerDashboardPage() {
                 </div>
               ) : null}
             </div>
+
+            <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontWeight: 900 }}>🗓️ Upcoming Events</div>
+              {events.length === 0 ? (
+                <div style={{ marginTop: 10, opacity: 0.75 }}>
+                  No upcoming events (or calendar table not available).
+                </div>
+              ) : (
+                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                  {events.slice(0, 6).map((e: any, idx: number) => (
+                    <div key={String(e?.id ?? idx)} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: 10 }}>
+                      <div style={{ fontWeight: 800 }}>{pickEventTitle(e)}</div>
+                      <div style={{ opacity: 0.8, fontSize: 12 }}>
+                        {pickEventStart(e) ? String(pickEventStart(e)) : ""}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {selectedAlliance ? (
+                <div style={{ marginTop: 10 }}>
+                  <Link to={`/dashboard/${encodeURIComponent(selectedAlliance)}/calendar${isManager ? "" : "?view=1"}`}>
+                    Open calendar
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+
+            <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontWeight: 900 }}>🏰 Your HQs</div>
+              {myHqs.length === 0 ? (
+                <div style={{ marginTop: 10, opacity: 0.75 }}>
+                  No HQs saved yet — add them in your profile panel.
+                </div>
+              ) : (
+                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                  {myHqs.map((h: any, idx: number) => (
+                    <div key={String(h?.id ?? idx)} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: 10 }}>
+                      <div style={{ fontWeight: 800 }}>
+                        {String(h?.hq_name ?? "HQ")} {h?.hq_level ? `— L${h.hq_level}` : ""}
+                      </div>
+                      <div style={{ opacity: 0.85 }}>
+                        {(h?.coord_x ?? "") !== "" && (h?.coord_y ?? "") !== "" ? `(${h.coord_x}, ${h.coord_y})` : ""}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-            Tip: Everyone uses <b>/me</b>. Owners/R4/R5 also get a “Manage Alliance Dashboard” link.
+            Tip: Everyone uses <b>/me</b>. Owners/R4/R5 also get the “Manage Alliance Dashboard” link.
           </div>
         </>
       )}
