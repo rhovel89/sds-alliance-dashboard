@@ -153,7 +153,12 @@ export default function PlayerDashboardPage() {
       .order("created_at", { ascending: false })
       .limit(5);
 
-    if (!aRes.error) setAnnouncements((aRes.data ?? []) as any);
+    if (aRes.error) {
+      console.error("Announcements error", aRes.error);
+      setErr(`Announcements: ${aRes.error.message ?? String(aRes.error)}`);
+    } else {
+      setAnnouncements((aRes.data ?? []) as any);
+    }
 
     const gRes = await supabase
       .from("guide_sections")
@@ -162,7 +167,12 @@ export default function PlayerDashboardPage() {
       .order("updated_at", { ascending: false })
       .limit(6);
 
-    if (!gRes.error) setSections((gRes.data ?? []) as any);
+    if (gRes.error) {
+      console.error("Guides error", gRes.error);
+      setErr(`Guides: ${gRes.error.message ?? String(gRes.error)}`);
+    } else {
+      setSections((gRes.data ?? []) as any);
+    }
   };
 
   useEffect(() => { loadBasics(); /* eslint-disable-next-line */ }, []);
@@ -286,3 +296,4 @@ export default function PlayerDashboardPage() {
     </div>
   );
 }
+
