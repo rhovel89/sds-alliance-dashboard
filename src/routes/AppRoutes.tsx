@@ -38,6 +38,7 @@ import StateLeadersPage from "../pages/state/StateLeadersPage";
 import OwnerRolesPermissionsV2Page from "../pages/owner/OwnerRolesPermissionsV2Page";
 import OwnerAccessControlPage from "../pages/owner/OwnerAccessControlPage";
 
+import OwnerPlayerAssignmentsPage from "../pages/owner/OwnerPlayerAssignmentsPage";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -116,6 +117,8 @@ export default function AppRoutes() {
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      <Route path="/owner/assignments" element={<RequireAdmin><OwnerPlayerAssignmentsPage /></RequireAdmin>} />
+</Routes>
   );
 }
+

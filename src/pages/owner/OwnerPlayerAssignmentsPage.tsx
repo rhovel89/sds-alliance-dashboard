@@ -2,45 +2,88 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
-type Row = { alliance_code: string; role: string | null };
+type PlayerRow = {
+  id: string;
+  auth_user_id: string;
+  created_at?: string | null;
+};
+
+type AllianceRow = {
+  code: string;
+  name?: string | null;
+};
+
+type MembershipRow = {
+  alliance_code: string;
+  role: string | null;
+};
 
 function upper(v: any) {
   return String(v ?? "").trim().toUpperCase();
 }
 
+const ROLES = ["Member", "R4", "R5", "Owner"] as const;
+
 export default function OwnerPlayerAssignmentsPage() {
+  const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const [authUserId, setAuthUserId] = useState("");
-  const [allianceCode, setAllianceCode] = useState("");
-  const [role, setRole] = useState("Member");
+  const [players, setPlayers] = useState<PlayerRow[]>([]);
+  const [alliances, setAlliances] = useState<AllianceRow[]>([]);
 
-  const [rows, setRows] = useState<Row[]>([]);
+  const [q, setQ] = useState("");
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
 
-  const canRun = useMemo(() => authUserId.trim().length > 10 && allianceCode.trim().length > 0, [authUserId, allianceCode]);
+  const [memberships, setMemberships] = useState<MembershipRow[]>([]);
 
-  const load = async () => {
+  const [newAuthUid, setNewAuthUid] = useState("");
+  const [addAllianceCode, setAddAllianceCode] = useState("");
+  const [addRole, setAddRole] = useState<(typeof ROLES)[number]>("Member");
+
+  const selectedPlayer = useMemo(
+    () => players.find((p) => String(p.id) === String(selectedPlayerId)) ?? null,
+    [players, selectedPlayerId]
+  );
+
+  const filteredPlayers = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return players;
+    return players.filter((p) => {
+      return (
+        String(p.id).toLowerCase().includes(s) ||
+        String(p.auth_user_id).toLowerCase().includes(s)
+      );
+    });
+  }, [players, q]);
+
+  const loadPlayersAlliances = async () => {
+    setLoading(true);
     setErr(null);
     setHint(null);
-    setLoading(true);
 
     try {
-      const { data, error } = await supabase.rpc("owner_list_player_alliances", {
-        p_auth_user_id: authUserId.trim(),
-      } as any);
+      const pRes = await supabase
+        .from("players")
+        .select("id,auth_user_id,created_at")
+        .order("created_at", { ascending: false })
+        .limit(300);
 
-      if (error) throw error;
+      if (pRes.error) throw pRes.error;
+      setPlayers((pRes.data ?? []) as any);
 
-      const next = (data ?? []).map((r: any) => ({
-        alliance_code: upper(r.alliance_code),
-        role: r.role ?? null,
-      })) as Row[];
+      const aRes = await supabase
+        .from("alliances")
+        .select("code,name")
+        .order("code", { ascending: true })
+        .limit(500);
 
-      setRows(next);
-      setHint("Loaded ✅");
-      setTimeout(() => setHint(null), 1200);
+      // if alliances table is locked down, still let page work
+      if (!aRes.error) setAlliances((aRes.data ?? []) as any);
+
+      // choose first player by default
+      const first = (pRes.data ?? [])[0]?.id;
+      if (first && !selectedPlayerId) setSelectedPlayerId(String(first));
     } catch (e: any) {
       setErr(e?.message ?? String(e));
     } finally {
@@ -48,65 +91,132 @@ export default function OwnerPlayerAssignmentsPage() {
     }
   };
 
-  const assign = async () => {
+  const loadMemberships = async (playerId: string) => {
     setErr(null);
     setHint(null);
-    setLoading(true);
+    setMemberships([]);
 
-    try {
-      const { error } = await supabase.rpc("owner_assign_player_to_alliance", {
-        p_auth_user_id: authUserId.trim(),
-        p_alliance_code: upper(allianceCode),
-        p_role: role,
-      } as any);
+    if (!playerId) return;
 
-      if (error) throw error;
+    const mRes = await supabase
+      .from("player_alliances")
+      .select("alliance_code,role")
+      .eq("player_id", playerId)
+      .order("alliance_code", { ascending: true });
 
-      setHint("Assigned ✅");
-      setTimeout(() => setHint(null), 1200);
-      await load();
-    } catch (e: any) {
-      setErr(e?.message ?? String(e));
-    } finally {
-      setLoading(false);
+    if (mRes.error) {
+      setErr(mRes.error.message);
+      return;
     }
-  };
 
-  const remove = async (code: string) => {
-    if (!window.confirm(`Remove player from ${code}?`)) return;
-    setErr(null);
-    setHint(null);
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.rpc("owner_remove_player_from_alliance", {
-        p_auth_user_id: authUserId.trim(),
-        p_alliance_code: upper(code),
-      } as any);
-
-      if (error) throw error;
-
-      setHint("Removed ✅");
-      setTimeout(() => setHint(null), 1200);
-      await load();
-    } catch (e: any) {
-      setErr(e?.message ?? String(e));
-    } finally {
-      setLoading(false);
-    }
+    setMemberships((mRes.data ?? []).map((r: any) => ({
+      alliance_code: upper(r.alliance_code),
+      role: r.role ?? null
+    })) as any);
   };
 
   useEffect(() => {
-    // no-op
+    loadPlayersAlliances();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!selectedPlayerId) return;
+    loadMemberships(selectedPlayerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPlayerId]);
+
+  const createPlayerRow = async () => {
+    const uid = String(newAuthUid ?? "").trim();
+    if (!uid) return;
+
+    setErr(null);
+    setHint(null);
+
+    const ins = await supabase.from("players").insert({ auth_user_id: uid } as any).select("id,auth_user_id,created_at").maybeSingle();
+    if (ins.error) {
+      setErr(ins.error.message);
+      return;
+    }
+
+    setHint("Player row created ✅");
+    setNewAuthUid("");
+    await loadPlayersAlliances();
+    if (ins.data?.id) setSelectedPlayerId(String(ins.data.id));
+  };
+
+  const addOrUpdateMembership = async () => {
+    if (!selectedPlayerId) return;
+    const code = upper(addAllianceCode);
+    if (!code) return;
+
+    setErr(null);
+    setHint(null);
+
+    const payload: any = {
+      player_id: selectedPlayerId,
+      alliance_code: code,
+      role: addRole === "Member" ? null : addRole
+    };
+
+    # First try insert; on duplicate do update.
+    $null = $null
+
+    try {
+      const ins = await supabase.from("player_alliances").insert(payload);
+      if (ins.error) {
+        // duplicate? do update
+        const up = await supabase
+          .from("player_alliances")
+          .update({ role: payload.role } as any)
+          .eq("player_id", selectedPlayerId)
+          .eq("alliance_code", code);
+
+        if (up.error) throw up.error;
+      }
+    } catch (e: any) {
+      setErr(e?.message ?? String(e));
+      return;
+    }
+
+    setHint("Membership saved ✅");
+    setAddAllianceCode("");
+    setAddRole("Member");
+    await loadMemberships(selectedPlayerId);
+  };
+
+  const removeMembership = async (code: string) => {
+    if (!selectedPlayerId) return;
+    if (!window.confirm(`Remove ${upper(code)} from this player?`)) return;
+
+    setErr(null);
+    setHint(null);
+
+    const del = await supabase
+      .from("player_alliances")
+      .delete()
+      .eq("player_id", selectedPlayerId)
+      .eq("alliance_code", upper(code));
+
+    if (del.error) {
+      setErr(del.error.message);
+      return;
+    }
+
+    setHint("Removed ✅");
+    await loadMemberships(selectedPlayerId);
+  };
+
   return (
-    <div style={{ padding: 16, maxWidth: 1050, margin: "0 auto" }}>
+    <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>👥 Owner: Assign Players to Alliances</h2>
+        <h2 style={{ margin: 0 }}>🛠️ Owner: Player Assignments</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Link to="/owner" style={{ opacity: 0.85 }}>Owner Home</Link>
-          <Link to="/me" style={{ opacity: 0.85 }}>/me</Link>
+          <Link to="/owner/players" style={{ opacity: 0.85 }}>Players</Link>
+          <Link to="/owner/state" style={{ opacity: 0.85 }}>State Manager</Link>
+          <Link to="/owner/state-leaders" style={{ opacity: 0.85 }}>State Leaders</Link>
+          <Link to="/me" style={{ opacity: 0.85 }}>ME</Link>
         </div>
       </div>
 
@@ -116,87 +226,146 @@ export default function OwnerPlayerAssignmentsPage() {
         </div>
       ) : null}
 
-      <div style={{ marginTop: 12, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-        <div style={{ opacity: 0.8, fontSize: 13 }}>
-          Paste the player's <b>Auth User ID</b> (UUID from Supabase Auth / users). Then assign them to alliance codes.
+      {hint ? (
+        <div style={{ marginTop: 12, padding: 12, border: "1px solid rgba(0,255,0,0.20)", borderRadius: 10, opacity: 0.95 }}>
+          {hint}
         </div>
+      ) : null}
 
-        <div style={{ marginTop: 12, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ opacity: 0.8, fontSize: 12 }}>Player Auth User ID (UUID)</span>
-            <input
-              value={authUserId}
-              onChange={(e) => setAuthUserId(e.target.value)}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              style={{ padding: 10, borderRadius: 10 }}
-            />
-          </label>
+      {loading ? (
+        <div style={{ padding: 16 }}>Loading…</div>
+      ) : (
+        <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "380px 1fr", gap: 16 }}>
+          {/* Left: players */}
+          <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+            <div style={{ fontWeight: 900 }}>Players</div>
+            <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+              Select a player row (players.auth_user_id). If a user has never used the app, create their player row using their Auth UID.
+            </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ opacity: 0.8, fontSize: 12 }}>Alliance Code</span>
-            <input
-              value={allianceCode}
-              onChange={(e) => setAllianceCode(e.target.value)}
-              placeholder="WOC / OZR / SDS ..."
-              style={{ padding: 10, borderRadius: 10 }}
-            />
-          </label>
+            <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search by player id or auth uid…"
+                style={{ padding: 10, borderRadius: 10 }}
+              />
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ opacity: 0.8, fontSize: 12 }}>Role</span>
-            <select value={role} onChange={(e) => setRole(e.target.value)} style={{ padding: 10, borderRadius: 10 }}>
-              <option value="Member">Member</option>
-              <option value="R4">R4</option>
-              <option value="R5">R5</option>
-              <option value="Owner">Owner</option>
-            </select>
-          </label>
-        </div>
+              <select
+                value={selectedPlayerId}
+                onChange={(e) => setSelectedPlayerId(e.target.value)}
+                style={{ padding: 10, borderRadius: 10 }}
+              >
+                {filteredPlayers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {String(p.id).slice(0, 8)}… — {String(p.auth_user_id).slice(0, 12)}…
+                  </option>
+                ))}
+              </select>
 
-        <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <button onClick={load} disabled={loading || authUserId.trim().length < 10} style={{ padding: "8px 12px", borderRadius: 10 }}>
-            {loading ? "Loading…" : "Load memberships"}
-          </button>
-
-          <button onClick={assign} disabled={loading || !canRun} style={{ padding: "8px 12px", borderRadius: 10, fontWeight: 900 }}>
-            Assign / Update Role
-          </button>
-
-          {hint ? <span style={{ opacity: 0.85 }}>{hint}</span> : null}
-        </div>
-      </div>
-
-      <div style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-        <div style={{ fontWeight: 900 }}>Current memberships</div>
-
-        {rows.length === 0 ? (
-          <div style={{ marginTop: 10, opacity: 0.75 }}>No memberships loaded.</div>
-        ) : (
-          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-            {rows.map((r) => (
-              <div key={r.alliance_code} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                  <div style={{ fontWeight: 900 }}>
-                    {r.alliance_code} {r.role ? `(${String(r.role)})` : ""}
-                  </div>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <Link to={`/me?alliance=${encodeURIComponent(r.alliance_code)}`} style={{ fontWeight: 900 }}>
-                      Open in /me
-                    </Link>
-                    <button onClick={() => remove(r.alliance_code)} style={{ padding: "6px 10px", borderRadius: 10 }}>
-                      Remove
-                    </button>
-                  </div>
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 10 }}>
+                <div style={{ fontWeight: 900 }}>Create player row</div>
+                <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                  <input
+                    value={newAuthUid}
+                    onChange={(e) => setNewAuthUid(e.target.value)}
+                    placeholder="Auth UID (uuid)…"
+                    style={{ flex: 1, padding: 10, borderRadius: 10 }}
+                  />
+                  <button onClick={createPlayerRow} style={{ padding: "10px 12px", borderRadius: 10 }}>
+                    Create
+                  </button>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        )}
-      </div>
 
-      <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
-        Notes: This uses RPC functions so it works even if RLS blocks direct table writes.
-      </div>
+          {/* Right: memberships */}
+          <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontWeight: 900 }}>Memberships</div>
+                <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+                  Assign this player to alliances. They will see them on <b>/me</b> and can switch dashboards.
+                </div>
+              </div>
+              {selectedPlayer ? (
+                <div style={{ opacity: 0.8, fontSize: 12 }}>
+                  player_id: <code>{selectedPlayer.id}</code>
+                </div>
+              ) : null}
+            </div>
+
+            <div style={{ marginTop: 12, display: "grid", gap: 10, gridTemplateColumns: "1fr 160px 140px" }}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <span style={{ opacity: 0.8, fontSize: 12 }}>Alliance</span>
+                {alliances.length > 0 ? (
+                  <select
+                    value={addAllianceCode}
+                    onChange={(e) => setAddAllianceCode(e.target.value)}
+                    style={{ padding: 10, borderRadius: 10 }}
+                  >
+                    <option value="">Select alliance…</option>
+                    {alliances.map((a) => (
+                      <option key={a.code} value={a.code}>
+                        {upper(a.code)} — {a.name ?? ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={addAllianceCode}
+                    onChange={(e) => setAddAllianceCode(e.target.value)}
+                    placeholder="Alliance code (e.g. WOC)…"
+                    style={{ padding: 10, borderRadius: 10 }}
+                  />
+                )}
+              </div>
+
+              <div style={{ display: "grid", gap: 6 }}>
+                <span style={{ opacity: 0.8, fontSize: 12 }}>Role</span>
+                <select value={addRole} onChange={(e) => setAddRole(e.target.value as any)} style={{ padding: 10, borderRadius: 10 }}>
+                  {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+
+              <div style={{ display: "grid", gap: 6 }}>
+                <span style={{ opacity: 0.8, fontSize: 12 }}>&nbsp;</span>
+                <button onClick={addOrUpdateMembership} style={{ padding: "10px 12px", borderRadius: 10, fontWeight: 900 }}>
+                  Save
+                </button>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+              {memberships.length === 0 ? (
+                <div style={{ opacity: 0.75 }}>No alliances assigned yet.</div>
+              ) : (
+                memberships.map((m) => (
+                  <div key={m.alliance_code} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                      <div style={{ fontWeight: 900 }}>
+                        {upper(m.alliance_code)} {m.role ? `(${String(m.role)})` : "(Member)"}
+                      </div>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <Link to={`/me?alliance=${encodeURIComponent(upper(m.alliance_code))}`}>Open in /me</Link>
+                        <Link to={`/dashboard/${encodeURIComponent(upper(m.alliance_code))}`}>Alliance</Link>
+                        <button onClick={() => removeMembership(m.alliance_code)} style={{ padding: "6px 10px", borderRadius: 10 }}>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
+              State roles are managed from <b>Owner → State Manager</b> / <b>State Leaders</b>.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
