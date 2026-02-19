@@ -1,207 +1,287 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
-import { useAllianceManagerAccess } from "../../hooks/useAllianceManagerAccess";
+import { useHQPermissions } from "../../hooks/useHQPermissions";
 
-type Section = {
+type Mode = "readonly" | "discussion";
+
+type SectionRow = {
   id: string;
   alliance_code: string;
   title: string;
   description?: string | null;
-  mode?: "readonly" | "discussion" | string | null;
+  // newer schema
+  mode?: Mode | string | null;
+  // older schema (some builds used boolean)
+  readonly?: boolean | null;
   updated_at?: string | null;
 };
 
-function getAllianceFromParams(p: any) {
+function upper(v: any) {
+  return String(v ?? "").trim().toUpperCase();
+}
+
+// supports common param names used across the app
+function allianceFromParams(p: Record<string, string | undefined>) {
   const raw =
-    p?.alliance_id ??
-    p?.alliance_code ??
-    p?.code ??
-    p?.alliance ??
+    (p as any).alliance_id ??
+    (p as any).alliance_code ??
+    (p as any).code ??
+    (p as any).alliance ??
     "";
-  return String(raw || "").trim().toUpperCase();
+  return upper(raw);
+}
+
+function rowMode(s: SectionRow): Mode {
+  const m = String(s.mode ?? "").trim().toLowerCase();
+  if (m === "readonly" || m === "discussion") return m as Mode;
+  return s.readonly ? "readonly" : "discussion";
 }
 
 export default function AllianceGuidesPanel() {
   const params = useParams();
-  const allianceCode = useMemo(() => getAllianceFromParams(params as any), [params]);
+  const allianceCode = useMemo(() => allianceFromParams(params as any), [params]);
 
-  const { isManager, isAppAdmin } = useAllianceManagerAccess(allianceCode);
-  const canWrite = isAppAdmin || isManager; // Owner/R4/R5 + app admins
+  // NOTE: we don’t change your permission system here.
+  // Whatever useHQPermissions returns is what controls Create Section visibility.
+  const { canEdit } = useHQPermissions(allianceCode);
 
-  const [sections, setSections] = useState<Section[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [sections, setSections] = useState<SectionRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
-  const [mode, setMode] = useState<"discussion" | "readonly">("discussion");
+  const [mode, setMode] = useState<Mode>("discussion");
 
-  const fetchSections = async () => {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = useMemo(
+    () => sections.find((s) => s.id === selectedId) ?? null,
+    [sections, selectedId]
+  );
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      setUserId(data?.user?.id ?? null);
+    })();
+  }, []);
+
+  const refetch = async () => {
     if (!allianceCode) return;
+
     setLoading(true);
     setErr(null);
 
-    // Try with 'mode' column first, fallback if schema older
-    const q1 = await supabase
-      .from("guide_sections")
-      .select("id, alliance_code, title, description, mode, updated_at")
-      .eq("alliance_code", allianceCode)
-      .order("updated_at", { ascending: false });
+    try {
+      // Try the richer select first (mode/readonly exist on newer builds)
+      const res = await supabase
+        .from("guide_sections")
+        .select("id, alliance_code, title, description, mode, readonly, updated_at")
+        .eq("alliance_code", allianceCode)
+        .order("updated_at", { ascending: false })
+        .limit(200);
 
-    if (!q1.error) {
-      setSections((q1.data || []) as any);
+      if (res.error) {
+        // Fallback: minimal columns
+        const res2 = await supabase
+          .from("guide_sections")
+          .select("id, alliance_code, title, description, updated_at")
+          .eq("alliance_code", allianceCode)
+          .order("updated_at", { ascending: false })
+          .limit(200);
+
+        if (res2.error) throw res2.error;
+        setSections((res2.data ?? []) as any);
+      } else {
+        setSections((res.data ?? []) as any);
+      }
+    } catch (e: any) {
+      console.error(e);
+      setErr(e?.message ?? String(e));
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const msg = (q1.error.message || "").toLowerCase();
-    const missingMode = msg.includes("column") && msg.includes("mode");
-
-    if (!missingMode) {
-      setErr(q1.error.message);
-      setLoading(false);
-      return;
-    }
-
-    const q2 = await supabase
-      .from("guide_sections")
-      .select("id, alliance_code, title, description, updated_at, readonly")
-      .eq("alliance_code", allianceCode)
-      .order("updated_at", { ascending: false });
-
-    if (q2.error) {
-      setErr(q2.error.message);
-      setLoading(false);
-      return;
-    }
-
-    const mapped = (q2.data || []).map((r: any) => ({
-      ...r,
-      mode: r.readonly ? "readonly" : "discussion",
-    }));
-
-    setSections(mapped as any);
-    setLoading(false);
   };
 
   useEffect(() => {
-    fetchSections();
+    refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allianceCode]);
 
   const createSection = async () => {
     const clean = title.trim();
-    if (!clean) return alert("Section title required.");
-    if (!allianceCode) return alert("Missing alliance code in URL (/dashboard/:CODE/guides).");
+    if (!clean) return;
+
+    if (!allianceCode) return alert("Missing alliance code in URL (/dashboard/<CODE>/guides).");
+
+    let uid = userId;
+    if (!uid) {
+      const { data } = await supabase.auth.getUser();
+      uid = data?.user?.id ?? null;
+      setUserId(uid);
+    }
+    if (!uid) return alert("Not logged in.");
 
     setErr(null);
 
-    // Attempt A: insert with mode
-    const a = await supabase
-      .from("guide_sections")
-      .insert({
-        alliance_code: allianceCode,
-        title: clean,
-        description: null,
-        mode,
-      } as any)
-      .select("id, alliance_code, title, description, mode, updated_at")
-      .single();
+    // Insert attempt A: mode + created_by (newer schema)
+    const payloadA: any = {
+      alliance_code: allianceCode,
+      title: clean,
+      description: null,
+      mode,
+      created_by: uid,
+    };
 
-    if (!a.error) {
-      setTitle("");
-      setMode("discussion");
-      setSections((prev) => [a.data as any, ...prev]);
-      return;
+    let ins = await supabase.from("guide_sections").insert(payloadA).select("id").single();
+
+    if (ins.error) {
+      const msg = String(ins.error.message ?? "").toLowerCase();
+      const missingMode = msg.includes("column") && msg.includes("mode");
+      const missingCreatedBy = msg.includes("column") && msg.includes("created_by");
+
+      // Insert attempt B: readonly boolean (older schema), optionally include created_by if it exists
+      if (missingMode || missingCreatedBy) {
+        const payloadB: any = {
+          alliance_code: allianceCode,
+          title: clean,
+          description: null,
+          readonly: mode === "readonly",
+        };
+        if (!missingCreatedBy) payloadB.created_by = uid;
+
+        const ins2 = await supabase.from("guide_sections").insert(payloadB).select("id").single();
+        if (ins2.error) {
+          console.error(ins2.error);
+          setErr(ins2.error.message);
+          alert(ins2.error.message);
+          return;
+        }
+      } else {
+        console.error(ins.error);
+        setErr(ins.error.message);
+        alert(ins.error.message);
+        return;
+      }
     }
 
-    const msg = (a.error.message || "").toLowerCase();
-    const missingMode = msg.includes("column") && msg.includes("mode");
-
-    if (!missingMode) {
-      setErr(a.error.message);
-      return;
-    }
-
-    // Attempt B: fallback to readonly boolean schema
-    const b = await supabase
-      .from("guide_sections")
-      .insert({
-        alliance_code: allianceCode,
-        title: clean,
-        description: null,
-        readonly: mode === "readonly",
-      } as any)
-      .select("id, alliance_code, title, description, updated_at, readonly")
-      .single();
-
-    if (b.error) {
-      setErr(b.error.message);
-      return;
-    }
-
-    const row: any = { ...(b.data as any), mode: (b.data as any)?.readonly ? "readonly" : "discussion" };
     setTitle("");
     setMode("discussion");
-    setSections((prev) => [row, ...prev]);
+    await refetch();
   };
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-        <div>
-          <div style={{ fontWeight: 900, fontSize: 18 }}>Guides</div>
-          <div style={{ opacity: 0.8, fontSize: 12 }}>/dashboard/{allianceCode || "?"}/guides</div>
-        </div>
+    <div style={{ padding: 18 }}>
+      <div style={{ opacity: 0.8, fontSize: 12 }}>
+        Guides {allianceCode ? `/dashboard/${allianceCode}/guides` : "(missing alliance code)"}
       </div>
 
-      {canWrite ? (
-        <div style={{ border: "1px solid #2a2a2a", borderRadius: 12, padding: 12, display: "grid", gap: 10 }}>
-          <div style={{ fontWeight: 800 }}>Create Section</div>
+      {canEdit ? (
+        <div style={{ marginTop: 12, border: "1px solid #222", borderRadius: 12, padding: 12 }}>
+          <div style={{ fontWeight: 900, marginBottom: 10 }}>Create Section</div>
 
           <input
-            placeholder="Section title (ex: Hunt Mastery)"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            style={{ padding: 10, borderRadius: 10 }}
+            placeholder="Section title (ex: Hunt Mastery)"
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #333" }}
           />
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontSize: 12, opacity: 0.85 }}>Mode</span>
-            <select value={mode} onChange={(e) => setMode(e.target.value as any)} style={{ padding: 10, borderRadius: 10 }}>
-              <option value="discussion">Discussion</option>
-              <option value="readonly">Read-only</option>
-            </select>
-          </label>
+          <div style={{ marginTop: 10 }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontSize: 12, opacity: 0.85 }}>Mode</span>
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value as Mode)}
+                style={{ padding: 10, borderRadius: 10, border: "1px solid #333" }}
+              >
+                <option value="discussion">Discussion</option>
+                <option value="readonly">Read only</option>
+              </select>
+            </label>
+          </div>
 
-          <button onClick={createSection} style={{ padding: "10px 12px", borderRadius: 10, fontWeight: 900 }}>
+          <button
+            type="button"
+            onClick={createSection}
+            style={{
+              marginTop: 10,
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: "1px solid #333",
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
             Save Section
           </button>
 
-          {err ? <div style={{ color: "#ff9b9b", fontSize: 12 }}>Error: {err}</div> : null}
+          {err ? (
+            <div style={{ marginTop: 10, color: "#ff8080", fontSize: 12, whiteSpace: "pre-wrap" }}>
+              {err}
+            </div>
+          ) : null}
         </div>
       ) : (
-        <div style={{ opacity: 0.8, fontSize: 12 }}>
-          View only. Owner / R4 / R5 can create sections.
-        </div>
+        <div style={{ marginTop: 12, opacity: 0.75, fontSize: 12 }}>View only</div>
       )}
 
-      <div style={{ display: "grid", gap: 10 }}>
-        {loading ? <div style={{ opacity: 0.8 }}>Loading…</div> : null}
+      <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={{ border: "1px solid #222", borderRadius: 12, padding: 12 }}>
+          <div style={{ fontWeight: 900, marginBottom: 10 }}>Sections</div>
 
-        {!loading && sections.length === 0 ? (
-          <div style={{ opacity: 0.75 }}>No sections yet.</div>
-        ) : null}
+          {loading ? <div style={{ opacity: 0.75 }}>Loading…</div> : null}
 
-        {sections.map((s) => (
-          <div key={s.id} style={{ border: "1px solid #222", borderRadius: 12, padding: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-              <div style={{ fontWeight: 900 }}>{s.title}</div>
-              <div style={{ opacity: 0.7, fontSize: 12 }}>{String(s.mode || "").toUpperCase()}</div>
+          {!loading && sections.length === 0 ? (
+            <div style={{ opacity: 0.75 }}>No sections yet.</div>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              {sections.map((s) => {
+                const m = rowMode(s);
+                const active = selectedId === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSelectedId(s.id)}
+                    style={{
+                      textAlign: "left",
+                      padding: 12,
+                      borderRadius: 10,
+                      border: active ? "2px solid #2a60ff" : "1px solid #333",
+                      background: "transparent",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ fontWeight: 900 }}>{s.title}</div>
+                    <div style={{ opacity: 0.8, fontSize: 12 }}>{m.toUpperCase()}</div>
+                  </button>
+                );
+              })}
             </div>
-            {s.description ? <div style={{ opacity: 0.85, marginTop: 6 }}>{s.description}</div> : null}
-          </div>
-        ))}
+          )}
+        </div>
+
+        <div style={{ border: "1px solid #222", borderRadius: 12, padding: 12 }}>
+          <div style={{ fontWeight: 900, marginBottom: 10 }}>Selected section</div>
+
+          {!selected ? (
+            <div style={{ opacity: 0.75 }}>Click a section on the left.</div>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ fontSize: 18, fontWeight: 900 }}>{selected.title}</div>
+              <div style={{ opacity: 0.8, fontSize: 12 }}>Mode: {rowMode(selected).toUpperCase()}</div>
+              <div style={{ opacity: 0.75, fontSize: 12 }}>
+                Section ID: <code>{selected.id}</code>
+              </div>
+              <div style={{ opacity: 0.7, fontSize: 12 }}>
+                (Next step later: attach guides/posts inside this section.)
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
