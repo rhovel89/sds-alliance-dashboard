@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useHQPermissions } from "../../hooks/useHQPermissions";
+import { useAllianceManagerAccess } from "../../hooks/useAllianceManagerAccess";
 import { RecurringControls } from "../../components/calendar/RecurringControls";
 import {
   expandEventsForMonth,
@@ -69,7 +70,9 @@ const EVENT_TYPES = [
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = (alliance_id || "").toUpperCase();
-  const { canEdit } = useHQPermissions(upperAlliance);
+  const { canEdit: canEditHQ } = useHQPermissions(upperAlliance);
+  const { isManager, isAppAdmin } = useAllianceManagerAccess(upperAlliance);
+  const canEdit = canEditHQ || isAppAdmin || isManager;
 
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -652,6 +655,7 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
 
 
 
