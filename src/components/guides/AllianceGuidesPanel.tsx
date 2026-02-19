@@ -4,8 +4,7 @@ import { supabase } from "../../lib/supabase";
 
 type Section = {
   id: string;
-  alliance_code: string;
-  title: string;
+  alliance_code: __sectionAllianceCodetitle: string;
   description?: string | null;
   mode: "readonly" | "discussion";
   updated_at?: string | null;
@@ -16,7 +15,9 @@ function getAllianceCodeFromParams(params: Record<string, string | undefined>) {
 }
 
 export default function AllianceGuidesPanel() {
-  const params = useParams();
+  
+  const __sectionAllianceCode = String(window.location.pathname.split("/")[2] ?? "").toUpperCase();
+const params = useParams();
   const allianceCode = useMemo(() => getAllianceCodeFromParams(params as any).toUpperCase().trim(), [params]);
 
   const [sections, setSections] = useState<Section[]>([]);
@@ -85,3 +86,4 @@ export default function AllianceGuidesPanel() {
     </div>
   );
 }
+
