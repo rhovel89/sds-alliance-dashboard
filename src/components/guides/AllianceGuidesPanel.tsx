@@ -9,6 +9,7 @@ type Section = {
   id: string;
   alliance_code: string;
   title: string;
+  title: string;
   description?: string | null;
   mode: "readonly" | "discussion";
   updated_at?: string | null;
