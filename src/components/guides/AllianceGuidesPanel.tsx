@@ -4,7 +4,8 @@ import { supabase } from "../../lib/supabase";
 
 type Section = {
   id: string;
-  alliance_code: __sectionAllianceCodetitle: string;
+  alliance_code: string;
+  title: string;
   description?: string | null;
   mode: "readonly" | "discussion";
   updated_at?: string | null;
