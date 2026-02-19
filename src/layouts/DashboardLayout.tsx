@@ -1,7 +1,6 @@
 import { Outlet, NavLink, useParams, Navigate } from "react-router-dom";
 import "../styles/dashboard-zombie.css";
 import AllianceAnnouncementsPanel from "../components/announcements/AllianceAnnouncementsPanel";
-import AllianceGuidesPanel from "../components/guides/AllianceGuidesPanel";
 import AllianceDashboardExtras from "../components/alliance/AllianceDashboardExtras";
 
 export default function DashboardLayout() {
@@ -49,5 +48,6 @@ export default function DashboardLayout() {
       </>
   );
 }
+
 
 
