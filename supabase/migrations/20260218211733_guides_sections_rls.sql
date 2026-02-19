@@ -1,5 +1,6 @@
 -- SAFE RLS: allow members to READ guide sections; allow Owner/R4/R5 (and app admins) to WRITE sections.
--- Creates policies only if missing. Applies to whichever sections table exists among common names.
+-- Does not drop/overwrite existing policies; creates only if missing.
+-- Also adds an extra policy so R4/R5 can WRITE alliance_events (without touching existing policies).
 
 do $$
 declare
@@ -9,27 +10,29 @@ declare
   is_uuid boolean := false;
   admin_prefix text := '';
 begin
-  -- Optional app-admin bypass (only if function exists)
   if to_regprocedure('public.is_app_admin(uuid)') is not null then
     admin_prefix := 'public.is_app_admin(auth.uid()) OR ';
   end if;
 
+  --------------------------------------------------------------------
+  -- GUIDE SECTIONS (try common table names)
+  --------------------------------------------------------------------
   foreach t in array ARRAY[
     'alliance_guide_sections',
     'alliance_guides_sections',
     'guide_sections',
     'guide_section',
-    'alliance_guide_section'
+    'alliance_guide_section',
+    'alliance_guide_sections_v2'
   ]
   loop
     if to_regclass('public.' || t) is null then
       continue;
     end if;
 
-    -- Enable RLS
     execute format('alter table public.%I enable row level security', t);
 
-    -- Find alliance column on the sections table
+    -- Find alliance column
     select c.column_name, c.udt_name
       into col, col_udt
     from information_schema.columns c
@@ -50,16 +53,14 @@ begin
 
     is_uuid := (col_udt = 'uuid');
 
-    --------------------------------------------------------------------
-    -- SELECT: members can read + admins (if available)
-    --------------------------------------------------------------------
+    -- SELECT: members can read (plus app admins if function exists)
     if not exists (
       select 1 from pg_policies
-      where schemaname='public' and tablename=t and policyname='guides_sections_select_members'
+      where schemaname='public' and tablename=t and policyname='gs_select_members_v2'
     ) then
       if is_uuid then
         execute format($pol$
-          create policy guides_sections_select_members
+          create policy gs_select_members_v2
           on public.%I
           for select
           using (
@@ -75,7 +76,7 @@ begin
         $pol$, t, admin_prefix, col);
       else
         execute format($pol$
-          create policy guides_sections_select_members
+          create policy gs_select_members_v2
           on public.%I
           for select
           using (
@@ -91,17 +92,15 @@ begin
       end if;
     end if;
 
-    --------------------------------------------------------------------
-    -- WRITE: Owner/R4/R5 can insert/update/delete (FOR ALL), + admins
-    -- NOTE: FOR ALL is required (can't do "for insert, update, delete")
-    --------------------------------------------------------------------
+    -- WRITE: Owner/R4/R5 can insert/update/delete (plus app admins)
+    -- IMPORTANT: use "FOR ALL" (no commas)
     if not exists (
       select 1 from pg_policies
-      where schemaname='public' and tablename=t and policyname='guides_sections_manage_r4r5'
+      where schemaname='public' and tablename=t and policyname='gs_manage_r4r5_v2'
     ) then
       if is_uuid then
         execute format($pol$
-          create policy guides_sections_manage_r4r5
+          create policy gs_manage_r4r5_v2
           on public.%I
           for all
           using (
@@ -129,7 +128,7 @@ begin
         $pol$, t, admin_prefix, col, admin_prefix, col);
       else
         execute format($pol$
-          create policy guides_sections_manage_r4r5
+          create policy gs_manage_r4r5_v2
           on public.%I
           for all
           using (
@@ -156,6 +155,47 @@ begin
       end if;
     end if;
 
-    raise notice 'Guide sections RLS OK on % (alliance column %)', t, col;
+    raise notice 'Guide sections RLS verified on table % (alliance col %)', t, col;
   end loop;
+
+  --------------------------------------------------------------------
+  -- ALLIANCE EVENTS: add a policy so R4/R5 can WRITE (without touching existing)
+  --------------------------------------------------------------------
+  if to_regclass('public.alliance_events') is not null then
+    execute 'alter table public.alliance_events enable row level security';
+
+    if not exists (
+      select 1 from pg_policies
+      where schemaname='public' and tablename='alliance_events' and policyname='ae_manage_r4r5_v2'
+    ) then
+      execute $pol$
+        create policy ae_manage_r4r5_v2
+        on public.alliance_events
+        for all
+        using (
+          (to_regprocedure('public.is_app_admin(uuid)') is not null and public.is_app_admin(auth.uid()))
+          or exists (
+            select 1
+            from public.players me
+            join public.player_alliances pa on pa.player_id = me.id
+            where me.auth_user_id = auth.uid()
+              and pa.alliance_code = alliance_events.alliance_id
+              and lower(coalesce(pa.role,'')) in ('owner','r4','r5')
+          )
+        )
+        with check (
+          (to_regprocedure('public.is_app_admin(uuid)') is not null and public.is_app_admin(auth.uid()))
+          or exists (
+            select 1
+            from public.players me
+            join public.player_alliances pa on pa.player_id = me.id
+            where me.auth_user_id = auth.uid()
+              and pa.alliance_code = alliance_events.alliance_id
+              and lower(coalesce(pa.role,'')) in ('owner','r4','r5')
+          )
+        );
+      $pol$;
+    end if;
+  end if;
+
 end $$;
