@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 function currentAllianceCode(): string {
-  // Source of truth: URL like /dashboard/WOC/guides
   if (typeof window === "undefined") return "";
-  const m = window.location.pathname.match(/\/dashboard\/([^\/]+)\//i);
+  const raw = `${window.location.pathname || ""}${window.location.hash || ""}`;
+  const m = raw.match(/\/dashboard\/([^\/?#]+)(?:\/|$)/i);
   return String(m?.[1] ?? "").toUpperCase();
 }
 
@@ -13,8 +13,7 @@ const __guidesAllianceCode = String(window.location.pathname.split('/')[2] ?? ''
 
 type Section = {
   id: string;
-  alliance_code: currentAllianceCode()
-  title: string;
+  alliance_code: string;
   title: string;
   description?: string | null;
   mode: "readonly" | "discussion";
@@ -40,7 +39,7 @@ const params = useParams();
       const { data, error } = await supabase
         .from("guide_sections")
         .select("id, alliance_code, title, description, mode, updated_at")
-        .eq("alliance_code", currentAllianceCode()))
+        .eq("alliance_code", currentAllianceCode())
         .order("updated_at", { ascending: false })
         .limit(6);
 
@@ -97,4 +96,3 @@ const params = useParams();
     </div>
   );
 }
-
