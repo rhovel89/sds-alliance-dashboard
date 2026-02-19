@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
+function getDashboardAllianceCode(): string {
+  if (typeof window === "undefined") return "";
+  const raw = `${window.location.pathname || ""}${window.location.hash || ""}`;
+  const m = raw.match(/\/dashboard\/([^\/?#]+)(?:\/|$)/i);
+  return String(m?.[1] ?? "").toUpperCase();
+}
+
 type Section = {
   id: string;
   alliance_code: string;
