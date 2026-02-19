@@ -257,14 +257,6 @@ export default function AllianceCalendarPage() {
 
     const cleanTitle = form.title.trim();
 
-    const eventType =
-      form.event_type === "__new__"
-        ? (form.new_event_type ?? "").trim()
-        : form.event_type;
-
-    if (form.event_type === "__new__" && !eventType) {
-      return alert("New event type name required.");
-    }
     
     let eventType = form.event_type;
 
