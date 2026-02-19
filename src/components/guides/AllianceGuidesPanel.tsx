@@ -2,74 +2,61 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
-type SectionRow = {
+type Section = {
   id: string;
-  alliance_code: string;
+  alliance_code?: string | null;
   title: string;
+  description?: string | null;
+  mode?: "readonly" | "discussion" | string | null;
   readonly?: boolean | null;
-  created_at?: string | null;
   updated_at?: string | null;
+  created_at?: string | null;
 };
 
-type Props = {
-  // Optional: if some parent already passes the alliance code
-  allianceCode?: string | null;
-};
-
-function deriveAllianceCodeFromUrl(): string {
-  if (typeof window === "undefined") return "";
-  const raw = `${window.location.pathname || ""}${window.location.hash || ""}`;
-  const m = raw.match(/\/dashboard\/([^\/?#]+)(?:\/|$)/i);
-  return String(m?.[1] ?? "").toUpperCase();
+function normAllianceCode(v?: string | null) {
+  return String(v ?? "").trim().toUpperCase();
 }
 
-export default function AllianceGuidesPanel(props: Props) {
-  const params = useParams() as any;
+export function AllianceGuidesPanel(props: { allianceCode?: string | null; limit?: number }) {
+  const params = useParams();
 
+  // Supports multiple route param naming styles: :alliance_id, :alliance_code, :code
   const allianceCode = useMemo(() => {
-    const fromProps = String(props?.allianceCode ?? "").trim();
-    const fromParams =
-      String(params?.alliance_id ?? "").trim() ||
-      String(params?.alliance_code ?? "").trim() ||
-      String(params?.code ?? "").trim();
+    const p: any = params as any;
+    return normAllianceCode(props.allianceCode ?? p.alliance_id ?? p.alliance_code ?? p.code ?? p.alliance);
+  }, [params, props.allianceCode]);
 
-    const fromUrl = deriveAllianceCodeFromUrl();
+  const limit = props.limit ?? 100;
 
-    return (fromProps || fromParams || fromUrl || "").toUpperCase();
-  }, [props?.allianceCode, params]);
-
+  const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
-  const [sections, setSections] = useState<SectionRow[]>([]);
   const [newTitle, setNewTitle] = useState("");
+  const [newReadonly, setNewReadonly] = useState(false);
 
   const refetch = async () => {
-    if (!allianceCode) {
-      setSections([]);
-      setErrorMsg("Alliance code missing. Open Guides from /dashboard/:CODE/guides (ex: /dashboard/WOC/guides).");
-      return;
-    }
-
+    if (!allianceCode) return;
     setLoading(true);
-    setErrorMsg(null);
+    setErr(null);
 
     const { data, error } = await supabase
       .from("guide_sections")
-      .select("id, alliance_code, title, readonly, created_at, updated_at")
+      .select("id, alliance_code, title, description, mode, readonly, updated_at, created_at")
       .eq("alliance_code", allianceCode)
-      .order("updated_at", { ascending: false });
-
-    setLoading(false);
+      .order("updated_at", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
     if (error) {
-      console.error(error);
-      setErrorMsg(error.message);
-      return;
+      setErr(error.message);
+      setSections([]);
+    } else {
+      setSections((data ?? []) as Section[]);
     }
 
-    setSections((data || []) as SectionRow[]);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -79,92 +66,133 @@ export default function AllianceGuidesPanel(props: Props) {
 
   const createSection = async () => {
     const title = newTitle.trim();
+    if (!allianceCode) return alert("No alliance code found in URL.");
     if (!title) return;
 
-    if (!allianceCode) {
-      alert("Alliance code missing. Open Guides from /dashboard/:CODE/guides (ex: /dashboard/WOC/guides).");
-      return;
-    }
-
     setSaving(true);
-    setErrorMsg(null);
+    setErr(null);
 
-    // IMPORTANT: never send blank alliance_code
-    const payload = {
+    // Prefer schema that supports "mode" (readonly/discussion)
+    const payloadA: any = {
       alliance_code: allianceCode,
       title,
-      readonly: false,
+      description: null,
+      mode: newReadonly ? "readonly" : "discussion",
     };
 
-    console.log("Creating guide section payload:", payload);
+    let inserted: any = null;
 
-    const { error } = await supabase.from("guide_sections").insert(payload);
+    const resA = await supabase.from("guide_sections").insert(payloadA).select("*").single();
+    if (!resA.error) {
+      inserted = resA.data;
+    } else {
+      const msg = String(resA.error.message ?? "").toLowerCase();
 
-    setSaving(false);
+      // Fallback schema that supports "readonly" boolean
+      if (msg.includes("column") && msg.includes("mode")) {
+        const payloadB: any = {
+          alliance_code: allianceCode,
+          title,
+          description: null,
+          readonly: !!newReadonly,
+        };
 
-    if (error) {
-      console.error(error);
-      setErrorMsg(error.message);
-      alert(error.message);
-      return;
+        const resB = await supabase.from("guide_sections").insert(payloadB).select("*").single();
+        if (resB.error) {
+          setErr(resB.error.message);
+          setSaving(false);
+          return;
+        }
+        inserted = resB.data;
+      } else {
+        setErr(resA.error.message);
+        setSaving(false);
+        return;
+      }
     }
 
     setNewTitle("");
+    // optimistic update
+    setSections((prev) => [inserted as Section, ...prev].slice(0, limit));
+    setSaving(false);
+
+    // also refetch (keeps ordering/columns correct)
     await refetch();
   };
 
   return (
-    <div style={{ padding: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+    <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontWeight: 900, fontSize: 18 }}>📚 Guides</div>
+          <div style={{ fontWeight: 900, fontSize: 18 }}>Guides</div>
           <div style={{ opacity: 0.75, fontSize: 12 }}>
-            Alliance: <strong>{allianceCode || "(missing)"}</strong>
+            {allianceCode ? `Alliance: ${allianceCode}` : "No alliance in URL (expected /dashboard/:CODE/guides)"}
           </div>
         </div>
-      </div>
 
-      <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <input
-          placeholder="New section title"
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          style={{ padding: "10px 12px", borderRadius: 10, minWidth: 260 }}
-        />
         <button
-          onClick={createSection}
-          disabled={saving || !newTitle.trim() || !allianceCode}
-          style={{ padding: "10px 12px", borderRadius: 10, fontWeight: 800 }}
+          onClick={refetch}
+          disabled={!allianceCode || loading}
+          style={{ padding: "8px 10px", borderRadius: 10, fontWeight: 800 }}
         >
-          {saving ? "Saving..." : "Save Section"}
+          ↻ Refresh
         </button>
       </div>
 
-      {errorMsg ? (
-        <div style={{ marginTop: 10, padding: 10, borderRadius: 10, border: "1px solid #633", background: "rgba(255,0,0,0.06)" }}>
-          <div style={{ fontWeight: 800, marginBottom: 4 }}>Error</div>
-          <div style={{ fontSize: 12, opacity: 0.9 }}>{errorMsg}</div>
+      {err ? (
+        <div style={{ border: "1px solid #552", background: "#221", padding: 10, borderRadius: 10 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>Error</div>
+          <div style={{ whiteSpace: "pre-wrap", fontSize: 12, opacity: 0.9 }}>{err}</div>
         </div>
       ) : null}
 
-      <div style={{ marginTop: 14 }}>
-        {loading ? (
-          <div style={{ opacity: 0.75 }}>Loading sections...</div>
-        ) : sections.length === 0 ? (
-          <div style={{ opacity: 0.75 }}>No sections yet.</div>
-        ) : (
-          <div style={{ display: "grid", gap: 10 }}>
-            {sections.map((s) => (
-              <div key={s.id} style={{ border: "1px solid #222", borderRadius: 12, padding: 12 }}>
+      <div style={{ border: "1px solid #222", borderRadius: 12, padding: 12 }}>
+        <div style={{ fontWeight: 900, marginBottom: 10 }}>Create section</div>
+
+        <div style={{ display: "grid", gap: 10 }}>
+          <input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Section title (ex: Hunt Mastery)"
+            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #333" }}
+          />
+
+          <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, opacity: 0.9 }}>
+            <input type="checkbox" checked={newReadonly} onChange={(e) => setNewReadonly(e.target.checked)} />
+            Read-only section (no comments)
+          </label>
+
+          <button
+            onClick={createSection}
+            disabled={!allianceCode || saving || !newTitle.trim()}
+            style={{ padding: "10px 12px", borderRadius: 10, fontWeight: 900 }}
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: 10 }}>
+        <div style={{ fontWeight: 900 }}>Sections</div>
+
+        {loading ? <div style={{ opacity: 0.75 }}>Loading…</div> : null}
+        {!loading && sections.length === 0 ? <div style={{ opacity: 0.75 }}>No sections yet.</div> : null}
+
+        {sections.map((s) => {
+          const mode = (s.mode ?? (s.readonly ? "readonly" : "discussion")) as any;
+          return (
+            <div key={s.id} style={{ border: "1px solid #222", borderRadius: 12, padding: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                 <div style={{ fontWeight: 900 }}>{s.title}</div>
-                <div style={{ opacity: 0.7, fontSize: 12 }}>
-                  {s.alliance_code} {s.readonly ? "• readonly" : ""}
-                </div>
+                <div style={{ opacity: 0.7, fontSize: 12 }}>{mode}</div>
               </div>
-            ))}
-          </div>
-        )}
+              {s.description ? <div style={{ marginTop: 6, opacity: 0.85, fontSize: 13 }}>{s.description}</div> : null}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
+export default AllianceGuidesPanel;
