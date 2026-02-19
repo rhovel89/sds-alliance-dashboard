@@ -589,7 +589,6 @@ export default function AllianceCalendarPage() {
                 {EVENT_TYPES.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
-                {canEdit ? <option value="__new__">+ Add new type…</option> : null}
               </select>
             </label>
           </div>
@@ -648,6 +647,7 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
 
 
 
