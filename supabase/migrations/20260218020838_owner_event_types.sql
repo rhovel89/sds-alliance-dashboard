@@ -1,3 +1,5 @@
 -- NO-OP (corrupted migration replaced)
--- Original file: 20260218020838_owner_event_types.sql
-select 1;
+-- This file previously contained invalid escaping like: do \$\$
+do $$ begin
+  -- intentionally empty
+end $$;
