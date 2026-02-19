@@ -248,7 +248,27 @@ export default function AllianceCalendarPage() {
     if (!canEdit) return;
 
     const cleanTitle = form.title.trim();
-    if (!cleanTitle) return alert("Event Title required.");
+    
+    let eventType = form.event_type;
+
+    if (eventType === "__new__") {
+      const n = String((form as any).new_event_type ?? "").trim();
+      if (!n) return alert("Enter a new event type name.");
+      eventType = n;
+
+      // Best-effort: save event type (do NOT crash if DB rejects)
+      try {
+        await supabase
+          .from("alliance_event_types")
+          .upsert(
+            { alliance_code: upperAlliance, category: "Alliance Event", name: n } as any,
+            { onConflict: "alliance_code,category,name" as any }
+          );
+        await loadEventTypes();
+      } catch (e) {
+        console.warn("Event type save failed (continuing):", e);
+      }
+    }if (!cleanTitle) return alert("Event Title required.");
     if (!userId) return alert("No user session.");
 
     const startLocal = new Date(`${form.start_date}T${form.start_time}`);
@@ -569,7 +589,7 @@ export default function AllianceCalendarPage() {
                 {EVENT_TYPES.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
-                <option value="__new__">+ Add new type…</option>
+                {canEdit ? <option value="__new__">+ Add new type…</option> : null}
               </select>
             </label>
           </div>
@@ -628,6 +648,7 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
 
 
 
