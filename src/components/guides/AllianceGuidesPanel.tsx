@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 
+const __guidesAllianceCode = String(window.location.pathname.split('/')[2] ?? '').toUpperCase();
+
+
 type Section = {
   id: string;
   alliance_code: string;
