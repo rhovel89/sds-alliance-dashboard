@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+function currentAllianceCode(): string {
+  if (typeof window === "undefined") return "";
+  const m = window.location.pathname.match(/\/dashboard\/([^/]+)/i);
+  return String(m?.[1] ?? "").toUpperCase();
+}
 
 const __guidesAllianceCode = String(window.location.pathname.split('/')[2] ?? '').toUpperCase();
 
@@ -34,7 +39,7 @@ const params = useParams();
       const { data, error } = await supabase
         .from("guide_sections")
         .select("id, alliance_code, title, description, mode, updated_at")
-        .eq("alliance_code", allianceCode)
+        .eq("alliance_code", currentAllianceCode())
         .order("updated_at", { ascending: false })
         .limit(6);
 
