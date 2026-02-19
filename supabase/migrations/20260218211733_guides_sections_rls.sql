@@ -1,6 +1,5 @@
 -- SAFE RLS: allow members to READ guide sections; allow Owner/R4/R5 (and app admins) to WRITE sections.
--- Does not drop or overwrite existing policies; creates only if missing.
--- Applies to whichever sections table exists among common names.
+-- Creates policies only if missing. Applies to whichever sections table exists among common names.
 
 do $$
 declare
@@ -27,13 +26,10 @@ begin
       continue;
     end if;
 
-    -- Ensure privileges exist (Supabase often already has these, but safe)
-    execute format('grant select, insert, update, delete on table public.%I to authenticated', t);
-
     -- Enable RLS
     execute format('alter table public.%I enable row level security', t);
 
-    -- Find alliance column
+    -- Find alliance column on the sections table
     select c.column_name, c.udt_name
       into col, col_udt
     from information_schema.columns c
@@ -55,7 +51,7 @@ begin
     is_uuid := (col_udt = 'uuid');
 
     --------------------------------------------------------------------
-    -- SELECT policy: members can read, plus app admins (if available)
+    -- SELECT: members can read + admins (if available)
     --------------------------------------------------------------------
     if not exists (
       select 1 from pg_policies
@@ -71,9 +67,9 @@ begin
               select 1
               from public.players me
               join public.player_alliances pa on pa.player_id = me.id
-              join public.alliances al on al.id = %I
+              join public.alliances al on al.code = pa.alliance_code
               where me.auth_user_id = auth.uid()
-                and pa.alliance_code = al.code
+                and al.id = %I
             )
           )
         $pol$, t, admin_prefix, col);
@@ -96,7 +92,8 @@ begin
     end if;
 
     --------------------------------------------------------------------
-    -- WRITE policy: Owner/R4/R5 can insert/update/delete, plus app admins
+    -- WRITE: Owner/R4/R5 can insert/update/delete (FOR ALL), + admins
+    -- NOTE: FOR ALL is required (can't do "for insert, update, delete")
     --------------------------------------------------------------------
     if not exists (
       select 1 from pg_policies
@@ -106,15 +103,15 @@ begin
         execute format($pol$
           create policy guides_sections_manage_r4r5
           on public.%I
-          for insert, update, delete
+          for all
           using (
             %s exists (
               select 1
               from public.players me
               join public.player_alliances pa on pa.player_id = me.id
-              join public.alliances al on al.id = %I
+              join public.alliances al on al.code = pa.alliance_code
               where me.auth_user_id = auth.uid()
-                and pa.alliance_code = al.code
+                and al.id = %I
                 and lower(coalesce(pa.role,'')) in ('owner','r4','r5')
             )
           )
@@ -123,9 +120,9 @@ begin
               select 1
               from public.players me
               join public.player_alliances pa on pa.player_id = me.id
-              join public.alliances al on al.id = %I
+              join public.alliances al on al.code = pa.alliance_code
               where me.auth_user_id = auth.uid()
-                and pa.alliance_code = al.code
+                and al.id = %I
                 and lower(coalesce(pa.role,'')) in ('owner','r4','r5')
             )
           )
@@ -134,7 +131,7 @@ begin
         execute format($pol$
           create policy guides_sections_manage_r4r5
           on public.%I
-          for insert, update, delete
+          for all
           using (
             %s exists (
               select 1
@@ -159,6 +156,6 @@ begin
       end if;
     end if;
 
-    raise notice 'Applied/verified guide sections RLS on table % (alliance column %)', t, col;
+    raise notice 'Guide sections RLS OK on % (alliance column %)', t, col;
   end loop;
 end $$;
