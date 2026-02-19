@@ -25,7 +25,9 @@ function isManagerRole(role?: string | null) {
 }
 
 export default function PlayerDashboardPage() {
-  const [sp, setSp] = useSearchParams();
+  
+  const __sectionAllianceCode = String(window.location.pathname.split("/")[2] ?? "").toUpperCase();
+const [sp, setSp] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -329,6 +331,7 @@ const pickAlliance = (code: string) => {
     </div>
   );
 }
+
 
 
 

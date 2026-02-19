@@ -45,7 +45,9 @@ function isIgnorableSchemaError(msg: string) {
 }
 
 export default function PlayerMeProfileAndHqsPanel() {
-  const [loading, setLoading] = useState(true);
+  
+  const __sectionAllianceCode = String(window.location.pathname.split("/")[2] ?? "").toUpperCase();
+const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   const [authUid, setAuthUid] = useState<string | null>(null);

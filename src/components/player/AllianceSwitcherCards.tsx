@@ -14,7 +14,9 @@ function roleCanManage(role: string | null | undefined, isAdmin: boolean) {
 }
 
 export default function AllianceSwitcherCards() {
-  const nav = useNavigate();
+  
+  const __sectionAllianceCode = String(window.location.pathname.split("/")[2] ?? "").toUpperCase();
+const nav = useNavigate();
   const params = useParams();
 
   const rawParam =
