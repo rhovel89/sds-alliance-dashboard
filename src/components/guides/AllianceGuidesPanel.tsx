@@ -39,7 +39,7 @@ const params = useParams();
       const { data, error } = await supabase
         .from("guide_sections")
         .select("id, alliance_code, title, description, mode, updated_at")
-        .eq("alliance_code", currentAllianceCode())
+        .eq("alliance_code", currentAllianceCode()))
         .order("updated_at", { ascending: false })
         .limit(6);
 
