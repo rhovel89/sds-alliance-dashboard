@@ -167,8 +167,7 @@ export default function AllianceCalendarPage() {
 
         // requires unique index -> upsert is safe
         const up = await supabase
-          .from("alliance_event_types")
-          .upsert(seed, { onConflict: "alliance_code,category,name" as any });
+  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
 
         if (!up.error) {
           setTypesHint("Seeded default event types ✅");
@@ -240,10 +239,7 @@ export default function AllianceCalendarPage() {
     };
 
     const res = await supabase
-      .from("alliance_event_types")
-      .upsert(payload, { onConflict: "alliance_code,category,name" as any })
-      .select("id,name")
-      .maybeSingle();
+  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
 
     if (res.error) {
       // fallback: still allow event to save with the raw name
@@ -260,6 +256,15 @@ export default function AllianceCalendarPage() {
     if (!canEdit) return;
 
     const cleanTitle = form.title.trim();
+
+    const eventType =
+      form.event_type === "__new__"
+        ? (form.new_event_type ?? "").trim()
+        : form.event_type;
+
+    if (form.event_type === "__new__" && !eventType) {
+      return alert("New event type name required.");
+    }
     
     let eventType = form.event_type;
 
@@ -271,11 +276,7 @@ export default function AllianceCalendarPage() {
       // Best-effort: save event type (do NOT crash if DB rejects)
       try {
         await supabase
-          .from("alliance_event_types")
-          .upsert(
-            { alliance_code: upperAlliance, category: "Alliance Event", name: n } as any,
-            { onConflict: "alliance_code,category,name" as any }
-          );
+  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
         await loadEventTypes();
       } catch (e) {
         console.warn("Event type save failed (continuing):", e);
@@ -418,8 +419,7 @@ export default function AllianceCalendarPage() {
     if (!typesOk) return alert("Event type catalog is not available (fallback mode).");
     if (!confirm("Delete this event type?")) return;
 
-    const del = await supabase.from("alliance_event_types").delete().eq("id", id);
-    if (del.error) return alert(del.error.message);
+  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
 
     await loadEventTypes();
   };
