@@ -601,6 +601,7 @@ export default function AllianceCalendarPage() {
                 {EVENT_TYPES.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
+                <option value="__new__">+ New (custom)</option>
               </select>
             </label>
           </div>
