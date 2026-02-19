@@ -53,7 +53,19 @@ const CATEGORY_OPTIONS = [
   { value: "Alliance", label: "Alliance Event" },
   { value: "State", label: "State Event" },
 ];
-
+const EVENT_TYPES = [
+  "State vs. State",
+  "Reminder",
+  "Sonic",
+  "Dead Rising",
+  "Defense of Alliance",
+  "Wasteland King",
+  "Valiance Conquest",
+  "Tundra",
+  "Alliance Clash",
+  "Alliance Showdown",
+  "FireFlies",
+];
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = (alliance_id || "").toUpperCase();
@@ -647,6 +659,7 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
 
 
 
