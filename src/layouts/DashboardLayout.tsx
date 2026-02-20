@@ -4,6 +4,7 @@ import "../styles/dashboard-zombie.css";
 import AllianceAnnouncementsPanel from "../components/announcements/AllianceAnnouncementsPanel";
 import AllianceDashboardExtras from "../components/alliance/AllianceDashboardExtras";
 import { GuidesQuickLink } from "../components/guides/GuidesQuickLink";
+import CurrentAlliancePill from "../components/nav/CurrentAlliancePill";
 const LazyAllianceQuickLinksPanel = lazy(() => import("../components/alliance/AllianceQuickLinksPanel").then((m: any) => ({ default: m.AllianceQuickLinksPanel })));
 
 export default function DashboardLayout() {
