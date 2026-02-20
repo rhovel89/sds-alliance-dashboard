@@ -5,6 +5,8 @@ import { useHQPermissions } from "../../hooks/useHQPermissions";
 import { useAllianceManagerAccess } from "../../hooks/useAllianceManagerAccess";
 import { RecurringControls } from "../../components/calendar/RecurringControls";
 import {
+import { useIsDashboardOwner } from "../../hooks/useIsDashboardOwner";
+import { useIsDashboardOwner } from "../../hooks/useIsDashboardOwner";
   expandEventsForMonth,
   getDeleteId,
   getEventStartUtc,
@@ -231,7 +233,7 @@ export default function AllianceCalendarPage() {
     if (!typesOk) return name;
 
     // Only managers can write; respect canEdit
-    if (!canEdit) return name;
+    if (!canEdit && !isOwner) return name;
 
     const payload: any = {
       alliance_code: upperAlliance,
@@ -256,7 +258,7 @@ export default function AllianceCalendarPage() {
   };
 
   const saveEvent = async () => {
-    if (!canEdit) return;
+    if (!canEdit && !isOwner) return;
 
     const cleanTitle = form.title.trim();
 
@@ -380,7 +382,7 @@ export default function AllianceCalendarPage() {
   };
 
   const deleteEvent = async (id: string) => {
-    if (!canEdit) return;
+    if (!canEdit && !isOwner) return;
     if (!confirm("Delete this event?")) return;
     await supabase.from("alliance_events").delete().eq("id", id);
     await refetch();
@@ -410,7 +412,7 @@ export default function AllianceCalendarPage() {
 
   // Manager tools: delete type
   const deleteType = async (id: string) => {
-    if (!canEdit) return;
+    if (!canEdit && !isOwner) return;
     if (!typesOk) return alert("Event type catalog is not available (fallback mode).");
     if (!confirm("Delete this event type?")) return;
 
