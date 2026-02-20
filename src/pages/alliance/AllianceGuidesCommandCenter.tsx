@@ -493,7 +493,7 @@ export function AllianceGuidesCommandCenter() {
           )}
         </div>
       </div>
+      <GuideEntriesPanel allianceCode={allianceCode} sectionId={selectedSectionId} canEdit={canEdit} />
     </div>
-    <GuideEntriesPanel allianceCode={allianceCode} sectionId={selectedSectionId} canEdit={canEdit} /> 
   );
 }
