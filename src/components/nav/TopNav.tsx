@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { RealtimeBadge } from "./RealtimeBadge";
 import { ThemePicker } from "./ThemePicker";
 import { OwnerBroadcastModal } from "./OwnerBroadcastModal";
+import { SupportBundleButton } from "./SupportBundleButton";
 
 export default function TopNav() {
   

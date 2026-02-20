@@ -3,9 +3,20 @@ import { supabase } from "../../lib/supabaseClient";
 
 type RTState = "offline" | "connecting" | "online" | "error";
 
+function getAllianceFromPath(pathname: string): string | null {
+  const m = (pathname || "").match(/^\/dashboard\/([^\/]+)/);
+  if (!m) return null;
+  const code = (m[1] || "").toString().trim();
+  return code ? code.toUpperCase() : null;
+}
+
 export function RealtimeBadge() {
   const [rt, setRt] = useState<RTState>("connecting");
   const [detail, setDetail] = useState<string>("");
+  const [alliance, setAlliance] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return getAllianceFromPath(window.location.pathname);
+  });
 
   const dot = useMemo(() => {
     if (rt === "online") return "🟢";
@@ -41,6 +52,18 @@ export function RealtimeBadge() {
       setDetail(msg);
     }
 
+    // Track current alliance from URL (React Router doesn't trigger popstate)
+    let lastPath = typeof window !== "undefined" ? window.location.pathname : "";
+    const tick = () => {
+      if (typeof window === "undefined") return;
+      const p = window.location.pathname;
+      if (p !== lastPath) {
+        lastPath = p;
+        setAlliance(getAllianceFromPath(p));
+      }
+    };
+    const iv = window.setInterval(tick, 800);
+
     // Browser network hint
     const onOnline = () => setConnecting("browser online");
     const onOffline = () => setOffline("browser offline");
@@ -51,7 +74,6 @@ export function RealtimeBadge() {
     setConnecting("realtime connecting");
     const ch = supabase.channel("sad_rt_badge");
 
-    // subscribe callback statuses include: SUBSCRIBED, TIMED_OUT, CLOSED, CHANNEL_ERROR
     ch.subscribe((status: any) => {
       if (status === "SUBSCRIBED") setOnline("realtime subscribed");
       else if (status === "TIMED_OUT") setError("realtime timed out");
@@ -62,6 +84,7 @@ export function RealtimeBadge() {
 
     return () => {
       cancelled = true;
+      window.clearInterval(iv);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
       try {
@@ -90,6 +113,7 @@ export function RealtimeBadge() {
     >
       <span>{dot}</span>
       <span style={{ opacity: 0.9 }}>Realtime</span>
+      {alliance ? <span style={{ opacity: 0.85 }}>• {alliance}</span> : null}
     </div>
   );
 }
