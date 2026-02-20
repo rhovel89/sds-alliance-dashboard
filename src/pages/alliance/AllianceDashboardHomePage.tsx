@@ -1,10 +1,8 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import { AllianceQuickLinksPanel } from "../../components/alliance/AllianceQuickLinksPanel";
 import InnerDashboardHomeImported from "../PlayerDashboardPage";
 // FROM_APPROUTES: detected default dashboard home component
 InnerDashboardHome = InnerDashboardHomeImported;
-
 
 /**
  * This page exists ONLY to safely add non-fragile UI on the alliance dashboard home route:
@@ -25,8 +23,7 @@ export default function AllianceDashboardHomePage() {
 
   return (
     <div>
-      <AllianceQuickLinksPanel />
-      {InnerDashboardHome ? <InnerDashboardHome key={code} /> : null}
+{InnerDashboardHome ? <InnerDashboardHome key={code} /> : null}
     </div>
   );
 }
