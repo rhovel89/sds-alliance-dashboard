@@ -10,6 +10,7 @@ const LINKS: LinkItem[] = [
   { label: "Announcements", path: (a) => "/dashboard/" + a + "/announcements", emoji: "📣" },
   { label: "Permissions",   path: (a) => "/dashboard/" + a + "/permissions", emoji: "🔐" },
   { label: "Events",        path: (a) => "/dashboard/" + a + "/events", emoji: "🎯" },
+  { label: "My Mail",     path: (_a) => "/mail", emoji: "✉️" },
 ];
 
 export function AllianceQuickLinksPanel() {

@@ -3,6 +3,22 @@ import { supabase } from "../../lib/supabaseClient";
 
 type EntryRow = Record<string, any>;
 
+function fmtErr(err: any): string {
+  if (!err) return "Unknown error";
+  const parts: string[] = [];
+  if (err.message) parts.push(String(err.message));
+  if (err.details) parts.push(String(err.details));
+  if (err.hint) parts.push(String(err.hint));
+  if (err.code) parts.push("code=" + String(err.code));
+  if (typeof err.status !== "undefined") parts.push("status=" + String(err.status));
+  return parts.filter(Boolean).join("\n");
+}
+
+function isUuid(v: string | null): boolean {
+  if (!v) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+}
+
 export function GuideEntriesPanel(props: {
   allianceCode: string;
   sectionId: string | null;
@@ -27,7 +43,6 @@ export function GuideEntriesPanel(props: {
   const [body, setBody] = useState("");
 
   useEffect(() => {
-    // reset selection when section changes
     setSelectedId(null);
     setTitle("");
     setBody("");
@@ -42,27 +57,31 @@ export function GuideEntriesPanel(props: {
 
       if (!sectionId) return;
 
+      if (!isUuid(sectionId)) {
+        setError("Selected section id is not a UUID. sectionId=" + String(sectionId));
+        return;
+      }
+
       setLoading(true);
       try {
-        const q = supabase
+        const res = await supabase
           .from("guide_section_entries")
-          .select("id, alliance_code, section_id, title, body, created_at, updated_at")
+          .select("*")
           .eq("alliance_code", allianceCode)
           .eq("section_id", sectionId)
           .order("created_at", { ascending: false });
 
-        const res = await q;
         if (cancelled) return;
 
         if (res.error) {
-          setError(res.error.message);
+          setError(fmtErr(res.error));
           setEntries([]);
         } else {
           setEntries(res.data || []);
         }
       } catch (e: any) {
         if (cancelled) return;
-        setError(String(e?.message || e || "Failed to load entries"));
+        setError("Load failed:\n" + String(e?.message || e || "unknown"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -88,11 +107,14 @@ export function GuideEntriesPanel(props: {
 
   async function createEntry() {
     if (!sectionId) return;
+    if (!isUuid(sectionId)) return window.alert("Invalid section id (not UUID).");
+
     const t = title.trim();
     if (!t) return window.alert("Title is required.");
 
     setLoading(true);
     setError(null);
+
     try {
       const ins = await supabase
         .from("guide_section_entries")
@@ -102,17 +124,17 @@ export function GuideEntriesPanel(props: {
           title: t,
           body: body || null,
         } as any)
-        .select("id, alliance_code, section_id, title, body, created_at, updated_at")
+        .select("*")
         .maybeSingle();
 
       if (ins.error) {
-        setError(ins.error.message);
+        setError(fmtErr(ins.error));
       } else if (ins.data) {
         setEntries((p) => [ins.data as any, ...(p || [])]);
         startNew();
       }
     } catch (e: any) {
-      setError(String(e?.message || e || "Create failed"));
+      setError("Create failed:\n" + String(e?.message || e || "unknown"));
     } finally {
       setLoading(false);
     }
@@ -125,24 +147,22 @@ export function GuideEntriesPanel(props: {
 
     setLoading(true);
     setError(null);
+
     try {
       const up = await supabase
         .from("guide_section_entries")
-        .update({
-          title: t,
-          body: body || null,
-        } as any)
+        .update({ title: t, body: body || null } as any)
         .eq("id", selectedId)
-        .select("id, alliance_code, section_id, title, body, created_at, updated_at")
+        .select("*")
         .maybeSingle();
 
       if (up.error) {
-        setError(up.error.message);
+        setError(fmtErr(up.error));
       } else if (up.data) {
         setEntries((p) => (p || []).map((x) => (String(x.id) === String(selectedId) ? (up.data as any) : x)));
       }
     } catch (e: any) {
-      setError(String(e?.message || e || "Update failed"));
+      setError("Update failed:\n" + String(e?.message || e || "unknown"));
     } finally {
       setLoading(false);
     }
@@ -150,18 +170,20 @@ export function GuideEntriesPanel(props: {
 
   async function deleteEntry(id: string) {
     if (!window.confirm("Delete this entry?")) return;
+
     setLoading(true);
     setError(null);
+
     try {
       const del = await supabase.from("guide_section_entries").delete().eq("id", id);
       if (del.error) {
-        setError(del.error.message);
+        setError(fmtErr(del.error));
       } else {
         setEntries((p) => (p || []).filter((x) => String(x.id) !== String(id)));
         if (String(selectedId) === String(id)) startNew();
       }
     } catch (e: any) {
-      setError(String(e?.message || e || "Delete failed"));
+      setError("Delete failed:\n" + String(e?.message || e || "unknown"));
     } finally {
       setLoading(false);
     }
@@ -190,7 +212,6 @@ export function GuideEntriesPanel(props: {
       ) : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) minmax(280px, 1.2fr)", gap: 12, marginTop: 12 }}>
-        {/* Left: list */}
         <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
             <div style={{ fontWeight: 900, fontSize: 13 }}>Entries</div>
@@ -224,7 +245,7 @@ export function GuideEntriesPanel(props: {
                   </div>
 
                   {canEdit ? (
-                    <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                    <div style={{ marginTop: 8 }}>
                       <button
                         className="zombie-btn"
                         style={{ padding: "6px 8px", fontSize: 12 }}
@@ -245,7 +266,6 @@ export function GuideEntriesPanel(props: {
           </div>
         </div>
 
-        {/* Right: editor */}
         <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 10 }}>
           <div style={{ fontWeight: 900, fontSize: 13 }}>
             {selected ? "Edit Entry" : "New Entry"}
