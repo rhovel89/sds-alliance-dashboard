@@ -58,6 +58,7 @@ import AllianceDashboardIndexPage from "../pages/alliance/AllianceDashboardIndex
 import MyMailPage from "../pages/mail/MyMailPage";
 import OwnerAllianceDirectoryEditorPage from "../pages/owner/OwnerAllianceDirectoryEditorPage";
 import OwnerPermissionsMatrixShellPage from "../pages/owner/OwnerPermissionsMatrixShellPage";
+import DebugPage from "../pages/DebugPage";
 
 export default function AppRoutes() {
   return (
@@ -116,6 +117,7 @@ export default function AppRoutes() {
       <Route path="/mail" element={<MyMailPage />} />
       <Route path="/owner/alliance-directory" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
       <Route path="/owner/permissions-matrix" element={<RequireAdmin><OwnerPermissionsMatrixShellPage /></RequireAdmin>} />
+      <Route path="/debug" element={<DebugPage />} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );

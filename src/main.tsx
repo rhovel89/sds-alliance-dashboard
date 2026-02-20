@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from "./App";
+import GlobalErrorOverlay from "./components/system/GlobalErrorOverlay";
 import './index.css';
 import AppErrorBoundary from "./components/system/AppErrorBoundary";
 
@@ -9,7 +10,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <AppErrorBoundary>
     <React.StrictMode>
     <BrowserRouter basename="/">
-      <App />
+      <>
+  <GlobalErrorOverlay />
+  <App />
+</>
     </BrowserRouter>
       </React.StrictMode>
   </AppErrorBoundary>
@@ -41,4 +45,3 @@ import './styles/dashboard-zombie.css';
 
 import './styles/hq-map.css';
 // deploy ping Tue Feb 10 08:51:12 CST 2026
-
