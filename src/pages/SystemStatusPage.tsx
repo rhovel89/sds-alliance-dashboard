@@ -24,6 +24,22 @@ async function probeSelect(table: string, sel: string): Promise<Probe> {
   }
 }
 
+
+async function probeSelectAny(table: string, selects: string[]): Promise<Probe> {
+  for (const sel of selects) {
+    const r = await probeSelect(table, sel);
+    if (r.ok) return r;
+  }
+  // return last failure for visibility
+  return await probeSelect(table, selects[selects.length - 1]);
+}
+
+function getAllianceFromPath(pathname: string): string | null {
+  const m = (pathname || "").match(/^\/dashboard\/([^\/]+)/);
+  if (!m) return null;
+  const code = (m[1] || "").toString().trim();
+  return code ? code.toUpperCase() : null;
+}
 export default function SystemStatusPage() {
   const admin = useIsAppAdmin();
   const [userId, setUserId] = useState<string | null>(null);
@@ -38,6 +54,8 @@ export default function SystemStatusPage() {
 
   const utc = useMemo(() => new Date().toISOString(), []);
   const local = useMemo(() => new Date().toLocaleString(), []);
+  const alliance = useMemo(() => (typeof window !== "undefined" ? (getAllianceFromPath(window.location.pathname) || null) : null), []);
+  const theme = useMemo(() => { try { return localStorage.getItem("sad_theme") || "zombie"; } catch { return "zombie"; } }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +72,7 @@ export default function SystemStatusPage() {
 
       const list: Probe[] = [];
       list.push(await probeSelect("guide_sections", "id,alliance_code,title"));
-      list.push(await probeSelect("alliance_events", "id,alliance_id"));
+      list.push(await probeSelectAny("alliance_events", ["id,alliance_code", "id,alliance_id", "id"]));
       list.push(await probeSelect("player_hqs", "id,created_at,updated_at"));
 
       if (!cancelled) {
