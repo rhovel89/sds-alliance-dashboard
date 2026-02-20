@@ -65,6 +65,7 @@ import OwnerEventTypesLibraryPage from "../pages/owner/OwnerEventTypesLibraryPag
 import OwnerAllianceJumpPage from "../pages/owner/OwnerAllianceJumpPage";
 import State789AlertsPage from "../pages/state/State789AlertsPage";
 import State789DiscussionBoardPage from "../pages/state/State789DiscussionBoardPage";
+import OwnerBroadcastComposerPage from "../pages/owner/OwnerBroadcastComposerPage";
 
 export default function AppRoutes() {
   return (
@@ -129,6 +130,7 @@ export default function AppRoutes() {
       <Route path="/owner/jump" element={<RequireAdmin><OwnerAllianceJumpPage /></RequireAdmin>} />
       <Route path="/state/789/alerts" element={<State789AlertsPage />} />
       <Route path="/state/789/discussion" element={<State789DiscussionBoardPage />} />
+      <Route path="/owner/broadcast" element={<RequireAdmin><OwnerBroadcastComposerPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
