@@ -693,8 +693,8 @@ export function OwnerLiveOpsPanel() {
           />
           <div style={{ marginTop: 6, fontSize: 12, opacity: 0.7 }}>
             Tokens supported:
-            Roles: @Leadership @R5 @R4 @Member @StateLeadership @StateMod (and {{Leadership}} style)
-            • Channels: #announcements, {{#announcements}}, {{channel:announcements}}
+            Roles: @Leadership @R5 @R4 @Member @StateLeadership @StateMod (and {"{{Leadership}}"} style)
+            • Channels: #announcements, {"{{#announcements}}"}, {"{{channel:announcements}}"}
           </div>
         </div>
 
