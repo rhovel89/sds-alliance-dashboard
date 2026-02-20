@@ -10,6 +10,8 @@ import { OwnerBroadcastModal } from "./OwnerBroadcastModal";
 import { SupportBundleButton } from "./SupportBundleButton";
 import { OwnerAllianceJump } from "./OwnerAllianceJump";
 import { AdminToolsMenu } from "./AdminToolsMenu";
+import { CurrentAlliancePill } from "./CurrentAlliancePill";
+import { DashboardHomeQuickLinks } from "./DashboardHomeQuickLinks";
 
 export default function TopNav() {
   
@@ -96,7 +98,9 @@ export default function TopNav() {
       <ThemePicker />
       <OwnerBroadcastModal />
       <SupportBundleButton />
+            <CurrentAlliancePill />
       <AdminToolsMenu />
+      <DashboardHomeQuickLinks />
 </div>
   );
 }
