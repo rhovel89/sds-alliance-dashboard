@@ -16,8 +16,23 @@ type RoleMapStore = {
   alliances: Record<string, Record<string, string>>;
 };
 
+type ChannelEntry = {
+  id: string;
+  name: string;       // placeholder name, typically "announcements" (we will match "#announcements")
+  channelId: string;  // discord channel id digits
+  createdUtc: string;
+};
+
+type ChannelMapStore = {
+  version: 1;
+  global: ChannelEntry[];
+  alliances: Record<string, ChannelEntry[]>;
+};
+
 const ROLE_MAP_KEY = "sad_discord_role_map_v1";
-const DEFAULT_KEYS = ["Leadership", "R5", "R4", "Member", "StateLeadership", "StateMod"] as const;
+const CHANNEL_MAP_KEY = "sad_discord_channel_map_v1";
+
+const DEFAULT_ROLE_KEYS = ["Leadership", "R5", "R4", "Member", "StateLeadership", "StateMod"] as const;
 
 function uid() {
   return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
@@ -87,13 +102,13 @@ function severityBadge(sev: Severity) {
 // ----------------------
 // Role mention resolver
 // ----------------------
-function emptyStore(): RoleMapStore {
+function emptyRoleStore(): RoleMapStore {
   return { version: 1, global: {}, alliances: {} };
 }
 
 function loadRoleStore(): RoleMapStore {
-  const s = loadJson<RoleMapStore>(ROLE_MAP_KEY, emptyStore());
-  if (!s || (s as any).version !== 1) return emptyStore();
+  const s = loadJson<RoleMapStore>(ROLE_MAP_KEY, emptyRoleStore());
+  if (!s || (s as any).version !== 1) return emptyRoleStore();
   if (!s.global) s.global = {};
   if (!s.alliances) s.alliances = {};
   return s;
@@ -103,13 +118,13 @@ function saveRoleStore(s: RoleMapStore) {
   saveJson(ROLE_MAP_KEY, s);
 }
 
-function normalizeKey(k: string) {
+function normalizeRoleKey(k: string) {
   return (k || "").replace(/^@/, "").replace(/^\{\{/, "").replace(/\}\}$/, "").trim();
 }
 
 function resolveRoleToken(token: string, allianceCode: string | null): string {
   const store = loadRoleStore();
-  const key = normalizeKey(token);
+  const key = normalizeRoleKey(token);
   if (!key) return token;
 
   // per-alliance wins
@@ -119,7 +134,6 @@ function resolveRoleToken(token: string, allianceCode: string | null): string {
     if (v && v.trim()) return v.trim();
   }
 
-  // global fallback
   const gv = store.global?.[key];
   if (gv && gv.trim()) return gv.trim();
 
@@ -128,18 +142,82 @@ function resolveRoleToken(token: string, allianceCode: string | null): string {
 
 function replaceRolePlaceholders(input: string, allianceCode: string | null): string {
   let out = input || "";
-  for (const k of DEFAULT_KEYS) {
+  for (const k of DEFAULT_ROLE_KEYS) {
     const a = "@" + k;
     const b = "{{" + k + "}}";
-
     const ra = resolveRoleToken(a, allianceCode);
     const rb = resolveRoleToken(b, allianceCode);
-
-    // Replace ALL occurrences safely without regex injection issues
     if (out.includes(a)) out = out.split(a).join(ra);
     if (out.includes(b)) out = out.split(b).join(rb);
   }
   return out;
+}
+
+// ----------------------
+// Channel mention resolver
+// ----------------------
+function emptyChannelStore(): ChannelMapStore {
+  return { version: 1, global: [], alliances: {} };
+}
+
+function loadChannelStore(): ChannelMapStore {
+  const s = loadJson<ChannelMapStore>(CHANNEL_MAP_KEY, emptyChannelStore());
+  if (!s || (s as any).version !== 1) return emptyChannelStore();
+  if (!Array.isArray(s.global)) s.global = [];
+  if (!s.alliances) s.alliances = {};
+  return s;
+}
+
+function saveChannelStore(s: ChannelMapStore) {
+  saveJson(CHANNEL_MAP_KEY, s);
+}
+
+function normalizeChannelName(name: string) {
+  // store placeholder name without leading '#'
+  return (name || "").trim().replace(/^#/, "").trim();
+}
+
+function channelMention(channelId: string): string {
+  const id = (channelId || "").trim();
+  if (!id) return "";
+  return `<#${id}>`;
+}
+
+function getChannelsForScope(store: ChannelMapStore, allianceCode: string | null): ChannelEntry[] {
+  if (allianceCode) {
+    const a = store.alliances?.[allianceCode];
+    if (Array.isArray(a) && a.length) return a;
+  }
+  return store.global || [];
+}
+
+function replaceChannelPlaceholders(input: string, allianceCode: string | null): string {
+  let out = input || "";
+  const store = loadChannelStore();
+  const list = getChannelsForScope(store, allianceCode);
+
+  for (const ch of list) {
+    const name = normalizeChannelName(ch.name);
+    const id = (ch.channelId || "").trim();
+    if (!name || !id) continue;
+
+    const token1 = "#" + name;                 // #announcements
+    const token2 = "{{#" + name + "}}";        // {{#announcements}}
+    const token3 = "{{channel:" + name + "}}"; // {{channel:announcements}}
+    const rep = channelMention(id);
+
+    if (out.includes(token1)) out = out.split(token1).join(rep);
+    if (out.includes(token2)) out = out.split(token2).join(rep);
+    if (out.includes(token3)) out = out.split(token3).join(rep);
+  }
+
+  return out;
+}
+
+function applyResolvers(input: string, allianceCode: string | null): string {
+  // channel first, then roles
+  const a = replaceChannelPlaceholders(input || "", allianceCode);
+  return replaceRolePlaceholders(a, allianceCode);
 }
 
 export function OwnerLiveOpsPanel() {
@@ -174,11 +252,20 @@ export function OwnerLiveOpsPanel() {
   const [importJson, setImportJson] = useState<string>("");
 
   // ---------- Role Resolver UI ----------
-  const [mapScope, setMapScope] = useState<"GLOBAL" | "ALLIANCE">("ALLIANCE");
-  const [mapAlliance, setMapAlliance] = useState<string>("");
+  const [roleScope, setRoleScope] = useState<"GLOBAL" | "ALLIANCE">("ALLIANCE");
+  const [roleAlliance, setRoleAlliance] = useState<string>("");
   const [roleDraft, setRoleDraft] = useState<Record<string, string>>({});
   const [roleImport, setRoleImport] = useState<string>("");
   const [roleTest, setRoleTest] = useState<string>("@Leadership please coordinate with @R5 and @R4. {{Member}} notify.");
+
+  // ---------- Channel Resolver UI ----------
+  const [chanScope, setChanScope] = useState<"GLOBAL" | "ALLIANCE">("ALLIANCE");
+  const [chanAlliance, setChanAlliance] = useState<string>("");
+  const [chanDraft, setChanDraft] = useState<ChannelEntry[]>([]);
+  const [chanNewName, setChanNewName] = useState<string>("announcements");
+  const [chanNewId, setChanNewId] = useState<string>("");
+  const [chanImport, setChanImport] = useState<string>("");
+  const [chanTest, setChanTest] = useState<string>("Post updates in #announcements and coordinate in {{channel:r5-chat}}.");
 
   const activeAllianceForOps = useMemo(() => {
     if (targetMode === "CURRENT") return currentAlliance || null;
@@ -186,7 +273,7 @@ export function OwnerLiveOpsPanel() {
       const c = (customTarget || "").trim().toUpperCase();
       return c || null;
     }
-    return null; // ALL uses global-only unless user chooses otherwise
+    return null; // ALL => resolver uses GLOBAL unless you also choose ALLIANCE scope and set alliance manually
   }, [targetMode, currentAlliance, customTarget]);
 
   const target = useMemo(() => {
@@ -217,14 +304,9 @@ export function OwnerLiveOpsPanel() {
     return { utc: timerDate.toISOString(), local: timerDate.toLocaleString(), countdown: formatCountdown(ms), ms, discord };
   }, [timerDate, tick]);
 
-  // Resolve mentions against active alliance (if any)
-  const resolvedMention = useMemo(() => {
-    if (!mentionRaw) return "";
-    return replaceRolePlaceholders(mentionRaw, activeAllianceForOps);
-  }, [mentionRaw, activeAllianceForOps]);
-
-  const resolvedHeader = useMemo(() => replaceRolePlaceholders(header, activeAllianceForOps), [header, activeAllianceForOps]);
-  const resolvedBody = useMemo(() => replaceRolePlaceholders(body || "", activeAllianceForOps), [body, activeAllianceForOps]);
+  const resolvedMention = useMemo(() => applyResolvers(mentionRaw || "", activeAllianceForOps), [mentionRaw, activeAllianceForOps]);
+  const resolvedHeader = useMemo(() => applyResolvers(header, activeAllianceForOps), [header, activeAllianceForOps]);
+  const resolvedBody = useMemo(() => applyResolvers(body || "", activeAllianceForOps), [body, activeAllianceForOps]);
 
   const discordAnnouncement = useMemo(() => {
     const lines: string[] = [];
@@ -276,9 +358,10 @@ export function OwnerLiveOpsPanel() {
     const savedChecklist = loadJson<ChecklistItem[]>("sad_ops_checklist_v1", []);
     setChecklist(Array.isArray(savedChecklist) ? savedChecklist : []);
 
-    // Role resolver defaults
-    const defaultAlliance = (currentAlliance || "").toUpperCase();
-    setMapAlliance(defaultAlliance);
+    // defaults for scopes
+    const def = (currentAlliance || "").toUpperCase();
+    setRoleAlliance(def);
+    setChanAlliance(def);
   }, [currentAlliance]);
 
   // Persist draft state
@@ -349,31 +432,31 @@ export function OwnerLiveOpsPanel() {
   // ----------------------
   // Role mapping helpers
   // ----------------------
-  const scopeKey = useMemo(() => (mapScope === "GLOBAL" ? "GLOBAL" : (mapAlliance || "").trim().toUpperCase()), [mapScope, mapAlliance]);
+  const roleScopeKey = useMemo(() => (roleScope === "GLOBAL" ? "GLOBAL" : (roleAlliance || "").trim().toUpperCase()), [roleScope, roleAlliance]);
 
   useEffect(() => {
     const store = loadRoleStore();
     const draft: Record<string, string> = {};
-    for (const k of DEFAULT_KEYS) {
-      if (scopeKey === "GLOBAL") draft[k] = store.global?.[k] || "";
-      else draft[k] = store.alliances?.[scopeKey]?.[k] || "";
+    for (const k of DEFAULT_ROLE_KEYS) {
+      if (roleScopeKey === "GLOBAL") draft[k] = store.global?.[k] || "";
+      else draft[k] = store.alliances?.[roleScopeKey]?.[k] || "";
     }
     setRoleDraft(draft);
-  }, [scopeKey]);
+  }, [roleScopeKey]);
 
   function saveRoleDraft() {
     const store = loadRoleStore();
     const clean: Record<string, string> = {};
-    for (const k of DEFAULT_KEYS) {
+    for (const k of DEFAULT_ROLE_KEYS) {
       const v = (roleDraft[k] || "").trim();
       if (v) clean[k] = v;
     }
 
-    if (scopeKey === "GLOBAL") {
+    if (roleScopeKey === "GLOBAL") {
       store.global = clean;
     } else {
       if (!store.alliances) store.alliances = {};
-      store.alliances[scopeKey] = clean;
+      store.alliances[roleScopeKey] = clean;
     }
 
     saveRoleStore(store);
@@ -399,9 +482,9 @@ export function OwnerLiveOpsPanel() {
       // refresh draft
       const next = loadRoleStore();
       const draft: Record<string, string> = {};
-      for (const k of DEFAULT_KEYS) {
-        if (scopeKey === "GLOBAL") draft[k] = next.global?.[k] || "";
-        else draft[k] = next.alliances?.[scopeKey]?.[k] || "";
+      for (const k of DEFAULT_ROLE_KEYS) {
+        if (roleScopeKey === "GLOBAL") draft[k] = next.global?.[k] || "";
+        else draft[k] = next.alliances?.[roleScopeKey]?.[k] || "";
       }
       setRoleDraft(draft);
     } catch {
@@ -409,7 +492,108 @@ export function OwnerLiveOpsPanel() {
     }
   }
 
-  const roleTestOutput = useMemo(() => replaceRolePlaceholders(roleTest || "", activeAllianceForOps), [roleTest, activeAllianceForOps]);
+  const roleTestOutput = useMemo(() => applyResolvers(roleTest || "", activeAllianceForOps), [roleTest, activeAllianceForOps]);
+
+  // ----------------------
+  // Channel mapping helpers
+  // ----------------------
+  const chanScopeKey = useMemo(() => (chanScope === "GLOBAL" ? "GLOBAL" : (chanAlliance || "").trim().toUpperCase()), [chanScope, chanAlliance]);
+
+  useEffect(() => {
+    const store = loadChannelStore();
+    const list = (chanScopeKey === "GLOBAL") ? (store.global || []) : (store.alliances?.[chanScopeKey] || []);
+    setChanDraft(Array.isArray(list) ? list : []);
+  }, [chanScopeKey]);
+
+  function saveChanDraft() {
+    const store = loadChannelStore();
+    const cleaned = (chanDraft || [])
+      .map((x) => ({
+        id: (x?.id || uid()).toString(),
+        name: normalizeChannelName((x?.name || "").toString()),
+        channelId: ((x?.channelId || "").toString().trim()),
+        createdUtc: (x?.createdUtc || nowUtcIso()).toString(),
+      }))
+      .filter((x) => x.name && x.channelId);
+
+    if (chanScopeKey === "GLOBAL") {
+      store.global = cleaned;
+    } else {
+      if (!store.alliances) store.alliances = {};
+      store.alliances[chanScopeKey] = cleaned;
+    }
+
+    saveChannelStore(store);
+    setChanDraft(cleaned);
+    window.alert("Saved channel mapping.");
+  }
+
+  function addChannel() {
+    const name = normalizeChannelName(chanNewName);
+    const channelId = (chanNewId || "").trim();
+    if (!name) return window.alert("Channel placeholder name required (e.g. announcements).");
+    if (!channelId) return window.alert("Channel ID required (digits).");
+
+    const item: ChannelEntry = { id: uid(), name, channelId, createdUtc: nowUtcIso() };
+    setChanDraft((p) => [item, ...(p || [])]);
+    setChanNewId("");
+  }
+
+  function updateChannel(id: string, patch: Partial<ChannelEntry>) {
+    setChanDraft((p) => (p || []).map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  }
+
+  function deleteChannel(id: string) {
+    setChanDraft((p) => (p || []).filter((x) => x.id !== id));
+  }
+
+  async function exportChanMap() {
+    const store = loadChannelStore();
+    await copy(JSON.stringify({ tsUtc: nowUtcIso(), channelMap: store }, null, 2), "Copied channel mapping JSON to clipboard.");
+  }
+
+  function importChanMap() {
+    try {
+      const obj = JSON.parse(chanImport || "{}");
+      const cm = (obj as any).channelMap ?? obj;
+
+      const normalizeList = (arr: any): ChannelEntry[] => {
+        if (!Array.isArray(arr)) return [];
+        return arr
+          .map((x) => ({
+            id: (x?.id || uid()).toString(),
+            name: normalizeChannelName((x?.name || "").toString()),
+            channelId: ((x?.channelId || x?.id || "").toString().trim()),
+            createdUtc: (x?.createdUtc || nowUtcIso()).toString(),
+          }))
+          .filter((x) => x.name && x.channelId);
+      };
+
+      const s: ChannelMapStore = {
+        version: 1,
+        global: normalizeList(cm?.global),
+        alliances: {},
+      };
+
+      const a = cm?.alliances;
+      if (a && typeof a === "object") {
+        for (const k of Object.keys(a)) {
+          s.alliances[k.toUpperCase()] = normalizeList(a[k]);
+        }
+      }
+
+      saveChannelStore(s);
+      window.alert("Imported channel mapping.");
+      // refresh draft
+      const next = loadChannelStore();
+      const list = (chanScopeKey === "GLOBAL") ? (next.global || []) : (next.alliances?.[chanScopeKey] || []);
+      setChanDraft(Array.isArray(list) ? list : []);
+    } catch {
+      window.alert("Invalid JSON for channel mapping import.");
+    }
+  }
+
+  const chanTestOutput = useMemo(() => applyResolvers(chanTest || "", activeAllianceForOps), [chanTest, activeAllianceForOps]);
 
   return (
     <div className="zombie-card" style={{ padding: 16, marginTop: 12 }}>
@@ -508,7 +692,9 @@ export function OwnerLiveOpsPanel() {
             placeholder="Type your ops message here…"
           />
           <div style={{ marginTop: 6, fontSize: 12, opacity: 0.7 }}>
-            Resolver tokens supported: @Leadership @R5 @R4 @Member @StateLeadership @StateMod (and {{Leadership}} style)
+            Tokens supported:
+            Roles: @Leadership @R5 @R4 @Member @StateLeadership @StateMod (and {{Leadership}} style)
+            • Channels: #announcements, {{#announcements}}, {{channel:announcements}}
           </div>
         </div>
 
@@ -548,7 +734,6 @@ export function OwnerLiveOpsPanel() {
             background: "rgba(0,0,0,0.25)",
             color: "rgba(235,255,235,0.95)", outline: "none", minWidth: 220,
           }}
-          title="Role mention placeholder"
         >
           <option value="none">(none)</option>
           <option value="@here">@here</option>
@@ -576,7 +761,7 @@ export function OwnerLiveOpsPanel() {
 
       <div style={{ marginTop: 10 }}>
         <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>
-          Output (resolver applied + Discord timestamp if timer set)
+          Output (resolvers applied + Discord timestamp if timer set)
         </div>
         <textarea
           value={discordAnnouncement}
@@ -593,7 +778,7 @@ export function OwnerLiveOpsPanel() {
           <button className="zombie-btn" onClick={() => copy(discordAnnouncement, "Copied Discord-ready announcement.")}>
             📋 Copy Discord Announcement
           </button>
-          <button className="zombie-btn" onClick={() => copy(JSON.stringify({ tsUtc: nowUtcIso(), target, mention: mentionRaw, mentionResolved: resolvedMention, header: resolvedHeader, body: resolvedBody, timerUtc }, null, 2), "Copied Discord generator JSON.")}>
+          <button className="zombie-btn" onClick={() => copy(JSON.stringify({ tsUtc: nowUtcIso(), target, mentionRaw, resolvedMention, resolvedHeader, resolvedBody, timerUtc }, null, 2), "Copied generator JSON.")}>
             🧾 Copy Generator JSON
           </button>
         </div>
@@ -650,19 +835,18 @@ export function OwnerLiveOpsPanel() {
 
       <hr className="zombie-divider" />
 
-      {/* ROLE RESOLVER */}
-      <h4 style={{ marginTop: 0 }}>🔧 Discord Role Mention Resolver (UI-only)</h4>
+      {/* CHANNEL RESOLVER CRUD */}
+      <h4 style={{ marginTop: 0 }}>📣 Discord Channel Mention Resolver (UI-only)</h4>
 
       <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 8 }}>
-        Map placeholders like @R5 to real mentions like {"<@&ROLE_ID>"}.
-        Per-alliance overrides GLOBAL.
+        Create channel placeholders like <b>#announcements</b> and map them to <b>{"<#CHANNEL_ID>"}</b>. Per-alliance overrides GLOBAL.
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ fontSize: 12, opacity: 0.85 }}>Scope:</div>
         <select
-          value={mapScope}
-          onChange={(e) => setMapScope((e.target.value as any) || "ALLIANCE")}
+          value={chanScope}
+          onChange={(e) => setChanScope((e.target.value as any) || "ALLIANCE")}
           style={{
             height: 34, borderRadius: 10, padding: "0 10px",
             border: "1px solid rgba(120,255,120,0.18)",
@@ -674,10 +858,10 @@ export function OwnerLiveOpsPanel() {
           <option value="GLOBAL">Global</option>
         </select>
 
-        {mapScope === "ALLIANCE" ? (
+        {chanScope === "ALLIANCE" ? (
           <input
-            value={mapAlliance}
-            onChange={(e) => setMapAlliance((e.target.value || "").toUpperCase())}
+            value={chanAlliance}
+            onChange={(e) => setChanAlliance((e.target.value || "").toUpperCase())}
             placeholder="Alliance code (e.g. WOC)"
             style={{
               height: 34, borderRadius: 10, padding: "0 10px",
@@ -693,8 +877,168 @@ export function OwnerLiveOpsPanel() {
         </div>
       </div>
 
+      <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <input
+          value={chanNewName}
+          onChange={(e) => setChanNewName(e.target.value)}
+          placeholder="Channel placeholder name (e.g. announcements)"
+          style={{
+            flex: 1, minWidth: 220, height: 34, borderRadius: 10, padding: "0 10px",
+            border: "1px solid rgba(120,255,120,0.18)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(235,255,235,0.95)", outline: "none",
+          }}
+        />
+        <input
+          value={chanNewId}
+          onChange={(e) => setChanNewId(e.target.value)}
+          placeholder="Channel ID (digits)"
+          style={{
+            flex: 1, minWidth: 220, height: 34, borderRadius: 10, padding: "0 10px",
+            border: "1px solid rgba(120,255,120,0.18)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(235,255,235,0.95)", outline: "none",
+          }}
+        />
+        <button className="zombie-btn" onClick={addChannel}>➕ Add</button>
+        <button className="zombie-btn" onClick={saveChanDraft}>💾 Save</button>
+        <button className="zombie-btn" onClick={exportChanMap}>📦 Export</button>
+      </div>
+
       <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-        {DEFAULT_KEYS.map((k) => (
+        {chanDraft.length === 0 ? (
+          <div style={{ fontSize: 12, opacity: 0.7 }}>No channels in this scope yet.</div>
+        ) : (
+          chanDraft.map((ch) => {
+            const ph = "#" + normalizeChannelName(ch.name || "");
+            const rep = channelMention(ch.channelId || "");
+            return (
+              <div key={ch.id} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", padding: 10, borderRadius: 10, background: "rgba(0,0,0,0.14)", border: "1px solid rgba(120,255,120,0.10)" }}>
+                <div style={{ width: 180, fontSize: 12, opacity: 0.85 }}>{ph}</div>
+
+                <input
+                  value={ch.name || ""}
+                  onChange={(e) => updateChannel(ch.id, { name: e.target.value })}
+                  placeholder="name"
+                  style={{
+                    flex: 1, minWidth: 200, height: 34, borderRadius: 10, padding: "0 10px",
+                    border: "1px solid rgba(120,255,120,0.18)",
+                    background: "rgba(0,0,0,0.25)",
+                    color: "rgba(235,255,235,0.95)", outline: "none",
+                  }}
+                />
+
+                <input
+                  value={ch.channelId || ""}
+                  onChange={(e) => updateChannel(ch.id, { channelId: e.target.value })}
+                  placeholder="channelId"
+                  style={{
+                    flex: 1, minWidth: 220, height: 34, borderRadius: 10, padding: "0 10px",
+                    border: "1px solid rgba(120,255,120,0.18)",
+                    background: "rgba(0,0,0,0.25)",
+                    color: "rgba(235,255,235,0.95)", outline: "none",
+                  }}
+                />
+
+                <div style={{ fontFamily: "monospace", fontSize: 12, opacity: 0.85 }}>{rep || "(missing id)"}</div>
+
+                <button className="zombie-btn" style={{ height: 34, padding: "0 10px" }} onClick={() => deleteChannel(ch.id)}>🗑</button>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div style={{ marginTop: 10 }}>
+        <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Import channel mapping JSON</div>
+        <textarea
+          value={chanImport}
+          onChange={(e) => setChanImport(e.target.value)}
+          rows={4}
+          placeholder='Paste export JSON (expects {"channelMap": {...}} or just {...})'
+          style={{
+            width: "100%", borderRadius: 10, padding: 10,
+            border: "1px solid rgba(120,255,120,0.18)",
+            background: "rgba(0,0,0,0.20)",
+            color: "rgba(235,255,235,0.95)", outline: "none", resize: "vertical",
+          }}
+        />
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+          <button className="zombie-btn" onClick={importChanMap}>⬇️ Import</button>
+          <button className="zombie-btn" onClick={() => setChanImport("")}>🧽 Clear Import</button>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Test channel resolver</div>
+        <input
+          value={chanTest}
+          onChange={(e) => setChanTest(e.target.value)}
+          style={{
+            width: "100%", height: 36, borderRadius: 10, padding: "0 10px",
+            border: "1px solid rgba(120,255,120,0.18)",
+            background: "rgba(0,0,0,0.20)",
+            color: "rgba(235,255,235,0.95)", outline: "none",
+          }}
+        />
+        <textarea
+          value={chanTestOutput}
+          readOnly
+          rows={3}
+          style={{
+            width: "100%", marginTop: 8, borderRadius: 10, padding: 10,
+            border: "1px solid rgba(120,255,120,0.18)",
+            background: "rgba(0,0,0,0.20)",
+            color: "rgba(235,255,235,0.95)", outline: "none", resize: "vertical",
+          }}
+        />
+        <button className="zombie-btn" style={{ marginTop: 8 }} onClick={() => copy(chanTestOutput, "Copied channel resolver test output.")}>
+          📋 Copy Test Output
+        </button>
+      </div>
+
+      <hr className="zombie-divider" />
+
+      {/* ROLE RESOLVER */}
+      <h4 style={{ marginTop: 0 }}>🔧 Discord Role Mention Resolver (UI-only)</h4>
+
+      <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 8 }}>
+        Map placeholders like @R5 to real mentions like {"<@&ROLE_ID>"}. Per-alliance overrides GLOBAL.
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ fontSize: 12, opacity: 0.85 }}>Scope:</div>
+        <select
+          value={roleScope}
+          onChange={(e) => setRoleScope((e.target.value as any) || "ALLIANCE")}
+          style={{
+            height: 34, borderRadius: 10, padding: "0 10px",
+            border: "1px solid rgba(120,255,120,0.18)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(235,255,235,0.95)", outline: "none", minWidth: 170,
+          }}
+        >
+          <option value="ALLIANCE">Alliance</option>
+          <option value="GLOBAL">Global</option>
+        </select>
+
+        {roleScope === "ALLIANCE" ? (
+          <input
+            value={roleAlliance}
+            onChange={(e) => setRoleAlliance((e.target.value || "").toUpperCase())}
+            placeholder="Alliance code (e.g. WOC)"
+            style={{
+              height: 34, borderRadius: 10, padding: "0 10px",
+              border: "1px solid rgba(120,255,120,0.18)",
+              background: "rgba(0,0,0,0.25)",
+              color: "rgba(235,255,235,0.95)", outline: "none", minWidth: 220,
+            }}
+          />
+        ) : null}
+      </div>
+
+      <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+        {DEFAULT_ROLE_KEYS.map((k) => (
           <div key={k} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ width: 160, fontSize: 12, opacity: 0.9 }}>{`@${k}`}</div>
             <input
@@ -718,7 +1062,7 @@ export function OwnerLiveOpsPanel() {
       </div>
 
       <div style={{ marginTop: 10 }}>
-        <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Import Mapping JSON</div>
+        <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Import role mapping JSON</div>
         <textarea
           value={roleImport}
           onChange={(e) => setRoleImport(e.target.value)}
