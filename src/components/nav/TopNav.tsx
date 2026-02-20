@@ -9,6 +9,7 @@ import { ThemePicker } from "./ThemePicker";
 import { OwnerBroadcastModal } from "./OwnerBroadcastModal";
 import { SupportBundleButton } from "./SupportBundleButton";
 import { OwnerAllianceJump } from "./OwnerAllianceJump";
+import { AdminToolsMenu } from "./AdminToolsMenu";
 
 export default function TopNav() {
   
@@ -95,6 +96,7 @@ export default function TopNav() {
       <ThemePicker />
       <OwnerBroadcastModal />
       <SupportBundleButton />
+      <AdminToolsMenu />
 </div>
   );
 }
