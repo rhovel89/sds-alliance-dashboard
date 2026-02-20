@@ -9,11 +9,27 @@ type GuidesAccessState = {
   canEditGuides: boolean;
 };
 
-const MEMBERSHIP_TABLE_CANDIDATES = [
+type Candidate = { table: string; userCol: string; allianceCol: string };
+
+const TABLES = [
   "alliance_memberships",
   "alliance_members",
   "memberships",
   "alliance_users",
+];
+
+const USER_COLS = [
+  "user_id",
+  "auth_user_id",
+  "profile_id",
+  "player_id",
+  "member_id",
+];
+
+const ALLIANCE_COLS = [
+  "alliance_code",
+  "alliance_id",
+  "alliance",
 ];
 
 function normalizeRole(role: unknown): string {
@@ -29,14 +45,43 @@ function canEditFromRole(roleNorm: string): boolean {
   return roleNorm === "owner" || roleNorm === "r5" || roleNorm === "r4";
 }
 
-function looksLikeMissingTable(message: string): boolean {
-  const m = (message || "").toLowerCase();
-  return (
-    m.includes("404") ||
-    m.includes("not found") ||
-    (m.includes("relation") && m.includes("does not exist")) ||
-    m.includes("does not exist")
-  );
+function isMissingTableError(msg: string): boolean {
+  const m = (msg || "").toLowerCase();
+  return m.includes("404") || m.includes("not found") || (m.includes("relation") && m.includes("does not exist"));
+}
+
+function isBadColumnError(msg: string): boolean {
+  const m = (msg || "").toLowerCase();
+  return m.includes("column") && m.includes("does not exist");
+}
+
+function pickRoleFromRow(row: Record<string, any> | null): string | null {
+  if (!row) return null;
+
+  // Try common role/rank field names without failing if missing
+  const raw =
+    row.role ??
+    row.rank ??
+    row.alliance_role ??
+    row.alliance_rank ??
+    row.member_role ??
+    row.member_rank ??
+    null;
+
+  const norm = normalizeRole(raw);
+  return norm || null;
+}
+
+function buildCandidates(): Candidate[] {
+  const c: Candidate[] = [];
+  for (const table of TABLES) {
+    for (const userCol of USER_COLS) {
+      for (const allianceCol of ALLIANCE_COLS) {
+        c.push({ table, userCol, allianceCol });
+      }
+    }
+  }
+  return c;
 }
 
 export function useGuidesEditAccess(allianceCode: string | null | undefined): GuidesAccessState {
@@ -75,28 +120,37 @@ export function useGuidesEditAccess(allianceCode: string | null | undefined): Gu
           loading: false,
           role: null,
           sourceTable: null,
-          error: userErr?.message || null,
+          error: userErr?.message || "Not logged in",
           canEditGuides: false,
         });
         return;
       }
 
       const userId = userRes.user.id;
+      const candidates = buildCandidates();
 
-      for (const table of MEMBERSHIP_TABLE_CANDIDATES) {
+      for (const cand of candidates) {
+        const { table, userCol, allianceCol } = cand;
+
         const { data, error } = await supabase
           .from(table)
-          .select("role")
-          .eq("user_id", userId)
-          .eq("alliance_code", allianceCode)
+          .select("*")
+          .eq(userCol as any, userId as any)
+          .eq(allianceCol as any, allianceCode as any)
           .maybeSingle();
 
         if (cancelled) return;
 
         if (error) {
           const msg = (error as any).message || "";
-          if (looksLikeMissingTable(msg)) continue;
 
+          // Table doesn't exist -> try next table
+          if (isMissingTableError(msg)) continue;
+
+          // Column doesn't exist -> try next column combo
+          if (isBadColumnError(msg)) continue;
+
+          // Any other error -> stop and show it (likely RLS or schema issue)
           setState({
             loading: false,
             role: null,
@@ -107,13 +161,17 @@ export function useGuidesEditAccess(allianceCode: string | null | undefined): Gu
           return;
         }
 
-        const roleNorm = normalizeRole((data as any)?.role);
+        // No error means the query structure is valid.
+        // If RLS blocks row visibility, data may be null; still valid.
+        const role = pickRoleFromRow((data as any) || null);
+        const canEditGuides = role ? canEditFromRole(role) : false;
+
         setState({
           loading: false,
-          role: roleNorm || null,
+          role,
           sourceTable: table,
           error: null,
-          canEditGuides: canEditFromRole(roleNorm),
+          canEditGuides,
         });
         return;
       }
@@ -122,7 +180,7 @@ export function useGuidesEditAccess(allianceCode: string | null | undefined): Gu
         loading: false,
         role: null,
         sourceTable: null,
-        error: "No membership table found for role gating (update MEMBERSHIP_TABLE_CANDIDATES in useGuidesEditAccess.ts).",
+        error: "Could not find a membership table/column combination that matches this project schema.",
         canEditGuides: false,
       });
     }
