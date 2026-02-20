@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { RealtimeStatusBadge } from "../../components/system/RealtimeStatusBadge";
+import { useNavigate, RealtimeStatusBadge } from "../../components/system/RealtimeStatusBadge";
 
 type Note = { id: string; text: string; createdUtc: string };
 
