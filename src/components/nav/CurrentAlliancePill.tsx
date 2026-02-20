@@ -3,19 +3,17 @@ import { useLocation, useParams } from "react-router-dom";
 import { RealtimeStatusBadge } from "../system/RealtimeStatusBadge";
 
 function parseAllianceFromPath(pathname: string): string | null {
-  // /dashboard/:alliance_id/...
   const m = pathname.match(/^\/dashboard\/([^\/?#]+)/i);
   if (!m) return null;
   const code = String(m[1] || "").trim();
   return code ? code.toUpperCase() : null;
 }
 
-export default function CurrentAlliancePill() {
+export function CurrentAlliancePill() {
   const loc = useLocation();
   const params = useParams();
 
   const alliance = useMemo(() => {
-    // prefer params if present
     const p = (params as any)?.alliance_id;
     if (p) return String(p).toUpperCase();
     return parseAllianceFromPath(loc.pathname);
@@ -57,3 +55,5 @@ export default function CurrentAlliancePill() {
     </div>
   );
 }
+
+export default CurrentAlliancePill;
