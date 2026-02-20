@@ -1,192 +1,110 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
-import { AllianceThemePicker } from "../../components/theme/AllianceThemePicker";
 
 type AllianceRow = {
   code: string;
   name?: string | null;
   state?: string | null;
-  sourceTable?: string | null;
 };
 
-const TABLE_CANDIDATES = ["alliances", "alliance_directory", "state_alliances"];
-
-function pickCode(r: any): string {
-  return (r?.code ?? r?.alliance_code ?? r?.tag ?? r?.abbr ?? "").toString().trim().toUpperCase();
-}
-function pickName(r: any): string {
-  return (r?.name ?? r?.alliance_name ?? r?.title ?? "").toString().trim();
-}
-function pickState(r: any): string {
-  const v = r?.state ?? r?.state_id ?? r?.state_number ?? r?.server ?? r?.world ?? null;
-  if (v === null || v === undefined) return "Unknown";
-  return v.toString().trim() || "Unknown";
-}
+const SEED: AllianceRow[] = [
+  { code: "WOC", name: "WOC", state: "789" },
+  { code: "SDS", name: "SDS", state: "789" },
+];
 
 export default function AllianceDirectoryPage() {
   const nav = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<AllianceRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
+
   const [q, setQ] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-
-      for (const t of TABLE_CANDIDATES) {
-        try {
-          // Select * to avoid column mismatch; RLS may still block.
-          const res = await supabase.from(t as any).select("*").limit(500);
-          if (res.error) {
-            // try next table
-            continue;
-          }
-          const data = (res.data ?? []) as any[];
-          const mapped = data
-            .map((r) => {
-              const code = pickCode(r);
-              if (!code) return null;
-              return {
-                code,
-                name: pickName(r) || code,
-                state: pickState(r),
-                sourceTable: t,
-              } as AllianceRow;
-            })
-            .filter(Boolean) as AllianceRow[];
-
-          if (!cancelled) {
-            setRows(mapped);
-            setLoading(false);
-            return;
-          }
-        } catch {
-          // try next table
-        }
-      }
-
-      if (!cancelled) {
-        setRows([]);
-        setLoading(false);
-        setError("No readable alliance directory table found (RLS or table missing). UI is ready — wire up a directory table when ready.");
-      }
-    }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const [stateFilter, setStateFilter] = useState<string>("all");
+  const [rows, setRows] = useState<AllianceRow[]>(SEED);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const filtered = useMemo(() => {
-    const s = (q || "").trim().toUpperCase();
-    if (!s) return rows;
-    return rows.filter((r) => r.code.includes(s) || (r.name || "").toUpperCase().includes(s) || (r.state || "").toUpperCase().includes(s));
-  }, [rows, q]);
+    const qq = q.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (stateFilter !== "all" && String(r.state || "") !== stateFilter) return false;
+      if (!qq) return true;
+      return String(r.code || "").toLowerCase().includes(qq) || String(r.name || "").toLowerCase().includes(qq);
+    });
+  }, [rows, q, stateFilter]);
 
-  const grouped = useMemo(() => {
-    const m = new Map<string, AllianceRow[]>();
-    for (const r of filtered) {
-      const k = (r.state || "Unknown").toString();
-      if (!m.has(k)) m.set(k, []);
-      m.get(k)!.push(r);
+  async function tryLoadFromDb() {
+    setLoading(true);
+    setMsg(null);
+    try {
+      // Optional: if you have an "alliances" table with RLS read policies, this will fill the directory.
+      const r = await supabase.from("alliances" as any).select("code,name,state").limit(200);
+      if (r.error) {
+        setMsg("DB load failed (safe fallback to placeholders): " + r.error.message);
+        setLoading(false);
+        return;
+      }
+      const d = (r.data || []) as any[];
+      const mapped: AllianceRow[] = d
+        .filter((x) => x && x.code)
+        .map((x) => ({ code: String(x.code).toUpperCase(), name: x.name ?? null, state: x.state ?? null }));
+      setRows(mapped.length ? mapped : SEED);
+      setMsg(mapped.length ? "Loaded from DB." : "DB returned no rows; using placeholders.");
+    } catch {
+      setMsg("DB load threw (safe fallback): network/error");
+    } finally {
+      setLoading(false);
     }
-    const keys = Array.from(m.keys()).sort((a, b) => a.localeCompare(b));
-    return keys.map((k) => ({ state: k, items: (m.get(k) || []).sort((a, b) => a.code.localeCompare(b.code)) }));
-  }, [filtered]);
+  }
 
   return (
     <div style={{ padding: 14 }}>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ fontWeight: 900, fontSize: 18 }}>🧭 Alliance Directory</div>
-
-        <button className="zombie-btn" style={{ height: 34, padding: "0 12px" }} onClick={() => nav("/state/789")}>
-          🛰 State 789
-        </button>
-
-        <button className="zombie-btn" style={{ height: 34, padding: "0 12px" }} onClick={() => nav("/status")}>
-          🧪 /status
-        </button>
-
-        <button className="zombie-btn" style={{ height: 34, padding: "0 12px" }} onClick={() => nav("/me")}>
-          🧟 /me
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <h2 style={{ margin: 0 }}>🧟 Alliance Directory</h2>
+        <button className="zombie-btn" onClick={tryLoadFromDb} disabled={loading} style={{ padding: "10px 12px" }}>
+          {loading ? "Loading…" : "Load from DB (optional)"}
         </button>
       </div>
 
-      <div style={{ marginTop: 12, maxWidth: 720 }}>
-        <AllianceThemePicker allianceCode={null} />
-      </div>
+      {msg ? <div style={{ marginTop: 8, opacity: 0.85, fontSize: 12 }}>{msg}</div> : null}
 
-      <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by code, name, or state…"
-          style={{
-            flex: 1,
-            minWidth: 280,
-            height: 36,
-            borderRadius: 12,
-            padding: "0 12px",
-            border: "1px solid var(--sad-border, rgba(120,255,120,0.18))",
-            background: "rgba(0,0,0,0.25)",
-            color: "var(--sad-text, rgba(235,255,235,0.95))",
-            outline: "none",
-          }}
-        />
-        <div style={{ fontSize: 12, opacity: 0.75 }}>
-          {loading ? "Loading…" : `${filtered.length} alliance(s)`}
+      <div className="zombie-card" style={{ marginTop: 12 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            className="zombie-input"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search code or name…"
+            style={{ minWidth: 220, padding: "10px 12px" }}
+          />
+          <select
+            className="zombie-input"
+            value={stateFilter}
+            onChange={(e) => setStateFilter(e.target.value)}
+            style={{ padding: "10px 12px" }}
+          >
+            <option value="all">All states</option>
+            <option value="789">State 789</option>
+          </select>
+          <div style={{ opacity: 0.75, fontSize: 12 }}>
+            {filtered.length} result(s)
+          </div>
         </div>
       </div>
 
-      <div style={{ marginTop: 12 }}>
-        {error ? (
-          <div className="zombie-card" style={{ padding: 14, borderRadius: 16, border: "1px solid rgba(255,120,120,0.25)", background: "rgba(0,0,0,0.35)" }}>
-            <div style={{ fontWeight: 900, marginBottom: 6 }}>⚠ Directory not ready</div>
-            <div style={{ opacity: 0.85 }}>{error}</div>
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        {filtered.map((a) => (
+          <div key={a.code} className="zombie-card">
+            <div style={{ fontWeight: 900, fontSize: 14 }}>{a.code}</div>
+            <div style={{ opacity: 0.85, marginTop: 6 }}>{a.name || a.code}</div>
+            <div style={{ opacity: 0.65, marginTop: 6, fontSize: 12 }}>State: {a.state || "—"}</div>
+            <button
+              className="zombie-btn"
+              style={{ width: "100%", marginTop: 12 }}
+              onClick={() => nav("/dashboard/" + String(a.code).toUpperCase())}
+            >
+              Open Dashboard
+            </button>
           </div>
-        ) : null}
-
-        {loading ? (
-          <div style={{ opacity: 0.75, marginTop: 12 }}>Loading directory…</div>
-        ) : null}
-
-        {!loading && !error ? (
-          <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
-            {grouped.map((g) => (
-              <div key={g.state} className="zombie-card" style={{ padding: 14, borderRadius: 16, background: "rgba(0,0,0,0.32)", border: "1px solid var(--sad-border, rgba(120,255,120,0.18))" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ fontWeight: 900 }}>State: {g.state}</div>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>({g.items.length})</div>
-                </div>
-
-                <div style={{ display: "grid", gap: 8, marginTop: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
-                  {g.items.map((a) => (
-                    <button
-                      key={a.code}
-                      className="zombie-btn"
-                      style={{ justifyContent: "space-between", display: "flex", gap: 10, padding: "10px 12px", height: "auto" }}
-                      onClick={() => nav("/dashboard/" + a.code)}
-                      title={a.sourceTable ? "source: " + a.sourceTable : undefined}
-                    >
-                      <span style={{ fontWeight: 900 }}>{a.code}</span>
-                      <span style={{ opacity: 0.8 }}>{a.name || a.code}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      <div style={{ marginTop: 14, fontSize: 12, opacity: 0.7 }}>
-        UI-only. Reads from the first accessible table in: {TABLE_CANDIDATES.join(", ")}.
+        ))}
       </div>
     </div>
   );
