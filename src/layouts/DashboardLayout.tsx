@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Outlet, NavLink, useParams, Navigate, useLocation } from "react-router-dom";
 import "../styles/dashboard-zombie.css";
 import AllianceAnnouncementsPanel from "../components/announcements/AllianceAnnouncementsPanel";
