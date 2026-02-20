@@ -146,6 +146,7 @@ export function PlayerHqsPanel(props: { targetPlayerId?: string }) {
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <Link to={`/dashboard/${encodeURIComponent(code)}/hq-map`} style={{ opacity: 0.85 }}>HQ Map →</Link>
                   <Link to={`/dashboard/${encodeURIComponent(code)}/calendar`} style={{ opacity: 0.85 }}>Daily Events →</Link>
+                  <Link to={`/dashboard/${encodeURIComponent(code)}/guides`} style={{ opacity: 0.85 }}>Daily Events →</Link>
                 </div>
               </div>
 

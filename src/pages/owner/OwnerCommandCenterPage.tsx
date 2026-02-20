@@ -317,6 +317,7 @@ export default function OwnerCommandCenterPage() {
 
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                       <Link to={`/dashboard/${a.code}/calendar`}>📅 Calendar</Link>
+                      <Link to={`/dashboard/${a.code}/guides`}>📚 Guides</Link>
                       <Link to={`/dashboard/${a.code}/hq-map`}>🗺️ HQ Map</Link>
                     </div>
                   </div>

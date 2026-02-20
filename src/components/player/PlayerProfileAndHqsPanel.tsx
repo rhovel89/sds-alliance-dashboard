@@ -271,6 +271,7 @@ export default function PlayerProfileAndHqsPanel(props: { allianceCode?: string 
           <Link to={`${dashboardBase}/hq-map?view=1`} style={{ opacity: 0.9 }}>HQ Map (view)</Link>
           <span style={{ opacity: 0.4 }}>•</span>
           <Link to={`${dashboardBase}/calendar?view=1`} style={{ opacity: 0.9 }}>Calendar (view)</Link>
+          <Link to={`${dashboardBase}/guides?view=1`} style={{ opacity: 0.9 }}>Guides (view)</Link>
         </div>
       </div>
 
