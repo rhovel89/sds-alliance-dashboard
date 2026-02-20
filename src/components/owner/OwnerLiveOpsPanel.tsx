@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { OwnerLiveOpsEnhancements } from "./OwnerLiveOpsEnhancements";
 
 type Severity = "info" | "warning" | "critical";
 
@@ -1169,7 +1170,9 @@ export function OwnerLiveOpsPanel() {
       </div>
 
       <div style={{ marginTop: 12, fontSize: 12, opacity: 0.7 }}>
-        UI-only. Nothing is sent to DB/Discord yet.
+        <OwnerLiveOpsEnhancements />
+
+      UI-only. Nothing is sent to DB/Discord yet.
       </div>
     </div>
   );
