@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 type ChecklistItem = { id: string; text: string; done: boolean; createdUtc: string };
 
@@ -29,6 +30,7 @@ function toUnixSeconds(d: Date) {
 }
 
 export function OwnerLiveOpsEnhancements() {
+  const nav = useNavigate();
   // -------- Announcement generator --------
   const [targetAlliance, setTargetAlliance] = useState<string>("WOC");
   const [title, setTitle] = useState<string>("");
@@ -168,7 +170,17 @@ export function OwnerLiveOpsEnhancements() {
 
   return (
     <div className="zombie-card" style={{ marginTop: 14 }}>
-      <div style={{ fontWeight: 900, fontSize: 14 }}>🧟 Owner Live Ops — Enhancements (UI-only)</div>
+      <div style={{ fontWeight: 900, fontSize: 14 }}>🧟 Owner Live Ops — Enhancements (UI-only)</div>      <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/alliance-directory")}>
+          🗂️ Alliance Directory Editor
+        </button>
+        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/permissions-matrix")}>
+          🧩 Permissions Matrix (Shell)
+        </button>
+        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789")}>
+          🧟 State 789 Dashboard
+        </button>
+      </div>
 
       {/* Announcement generator */}
       <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)" }}>

@@ -8,17 +8,39 @@ type AllianceRow = {
   state?: string | null;
 };
 
+const STORE_KEY = "sad_alliance_directory_v1";
+
 const SEED: AllianceRow[] = [
   { code: "WOC", name: "WOC", state: "789" },
   { code: "SDS", name: "SDS", state: "789" },
 ];
+
+function loadFromLocal(): AllianceRow[] | null {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const items = parsed?.items;
+    if (!Array.isArray(items)) return null;
+    const mapped: AllianceRow[] = items
+      .filter((x: any) => x && x.code)
+      .map((x: any) => ({
+        code: String(x.code).toUpperCase(),
+        name: x.name ?? null,
+        state: x.state ?? null,
+      }));
+    return mapped.length ? mapped : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function AllianceDirectoryPage() {
   const nav = useNavigate();
 
   const [q, setQ] = useState("");
   const [stateFilter, setStateFilter] = useState<string>("all");
-  const [rows, setRows] = useState<AllianceRow[]>(SEED);
+  const [rows, setRows] = useState<AllianceRow[]>(() => loadFromLocal() || SEED);
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -31,14 +53,24 @@ export default function AllianceDirectoryPage() {
     });
   }, [rows, q, stateFilter]);
 
+  async function reloadFromLocal() {
+    const local = loadFromLocal();
+    if (local) {
+      setRows(local);
+      setMsg("Loaded directory from local editor.");
+    } else {
+      setRows(SEED);
+      setMsg("No local directory found; using placeholders.");
+    }
+  }
+
   async function tryLoadFromDb() {
     setLoading(true);
     setMsg(null);
     try {
-      // Optional: if you have an "alliances" table with RLS read policies, this will fill the directory.
       const r = await supabase.from("alliances" as any).select("code,name,state").limit(200);
       if (r.error) {
-        setMsg("DB load failed (safe fallback to placeholders): " + r.error.message);
+        setMsg("DB load failed (safe fallback): " + r.error.message);
         setLoading(false);
         return;
       }
@@ -49,7 +81,7 @@ export default function AllianceDirectoryPage() {
       setRows(mapped.length ? mapped : SEED);
       setMsg(mapped.length ? "Loaded from DB." : "DB returned no rows; using placeholders.");
     } catch {
-      setMsg("DB load threw (safe fallback): network/error");
+      setMsg("DB load threw (safe fallback).");
     } finally {
       setLoading(false);
     }
@@ -59,9 +91,14 @@ export default function AllianceDirectoryPage() {
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0 }}>🧟 Alliance Directory</h2>
-        <button className="zombie-btn" onClick={tryLoadFromDb} disabled={loading} style={{ padding: "10px 12px" }}>
-          {loading ? "Loading…" : "Load from DB (optional)"}
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button className="zombie-btn" onClick={reloadFromLocal} style={{ padding: "10px 12px" }}>
+            Reload from Editor
+          </button>
+          <button className="zombie-btn" onClick={tryLoadFromDb} disabled={loading} style={{ padding: "10px 12px" }}>
+            {loading ? "Loading…" : "Load from DB (optional)"}
+          </button>
+        </div>
       </div>
 
       {msg ? <div style={{ marginTop: 8, opacity: 0.85, fontSize: 12 }}>{msg}</div> : null}
@@ -84,9 +121,7 @@ export default function AllianceDirectoryPage() {
             <option value="all">All states</option>
             <option value="789">State 789</option>
           </select>
-          <div style={{ opacity: 0.75, fontSize: 12 }}>
-            {filtered.length} result(s)
-          </div>
+          <div style={{ opacity: 0.75, fontSize: 12 }}>{filtered.length} result(s)</div>
         </div>
       </div>
 
@@ -96,11 +131,7 @@ export default function AllianceDirectoryPage() {
             <div style={{ fontWeight: 900, fontSize: 14 }}>{a.code}</div>
             <div style={{ opacity: 0.85, marginTop: 6 }}>{a.name || a.code}</div>
             <div style={{ opacity: 0.65, marginTop: 6, fontSize: 12 }}>State: {a.state || "—"}</div>
-            <button
-              className="zombie-btn"
-              style={{ width: "100%", marginTop: 12 }}
-              onClick={() => nav("/dashboard/" + String(a.code).toUpperCase())}
-            >
+            <button className="zombie-btn" style={{ width: "100%", marginTop: 12 }} onClick={() => nav("/dashboard/" + String(a.code).toUpperCase())}>
               Open Dashboard
             </button>
           </div>

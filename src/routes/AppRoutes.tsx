@@ -56,6 +56,8 @@ import State789DashboardPage from "../pages/state/State789DashboardPage";
 import AllianceDirectoryPage from "../pages/alliance/AllianceDirectoryPage";
 import AllianceDashboardIndexPage from "../pages/alliance/AllianceDashboardIndexPage";
 import MyMailPage from "../pages/mail/MyMailPage";
+import OwnerAllianceDirectoryEditorPage from "../pages/owner/OwnerAllianceDirectoryEditorPage";
+import OwnerPermissionsMatrixShellPage from "../pages/owner/OwnerPermissionsMatrixShellPage";
 
 export default function AppRoutes() {
   return (
@@ -112,6 +114,8 @@ export default function AppRoutes() {
       <Route path="/state/789" element={<State789DashboardPage />} />
       <Route path="/alliances" element={<AllianceDirectoryPage />} />
       <Route path="/mail" element={<MyMailPage />} />
+      <Route path="/owner/alliance-directory" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
+      <Route path="/owner/permissions-matrix" element={<RequireAdmin><OwnerPermissionsMatrixShellPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
