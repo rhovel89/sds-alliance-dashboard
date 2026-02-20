@@ -127,6 +127,20 @@ export function useGuidesEditAccess(allianceCode: string | null | undefined): Gu
       }
 
       const userId = userRes.user.id;
+
+      // Owner override via RPC (Discord ID based in DB)
+      const { data: ownerData, error: ownerErr } = await supabase.rpc("is_dashboard_owner");
+      if (!ownerErr && ownerData === true) {
+        setState({
+          loading: false,
+          role: "owner",
+          sourceTable: "rpc:is_dashboard_owner",
+          error: null,
+          canEditGuides: true,
+        });
+        return;
+      }
+
       const candidates = buildCandidates();
 
       for (const cand of candidates) {
