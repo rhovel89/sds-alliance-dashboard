@@ -53,6 +53,8 @@ function DashboardEntry() {
 }
 import OwnerEventTypesPage from "../pages/owner/OwnerEventTypesPage";
 import AllianceDashboardHomePage from "../pages/alliance/AllianceDashboardHomePage";
+import State789DashboardPage from "../pages/state/State789DashboardPage";
+import AllianceDirectoryPage from "../pages/alliance/AllianceDirectoryPage";
 
 export default function AppRoutes() {
   return (
