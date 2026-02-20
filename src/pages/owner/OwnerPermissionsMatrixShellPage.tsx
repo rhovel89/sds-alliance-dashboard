@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import SupportBundleButton from "../../components/system/SupportBundleButton";
 
 type RoleKey =
   | "owner"
@@ -46,7 +47,7 @@ const ROLES: { key: RoleKey; label: string }[] = [
   { key: "state_member", label: "State Member" },
 ];
 
-const FEATURES: { key: FeatureKey; label: string }[] = [
+const FEATURES: { key: FeatureKey; label: string; hint?: string }[] = [
   { key: "tab_my_alliance", label: "My Alliance" },
   { key: "tab_guides", label: "Guides" },
   { key: "tab_calendar", label: "Calendar" },
@@ -68,7 +69,8 @@ function emptyMatrix(): Matrix {
   for (const r of ROLES) {
     m[r.key] = {};
     for (const f of FEATURES) {
-      m[r.key][f.key] = r.key === "owner"; // owner gets all by default
+      // default: owner gets all; others start false
+      m[r.key][f.key] = r.key === "owner";
     }
   }
   return m as Matrix;
@@ -135,16 +137,22 @@ export default function OwnerPermissionsMatrixShellPage() {
     try {
       const parsed = JSON.parse(raw) as Store;
       if (!parsed || parsed.version !== 1 || !parsed.matrix) throw new Error("Invalid");
-      setAllianceCode(String(parsed.allianceCode || "WOC").toUpperCase());
-      setStore({ ...parsed, updatedUtc: nowUtc() });
+      const ac = String(parsed.allianceCode || "WOC").toUpperCase();
+      setAllianceCode(ac);
+      setStore({ ...parsed, allianceCode: ac, updatedUtc: nowUtc() });
       window.alert("Imported matrix.");
     } catch {
       window.alert("Invalid JSON.");
     }
   }
 
+  function resetDefaults() {
+    if (!window.confirm("Reset matrix to defaults for this alliance?")) return;
+    setStore({ version: 1, updatedUtc: nowUtc(), allianceCode: allianceCode.toUpperCase(), matrix: emptyMatrix() });
+  }
+
   const note = useMemo(
-    () => "UI-only shell. Later we will persist to Supabase + enforce via RLS (never trust UI).",
+    () => "UI-only shell. Later: persist to Supabase + enforce via RLS (never trust UI).",
     []
   );
 
@@ -155,13 +163,20 @@ export default function OwnerPermissionsMatrixShellPage() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyJson}>Copy JSON</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importJson}>Import JSON</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetDefaults}>Reset</button>
+          <SupportBundleButton />
         </div>
       </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ opacity: 0.75, fontSize: 12 }}>Alliance</div>
-          <input className="zombie-input" value={allianceCode} onChange={(e) => setAllianceCode(e.target.value.toUpperCase())} style={{ padding: "10px 12px" }} />
+          <input
+            className="zombie-input"
+            value={allianceCode}
+            onChange={(e) => setAllianceCode(e.target.value.toUpperCase())}
+            style={{ padding: "10px 12px" }}
+          />
           <div style={{ opacity: 0.75, fontSize: 12 }}>Updated (UTC): {store.updatedUtc}</div>
         </div>
         <div style={{ marginTop: 8, opacity: 0.75, fontSize: 12 }}>{note}</div>
@@ -185,11 +200,7 @@ export default function OwnerPermissionsMatrixShellPage() {
                 <td style={{ padding: 10, borderBottom: "1px solid rgba(255,255,255,0.08)", fontWeight: 800 }}>{f.label}</td>
                 {ROLES.map((r) => (
                   <td key={r.key + "_" + f.key} style={{ textAlign: "center", padding: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                    <input
-                      type="checkbox"
-                      checked={!!matrix?.[r.key]?.[f.key]}
-                      onChange={() => toggle(r.key, f.key)}
-                    />
+                    <input type="checkbox" checked={!!matrix?.[r.key]?.[f.key]} onChange={() => toggle(r.key, f.key)} />
                   </td>
                 ))}
               </tr>
@@ -199,7 +210,7 @@ export default function OwnerPermissionsMatrixShellPage() {
       </div>
 
       <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
-        Later: wire this to Supabase permissions tables + enforce via RLS. Owner always has full override.
+        Later: we’ll wire this into Supabase tables + RLS and use it to control tabs/visibility per alliance.
       </div>
     </div>
   );
