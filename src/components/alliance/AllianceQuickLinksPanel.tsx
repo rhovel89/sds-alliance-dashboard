@@ -1,62 +1,57 @@
 import React, { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AllianceThemePicker } from "../theme/AllianceThemePicker";
+
+type LinkItem = { label: string; path: (a: string) => string; emoji?: string };
+
+const LINKS: LinkItem[] = [
+  { label: "Guides",        path: (a) => "/dashboard/" + a + "/guides", emoji: "📚" },
+  { label: "Calendar",      path: (a) => "/dashboard/" + a + "/calendar", emoji: "🗓️" },
+  { label: "HQ Map",        path: (a) => "/dashboard/" + a + "/hq-map", emoji: "🏰" },
+  { label: "Announcements", path: (a) => "/dashboard/" + a + "/announcements", emoji: "📣" },
+  { label: "Permissions",   path: (a) => "/dashboard/" + a + "/permissions", emoji: "🔐" },
+  { label: "Events",        path: (a) => "/dashboard/" + a + "/events", emoji: "🎯" },
+];
 
 export function AllianceQuickLinksPanel() {
   const nav = useNavigate();
-  const params = useParams();
-  const allianceCode = useMemo(() => (params.alliance_id || "").toString().toUpperCase(), [params.alliance_id]);
-
-  const base = useMemo(() => "/dashboard/" + allianceCode, [allianceCode]);
-
-  const links = useMemo(
-    () => [
-      { label: "🧭 Alliance Home", to: base },
-      { label: "📚 Guides", to: base + "/guides" },
-      { label: "🗓 Calendar", to: base + "/calendar" },
-      { label: "🏗 HQ Map", to: base + "/hq-map" },
-      { label: "🧪 System Status", to: "/status" },
-      { label: "🧟 Me", to: "/me" },
-      { label: "🧭 Alliance Directory", to: "/alliances" },
-      { label: "🛰 State 789 Dashboard", to: "/state/789" },
-    ],
-    [base]
-  );
+  const { alliance_id } = useParams();
+  const alliance = useMemo(() => (alliance_id ? String(alliance_id).toUpperCase() : ""), [alliance_id]);
 
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div
-        className="zombie-card"
-        style={{
-          padding: 14,
-          borderRadius: 16,
-          background: "var(--sad-card, rgba(0,0,0,0.35))",
-          border: "1px solid var(--sad-border, rgba(120,255,120,0.18))",
-        }}
-      >
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ fontWeight: 900, fontSize: 16 }}>🧟 Quick Links</div>
-          <div style={{ marginLeft: "auto", fontSize: 12, opacity: 0.75 }}>
-            Current Alliance: <b>{allianceCode || "—"}</b>
-          </div>
-        </div>
+    <div className="zombie-card" style={{ marginTop: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ fontWeight: 900, fontSize: 14 }}>⚡ Quick Links</div>
+        <button
+          className="zombie-btn"
+          style={{ padding: "8px 10px", fontSize: 12 }}
+          onClick={async () => {
+            const url = window.location.origin + "/dashboard/" + alliance;
+            try {
+              await navigator.clipboard.writeText(url);
+              window.alert("Copied: " + url);
+            } catch {
+              window.prompt("Copy link:", url);
+            }
+          }}
+        >
+          Copy Alliance URL
+        </button>
+      </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-          {links.map((l) => (
-            <button
-              key={l.to}
-              className="zombie-btn"
-              style={{ height: 34, padding: "0 12px" }}
-              onClick={() => nav(l.to)}
-            >
-              {l.label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 12 }}>
-          <AllianceThemePicker allianceCode={allianceCode} compact />
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginTop: 12 }}>
+        {LINKS.map((l) => (
+          <button
+            key={l.label}
+            className="zombie-btn"
+            style={{ width: "100%", textAlign: "left", padding: "12px 12px" }}
+            onClick={() => nav(l.path(alliance))}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 16 }}>{l.emoji || "➡️"}</div>
+              <div style={{ fontWeight: 900 }}>{l.label}</div>
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   );
