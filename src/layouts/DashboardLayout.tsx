@@ -3,7 +3,7 @@ import "../styles/dashboard-zombie.css";
 import AllianceAnnouncementsPanel from "../components/announcements/AllianceAnnouncementsPanel";
 import AllianceDashboardExtras from "../components/alliance/AllianceDashboardExtras";
 import { GuidesQuickLink } from "../components/guides/GuidesQuickLink";
-import { AllianceQuickLinksPanel } from "../components/alliance/AllianceQuickLinksPanel";
+const LazyAllianceQuickLinksPanel = lazy(() => import("../components/alliance/AllianceQuickLinksPanel").then((m: any) => ({ default: m.AllianceQuickLinksPanel })));
 
 export default function DashboardLayout() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
@@ -49,7 +49,7 @@ export default function DashboardLayout() {
       </aside>
 
       <main className="dashboard-main">
-        {showQuickLinks ? <AllianceQuickLinksPanel /> : null}
+        {showQuickLinks ? (<Suspense fallback={null}><LazyAllianceQuickLinksPanel /></Suspense>) : null}
 
         <Outlet />
       <GuidesQuickLink />
@@ -58,7 +58,3 @@ export default function DashboardLayout() {
       </>
   );
 }
-
-
-
-
