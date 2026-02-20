@@ -59,6 +59,12 @@ import MyMailPage from "../pages/mail/MyMailPage";
 import OwnerAllianceDirectoryEditorPage from "../pages/owner/OwnerAllianceDirectoryEditorPage";
 import OwnerPermissionsMatrixShellPage from "../pages/owner/OwnerPermissionsMatrixShellPage";
 import DebugPage from "../pages/DebugPage";
+import PlayerDashboardSafePage from "../pages/PlayerDashboardSafePage";
+import OwnerOneClickProvisionPage from "../pages/owner/OwnerOneClickProvisionPage";
+import OwnerEventTypesLibraryPage from "../pages/owner/OwnerEventTypesLibraryPage";
+import OwnerAllianceJumpPage from "../pages/owner/OwnerAllianceJumpPage";
+import State789AlertsPage from "../pages/state/State789AlertsPage";
+import State789DiscussionBoardPage from "../pages/state/State789DiscussionBoardPage";
 
 export default function AppRoutes() {
   return (
@@ -74,7 +80,7 @@ export default function AppRoutes() {
       <Route path="/onboarding" element={<RequestAccessPage />} />
 
       {/* Personal dashboard */}
-      <Route path="/me" element={<PlayerDashboardPage />} />
+      <Route path="/me" element={<PlayerDashboardSafePage />} />
       <Route path="/dashboard/ME" element={<Navigate to="/me" replace />} />
 
       {/* Owner */}
@@ -118,6 +124,11 @@ export default function AppRoutes() {
       <Route path="/owner/alliance-directory" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
       <Route path="/owner/permissions-matrix" element={<RequireAdmin><OwnerPermissionsMatrixShellPage /></RequireAdmin>} />
       <Route path="/debug" element={<DebugPage />} />
+      <Route path="/owner/oneclick-provision" element={<RequireAdmin><OwnerOneClickProvisionPage /></RequireAdmin>} />
+      <Route path="/owner/event-types-library" element={<RequireAdmin><OwnerEventTypesLibraryPage /></RequireAdmin>} />
+      <Route path="/owner/jump" element={<RequireAdmin><OwnerAllianceJumpPage /></RequireAdmin>} />
+      <Route path="/state/789/alerts" element={<State789AlertsPage />} />
+      <Route path="/state/789/discussion" element={<State789DiscussionBoardPage />} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
