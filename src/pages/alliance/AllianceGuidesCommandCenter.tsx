@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { useAllianceRole } from "../../hooks/useAllianceRole";
 
 type SectionRow = Record<string, any>;
 type EntryRow = Record<string, any>;
@@ -10,6 +11,9 @@ const SECTION_NAME_COL = "name";
 export function AllianceGuidesCommandCenter() {
   const { alliance_id } = useParams();
   const allianceCode = useMemo(() => (alliance_id || "").toString(), [alliance_id]);
+
+  const roleState = useAllianceRole(allianceCode);
+  const canEdit = !!roleState.canEditGuides;
 
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
@@ -51,7 +55,6 @@ export function AllianceGuidesCommandCenter() {
     const rows = (data || []) as SectionRow[];
     setSections(rows);
 
-    // Keep selection stable
     if (rows.length > 0) {
       const stillExists = selectedSectionId && rows.some((r) => r.id === selectedSectionId);
       if (!stillExists) setSelectedSectionId(rows[0].id);
@@ -93,6 +96,7 @@ export function AllianceGuidesCommandCenter() {
   }, [selectedSectionId]);
 
   async function createSection() {
+    if (!canEdit) return;
     if (!allianceCode) return;
     const name = newSectionName.trim();
     if (!name) return;
@@ -115,11 +119,13 @@ export function AllianceGuidesCommandCenter() {
   }
 
   async function startEditSection(section: SectionRow) {
+    if (!canEdit) return;
     setEditingSectionId(section.id);
     setEditingSectionName((section[SECTION_NAME_COL] || "").toString());
   }
 
   async function saveEditSection() {
+    if (!canEdit) return;
     if (!editingSectionId) return;
     const name = editingSectionName.trim();
     if (!name) return;
@@ -147,6 +153,7 @@ export function AllianceGuidesCommandCenter() {
   }
 
   async function deleteSection(sectionId: string) {
+    if (!canEdit) return;
     const ok = confirm("Delete this section? Entries inside will be deleted too.");
     if (!ok) return;
 
@@ -162,6 +169,7 @@ export function AllianceGuidesCommandCenter() {
   }
 
   async function createEntry() {
+    if (!canEdit) return;
     if (!allianceCode || !selectedSectionId) return;
 
     const title = newEntryTitle.trim();
@@ -196,12 +204,14 @@ export function AllianceGuidesCommandCenter() {
   }
 
   function startEditEntry(entry: EntryRow) {
+    if (!canEdit) return;
     setEditingEntryId(entry.id);
     setEditingEntryTitle((entry.title || "").toString());
     setEditingEntryBody((entry.body || "").toString());
   }
 
   async function saveEditEntry() {
+    if (!canEdit) return;
     if (!editingEntryId || !selectedSectionId) return;
 
     const title = editingEntryTitle.trim();
@@ -233,7 +243,9 @@ export function AllianceGuidesCommandCenter() {
   }
 
   async function deleteEntry(entryId: string) {
+    if (!canEdit) return;
     if (!selectedSectionId) return;
+
     const ok = confirm("Delete this entry?");
     if (!ok) return;
 
@@ -254,11 +266,26 @@ export function AllianceGuidesCommandCenter() {
     <div style={{ padding: 16 }}>
       <h2 style={{ marginTop: 0 }}>Alliance Guides</h2>
 
+      <div style={{ marginBottom: 12, opacity: 0.9 }}>
+        {roleState.loading ? (
+          <span>Checking permissions…</span>
+        ) : roleState.error ? (
+          <span>
+            Role check issue: {roleState.error}
+          </span>
+        ) : (
+          <span>
+            Mode: <b>{canEdit ? "Editor" : "View-only"}</b>
+            {roleState.role ? <span> (role: {roleState.role})</span> : null}
+          </span>
+        )}
+      </div>
+
       {error ? (
         <div style={{ marginBottom: 12, padding: 10, border: "1px solid #ff6b6b" }}>
           <b>Error:</b> {error}
           <div style={{ marginTop: 6, opacity: 0.9 }}>
-            (RLS still enforces permissions. If you're R4/R5/Owner and actions fail, membership/RLS may need review.)
+            (Backend RLS still enforces permissions. If you should be an editor, membership/RLS needs review.)
           </div>
         </div>
       ) : null}
@@ -271,15 +298,21 @@ export function AllianceGuidesCommandCenter() {
             {loadingSections ? <span style={{ opacity: 0.8 }}>Loading…</span> : null}
           </div>
 
-          <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-            <input
-              value={newSectionName}
-              onChange={(e) => setNewSectionName(e.target.value)}
-              placeholder="New section name"
-              style={{ flex: 1 }}
-            />
-            <button onClick={createSection}>Add</button>
-          </div>
+          {canEdit ? (
+            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+              <input
+                value={newSectionName}
+                onChange={(e) => setNewSectionName(e.target.value)}
+                placeholder="New section name"
+                style={{ flex: 1 }}
+              />
+              <button onClick={createSection}>Add</button>
+            </div>
+          ) : (
+            <div style={{ marginTop: 10, opacity: 0.85 }}>
+              You have view-only access. (Owner/R5/R4 can edit.)
+            </div>
+          )}
 
           <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
             {sections.map((s) => {
@@ -300,27 +333,30 @@ export function AllianceGuidesCommandCenter() {
                     <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {name}
                     </div>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          startEditSection(s);
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteSection(s.id);
-                        }}
-                      >
-                        Del
-                      </button>
-                    </div>
+
+                    {canEdit ? (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEditSection(s);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteSection(s.id);
+                          }}
+                        >
+                          Del
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
 
-                  {editingSectionId === s.id ? (
+                  {canEdit && editingSectionId === s.id ? (
                     <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
                       <input
                         value={editingSectionName}
@@ -365,26 +401,33 @@ export function AllianceGuidesCommandCenter() {
             <div style={{ marginTop: 12, opacity: 0.85 }}>Select a section to view entries.</div>
           ) : (
             <>
-              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-                <input
-                  value={newEntryTitle}
-                  onChange={(e) => setNewEntryTitle(e.target.value)}
-                  placeholder="Entry title"
-                />
-                <textarea
-                  value={newEntryBody}
-                  onChange={(e) => setNewEntryBody(e.target.value)}
-                  placeholder="Entry body"
-                  rows={6}
-                />
-                <div>
-                  <button onClick={createEntry}>Add Entry</button>
+              {canEdit ? (
+                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <input
+                    value={newEntryTitle}
+                    onChange={(e) => setNewEntryTitle(e.target.value)}
+                    placeholder="Entry title"
+                  />
+                  <textarea
+                    value={newEntryBody}
+                    onChange={(e) => setNewEntryBody(e.target.value)}
+                    placeholder="Entry body"
+                    rows={6}
+                  />
+                  <div>
+                    <button onClick={createEntry}>Add Entry</button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div style={{ marginTop: 10, opacity: 0.85 }}>
+                  View-only access. (Owner/R5/R4 can add/edit/delete entries.)
+                </div>
+              )}
 
               <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
                 {entries.map((en) => {
                   const isEditing = editingEntryId === en.id;
+
                   return (
                     <div
                       key={en.id}
@@ -397,11 +440,15 @@ export function AllianceGuidesCommandCenter() {
                         <>
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                             <div style={{ fontWeight: 700 }}>{(en.title || "Untitled").toString()}</div>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <button onClick={() => startEditEntry(en)}>Edit</button>
-                              <button onClick={() => deleteEntry(en.id)}>Del</button>
-                            </div>
+
+                            {canEdit ? (
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <button onClick={() => startEditEntry(en)}>Edit</button>
+                                <button onClick={() => deleteEntry(en.id)}>Del</button>
+                              </div>
+                            ) : null}
                           </div>
+
                           <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
                             {(en.body || "").toString()}
                           </div>
