@@ -1,8 +1,9 @@
-import { Outlet, NavLink, useParams, Navigate } from "react-router-dom";
+import { Outlet, NavLink, useParams, Navigate, useLocation } from "react-router-dom";
 import "../styles/dashboard-zombie.css";
 import AllianceAnnouncementsPanel from "../components/announcements/AllianceAnnouncementsPanel";
 import AllianceDashboardExtras from "../components/alliance/AllianceDashboardExtras";
 import { GuidesQuickLink } from "../components/guides/GuidesQuickLink";
+import { AllianceQuickLinksPanel } from "../components/alliance/AllianceQuickLinksPanel";
 
 export default function DashboardLayout() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
@@ -20,7 +21,11 @@ export default function DashboardLayout() {
 
   const base = `/dashboard/${upper}`;
 
-  return (
+  const location = useLocation();
+
+  const showQuickLinks = /^\/dashboard\/[^\/]+\/?$/.test(location.pathname);
+
+  return(
       <>
       {/* --- Added: Alliance Announcements + Guides --- */}
       <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
@@ -44,6 +49,8 @@ export default function DashboardLayout() {
       </aside>
 
       <main className="dashboard-main">
+        {showQuickLinks ? <AllianceQuickLinksPanel /> : null}
+
         <Outlet />
       <GuidesQuickLink />
       </main>
