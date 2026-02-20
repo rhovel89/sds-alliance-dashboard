@@ -3,6 +3,7 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import RequireAlliance from "../components/RequireAlliance";
 import RequireAllianceAccess from "../components/auth/RequireAllianceAccess";
 import RequireAdmin from "../components/auth/RequireAdmin";
+import SystemStatusPage from "../pages/SystemStatusPage";
 
 import AuthLandingPage from "../pages/AuthLandingPage";
 import AuthCallback from "../pages/AuthCallback";
@@ -55,6 +56,7 @@ import OwnerEventTypesPage from "../pages/owner/OwnerEventTypesPage";
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/status" element={<SystemStatusPage />} />
       {/* Public */}
       <Route path="/" element={<AuthLandingPage />} />
 
