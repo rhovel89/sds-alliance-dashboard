@@ -1,56 +1,59 @@
 import React, { useMemo } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
+import { RealtimeStatusBadge } from "../system/RealtimeStatusBadge";
 
-function getAllianceFromPath(pathname: string): string | null {
-  const m = (pathname || "").match(/^\/dashboard\/([^\/]+)/);
+function parseAllianceFromPath(pathname: string): string | null {
+  // /dashboard/:alliance_id/...
+  const m = pathname.match(/^\/dashboard\/([^\/?#]+)/i);
   if (!m) return null;
-  const code = (m[1] || "").toString().trim();
+  const code = String(m[1] || "").trim();
   return code ? code.toUpperCase() : null;
 }
 
-export function CurrentAlliancePill() {
+export default function CurrentAlliancePill() {
   const loc = useLocation();
-  const nav = useNavigate();
+  const params = useParams();
 
-  const alliance = useMemo(() => getAllianceFromPath(loc.pathname), [loc.pathname]);
-  if (!alliance) {
-    return (
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "6px 10px",
-          borderRadius: 999,
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: "rgba(0,0,0,0.20)",
-          fontSize: 12,
-          opacity: 0.75,
-          whiteSpace: "nowrap",
-        }}
-        title="No alliance in URL"
-      >
-        🧩 <span>Alliance</span> <span style={{ opacity: 0.8 }}>•</span> <span>—</span>
-      </div>
-    );
-  }
+  const alliance = useMemo(() => {
+    // prefer params if present
+    const p = (params as any)?.alliance_id;
+    if (p) return String(p).toUpperCase();
+    return parseAllianceFromPath(loc.pathname);
+  }, [loc.pathname, params]);
+
+  const label = alliance || "—";
 
   return (
-    <button
-      className="zombie-btn"
+    <div
+      className="zombie-card"
       style={{
-        height: 34,
-        padding: "0 12px",
-        borderRadius: 999,
         display: "inline-flex",
         alignItems: "center",
-        gap: 8,
+        gap: 10,
+        padding: "8px 10px",
+        borderRadius: 999,
+        marginLeft: 10,
         whiteSpace: "nowrap",
       }}
-      onClick={() => nav("/dashboard/" + alliance)}
-      title={"Current alliance: " + alliance + " (click to open dashboard home)"}
+      title="Current Alliance (from URL)"
     >
-      🧩 <span style={{ opacity: 0.85 }}>Alliance</span> <span>•</span> <b>{alliance}</b>
-    </button>
+      <div style={{ fontWeight: 900, fontSize: 12 }}>🏷️ {label}</div>
+      <RealtimeStatusBadge allianceCode={alliance} />
+      <button
+        className="zombie-btn"
+        style={{ padding: "6px 8px", fontSize: 12 }}
+        onClick={async () => {
+          if (!alliance) return window.alert("No alliance in this URL.");
+          try {
+            await navigator.clipboard.writeText(alliance);
+            window.alert("Copied: " + alliance);
+          } catch {
+            window.prompt("Copy alliance:", alliance);
+          }
+        }}
+      >
+        Copy
+      </button>
+    </div>
   );
 }
