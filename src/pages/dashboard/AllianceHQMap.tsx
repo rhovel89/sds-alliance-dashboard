@@ -14,8 +14,8 @@ type HQSlot = {
   slot_number: number | null;
 };
 
-const GRID_W = 12; // 12 x 10 = 120 slots total
-const GRID_H = 10;
+const GRID_W = 14; // 14 x 11 = 154 slots total
+const GRID_H = 11;
 
 const CELL = 100; // visual size (requested)
 const GAP = 10;
