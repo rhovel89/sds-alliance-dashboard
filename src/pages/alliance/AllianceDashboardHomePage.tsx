@@ -1,7 +1,7 @@
 import React from "react";
 import { useParams } from "react-router-dom";
 import { AllianceQuickLinksPanel } from "../../components/alliance/AllianceQuickLinksPanel";
-import InnerDashboardHomeImported from "../pages/PlayerDashboardPage";
+import InnerDashboardHomeImported from "../PlayerDashboardPage";
 // FROM_APPROUTES: detected default dashboard home component
 InnerDashboardHome = InnerDashboardHomeImported;
 
