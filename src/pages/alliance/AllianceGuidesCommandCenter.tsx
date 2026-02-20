@@ -6,7 +6,7 @@ import { useGuidesEditAccess } from "../../hooks/useGuidesEditAccess";
 type SectionRow = Record<string, any>;
 type EntryRow = Record<string, any>;
 
-const SECTION_NAME_COL = "name";
+const SECTION_NAME_COL = "title";
 
 export function AllianceGuidesCommandCenter() {
   const { alliance_id } = useParams();
