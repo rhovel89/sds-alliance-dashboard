@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useGuidesEditAccess } from "../../hooks/useGuidesEditAccess";
+import { GuideEntriesPanel } from "../../components/guides/GuideEntriesPanel";
 
 type SectionRow = Record<string, any>;
 type EntryRow = Record<string, any>;
@@ -493,5 +494,6 @@ export function AllianceGuidesCommandCenter() {
         </div>
       </div>
     </div>
+    <GuideEntriesPanel allianceCode={allianceCode} sectionId={selectedSectionId} canEdit={canEdit} /> 
   );
 }
