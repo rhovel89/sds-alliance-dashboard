@@ -36,6 +36,10 @@ for each row execute function public._touch_updated_at();
 grant select, insert, update, delete on table public.guide_section_entries to authenticated;
 alter table public.guide_section_entries enable row level security;
 
+-- RLS policies (idempotent: drop + recreate so db push never fails)
+drop policy if exists gse_select_members on public.guide_section_entries;
+drop policy if exists gse_manage_r4r5 on public.guide_section_entries;
+
 -- Members can read entries in their alliance
 create policy gse_select_members
 on public.guide_section_entries
