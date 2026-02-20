@@ -21,6 +21,7 @@ export function AllianceQuickLinksPanel() {
     <div className="zombie-card" style={{ marginTop: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ fontWeight: 900, fontSize: 14 }}>⚡ Quick Links</div>
+
         <button
           className="zombie-btn"
           style={{ padding: "8px 10px", fontSize: 12 }}
@@ -38,7 +39,14 @@ export function AllianceQuickLinksPanel() {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginTop: 12 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gap: 10,
+          marginTop: 12,
+        }}
+      >
         {LINKS.map((l) => (
           <button
             key={l.label}
@@ -53,6 +61,12 @@ export function AllianceQuickLinksPanel() {
           </button>
         ))}
       </div>
+
+      <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
+        Visible only on <code>/dashboard/&lt;ALLIANCE&gt;</code> (home).
+      </div>
     </div>
   );
 }
+
+export default AllianceQuickLinksPanel;
