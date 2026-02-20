@@ -108,10 +108,13 @@ export default function AppRoutes() {
       </Route>
 
       {/* fallback */}
+} />
+} />
+} />
+} />
       <Route path="/state/789" element={<State789DashboardPage />} />
       <Route path="/alliances" element={<AllianceDirectoryPage />} />
-<Route path="*" element={<Navigate to="/me" replace />} />
-      <Route path="/dashboard/:alliance_id/guides" element={<AllianceGuidesPage />} />
+      <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
 }
