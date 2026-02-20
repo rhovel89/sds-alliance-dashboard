@@ -2,6 +2,7 @@ import { Outlet, NavLink, useParams, Navigate } from "react-router-dom";
 import "../styles/dashboard-zombie.css";
 import AllianceAnnouncementsPanel from "../components/announcements/AllianceAnnouncementsPanel";
 import AllianceDashboardExtras from "../components/alliance/AllianceDashboardExtras";
+import { GuidesQuickLink } from "../components/guides/GuidesQuickLink";
 
 export default function DashboardLayout() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
@@ -44,6 +45,7 @@ export default function DashboardLayout() {
 
       <main className="dashboard-main">
         <Outlet />
+      <GuidesQuickLink />
       </main>
     </div>
       </>
