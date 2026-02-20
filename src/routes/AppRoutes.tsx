@@ -55,6 +55,7 @@ import OwnerEventTypesPage from "../pages/owner/OwnerEventTypesPage";
 import State789DashboardPage from "../pages/state/State789DashboardPage";
 import AllianceDirectoryPage from "../pages/alliance/AllianceDirectoryPage";
 import AllianceDashboardIndexPage from "../pages/alliance/AllianceDashboardIndexPage";
+import MyMailPage from "../pages/mail/MyMailPage";
 
 export default function AppRoutes() {
   return (
@@ -110,6 +111,7 @@ export default function AppRoutes() {
       {/* fallback */}
       <Route path="/state/789" element={<State789DashboardPage />} />
       <Route path="/alliances" element={<AllianceDirectoryPage />} />
+      <Route path="/mail" element={<MyMailPage />} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
