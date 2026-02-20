@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { OwnerLiveOpsPanel } from "../components/owner/OwnerLiveOpsPanel";
 
 import styles from "./OwnerDashboardPage.module.css";
 import { useNavigate } from "react-router-dom";
@@ -181,7 +182,8 @@ style={{
           </button>
         ))}
       </div>
-    </div>
+          <OwnerLiveOpsPanel />
+</div>
   );
 }
 
