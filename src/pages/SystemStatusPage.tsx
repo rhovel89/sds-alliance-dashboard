@@ -54,7 +54,7 @@ export default function SystemStatusPage() {
 
       const list: Probe[] = [];
       list.push(await probeSelect("guide_sections", "id,alliance_code,title"));
-      list.push(await probeSelect("alliance_events", "id,alliance_code"));
+      list.push(await probeSelect("alliance_events", "id,alliance_id"));
       list.push(await probeSelect("player_hqs", "id,created_at,updated_at"));
 
       if (!cancelled) {
