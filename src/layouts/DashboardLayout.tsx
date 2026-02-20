@@ -36,6 +36,7 @@ export default function DashboardLayout() {
           <NavLink to={base}>My Alliance</NavLink>
           <NavLink to={`${base}/hq-map`}>HQ Layout</NavLink>
           <NavLink to={`${base}/calendar`}>Calendar</NavLink>
+          <NavLink to={`${base}/guides`}>Guides</NavLink>
           <NavLink to={`${base}/permissions`}>Permissions</NavLink>
           <NavLink to={`${base}/events`}>Events</NavLink>
         </nav>
@@ -48,6 +49,7 @@ export default function DashboardLayout() {
       </>
   );
 }
+
 
 
 
