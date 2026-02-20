@@ -5,8 +5,6 @@ import { useHQPermissions } from "../../hooks/useHQPermissions";
 import { useAllianceManagerAccess } from "../../hooks/useAllianceManagerAccess";
 import { RecurringControls } from "../../components/calendar/RecurringControls";
 import {
-import { useIsDashboardOwner } from "../../hooks/useIsDashboardOwner";
-import { useIsDashboardOwner } from "../../hooks/useIsDashboardOwner";
   expandEventsForMonth,
   getDeleteId,
   getEventStartUtc,

@@ -22,7 +22,7 @@ export default function OwnerDashboardSelect() {
       <button
         className="zombie-btn"
         style={{ width: "100%", marginTop: 8 }}
-        onClick={() => navigate("/dashboard/" + String(a.code || "").toUpperCase() + "")}
+        onClick={() => navigate("/dashboard/" + String((alliances?.[0]?.code) || "").toUpperCase() + "")}
       >
         {alliancesLoading ? (
           <div style={{ opacity: 0.75 }}>Loading alliances…</div>
