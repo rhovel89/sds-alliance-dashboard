@@ -319,9 +319,9 @@ export default function OwnerBroadcastComposerPage() {
         <div style={{ marginTop: 10, opacity: 0.75, fontSize: 12, lineHeight: "18px" }}>
           Tokens supported:
           <br />
-          Roles: <b>@Leadership</b> <b>@R5</b> <b>@R4</b> <b>@Member</b> <b>@StateLeadership</b> <b>@StateMod</b> and <b>{{"{{Leadership}}"}}</b> / <b>{{"{{role:Leadership}}"}}</b>
+          Roles: <b>@Leadership</b> <b>@R5</b> <b>@R4</b> <b>@Member</b> <b>@StateLeadership</b> <b>@StateMod</b> and <b>{"{{Leadership}}"}</b> / <b>{"{{role:Leadership}}"}</b>
           <br />
-          Channels: <b>#announcements</b>, <b>{{"{{#announcements}}"}}</b>, <b>{{"{{channel:announcements}}"}}</b>
+          Channels: <b>#announcements</b>, <b>{"{{#announcements}}"}</b>, <b>{"{{channel:announcements}}"}</b>
         </div>
       </div>
 
