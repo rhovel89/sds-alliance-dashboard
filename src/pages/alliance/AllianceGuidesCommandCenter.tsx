@@ -316,7 +316,7 @@ export function AllianceGuidesCommandCenter() {
 
           <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
             {sections.map((s) => {
-              const name = (s[SECTION_NAME_COL] || s.name || s.title || "Untitled").toString();
+              const name = (s[SECTION_NAME_COL] || (s.title ?? s.name ?? s.section_name) || s.title || "Untitled").toString();
               const selected = s.id === selectedSectionId;
 
               return (
