@@ -52,7 +52,6 @@ function DashboardEntry() {
   return hasAuth ? <AuthCallback /> : <MyDashboardsPage />;
 }
 import OwnerEventTypesPage from "../pages/owner/OwnerEventTypesPage";
-import AllianceDashboardHomePage from "../pages/alliance/AllianceDashboardHomePage";
 import State789DashboardPage from "../pages/state/State789DashboardPage";
 import AllianceDirectoryPage from "../pages/alliance/AllianceDirectoryPage";
 
@@ -94,7 +93,7 @@ export default function AppRoutes() {
       <Route path="/state" element={<StateDashboardPage />} />
 
       {/* Alliance dashboards (IMPORTANT: announcements/guides are NESTED so alliance context exists) */}
-      <Route path="/dashboard/:alliance_id" element={<AllianceDashboardHomePage />}>
+      <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
         <Route index element={<MyAlliance />} />
 
         <Route path="announcements" element={<AllianceAnnouncementsPage />} />
