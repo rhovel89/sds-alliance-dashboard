@@ -12,6 +12,7 @@ export default function AuthRedirector() {
     async function run() {
       try {
         const path = loc.pathname || "/";
+        // SAD_ALLOWLIST_SKIP_REDIRECT         const __sadAllow =           path.startsWith("/dashboard") ||           path.startsWith("/owner") ||           path.startsWith("/state") ||           path === "/mail" ||           path === "/status" ||           path === "/onboarding" ||           path.startsWith("/alliances");         if (__sadAllow) { return; }
 
         // Only auto-redirect from ENTRY pages:
         const isEntry = path === "/" || path === "/dashboard" || path === "/onboarding";
@@ -68,4 +69,3 @@ export default function AuthRedirector() {
 
   return null;
 }
-
