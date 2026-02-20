@@ -90,7 +90,12 @@ export default function TopNav() {
           <a href="/dashboard" style={{ fontSize: 12 }}>Sign In</a>
         )}
       </div>
-    </div>
+          <OwnerAllianceJump />
+      <RealtimeBadge />
+      <ThemePicker />
+      <OwnerBroadcastModal />
+      <SupportBundleButton />
+</div>
   );
 }
 
