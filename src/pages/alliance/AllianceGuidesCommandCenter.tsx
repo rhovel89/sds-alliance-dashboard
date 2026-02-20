@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
-import { useAllianceRole } from "../../hooks/useAllianceRole";
+import { useGuidesEditAccess } from "../../hooks/useGuidesEditAccess";
 
 type SectionRow = Record<string, any>;
 type EntryRow = Record<string, any>;
@@ -12,7 +12,7 @@ export function AllianceGuidesCommandCenter() {
   const { alliance_id } = useParams();
   const allianceCode = useMemo(() => (alliance_id || "").toString(), [alliance_id]);
 
-  const roleState = useAllianceRole(allianceCode);
+  const roleState = useGuidesEditAccess(allianceCode);
   const canEdit = !!roleState.canEditGuides;
 
   const [sections, setSections] = useState<SectionRow[]>([]);
