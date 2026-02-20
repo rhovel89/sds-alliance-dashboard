@@ -10,6 +10,15 @@ type ChecklistItem = {
   createdUtc: string;
 };
 
+type RoleMapStore = {
+  version: 1;
+  global: Record<string, string>;
+  alliances: Record<string, Record<string, string>>;
+};
+
+const ROLE_MAP_KEY = "sad_discord_role_map_v1";
+const DEFAULT_KEYS = ["Leadership", "R5", "R4", "Member", "StateLeadership", "StateMod"] as const;
+
 function uid() {
   return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
 }
@@ -53,11 +62,7 @@ function parseUtcToDate(utcIso: string): Date | null {
 
 function toDiscordTs(d: Date): { unix: number; full: string; relative: string } {
   const unix = Math.floor(d.getTime() / 1000);
-  return {
-    unix,
-    full: `<t:${unix}:F>`,
-    relative: `<t:${unix}:R>`,
-  };
+  return { unix, full: `<t:${unix}:F>`, relative: `<t:${unix}:R>` };
 }
 
 function formatCountdown(ms: number): string {
@@ -68,7 +73,6 @@ function formatCountdown(ms: number): string {
   const totalMin = Math.floor(totalSec / 60);
   const min = totalMin % 60;
   const hr = Math.floor(totalMin / 60);
-
   const pad = (n: number) => (n < 10 ? "0" + n : "" + n);
   const s = `${hr}:${pad(min)}:${pad(sec)}`;
   return neg ? `-${s}` : s;
@@ -78,6 +82,64 @@ function severityBadge(sev: Severity) {
   if (sev === "critical") return "🟥 CRITICAL";
   if (sev === "warning") return "🟧 WARNING";
   return "🟩 INFO";
+}
+
+// ----------------------
+// Role mention resolver
+// ----------------------
+function emptyStore(): RoleMapStore {
+  return { version: 1, global: {}, alliances: {} };
+}
+
+function loadRoleStore(): RoleMapStore {
+  const s = loadJson<RoleMapStore>(ROLE_MAP_KEY, emptyStore());
+  if (!s || (s as any).version !== 1) return emptyStore();
+  if (!s.global) s.global = {};
+  if (!s.alliances) s.alliances = {};
+  return s;
+}
+
+function saveRoleStore(s: RoleMapStore) {
+  saveJson(ROLE_MAP_KEY, s);
+}
+
+function normalizeKey(k: string) {
+  return (k || "").replace(/^@/, "").replace(/^\{\{/, "").replace(/\}\}$/, "").trim();
+}
+
+function resolveRoleToken(token: string, allianceCode: string | null): string {
+  const store = loadRoleStore();
+  const key = normalizeKey(token);
+  if (!key) return token;
+
+  // per-alliance wins
+  if (allianceCode) {
+    const m = store.alliances?.[allianceCode];
+    const v = m?.[key];
+    if (v && v.trim()) return v.trim();
+  }
+
+  // global fallback
+  const gv = store.global?.[key];
+  if (gv && gv.trim()) return gv.trim();
+
+  return token;
+}
+
+function replaceRolePlaceholders(input: string, allianceCode: string | null): string {
+  let out = input || "";
+  for (const k of DEFAULT_KEYS) {
+    const a = "@" + k;
+    const b = "{{" + k + "}}";
+
+    const ra = resolveRoleToken(a, allianceCode);
+    const rb = resolveRoleToken(b, allianceCode);
+
+    // Replace ALL occurrences safely without regex injection issues
+    if (out.includes(a)) out = out.split(a).join(ra);
+    if (out.includes(b)) out = out.split(b).join(rb);
+  }
+  return out;
 }
 
 export function OwnerLiveOpsPanel() {
@@ -111,6 +173,80 @@ export function OwnerLiveOpsPanel() {
   const [newItem, setNewItem] = useState<string>("");
   const [importJson, setImportJson] = useState<string>("");
 
+  // ---------- Role Resolver UI ----------
+  const [mapScope, setMapScope] = useState<"GLOBAL" | "ALLIANCE">("ALLIANCE");
+  const [mapAlliance, setMapAlliance] = useState<string>("");
+  const [roleDraft, setRoleDraft] = useState<Record<string, string>>({});
+  const [roleImport, setRoleImport] = useState<string>("");
+  const [roleTest, setRoleTest] = useState<string>("@Leadership please coordinate with @R5 and @R4. {{Member}} notify.");
+
+  const activeAllianceForOps = useMemo(() => {
+    if (targetMode === "CURRENT") return currentAlliance || null;
+    if (targetMode === "CUSTOM") {
+      const c = (customTarget || "").trim().toUpperCase();
+      return c || null;
+    }
+    return null; // ALL uses global-only unless user chooses otherwise
+  }, [targetMode, currentAlliance, customTarget]);
+
+  const target = useMemo(() => {
+    if (targetMode === "ALL") return "ALL";
+    if (targetMode === "CURRENT") return currentAlliance || "ALL";
+    const c = (customTarget || "").trim().toUpperCase();
+    return c || "ALL";
+  }, [targetMode, customTarget, currentAlliance]);
+
+  const header = useMemo(() => {
+    const sev = severityBadge(severity);
+    const tgt = target === "ALL" ? "[ALL]" : "[" + target + "]";
+    const inc = incidentMode ? " 🚨 INCIDENT MODE" : "";
+    return `${sev} ${tgt} ${title}${inc}`.trim();
+  }, [severity, target, title, incidentMode]);
+
+  const mentionRaw = useMemo(() => {
+    if (mentionPreset === "none") return "";
+    if (mentionPreset === "custom") return (customMention || "").trim();
+    return mentionPreset;
+  }, [mentionPreset, customMention]);
+
+  const timerDate = useMemo(() => parseUtcToDate(timerUtc), [timerUtc]);
+  const timerInfo = useMemo(() => {
+    if (!timerDate) return null;
+    const ms = timerDate.getTime() - tick;
+    const discord = toDiscordTs(timerDate);
+    return { utc: timerDate.toISOString(), local: timerDate.toLocaleString(), countdown: formatCountdown(ms), ms, discord };
+  }, [timerDate, tick]);
+
+  // Resolve mentions against active alliance (if any)
+  const resolvedMention = useMemo(() => {
+    if (!mentionRaw) return "";
+    return replaceRolePlaceholders(mentionRaw, activeAllianceForOps);
+  }, [mentionRaw, activeAllianceForOps]);
+
+  const resolvedHeader = useMemo(() => replaceRolePlaceholders(header, activeAllianceForOps), [header, activeAllianceForOps]);
+  const resolvedBody = useMemo(() => replaceRolePlaceholders(body || "", activeAllianceForOps), [body, activeAllianceForOps]);
+
+  const discordAnnouncement = useMemo(() => {
+    const lines: string[] = [];
+    if (resolvedMention) lines.push(resolvedMention);
+    lines.push(`**${resolvedHeader}**`);
+    lines.push(`UTC: ${nowUtcIso()}`);
+
+    if (timerInfo) {
+      lines.push(`When: ${timerInfo.discord.full} (${timerInfo.discord.relative})`);
+      lines.push(`Local: ${timerInfo.local}`);
+    }
+
+    lines.push("");
+    lines.push(resolvedBody || "(empty)");
+    return lines.join("\n");
+  }, [resolvedMention, resolvedHeader, resolvedBody, timerInfo]);
+
+  async function copy(txt: string, okMsg: string) {
+    await navigator.clipboard?.writeText(txt);
+    window.alert(okMsg);
+  }
+
   // Load saved state
   useEffect(() => {
     const draft = loadJson("sad_liveops_draft_v2", {
@@ -139,21 +275,15 @@ export function OwnerLiveOpsPanel() {
 
     const savedChecklist = loadJson<ChecklistItem[]>("sad_ops_checklist_v1", []);
     setChecklist(Array.isArray(savedChecklist) ? savedChecklist : []);
-  }, []);
+
+    // Role resolver defaults
+    const defaultAlliance = (currentAlliance || "").toUpperCase();
+    setMapAlliance(defaultAlliance);
+  }, [currentAlliance]);
 
   // Persist draft state
   useEffect(() => {
-    saveJson("sad_liveops_draft_v2", {
-      targetMode,
-      customTarget,
-      severity,
-      title,
-      body,
-      incidentMode,
-      mentionPreset,
-      customMention,
-      timerUtc,
-    });
+    saveJson("sad_liveops_draft_v2", { targetMode, customTarget, severity, title, body, incidentMode, mentionPreset, customMention, timerUtc });
   }, [targetMode, customTarget, severity, title, body, incidentMode, mentionPreset, customMention, timerUtc]);
 
   // Persist checklist
@@ -167,59 +297,9 @@ export function OwnerLiveOpsPanel() {
     return () => window.clearInterval(iv);
   }, []);
 
-  const target = useMemo(() => {
-    if (targetMode === "ALL") return "ALL";
-    if (targetMode === "CURRENT") return currentAlliance || "ALL";
-    const c = (customTarget || "").trim().toUpperCase();
-    return c || "ALL";
-  }, [targetMode, customTarget, currentAlliance]);
-
-  const header = useMemo(() => {
-    const sev = severityBadge(severity);
-    const tgt = target === "ALL" ? "[ALL]" : "[" + target + "]";
-    const inc = incidentMode ? " 🚨 INCIDENT MODE" : "";
-    return `${sev} ${tgt} ${title}${inc}`.trim();
-  }, [severity, target, title, incidentMode]);
-
-  const mention = useMemo(() => {
-    if (mentionPreset === "none") return "";
-    if (mentionPreset === "custom") return (customMention || "").trim();
-    return mentionPreset;
-  }, [mentionPreset, customMention]);
-
-  const timerDate = useMemo(() => parseUtcToDate(timerUtc), [timerUtc]);
-  const timerInfo = useMemo(() => {
-    if (!timerDate) return null;
-    const ms = timerDate.getTime() - tick;
-    const discord = toDiscordTs(timerDate);
-    return {
-      utc: timerDate.toISOString(),
-      local: timerDate.toLocaleString(),
-      countdown: formatCountdown(ms),
-      ms,
-      discord,
-    };
-  }, [timerDate, tick]);
-
-  const discordAnnouncement = useMemo(() => {
-    const lines: string[] = [];
-    if (mention) lines.push(mention);
-    lines.push(`**${header}**`);
-    lines.push(`UTC: ${nowUtcIso()}`);
-
-    if (timerInfo) {
-      lines.push(`When: ${timerInfo.discord.full} (${timerInfo.discord.relative})`);
-      lines.push(`Local: ${timerInfo.local}`);
-    }
-
-    lines.push("");
-    lines.push(body || "(empty)");
-    return lines.join("\n");
-  }, [mention, header, body, timerInfo]);
-
-  async function copy(txt: string, okMsg: string) {
-    await navigator.clipboard?.writeText(txt);
-    window.alert(okMsg);
+  function setTimerFromMinutes(minutes: number) {
+    const d = new Date(Date.now() + minutes * 60 * 1000);
+    setTimerUtc(d.toISOString());
   }
 
   // Checklist actions
@@ -230,28 +310,23 @@ export function OwnerLiveOpsPanel() {
     setChecklist((prev) => [item, ...prev]);
     setNewItem("");
   }
-
   function toggleChecklist(id: string) {
     setChecklist((prev) => prev.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
   }
-
   function removeChecklist(id: string) {
     setChecklist((prev) => prev.filter((x) => x.id !== id));
   }
-
   function clearCompleted() {
     setChecklist((prev) => prev.filter((x) => !x.done));
   }
-
   async function exportChecklist() {
     const payload = { tsUtc: nowUtcIso(), checklist };
     await copy(JSON.stringify(payload, null, 2), "Copied checklist export JSON to clipboard.");
   }
-
   function importChecklistFromText() {
     try {
       const obj = JSON.parse(importJson || "{}");
-      const items = obj.checklist ?? obj.items ?? obj;
+      const items = (obj as any).checklist ?? (obj as any).items ?? obj;
       if (!Array.isArray(items)) {
         window.alert("Import JSON must contain an array under 'checklist' (or be an array).");
         return;
@@ -260,12 +335,7 @@ export function OwnerLiveOpsPanel() {
         .map((x: any) => {
           const text = (x?.text ?? x?.name ?? "").toString().trim();
           if (!text) return null;
-          return {
-            id: (x?.id ?? uid()).toString(),
-            text,
-            done: !!x?.done,
-            createdUtc: (x?.createdUtc ?? nowUtcIso()).toString(),
-          };
+          return { id: (x?.id ?? uid()).toString(), text, done: !!x?.done, createdUtc: (x?.createdUtc ?? nowUtcIso()).toString() };
         })
         .filter(Boolean) as any;
 
@@ -276,11 +346,70 @@ export function OwnerLiveOpsPanel() {
     }
   }
 
-  // Timer helpers
-  function setTimerFromMinutes(minutes: number) {
-    const d = new Date(Date.now() + minutes * 60 * 1000);
-    setTimerUtc(d.toISOString());
+  // ----------------------
+  // Role mapping helpers
+  // ----------------------
+  const scopeKey = useMemo(() => (mapScope === "GLOBAL" ? "GLOBAL" : (mapAlliance || "").trim().toUpperCase()), [mapScope, mapAlliance]);
+
+  useEffect(() => {
+    const store = loadRoleStore();
+    const draft: Record<string, string> = {};
+    for (const k of DEFAULT_KEYS) {
+      if (scopeKey === "GLOBAL") draft[k] = store.global?.[k] || "";
+      else draft[k] = store.alliances?.[scopeKey]?.[k] || "";
+    }
+    setRoleDraft(draft);
+  }, [scopeKey]);
+
+  function saveRoleDraft() {
+    const store = loadRoleStore();
+    const clean: Record<string, string> = {};
+    for (const k of DEFAULT_KEYS) {
+      const v = (roleDraft[k] || "").trim();
+      if (v) clean[k] = v;
+    }
+
+    if (scopeKey === "GLOBAL") {
+      store.global = clean;
+    } else {
+      if (!store.alliances) store.alliances = {};
+      store.alliances[scopeKey] = clean;
+    }
+
+    saveRoleStore(store);
+    window.alert("Saved role mention mapping.");
   }
+
+  async function exportRoleMap() {
+    const store = loadRoleStore();
+    await copy(JSON.stringify({ tsUtc: nowUtcIso(), roleMap: store }, null, 2), "Copied role mention mapping JSON to clipboard.");
+  }
+
+  function importRoleMap() {
+    try {
+      const obj = JSON.parse(roleImport || "{}");
+      const rm = (obj as any).roleMap ?? obj;
+      const s: RoleMapStore = {
+        version: 1,
+        global: (rm?.global && typeof rm.global === "object") ? rm.global : {},
+        alliances: (rm?.alliances && typeof rm.alliances === "object") ? rm.alliances : {},
+      };
+      saveRoleStore(s);
+      window.alert("Imported role mention mapping.");
+      // refresh draft
+      const next = loadRoleStore();
+      const draft: Record<string, string> = {};
+      for (const k of DEFAULT_KEYS) {
+        if (scopeKey === "GLOBAL") draft[k] = next.global?.[k] || "";
+        else draft[k] = next.alliances?.[scopeKey]?.[k] || "";
+      }
+      setRoleDraft(draft);
+    } catch {
+      window.alert("Invalid JSON for role mapping import.");
+    }
+  }
+
+  const roleTestOutput = useMemo(() => replaceRolePlaceholders(roleTest || "", activeAllianceForOps), [roleTest, activeAllianceForOps]);
 
   return (
     <div className="zombie-card" style={{ padding: 16, marginTop: 12 }}>
@@ -303,14 +432,10 @@ export function OwnerLiveOpsPanel() {
             value={targetMode}
             onChange={(e) => setTargetMode((e.target.value as any) || "ALL")}
             style={{
-              height: 34,
-              borderRadius: 10,
-              padding: "0 10px",
+              height: 34, borderRadius: 10, padding: "0 10px",
               border: "1px solid rgba(120,255,120,0.18)",
               background: "rgba(0,0,0,0.25)",
-              color: "rgba(235,255,235,0.95)",
-              outline: "none",
-              minWidth: 170,
+              color: "rgba(235,255,235,0.95)", outline: "none", minWidth: 170,
             }}
           >
             <option value="ALL">ALL (state-wide)</option>
@@ -324,14 +449,10 @@ export function OwnerLiveOpsPanel() {
               onChange={(e) => setCustomTarget((e.target.value || "").toUpperCase())}
               placeholder="Alliance code (e.g. WOC)"
               style={{
-                height: 34,
-                borderRadius: 10,
-                padding: "0 10px",
+                height: 34, borderRadius: 10, padding: "0 10px",
                 border: "1px solid rgba(120,255,120,0.18)",
                 background: "rgba(0,0,0,0.25)",
-                color: "rgba(235,255,235,0.95)",
-                outline: "none",
-                minWidth: 220,
+                color: "rgba(235,255,235,0.95)", outline: "none", minWidth: 220,
               }}
             />
           ) : null}
@@ -348,14 +469,10 @@ export function OwnerLiveOpsPanel() {
             value={severity}
             onChange={(e) => setSeverity((e.target.value as any) || "info")}
             style={{
-              height: 34,
-              borderRadius: 10,
-              padding: "0 10px",
+              height: 34, borderRadius: 10, padding: "0 10px",
               border: "1px solid rgba(120,255,120,0.18)",
               background: "rgba(0,0,0,0.25)",
-              color: "rgba(235,255,235,0.95)",
-              outline: "none",
-              minWidth: 170,
+              color: "rgba(235,255,235,0.95)", outline: "none", minWidth: 170,
             }}
           >
             <option value="info">🟩 info</option>
@@ -368,15 +485,10 @@ export function OwnerLiveOpsPanel() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             style={{
-              flex: 1,
-              minWidth: 220,
-              height: 34,
-              borderRadius: 10,
-              padding: "0 10px",
+              flex: 1, minWidth: 220, height: 34, borderRadius: 10, padding: "0 10px",
               border: "1px solid rgba(120,255,120,0.18)",
               background: "rgba(0,0,0,0.25)",
-              color: "rgba(235,255,235,0.95)",
-              outline: "none",
+              color: "rgba(235,255,235,0.95)", outline: "none",
             }}
           />
         </div>
@@ -388,17 +500,16 @@ export function OwnerLiveOpsPanel() {
             onChange={(e) => setBody(e.target.value)}
             rows={7}
             style={{
-              width: "100%",
-              borderRadius: 10,
-              padding: 10,
+              width: "100%", borderRadius: 10, padding: 10,
               border: "1px solid rgba(120,255,120,0.18)",
               background: "rgba(0,0,0,0.25)",
-              color: "rgba(235,255,235,0.95)",
-              outline: "none",
-              resize: "vertical",
+              color: "rgba(235,255,235,0.95)", outline: "none", resize: "vertical",
             }}
             placeholder="Type your ops message here…"
           />
+          <div style={{ marginTop: 6, fontSize: 12, opacity: 0.7 }}>
+            Resolver tokens supported: @Leadership @R5 @R4 @Member @StateLeadership @StateMod (and {{Leadership}} style)
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -432,23 +543,19 @@ export function OwnerLiveOpsPanel() {
           value={mentionPreset}
           onChange={(e) => setMentionPreset((e.target.value as any) || "none")}
           style={{
-            height: 34,
-            borderRadius: 10,
-            padding: "0 10px",
+            height: 34, borderRadius: 10, padding: "0 10px",
             border: "1px solid rgba(120,255,120,0.18)",
             background: "rgba(0,0,0,0.25)",
-            color: "rgba(235,255,235,0.95)",
-            outline: "none",
-            minWidth: 220,
+            color: "rgba(235,255,235,0.95)", outline: "none", minWidth: 220,
           }}
           title="Role mention placeholder"
         >
           <option value="none">(none)</option>
           <option value="@here">@here</option>
           <option value="@everyone">@everyone</option>
-          <option value="@Leadership">@Leadership (placeholder)</option>
-          <option value="@R5">@R5 (placeholder)</option>
-          <option value="@R4">@R4 (placeholder)</option>
+          <option value="@Leadership">@Leadership (resolver)</option>
+          <option value="@R5">@R5 (resolver)</option>
+          <option value="@R4">@R4 (resolver)</option>
           <option value="custom">custom…</option>
         </select>
 
@@ -458,15 +565,10 @@ export function OwnerLiveOpsPanel() {
             onChange={(e) => setCustomMention(e.target.value)}
             placeholder="@role or <@&ROLE_ID>"
             style={{
-              flex: 1,
-              minWidth: 220,
-              height: 34,
-              borderRadius: 10,
-              padding: "0 10px",
+              flex: 1, minWidth: 220, height: 34, borderRadius: 10, padding: "0 10px",
               border: "1px solid rgba(120,255,120,0.18)",
               background: "rgba(0,0,0,0.25)",
-              color: "rgba(235,255,235,0.95)",
-              outline: "none",
+              color: "rgba(235,255,235,0.95)", outline: "none",
             }}
           />
         ) : null}
@@ -474,28 +576,24 @@ export function OwnerLiveOpsPanel() {
 
       <div style={{ marginTop: 10 }}>
         <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>
-          Output (includes Discord timestamp if timer is set)
+          Output (resolver applied + Discord timestamp if timer set)
         </div>
         <textarea
           value={discordAnnouncement}
           readOnly
           rows={8}
           style={{
-            width: "100%",
-            borderRadius: 10,
-            padding: 10,
+            width: "100%", borderRadius: 10, padding: 10,
             border: "1px solid rgba(120,255,120,0.18)",
             background: "rgba(0,0,0,0.20)",
-            color: "rgba(235,255,235,0.95)",
-            outline: "none",
-            resize: "vertical",
+            color: "rgba(235,255,235,0.95)", outline: "none", resize: "vertical",
           }}
         />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
           <button className="zombie-btn" onClick={() => copy(discordAnnouncement, "Copied Discord-ready announcement.")}>
             📋 Copy Discord Announcement
           </button>
-          <button className="zombie-btn" onClick={() => copy(JSON.stringify({ tsUtc: nowUtcIso(), target, mention, header, body, timerUtc }, null, 2), "Copied Discord generator JSON.")}>
+          <button className="zombie-btn" onClick={() => copy(JSON.stringify({ tsUtc: nowUtcIso(), target, mention: mentionRaw, mentionResolved: resolvedMention, header: resolvedHeader, body: resolvedBody, timerUtc }, null, 2), "Copied Discord generator JSON.")}>
             🧾 Copy Generator JSON
           </button>
         </div>
@@ -512,15 +610,10 @@ export function OwnerLiveOpsPanel() {
           onChange={(e) => setTimerUtc(e.target.value)}
           placeholder="UTC ISO (e.g. 2026-02-20T05:30:00.000Z)"
           style={{
-            flex: 1,
-            minWidth: 320,
-            height: 36,
-            borderRadius: 10,
-            padding: "0 10px",
+            flex: 1, minWidth: 320, height: 36, borderRadius: 10, padding: "0 10px",
             border: "1px solid rgba(120,255,120,0.18)",
             background: "rgba(0,0,0,0.25)",
-            color: "rgba(235,255,235,0.95)",
-            outline: "none",
+            color: "rgba(235,255,235,0.95)", outline: "none",
           }}
         />
 
@@ -557,6 +650,123 @@ export function OwnerLiveOpsPanel() {
 
       <hr className="zombie-divider" />
 
+      {/* ROLE RESOLVER */}
+      <h4 style={{ marginTop: 0 }}>🔧 Discord Role Mention Resolver (UI-only)</h4>
+
+      <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 8 }}>
+        Map placeholders like @R5 to real mentions like {"<@&ROLE_ID>"}.
+        Per-alliance overrides GLOBAL.
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ fontSize: 12, opacity: 0.85 }}>Scope:</div>
+        <select
+          value={mapScope}
+          onChange={(e) => setMapScope((e.target.value as any) || "ALLIANCE")}
+          style={{
+            height: 34, borderRadius: 10, padding: "0 10px",
+            border: "1px solid rgba(120,255,120,0.18)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(235,255,235,0.95)", outline: "none", minWidth: 170,
+          }}
+        >
+          <option value="ALLIANCE">Alliance</option>
+          <option value="GLOBAL">Global</option>
+        </select>
+
+        {mapScope === "ALLIANCE" ? (
+          <input
+            value={mapAlliance}
+            onChange={(e) => setMapAlliance((e.target.value || "").toUpperCase())}
+            placeholder="Alliance code (e.g. WOC)"
+            style={{
+              height: 34, borderRadius: 10, padding: "0 10px",
+              border: "1px solid rgba(120,255,120,0.18)",
+              background: "rgba(0,0,0,0.25)",
+              color: "rgba(235,255,235,0.95)", outline: "none", minWidth: 220,
+            }}
+          />
+        ) : null}
+
+        <div style={{ marginLeft: "auto", fontSize: 12, opacity: 0.75 }}>
+          Active ops alliance: {activeAllianceForOps || "GLOBAL"}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+        {DEFAULT_KEYS.map((k) => (
+          <div key={k} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ width: 160, fontSize: 12, opacity: 0.9 }}>{`@${k}`}</div>
+            <input
+              value={roleDraft[k] || ""}
+              onChange={(e) => setRoleDraft((p) => ({ ...p, [k]: e.target.value }))}
+              placeholder={`<@&ROLE_ID> (or leave blank)`}
+              style={{
+                flex: 1, minWidth: 260, height: 34, borderRadius: 10, padding: "0 10px",
+                border: "1px solid rgba(120,255,120,0.18)",
+                background: "rgba(0,0,0,0.25)",
+                color: "rgba(235,255,235,0.95)", outline: "none",
+              }}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
+        <button className="zombie-btn" onClick={saveRoleDraft}>💾 Save Mapping</button>
+        <button className="zombie-btn" onClick={exportRoleMap}>📦 Export Mapping</button>
+      </div>
+
+      <div style={{ marginTop: 10 }}>
+        <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Import Mapping JSON</div>
+        <textarea
+          value={roleImport}
+          onChange={(e) => setRoleImport(e.target.value)}
+          rows={4}
+          placeholder='Paste JSON export (expects {"roleMap": {...}} or just {...})'
+          style={{
+            width: "100%", borderRadius: 10, padding: 10,
+            border: "1px solid rgba(120,255,120,0.18)",
+            background: "rgba(0,0,0,0.20)",
+            color: "rgba(235,255,235,0.95)", outline: "none", resize: "vertical",
+          }}
+        />
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+          <button className="zombie-btn" onClick={importRoleMap}>⬇️ Import Mapping</button>
+          <button className="zombie-btn" onClick={() => setRoleImport("")}>🧽 Clear Import</button>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Test resolver</div>
+        <input
+          value={roleTest}
+          onChange={(e) => setRoleTest(e.target.value)}
+          style={{
+            width: "100%", height: 36, borderRadius: 10, padding: "0 10px",
+            border: "1px solid rgba(120,255,120,0.18)",
+            background: "rgba(0,0,0,0.20)",
+            color: "rgba(235,255,235,0.95)", outline: "none",
+          }}
+        />
+        <textarea
+          value={roleTestOutput}
+          readOnly
+          rows={3}
+          style={{
+            width: "100%", marginTop: 8, borderRadius: 10, padding: 10,
+            border: "1px solid rgba(120,255,120,0.18)",
+            background: "rgba(0,0,0,0.20)",
+            color: "rgba(235,255,235,0.95)", outline: "none", resize: "vertical",
+          }}
+        />
+        <button className="zombie-btn" style={{ marginTop: 8 }} onClick={() => copy(roleTestOutput, "Copied resolver test output.")}>
+          📋 Copy Test Output
+        </button>
+      </div>
+
+      <hr className="zombie-divider" />
+
       {/* OPS CHECKLIST */}
       <h4 style={{ marginTop: 0 }}>✅ Ops Checklist (saved locally)</h4>
 
@@ -566,19 +776,12 @@ export function OwnerLiveOpsPanel() {
           onChange={(e) => setNewItem(e.target.value)}
           placeholder="Add checklist item…"
           style={{
-            flex: 1,
-            minWidth: 260,
-            height: 36,
-            borderRadius: 10,
-            padding: "0 10px",
+            flex: 1, minWidth: 260, height: 36, borderRadius: 10, padding: "0 10px",
             border: "1px solid rgba(120,255,120,0.18)",
             background: "rgba(0,0,0,0.25)",
-            color: "rgba(235,255,235,0.95)",
-            outline: "none",
+            color: "rgba(235,255,235,0.95)", outline: "none",
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") addChecklistItem();
-          }}
+          onKeyDown={(e) => { if (e.key === "Enter") addChecklistItem(); }}
         />
         <button className="zombie-btn" onClick={addChecklistItem}>➕ Add</button>
         <button className="zombie-btn" onClick={clearCompleted}>🧹 Clear Completed</button>
@@ -609,14 +812,10 @@ export function OwnerLiveOpsPanel() {
           rows={4}
           placeholder='Paste export JSON here (expects { "checklist": [ ... ] })'
           style={{
-            width: "100%",
-            borderRadius: 10,
-            padding: 10,
+            width: "100%", borderRadius: 10, padding: 10,
             border: "1px solid rgba(120,255,120,0.18)",
             background: "rgba(0,0,0,0.20)",
-            color: "rgba(235,255,235,0.95)",
-            outline: "none",
-            resize: "vertical",
+            color: "rgba(235,255,235,0.95)", outline: "none", resize: "vertical",
           }}
         />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
