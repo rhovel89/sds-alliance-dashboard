@@ -58,7 +58,7 @@ export function GuideEntriesPanel(props: {
       if (!sectionId) return;
 
       if (!isUuid(sectionId)) {
-        setError("Selected section id is not a UUID. sectionId=" + String(sectionId));
+        setError("Selected section id is not a UUID.\nsectionId=" + String(sectionId));
         return;
       }
 

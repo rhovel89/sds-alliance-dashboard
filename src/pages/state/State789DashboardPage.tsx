@@ -1,19 +1,84 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { RealtimeStatusBadge } from "../../components/system/RealtimeStatusBadge";
 
-type Widget = { title: string; body: string; emoji: string };
+type Note = { id: string; text: string; createdUtc: string };
 
-const DEFAULT: Widget[] = [
-  { title: "State Alerts", emoji: "🚨", body: "UI-only placeholder. Later: state-wide announcements + pings." },
-  { title: "Upcoming State Events", emoji: "🗓️", body: "UI-only placeholder. Later: pulls from state calendar + alliance feeds." },
-  { title: "War Room Notes", emoji: "🧠", body: "UI-only placeholder. Later: realtime notes + pinned objectives." },
-  { title: "Achievements Tracker", emoji: "🏆", body: "UI-only placeholder. Later: progress bars + approval workflow." },
-];
+const NOTES_KEY = "sad_state789_notes_v1";
+
+function uid() {
+  return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
+}
+
+function nowUtc() {
+  return new Date().toISOString();
+}
+
+function loadNotes(): Note[] {
+  try {
+    const raw = localStorage.getItem(NOTES_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr as Note[];
+  } catch {
+    return [];
+  }
+}
+
+function saveNotes(n: Note[]) {
+  try {
+    localStorage.setItem(NOTES_KEY, JSON.stringify(n));
+  } catch {}
+}
 
 export default function State789DashboardPage() {
-  const [widgets] = useState<Widget[]>(DEFAULT);
-
   const title = useMemo(() => "🧟 State 789 Dashboard", []);
+  const [notes, setNotes] = useState<Note[]>(() => loadNotes());
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    saveNotes(notes);
+  }, [notes]);
+
+  function addNote() {
+    const t = text.trim();
+    if (!t) return;
+    setNotes((p) => [{ id: uid(), text: t, createdUtc: nowUtc() }, ...(p || [])]);
+    setText("");
+  }
+
+  function del(id: string) {
+    if (!window.confirm("Delete this note?")) return;
+    setNotes((p) => (p || []).filter((x) => x.id !== id));
+  }
+
+  async function exportNotes() {
+    const payload = { version: 1, exportedUtc: nowUtc(), notes };
+    const txt = JSON.stringify(payload, null, 2);
+    try {
+      await navigator.clipboard.writeText(txt);
+      window.alert("Copied notes export JSON.");
+    } catch {
+      window.prompt("Copy notes JSON:", txt);
+    }
+  }
+
+  function importNotes() {
+    const raw = window.prompt("Paste notes export JSON:");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      const arr = parsed.notes;
+      if (!Array.isArray(arr)) throw new Error("Invalid notes array");
+      const cleaned: Note[] = arr
+        .filter((x: any) => x && typeof x.text === "string")
+        .map((x: any) => ({ id: String(x.id || uid()), text: String(x.text), createdUtc: String(x.createdUtc || nowUtc()) }));
+      setNotes(cleaned);
+      window.alert("Imported notes.");
+    } catch {
+      window.alert("Import failed (invalid JSON).");
+    }
+  }
 
   return (
     <div style={{ padding: 14 }}>
@@ -22,14 +87,53 @@ export default function State789DashboardPage() {
         <RealtimeStatusBadge allianceCode={null} />
       </div>
 
-      <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
-        {widgets.map((w) => (
-          <div key={w.title} className="zombie-card">
-            <div style={{ fontWeight: 900, marginBottom: 8 }}>{w.emoji} {w.title}</div>
-            <div style={{ opacity: 0.85, fontSize: 13, lineHeight: "18px" }}>{w.body}</div>
-            <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>Later: connect to Supabase + RLS + realtime.</div>
+      <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+        <div className="zombie-card">
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>📝 State Notes (UI-only)</div>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportNotes}>Export</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importNotes}>Import</button>
           </div>
-        ))}
+
+          <div style={{ marginTop: 10 }}>
+            <textarea
+              className="zombie-input"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Write a state note…"
+              style={{ width: "100%", minHeight: 90, padding: "10px 12px" }}
+            />
+            <button className="zombie-btn" style={{ marginTop: 10, padding: "10px 12px" }} onClick={addNote}>
+              Add Note
+            </button>
+          </div>
+
+          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            {notes.length === 0 ? <div style={{ opacity: 0.75 }}>No notes yet.</div> : null}
+            {notes.map((n) => (
+              <div key={n.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+                <div style={{ whiteSpace: "pre-wrap" }}>{n.text}</div>
+                <div style={{ marginTop: 8, opacity: 0.6, fontSize: 11 }}>UTC: {n.createdUtc}</div>
+                <button className="zombie-btn" style={{ marginTop: 8, padding: "6px 8px", fontSize: 12 }} onClick={() => del(n.id)}>Delete</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="zombie-card">
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>🚨 State Alerts</div>
+          <div style={{ opacity: 0.85, fontSize: 13, lineHeight: "18px" }}>
+            Placeholder widget. Later: state-wide announcements + pings + approvals workflow.
+          </div>
+        </div>
+
+        <div className="zombie-card">
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>🗓️ Upcoming State Events</div>
+          <div style={{ opacity: 0.85, fontSize: 13, lineHeight: "18px" }}>
+            Placeholder widget. Later: connect to state calendar + alliance feeds (RLS + realtime).
+          </div>
+        </div>
       </div>
     </div>
   );
