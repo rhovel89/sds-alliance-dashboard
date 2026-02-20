@@ -1,5 +1,5 @@
-import AllianceGuidesPanel from "../../components/guides/AllianceGuidesPanel";
+import { AllianceGuidesCommandCenter } from "./AllianceGuidesCommandCenter";
 
 export default function AllianceGuidesPage() {
-  return <AllianceGuidesPanel />;
+  return <AllianceGuidesCommandCenter />;
 }
