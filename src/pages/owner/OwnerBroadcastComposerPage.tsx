@@ -8,18 +8,8 @@ type RoleMapStore = {
   alliances: Record<string, Record<string, string>>;
 };
 
-type ChannelEntry = {
-  id: string;
-  name: string;
-  channelId: string;
-  createdUtc: string;
-};
-
-type ChannelMapStore = {
-  version: 1;
-  global: ChannelEntry[];
-  alliances: Record<string, ChannelEntry[]>;
-};
+type ChannelEntry = { id: string; name: string; channelId: string; createdUtc: string };
+type ChannelMapStore = { version: 1; global: ChannelEntry[]; alliances: Record<string, ChannelEntry[]> };
 
 type DirItem = { id: string; code: string; name: string; state: string };
 
@@ -32,10 +22,7 @@ type Template = {
   updatedUtc: string;
 };
 
-type TemplateStore = {
-  version: 1;
-  templates: Template[];
-};
+type TemplateStore = { version: 1; templates: Template[] };
 
 const ROLE_MAP_KEY = "sad_discord_role_map_v1";
 const CHANNEL_MAP_KEY = "sad_discord_channel_map_v1";
@@ -43,33 +30,13 @@ const DIR_KEY = "sad_alliance_directory_v1";
 const TPL_KEY = "sad_discord_broadcast_templates_v1";
 const PREFILL_KEY = "sad_broadcast_prefill_v1";
 
-function nowUtc() {
-  return new Date().toISOString();
-}
-
-function uid() {
-  return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
-}
+function nowUtc() { return new Date().toISOString(); }
+function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
+function norm(s: any) { return String(s || "").trim().toLowerCase(); }
 
 function safeJson<T>(raw: string | null): T | null {
   if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
-function loadRoleStore(): RoleMapStore {
-  const s = safeJson<RoleMapStore>(localStorage.getItem(ROLE_MAP_KEY));
-  if (s && s.version === 1) return s;
-  return { version: 1, global: {}, alliances: {} };
-}
-
-function loadChannelStore(): ChannelMapStore {
-  const s = safeJson<ChannelMapStore>(localStorage.getItem(CHANNEL_MAP_KEY));
-  if (s && s.version === 1) return s;
-  return { version: 1, global: [], alliances: {} };
+  try { return JSON.parse(raw) as T; } catch { return null; }
 }
 
 function loadDir(): DirItem[] {
@@ -85,6 +52,18 @@ function loadDir(): DirItem[] {
     }));
 }
 
+function loadRoleStore(): RoleMapStore {
+  const s = safeJson<RoleMapStore>(localStorage.getItem(ROLE_MAP_KEY));
+  if (s && s.version === 1) return s;
+  return { version: 1, global: {}, alliances: {} };
+}
+
+function loadChannelStore(): ChannelMapStore {
+  const s = safeJson<ChannelMapStore>(localStorage.getItem(CHANNEL_MAP_KEY));
+  if (s && s.version === 1) return s;
+  return { version: 1, global: [], alliances: {} };
+}
+
 function loadTemplates(): TemplateStore {
   const s = safeJson<TemplateStore>(localStorage.getItem(TPL_KEY));
   if (s && s.version === 1 && Array.isArray(s.templates)) return s;
@@ -92,21 +71,15 @@ function loadTemplates(): TemplateStore {
 }
 
 function saveTemplates(s: TemplateStore) {
-  try {
-    localStorage.setItem(TPL_KEY, JSON.stringify(s));
-  } catch {}
-}
-
-function normalizeKey(k: string): string {
-  return (k || "").trim().toLowerCase();
+  try { localStorage.setItem(TPL_KEY, JSON.stringify(s)); } catch {}
 }
 
 function makeRoleLookup(roleStore: RoleMapStore, allianceCode: string | null) {
   const global = roleStore.global || {};
   const per = allianceCode ? (roleStore.alliances?.[allianceCode] || {}) : {};
   const out: Record<string, string> = {};
-  for (const key of Object.keys(global)) out[normalizeKey(key)] = String(global[key]);
-  for (const key of Object.keys(per)) out[normalizeKey(key)] = String(per[key]);
+  for (const key of Object.keys(global)) out[norm(key)] = String(global[key] || "");
+  for (const key of Object.keys(per)) out[norm(key)] = String(per[key] || "");
   return out;
 }
 
@@ -114,9 +87,9 @@ function makeChannelLookup(channelStore: ChannelMapStore, allianceCode: string |
   const out: Record<string, string> = {};
   const addList = (lst: ChannelEntry[] | undefined) => {
     for (const c of lst || []) {
-      const nm = normalizeKey(String(c.name || ""));
+      const nm = norm(String(c.name || ""));
       const id = String(c.channelId || "").trim();
-      if (nm && id) out[nm] = id;
+      if (nm) out[nm] = id;
     }
   };
   addList(channelStore.global);
@@ -129,38 +102,38 @@ function resolveMentions(input: string, roleLut: Record<string, string>, chanLut
 
   // {{role:Leadership}} and {{Leadership}}
   text = text.replace(/\{\{\s*role\s*:\s*([A-Za-z0-9_\- ]{1,64})\s*\}\}/g, (_m, k) => {
-    const key = normalizeKey(String(k));
+    const key = norm(String(k));
     const id = roleLut[key];
     return id ? `<@&${id}>` : `{{role:${String(k)}}}`;
   });
   text = text.replace(/\{\{\s*([A-Za-z0-9_\- ]{1,64})\s*\}\}/g, (_m, k) => {
-    const key = normalizeKey(String(k));
+    const key = norm(String(k));
     const id = roleLut[key];
     return id ? `<@&${id}>` : `{{${String(k)}}}`;
   });
 
   // @Leadership
   text = text.replace(/(^|[\s(])@([A-Za-z0-9_\-]{2,64})(?=$|[\s),.!?])/g, (_m, pre, k) => {
-    const key = normalizeKey(String(k));
+    const key = norm(String(k));
     const id = roleLut[key];
     return id ? `${pre}<@&${id}>` : `${pre}@${String(k)}`;
   });
 
   // {{#announcements}} and {{channel:announcements}}
   text = text.replace(/\{\{\s*#([A-Za-z0-9_\-]{2,64})\s*\}\}/g, (_m, k) => {
-    const key = normalizeKey(String(k));
+    const key = norm(String(k));
     const id = chanLut[key];
     return id ? `<#${id}>` : `{{#${String(k)}}}`;
   });
   text = text.replace(/\{\{\s*channel\s*:\s*([A-Za-z0-9_\-]{2,64})\s*\}\}/g, (_m, k) => {
-    const key = normalizeKey(String(k));
+    const key = norm(String(k));
     const id = chanLut[key];
     return id ? `<#${id}>` : `{{channel:${String(k)}}}`;
   });
 
-  // #announcements (only when it matches a known channel name)
+  // #announcements (only when name exists in lut)
   text = text.replace(/(^|[\s(])#([A-Za-z0-9_\-]{2,64})(?=$|[\s),.!?])/g, (_m, pre, k) => {
-    const key = normalizeKey(String(k));
+    const key = norm(String(k));
     const id = chanLut[key];
     return id ? `${pre}<#${id}>` : `${pre}#${String(k)}`;
   });
@@ -171,8 +144,7 @@ function resolveMentions(input: string, roleLut: Record<string, string>, chanLut
 export default function OwnerBroadcastComposerPage() {
   const nav = useNavigate();
 
-  const [dir] = useState<DirItem[]>(() => loadDir());
-
+  const dir = useMemo(() => loadDir(), []);
   const [roleStore, setRoleStore] = useState<RoleMapStore>(() => loadRoleStore());
   const [chanStore, setChanStore] = useState<ChannelMapStore>(() => loadChannelStore());
 
@@ -180,24 +152,39 @@ export default function OwnerBroadcastComposerPage() {
   const [selectedTplId, setSelectedTplId] = useState<string | null>(null);
 
   const [scope, setScope] = useState<"global" | "alliance">("alliance");
-  const [allianceCode, setAllianceCode] = useState<string>("WOC");
+  const [allianceCode, setAllianceCode] = useState<string>((dir[0]?.code || "WOC").toUpperCase());
 
   const [tplName, setTplName] = useState<string>("");
   const [draft, setDraft] = useState<string>("");
+
+  // NEW: targeting controls
+  const [targetChannelName, setTargetChannelName] = useState<string>("");
+  const [mentionRoleNames, setMentionRoleNames] = useState<string>(""); // comma list of role keys
+
+  const effectiveAlliance = useMemo(() => (scope === "alliance" ? String(allianceCode || "").toUpperCase() : null), [scope, allianceCode]);
+  const roleLut = useMemo(() => makeRoleLookup(roleStore, effectiveAlliance), [roleStore, effectiveAlliance]);
+  const chanLut = useMemo(() => makeChannelLookup(chanStore, effectiveAlliance), [chanStore, effectiveAlliance]);
+
+  const roleKeys = useMemo(() => Object.keys(roleLut || {}).sort(), [roleLut]);
+  const channelKeys = useMemo(() => Object.keys(chanLut || {}).sort(), [chanLut]);
 
   const selectedTpl = useMemo(() => {
     if (!selectedTplId) return null;
     return tplStore.templates.find((t) => t.id === selectedTplId) || null;
   }, [tplStore.templates, selectedTplId]);
 
-  const effectiveAlliance = useMemo(() => {
-    return scope === "alliance" ? String(allianceCode || "").toUpperCase() : null;
-  }, [scope, allianceCode]);
+  const visibleTemplates = useMemo(() => {
+    const arr = tplStore.templates || [];
+    if (scope === "global") return arr.filter((t) => t.scope === "global");
+    const ac = String(allianceCode || "").toUpperCase();
+    return arr.filter((t) => t.scope === "alliance" && String(t.allianceCode || "").toUpperCase() === ac);
+  }, [tplStore.templates, scope, allianceCode]);
 
-  const roleLut = useMemo(() => makeRoleLookup(roleStore, effectiveAlliance), [roleStore, effectiveAlliance]);
-  const chanLut = useMemo(() => makeChannelLookup(chanStore, effectiveAlliance), [chanStore, effectiveAlliance]);
+  const resolved = useMemo(() => resolveMentions(draft, roleLut, chanLut), [draft, roleLut, chanLut]);
 
-    // One-time prefill from Live Ops (or other tools)
+  useEffect(() => { saveTemplates(tplStore); }, [tplStore]);
+
+  // One-time prefill from Live Ops
   useEffect(() => {
     try {
       const raw = localStorage.getItem(PREFILL_KEY);
@@ -220,11 +207,6 @@ export default function OwnerBroadcastComposerPage() {
       try { localStorage.removeItem(PREFILL_KEY); } catch {}
     }
   }, []);
-  const resolved = useMemo(() => resolveMentions(draft, roleLut, chanLut), [draft, roleLut, chanLut]);
-
-  useEffect(() => {
-    saveTemplates(tplStore);
-  }, [tplStore]);
 
   function refreshStores() {
     setRoleStore(loadRoleStore());
@@ -242,7 +224,7 @@ export default function OwnerBroadcastComposerPage() {
     setTplName(t.name);
     setDraft(t.body || "");
     setScope(t.scope);
-    setAllianceCode((t.allianceCode || "WOC").toUpperCase());
+    setAllianceCode((t.allianceCode || (dir[0]?.code || "WOC")).toUpperCase());
   }
 
   function saveTemplate() {
@@ -274,40 +256,61 @@ export default function OwnerBroadcastComposerPage() {
     if (selectedTplId === id) newTemplate();
   }
 
+  function insertTargets() {
+    const ch = targetChannelName.trim();
+    const roles = mentionRoleNames
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+    const parts: string[] = [];
+    if (ch) parts.push(`{{channel:${ch}}}`);
+    for (const r of roles) parts.push(`{{${r}}}`);
+
+    if (!parts.length) return window.alert("Select a channel and/or roles first.");
+
+    const prefix = parts.join(" ") + "\n\n";
+    setDraft((p) => (p.startsWith(prefix) ? p : prefix + p));
+  }
+
+  async function copyResolvedPayload() {
+    const chKey = norm(targetChannelName);
+    const targetChannelId = chKey ? (chanLut[chKey] || "") : "";
+
+    const roles = mentionRoleNames.split(",").map((x) => x.trim()).filter(Boolean);
+    const roleIds = roles.map((r) => roleLut[norm(r)] || "").filter(Boolean);
+
+    const payload = {
+      version: 1,
+      createdUtc: nowUtc(),
+      scope,
+      allianceCode: scope === "alliance" ? String(allianceCode || "").toUpperCase() : null,
+      templateName: tplName || (selectedTpl?.name || ""),
+      targetChannel: { name: targetChannelName || null, id: targetChannelId || null },
+      mentionRoles: roles,
+      mentionRoleIds: roleIds,
+      messageRaw: draft,
+      messageResolved: resolved,
+      note: "UI-only payload. Bot/webhook send comes later.",
+    };
+
+    const txt = JSON.stringify(payload, null, 2);
+    try { await navigator.clipboard.writeText(txt); window.alert("Copied Discord payload JSON."); }
+    catch { window.prompt("Copy payload JSON:", txt); }
+  }
+
   async function copyResolved() {
-    try {
-      await navigator.clipboard.writeText(resolved);
-      window.alert("Copied Discord-ready message.");
-    } catch {
-      window.prompt("Copy message:", resolved);
-    }
+    try { await navigator.clipboard.writeText(resolved); window.alert("Copied Discord-ready message."); }
+    catch { window.prompt("Copy message:", resolved); }
   }
-
-  async function copyRaw() {
-    try {
-      await navigator.clipboard.writeText(draft);
-      window.alert("Copied raw draft.");
-    } catch {
-      window.prompt("Copy raw draft:", draft);
-    }
-  }
-
-  function templatesFiltered(): Template[] {
-    const arr = tplStore.templates || [];
-    if (scope === "global") return arr.filter((t) => t.scope === "global");
-    const ac = String(allianceCode || "").toUpperCase();
-    return arr.filter((t) => t.scope === "alliance" && String(t.allianceCode || "").toUpperCase() === ac);
-  }
-
-  const visibleTemplates = useMemo(() => templatesFiltered(), [tplStore.templates, scope, allianceCode]);
 
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>📣 Owner — Broadcast Composer (UI-only)</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/discord")}>
-            Discord Settings
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/discord-mentions")}>
+            🔧 Mentions
           </button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={refreshStores}>
             Reload Role/Channel Maps
@@ -336,16 +339,44 @@ export default function OwnerBroadcastComposerPage() {
           ) : null}
 
           <div style={{ opacity: 0.75, fontSize: 12 }}>
-            Roles mapped: {Object.keys(roleLut || {}).length} | Channels mapped: {Object.keys(chanLut || {}).length}
+            Roles mapped: {roleKeys.length} | Channels mapped: {channelKeys.length}
           </div>
         </div>
 
         <div style={{ marginTop: 10, opacity: 0.75, fontSize: 12, lineHeight: "18px" }}>
           Tokens supported:
           <br />
-          Roles: <b>@Leadership</b> <b>@R5</b> <b>@R4</b> <b>@Member</b> <b>@StateLeadership</b> <b>@StateMod</b> and <b>{"{{Leadership}}"}</b> / <b>{"{{role:Leadership}}"}</b>
+          Roles: <b>@Leadership</b> <b>@R5</b> <b>@R4</b> <b>@Member</b> and <b>{"{{Leadership}}"}</b> / <b>{"{{role:Leadership}}"}</b>
           <br />
           Channels: <b>#announcements</b>, <b>{"{{#announcements}}"}</b>, <b>{"{{channel:announcements}}"}</b>
+        </div>
+      </div>
+
+      <div className="zombie-card" style={{ marginTop: 12 }}>
+        <div style={{ fontWeight: 900 }}>Target Channel + Mentions</div>
+
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ opacity: 0.75, fontSize: 12 }}>Post Target Channel (UI-only for now)</div>
+          <select className="zombie-input" value={targetChannelName} onChange={(e) => setTargetChannelName(e.target.value)} style={{ padding: "10px 12px", minWidth: 240 }}>
+            <option value="">(none)</option>
+            {channelKeys.map((k) => <option key={k} value={k}>{k}{chanLut[k] ? "" : " (no id yet)"}</option>)}
+          </select>
+
+          <div style={{ opacity: 0.75, fontSize: 12 }}>Mention Roles (comma names)</div>
+          <input
+            className="zombie-input"
+            value={mentionRoleNames}
+            onChange={(e) => setMentionRoleNames(e.target.value)}
+            placeholder="Leadership,R5"
+            style={{ padding: "10px 12px", minWidth: 240 }}
+          />
+
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={insertTargets}>Insert into Draft</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolvedPayload}>Copy Payload JSON</button>
+        </div>
+
+        <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
+          Copy Payload JSON is what we’ll feed to your Discord bot later to “push directly to Discord.”
         </div>
       </div>
 
@@ -401,15 +432,8 @@ export default function OwnerBroadcastComposerPage() {
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={saveTemplate}>
-              Save Template
-            </button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyRaw}>
-              Copy Raw
-            </button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolved}>
-              Copy Discord-ready
-            </button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={saveTemplate}>Save Template</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolved}>Copy Discord-ready</button>
           </div>
 
           <div style={{ marginTop: 12 }}>
@@ -420,7 +444,7 @@ export default function OwnerBroadcastComposerPage() {
           </div>
 
           <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
-            This is UI-only. Later we will connect to the Discord bot for direct posting.
+            Next step: Discord bot reads “Payload JSON” and posts to the selected channel.
           </div>
         </div>
       </div>
