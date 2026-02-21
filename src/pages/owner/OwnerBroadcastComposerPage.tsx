@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 import { supabase } from "../../lib/supabaseClient";
+import { sendDiscordBot } from "../../lib/discordEdgeSend";
 
 type RoleMapStore = {
   version: 1;
@@ -450,7 +451,17 @@ export default function OwnerBroadcastComposerPage() {
     }
   }
 
-  return (
+    async function sendNowBot() {
+    try {
+      if (!resolvedChannelId) return window.alert("Set a channel WITH an ID first (Owner → Discord Mentions).");
+      const r = await sendDiscordBot({ mode: "bot", channelId: resolvedChannelId, content: resolved });
+      if (!r.ok) return window.alert("Send failed: " + r.error);
+      window.alert("✅ Sent to Discord (bot).");
+    } catch (e: any) {
+      window.alert("Send failed: " + String(e?.message || e));
+    }
+  }
+return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>📣 Owner — Broadcast Composer</h2>
@@ -516,6 +527,7 @@ export default function OwnerBroadcastComposerPage() {
 
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={insertTargets}>Insert into Draft</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolvedPayload}>Copy Payload JSON</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendNowBot}>Send Now (Bot)</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => applyDiscordDefaults(true)}>Use Defaults</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendToDiscord} disabled={sending}>
             {sending ? "Sending…" : "🚀 Send to Discord"}
