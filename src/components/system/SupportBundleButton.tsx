@@ -31,7 +31,6 @@ export function SupportBundleButton(props: { label?: string; allianceCode?: stri
         href: window.location.href,
         path: window.location.pathname,
         alliance: detectAllianceFromPath(window.location.pathname),
-        alliance,
         theme: document.documentElement.dataset.theme || null,
         userId,
         isAppAdmin: !!isAppAdmin,
