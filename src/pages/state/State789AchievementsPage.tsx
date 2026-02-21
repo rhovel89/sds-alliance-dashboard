@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
+import { sendDiscordBot } from "../../lib/discordEdgeSend";
 
 type Kind = "counter" | "checkbox";
 
@@ -28,13 +29,32 @@ type Store = {
   updatedUtc: string;
   defs: AchievementDef[];
   progress: {
-    states: Record<string, Record<string, Progress>>;     // stateCode -> achievementId -> progress
-    alliances: Record<string, Record<string, Progress>>;  // allianceCode -> achievementId -> progress
+    states: Record<string, Record<string, Progress>>;
+    alliances: Record<string, Record<string, Progress>>;
   };
+};
+
+type RoleMapStore = {
+  version: 1;
+  global: Record<string, string>;
+  alliances: Record<string, Record<string, string>>;
+};
+
+type ChannelEntry = { id: string; name: string; channelId: string; createdUtc: string };
+type ChannelMapStore = { version: 1; global: ChannelEntry[]; alliances: Record<string, ChannelEntry[]> };
+
+type DefaultsStore = {
+  version: 1;
+  global: { channelName: string; rolesCsv: string };
+  alliances: Record<string, { channelName: string; rolesCsv: string }>;
+  updatedUtc: string;
 };
 
 const KEY = "sad_achievements_v1";
 const DIR_KEY = "sad_alliance_directory_v1";
+const ROLE_MAP_KEY = "sad_discord_role_map_v1";
+const CHANNEL_MAP_KEY = "sad_discord_channel_map_v1";
+const DEFAULTS_KEY = "sad_discord_defaults_v1";
 
 function uid() {
   return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
@@ -47,6 +67,7 @@ function safeJson(raw: string | null): any {
   try { return JSON.parse(raw); } catch { return null; }
 }
 function normCode(x: any) { return String(x || "").trim().toUpperCase(); }
+function normKey(x: any) { return String(x || "").trim().toLowerCase(); }
 
 function loadAlliances(): { code: string; name: string }[] {
   const p = safeJson(localStorage.getItem(DIR_KEY));
@@ -57,6 +78,78 @@ function loadAlliances(): { code: string; name: string }[] {
     .filter((x: any) => x.code);
   out.sort((a, b) => a.code.localeCompare(b.code));
   return out.length ? out : [{ code: "WOC", name: "WOC" }];
+}
+
+function loadRoleStore(): RoleMapStore {
+  const s = safeJson(localStorage.getItem(ROLE_MAP_KEY));
+  if (s && s.version === 1) return s as RoleMapStore;
+  return { version: 1, global: {}, alliances: {} };
+}
+
+function loadChannelStore(): ChannelMapStore {
+  const s = safeJson(localStorage.getItem(CHANNEL_MAP_KEY));
+  if (s && s.version === 1) return s as ChannelMapStore;
+  return { version: 1, global: [], alliances: {} };
+}
+
+function loadDefaults(): DefaultsStore | null {
+  const s = safeJson(localStorage.getItem(DEFAULTS_KEY));
+  if (s && s.version === 1) return s as DefaultsStore;
+  return null;
+}
+
+function makeRoleLut(roleStore: RoleMapStore) {
+  const out: Record<string, string> = {};
+  const g = roleStore.global || {};
+  for (const k of Object.keys(g)) out[normKey(k)] = String(g[k] || "");
+  return out;
+}
+
+function makeChanLut(chanStore: ChannelMapStore) {
+  const out: Record<string, string> = {};
+  for (const c of chanStore.global || []) {
+    const k = normKey(c?.name);
+    if (k) out[k] = String(c?.channelId || "").trim();
+  }
+  return out;
+}
+
+function resolveMentions(input: string, roleLut: Record<string, string>, chanLut: Record<string, string>) {
+  let text = input || "";
+
+  // {{role:Leadership}} and {{Leadership}}
+  text = text.replace(/\{\{\s*role\s*:\s*([A-Za-z0-9_\- ]{1,64})\s*\}\}/g, (_m, k) => {
+    const id = roleLut[normKey(k)];
+    return id ? `<@&${id}>` : `{{role:${String(k)}}}`;
+  });
+  text = text.replace(/\{\{\s*([A-Za-z0-9_\- ]{1,64})\s*\}\}/g, (_m, k) => {
+    const id = roleLut[normKey(k)];
+    return id ? `<@&${id}>` : `{{${String(k)}}}`;
+  });
+
+  // @Leadership
+  text = text.replace(/(^|[\s(])@([A-Za-z0-9_\-]{2,64})(?=$|[\s),.!?])/g, (_m, pre, k) => {
+    const id = roleLut[normKey(k)];
+    return id ? `${pre}<@&${id}>` : `${pre}@${String(k)}`;
+  });
+
+  // {{#announcements}} and {{channel:announcements}}
+  text = text.replace(/\{\{\s*#([A-Za-z0-9_\-]{2,64})\s*\}\}/g, (_m, k) => {
+    const id = chanLut[normKey(k)];
+    return id ? `<#${id}>` : `{{#${String(k)}}}`;
+  });
+  text = text.replace(/\{\{\s*channel\s*:\s*([A-Za-z0-9_\-]{2,64})\s*\}\}/g, (_m, k) => {
+    const id = chanLut[normKey(k)];
+    return id ? `<#${id}>` : `{{channel:${String(k)}}}`;
+  });
+
+  // #announcements if mapped
+  text = text.replace(/(^|[\s(])#([A-Za-z0-9_\-]{2,64})(?=$|[\s),.!?])/g, (_m, pre, k) => {
+    const id = chanLut[normKey(k)];
+    return id ? `${pre}<#${id}>` : `${pre}#${String(k)}`;
+  });
+
+  return text;
 }
 
 function defaultStore(): Store {
@@ -120,12 +213,18 @@ export default function State789AchievementsPage() {
 
   const [alliances, setAlliances] = useState(() => loadAlliances());
 
+  const [roleStore, setRoleStore] = useState<RoleMapStore>(() => loadRoleStore());
+  const [chanStore, setChanStore] = useState<ChannelMapStore>(() => loadChannelStore());
+  const roleLut = useMemo(() => makeRoleLut(roleStore), [roleStore]);
+  const chanLut = useMemo(() => makeChanLut(chanStore), [chanStore]);
+  const channelKeys = useMemo(() => Object.keys(chanLut || {}).sort(), [chanLut]);
+  const roleKeys = useMemo(() => Object.keys(roleLut || {}).sort(), [roleLut]);
+
   const [scope, setScope] = useState<"state" | "alliance">("state");
   const [stateCode, setStateCode] = useState("789");
   const [allianceCode, setAllianceCode] = useState<string>(() => (alliances[0]?.code || "WOC"));
 
   useEffect(() => {
-    // reload alliances once (in case directory changed)
     setAlliances(loadAlliances());
   }, []);
 
@@ -164,7 +263,6 @@ export default function State789AchievementsPage() {
         return hay.includes(search);
       });
     }
-    // sort: incomplete first, then points desc
     arr.sort((a, b) => {
       const ca = computeComplete(a, progressMap[a.id] || null);
       const cb = computeComplete(b, progressMap[b.id] || null);
@@ -265,7 +363,6 @@ export default function State789AchievementsPage() {
       defs: (p.defs || []).filter((x) => x.id !== id),
     }));
 
-    // Also remove progress entries for this id across all scopes
     setStore((p) => {
       const next: Store = JSON.parse(JSON.stringify(p));
       for (const k of Object.keys(next.progress.states || {})) delete next.progress.states[k][id];
@@ -365,6 +462,107 @@ export default function State789AchievementsPage() {
     return rows.slice(0, 12);
   }, [store.defs, store.progress.alliances, alliances]);
 
+  // -------------------------------
+  // Discord Announce (UI + optional send)
+  // -------------------------------
+  const [targetChannelName, setTargetChannelName] = useState<string>("");
+  const [mentionRoleNames, setMentionRoleNames] = useState<string>("");
+
+  useEffect(() => {
+    const d = loadDefaults();
+    if (!d) return;
+    // use GLOBAL defaults for state announce
+    if (!targetChannelName && d.global?.channelName) setTargetChannelName(String(d.global.channelName));
+    if (!mentionRoleNames && d.global?.rolesCsv) setMentionRoleNames(String(d.global.rolesCsv));
+  }, []);
+
+  const resolvedChannelId = useMemo(() => {
+    const k = normKey(targetChannelName);
+    return k ? (chanLut[k] || "") : "";
+  }, [targetChannelName, chanLut]);
+
+  const mentionRoles = useMemo(() => {
+    return (mentionRoleNames || "")
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+  }, [mentionRoleNames]);
+
+  const mentionRoleIds = useMemo(() => {
+    return mentionRoles.map((r) => roleLut[normKey(r)] || "").filter(Boolean);
+  }, [mentionRoles, roleLut]);
+
+  function reloadMentions() {
+    setRoleStore(loadRoleStore());
+    setChanStore(loadChannelStore());
+    alert("Reloaded role/channel maps.");
+  }
+
+  const announceRaw = useMemo(() => {
+    const top = leaderboard.slice(0, 6);
+    const lines = top.map((r, i) => `${i + 1}. ${r.code} — ${r.earned}/${r.total} pts`);
+    const rolesPrefix = mentionRoles.map((r) => `{{${r}}}`).join(" ").trim();
+    const chPrefix = targetChannelName ? `{{channel:${targetChannelName}}}` : "";
+    const prefix = [rolesPrefix, chPrefix].filter(Boolean).join(" ").trim();
+
+    const head = `🏆 State ${normCode(stateCode)} — Achievements Update`;
+    const scopeLine = scope === "state" ? `Scope: State ${normCode(stateCode)}` : `Scope: Alliance ${normCode(allianceCode)}`;
+    const pointsLine = `Current scope points: ${totals.earned}/${totals.total}`;
+
+    const url = `${window.location.origin}/state/789/achievements`;
+
+    const body =
+`${head}
+${scopeLine}
+${pointsLine}
+
+Top alliances:
+${lines.length ? lines.join("\n") : "(no data yet)"}
+
+View: ${url}
+UTC: ${nowUtc()}
+`;
+    return prefix ? (prefix + "\n\n" + body) : body;
+  }, [leaderboard, mentionRoles, targetChannelName, stateCode, scope, allianceCode, totals]);
+
+  const announceResolved = useMemo(() => resolveMentions(announceRaw, roleLut, chanLut), [announceRaw, roleLut, chanLut]);
+
+  async function copyPayloadJson() {
+    const payload = {
+      version: 1,
+      createdUtc: nowUtc(),
+      source: "state789_achievements_ui",
+      target: {
+        channelName: targetChannelName || null,
+        channelId: resolvedChannelId || null,
+      },
+      mentionRoles,
+      mentionRoleIds,
+      messageRaw: announceRaw,
+      messageResolved: announceResolved,
+      note: "UI-only payload. Bot-send available via Edge Function (Send Now button).",
+    };
+    const txt = JSON.stringify(payload, null, 2);
+    try { await navigator.clipboard.writeText(txt); alert("Copied Discord payload JSON."); }
+    catch { window.prompt("Copy payload JSON:", txt); }
+  }
+
+  async function copyResolvedMessage() {
+    try { await navigator.clipboard.writeText(announceResolved); alert("Copied Discord-ready message."); }
+    catch { window.prompt("Copy message:", announceResolved); }
+  }
+
+  async function sendNowBot() {
+    try {
+      if (!resolvedChannelId) return window.alert("Set a channel WITH an ID first (Owner → Discord Mentions).");
+      const r = await sendDiscordBot({ mode: "bot", channelId: resolvedChannelId, content: announceResolved });
+      if (!r.ok) return window.alert("Send failed: " + r.error);
+      window.alert("✅ Sent to Discord (bot).");
+    } catch (e: any) {
+      window.alert("Send failed: " + String(e?.message || e));
+    }
+  }
+
   async function exportJson() {
     const txt = JSON.stringify({ ...store, exportedUtc: nowUtc() }, null, 2);
     try { await navigator.clipboard.writeText(txt); alert("Copied Achievements export JSON."); }
@@ -434,23 +632,43 @@ export default function State789AchievementsPage() {
             Points: <b>{totals.earned}</b> / {totals.total} (current scope: {scopeKey})
           </div>
         </div>
+      </div>
+
+      <div className="zombie-card" style={{ marginTop: 12 }}>
+        <div style={{ fontWeight: 900, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div>📣 Discord Announcement (Leaderboard Snapshot)</div>
+          <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={reloadMentions}>Reload Mentions</button>
+        </div>
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <input className="zombie-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search achievements…" style={{ padding: "10px 12px", minWidth: 220, flex: 1 }} />
-
-          <div style={{ opacity: 0.75, fontSize: 12 }}>Group</div>
-          <select className="zombie-input" value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} style={{ padding: "10px 12px", minWidth: 180 }}>
-            <option value="">(all)</option>
-            {groups.map((g) => <option key={g} value={g}>{g}</option>)}
+          <div style={{ opacity: 0.75, fontSize: 12 }}>Channel</div>
+          <select className="zombie-input" value={targetChannelName} onChange={(e) => setTargetChannelName(e.target.value)} style={{ padding: "10px 12px", minWidth: 240 }}>
+            <option value="">(none)</option>
+            {channelKeys.map((k) => <option key={k} value={k}>{k}{chanLut[k] ? "" : " (no id yet)"}</option>)}
           </select>
 
-          <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.85 }}>
-            <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
-            Show archived
-          </label>
+          <div style={{ opacity: 0.75, fontSize: 12 }}>Mention Roles (comma)</div>
+          <input className="zombie-input" value={mentionRoleNames} onChange={(e) => setMentionRoleNames(e.target.value)} placeholder="StateLeadership,Leadership" style={{ padding: "10px 12px", minWidth: 260 }} />
 
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetEditor}>+ New</button>
-          <div style={{ opacity: 0.6, fontSize: 12 }}>localStorage: {KEY}</div>
+          <div style={{ opacity: 0.65, fontSize: 12 }}>
+            Mapped roles: {roleKeys.length} • Mapped channels: {channelKeys.length}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyPayloadJson}>Copy Payload JSON</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolvedMessage}>Copy Discord-ready</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendNowBot}>Send Now (Bot)</button>
+        </div>
+
+        <div style={{ marginTop: 12 }}>
+          <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Preview (resolved)</div>
+          <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 12, padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+{announceResolved}
+          </pre>
+          <div style={{ marginTop: 8, opacity: 0.65, fontSize: 12 }}>
+            Channel ID: {resolvedChannelId || "(missing)"} — set IDs in Owner → Discord Mentions.
+          </div>
         </div>
       </div>
 
