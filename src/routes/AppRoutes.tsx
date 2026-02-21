@@ -76,6 +76,7 @@ import OwnerScheduledDiscordSendsPage from "../pages/owner/OwnerScheduledDiscord
 import OwnerPermissionsMatrixPage from "../pages/owner/OwnerPermissionsMatrixPage";
 import OwnerScheduledSendsPage from "../pages/owner/OwnerScheduledSendsPage";
 import OwnerDirectoryEditorPage from "../pages/owner/OwnerDirectoryEditorPage";
+import State789AchievementsPage from "../pages/state/State789AchievementsPage";
 
 export default function AppRoutes() {
   return (
@@ -148,6 +149,7 @@ export default function AppRoutes() {
       <Route path="/owner/discord-defaults" element={<RequireAdmin><OwnerDiscordDefaultsPage /></RequireAdmin>} />
       <Route path="/owner/scheduled-sends" element={<RequireAdmin><OwnerScheduledDiscordSendsPage /></RequireAdmin>} />
       <Route path="/owner/directory-editor" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
+      <Route path="/state/789/achievements" element={<State789AchievementsPage />} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
