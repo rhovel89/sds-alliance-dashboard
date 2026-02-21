@@ -10,7 +10,36 @@ function getAllianceFromPath(pathname: string): string | null {
   return code ? code.toUpperCase() : null;
 }
 
-async function isDashboardOwnerSafe(): Promise<boolean> {
+async function isDashboardOwnerSafe(): Promise<boolean>
+{/* SAD_ADMINTOOLS_BUTTONS_V1 */}
+<div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+  <div style={{ opacity: 0.75, fontSize: 12, fontWeight: 900 }}>Owner Tools</div>
+
+  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/live-ops")}>
+    🧟 Live Ops (timer + checklist)
+  </button>
+
+  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/broadcast")}>
+    📣 Broadcast Composer
+  </button>
+
+  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/alliance-directory")}>
+    🗂️ Alliance Directory Editor
+  </button>
+
+  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/permissions-matrix")}>
+    🧩 Permissions Matrix (shell)
+  </button>
+
+  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/oneclick-provision")}>
+    ✅ One-click Approve + Provision
+  </button>
+
+  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/event-types-library")}>
+    🎯 Event Types Library
+  </button>
+</div>
+ {
   try {
     const { data, error } = await supabase.rpc("is_dashboard_owner" as any);
     if (error) return false;
