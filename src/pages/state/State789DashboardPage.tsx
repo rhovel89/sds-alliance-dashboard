@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
+import { State789AchievementsProgressWidget } from "../../components/state/State789AchievementsProgressWidget";
 
 type DirItem = { id: string; code: string; name: string; state: string };
 
@@ -413,6 +414,7 @@ export default function State789DiscussionPage() {
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>💬 State 789 — Discussion</h2>
+        <State789AchievementsProgressWidget />
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789")}>⬅ Back</button>
