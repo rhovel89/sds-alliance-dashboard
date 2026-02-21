@@ -12,10 +12,17 @@ const ALLIANCE_LINKS: LinkItem[] = [
   { label: "Events",        emoji: "🎯", href: (a) => `/dashboard/${a}/events` },
 ];
 
+const STATE_LINKS: LinkItem[] = [
+  { label: "State Hub",        emoji: "🧟", href: (_a) => `/state` },
+  { label: "State 789",        emoji: "🧭", href: (_a) => `/state/789` },
+  { label: "State Alerts",     emoji: "🚨", href: (_a) => `/state/789/alerts` },
+  { label: "State Discussion", emoji: "💬", href: (_a) => `/state/789/discussion` },
+];
+
 const GLOBAL_LINKS: LinkItem[] = [
   { label: "My Mail",    emoji: "✉️", href: (_a) => `/mail` },
-  { label: "State 789",  emoji: "🧟", href: (_a) => `/state/789` },
   { label: "Alliances",  emoji: "🗂️", href: (_a) => `/alliances` },
+  { label: "Dashboards", emoji: "⚡", href: (_a) => `/dashboard` },
 ];
 
 function CardButton(props: { emoji: string; label: string; onClick: () => void }) {
@@ -88,6 +95,15 @@ export function AllianceQuickLinksPanel() {
         <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 8 }}>Alliance</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10 }}>
           {ALLIANCE_LINKS.map((l) => (
+            <CardButton key={l.label} emoji={l.emoji} label={l.label} onClick={() => nav(l.href(alliance))} />
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 8 }}>State</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10 }}>
+          {STATE_LINKS.map((l) => (
             <CardButton key={l.label} emoji={l.emoji} label={l.label} onClick={() => nav(l.href(alliance))} />
           ))}
         </div>
