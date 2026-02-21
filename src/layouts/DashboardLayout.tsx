@@ -52,7 +52,7 @@ export default function DashboardLayout() {
       </aside>
 
       <main className="dashboard-main">
-        {showQuickLinks ? (<Suspense fallback={null}><LazyAllianceQuickLinksPanel /></Suspense>) : null}
+        {showQuickLinks ? (<Suspense fallback={null}><AllianceQuickLinksPanel /></Suspense>) : null}
 
         <Outlet />
       <GuidesQuickLink />
