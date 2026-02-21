@@ -20,6 +20,10 @@ const OWNER_BUTTONS: Btn[] = [
   { emoji: "✅", label: "One-click Approve + Provision", to: "/owner/oneclick-provision" },
   { emoji: "🎯", label: "Event Types Library", to: "/owner/event-types-library" },
 { emoji: "📚", label: "Directory Editor", to: "/owner/directory-editor" },
+  { emoji: "🧾", label: "Discord Templates", to: "/owner/discord-templates" },
+  { emoji: "🛠️", label: "Mentions Tools", to: "/owner/discord-mentions-tools" },
+  { emoji: "📡", label: "Realtime History", to: "/owner/realtime-history" },
+  { emoji: "⚡", label: "One-click Provision+", to: "/owner/oneclick-provision-plus" },
 ];
 
 async function safeRpcBool(name: string): Promise<boolean> {
