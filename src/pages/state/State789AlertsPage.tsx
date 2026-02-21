@@ -1,20 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
-
-type DirItem = { id: string; code: string; name: string; state: string };
-
-type AlertItem = {
-  id: string;
-  title: string;
-  body: string;
-  pinned: boolean;
-  createdUtc: string;
-  updatedUtc: string;
-};
-
-type AlertsStore = { version: 1; items: AlertItem[] };
 
 type RoleMapStore = {
   version: 1;
@@ -25,287 +10,278 @@ type RoleMapStore = {
 type ChannelEntry = { id: string; name: string; channelId: string; createdUtc: string };
 type ChannelMapStore = { version: 1; global: ChannelEntry[]; alliances: Record<string, ChannelEntry[]> };
 
-type LogItem = {
-  id: string;
-  tsUtc: string;
-  source: string;
-  allianceCode: string | null;
-  channelName: string | null;
-  channelId: string | null;
-  mentionRoles: string[];
-  mentionRoleIds: string[];
-  ok: boolean;
-  detail: string;
+type DefaultsStore = {
+  version: 1;
+  global: { channelName: string; rolesCsv: string };
+  alliances: Record<string, { channelName: string; rolesCsv: string }>;
+  updatedUtc: string;
 };
-type LogStore = { version: 1; items: LogItem[] };
 
-const ALERTS_KEY = "sad_state789_alerts_v1";
-const DIR_KEY = "sad_alliance_directory_v1";
+type Severity = "info" | "warning" | "critical";
+
+type AlertRow = {
+  id: string;
+  createdUtc: string;
+  updatedUtc: string;
+  title: string;
+  body: string;
+  tags: string[];
+  pinned: boolean;
+  authorLabel: string;
+  severity: Severity;
+};
+
+type Store = {
+  version: 1;
+  updatedUtc: string;
+  alerts: AlertRow[];
+};
+
+const KEY = "sad_state789_alerts_v1";
 const ROLE_MAP_KEY = "sad_discord_role_map_v1";
 const CHANNEL_MAP_KEY = "sad_discord_channel_map_v1";
-const LOG_KEY = "sad_discord_send_log_v1";
 const DEFAULTS_KEY = "sad_discord_defaults_v1";
 
 function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
 function nowUtc() { return new Date().toISOString(); }
 function norm(s: any) { return String(s || "").trim().toLowerCase(); }
 
-function loadDir(): DirItem[] {
-  try {
-    const raw = localStorage.getItem(DIR_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    const items = Array.isArray(parsed?.items) ? parsed.items : [];
-    return items
-      .filter((x: any) => x && x.code)
-      .map((x: any) => ({
-        id: String(x.id || uid()),
-        code: String(x.code).toUpperCase(),
-        name: String(x.name || x.code),
-        state: String(x.state || "789"),
-      }));
-  } catch {
-    return [];
-  }
-}
-
-function loadAlerts(): AlertsStore {
-  try {
-    const raw = localStorage.getItem(ALERTS_KEY);
-    if (raw) {
-      const s = JSON.parse(raw) as AlertsStore;
-      if (s && s.version === 1 && Array.isArray(s.items)) return s;
-    }
-  } catch {}
-  return { version: 1, items: [] };
-}
-
-function saveAlerts(s: AlertsStore) {
-  try { localStorage.setItem(ALERTS_KEY, JSON.stringify(s)); } catch {}
+function safeJson<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try { return JSON.parse(raw) as T; } catch { return null; }
 }
 
 function loadRoleStore(): RoleMapStore {
-  try {
-    const raw = localStorage.getItem(ROLE_MAP_KEY);
-    if (!raw) return { version: 1, global: {}, alliances: {} };
-    const s = JSON.parse(raw) as RoleMapStore;
-    if (s && s.version === 1) return s;
-  } catch {}
+  const s = safeJson<RoleMapStore>(localStorage.getItem(ROLE_MAP_KEY));
+  if (s && s.version === 1) return s;
   return { version: 1, global: {}, alliances: {} };
 }
 
 function loadChannelStore(): ChannelMapStore {
-  try {
-    const raw = localStorage.getItem(CHANNEL_MAP_KEY);
-    if (!raw) return { version: 1, global: [], alliances: {} };
-    const s = JSON.parse(raw) as ChannelMapStore;
-    if (s && s.version === 1) return s;
-  } catch {}
+  const s = safeJson<ChannelMapStore>(localStorage.getItem(CHANNEL_MAP_KEY));
+  if (s && s.version === 1) return s;
   return { version: 1, global: [], alliances: {} };
 }
 
-function loadLog(): LogStore {
-  try {
-    const raw = localStorage.getItem(LOG_KEY);
-    if (!raw) return { version: 1, items: [] };
-    const s = JSON.parse(raw) as LogStore;
-    if (s && s.version === 1 && Array.isArray(s.items)) return s;
-  } catch {}
-  return { version: 1, items: [] };
+function loadDefaults(): DefaultsStore | null {
+  const s = safeJson<DefaultsStore>(localStorage.getItem(DEFAULTS_KEY));
+  if (s && s.version === 1) return s;
+  return null;
 }
 
-function appendLog(item: LogItem) {
-  try {
-    const s = loadLog();
-    const next: LogStore = { version: 1, items: [item, ...(s.items || [])].slice(0, 80) };
-    localStorage.setItem(LOG_KEY, JSON.stringify(next));
-  } catch {}
+function loadStore(): Store {
+  const s = safeJson<any>(localStorage.getItem(KEY));
+  if (s && s.version === 1) {
+    const srcAlerts = Array.isArray(s.alerts) ? s.alerts : (Array.isArray(s.items) ? s.items : []);
+    const alerts: AlertRow[] = srcAlerts.map((a: any) => ({
+      id: String(a?.id || uid()),
+      createdUtc: String(a?.createdUtc || nowUtc()),
+      updatedUtc: String(a?.updatedUtc || nowUtc()),
+      title: String(a?.title || "Untitled"),
+      body: String(a?.body || a?.content || ""),
+      tags: Array.isArray(a?.tags) ? a.tags.map((x: any) => String(x)) : [],
+      pinned: !!a?.pinned,
+      authorLabel: String(a?.authorLabel || a?.author || "Unknown"),
+      severity: (String(a?.severity || "info") as any) === "critical" ? "critical" : (String(a?.severity || "info") as any) === "warning" ? "warning" : "info",
+    }));
+    return { version: 1, updatedUtc: String(s.updatedUtc || nowUtc()), alerts };
+  }
+  return { version: 1, updatedUtc: nowUtc(), alerts: [] };
 }
 
-function makeRoleLookup(roleStore: RoleMapStore, allianceCode: string | null) {
-  const global = roleStore.global || {};
-  const per = allianceCode ? (roleStore.alliances?.[allianceCode] || {}) : {};
+function saveStore(s: Store) {
+  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {}
+}
+
+function makeRoleLookup(roleStore: RoleMapStore) {
   const out: Record<string, string> = {};
-  for (const k of Object.keys(global)) out[norm(k)] = String(global[k] || "");
-  for (const k of Object.keys(per)) out[norm(k)] = String(per[k] || "");
+  const g = roleStore.global || {};
+  for (const k of Object.keys(g)) out[norm(k)] = String(g[k] || "");
   return out;
 }
 
-function makeChannelLookup(channelStore: ChannelMapStore, allianceCode: string | null) {
+function makeChannelLookup(channelStore: ChannelMapStore) {
   const out: Record<string, string> = {};
-  const addList = (lst: ChannelEntry[] | undefined) => {
-    for (const c of lst || []) {
-      const nm = norm(String(c.name || ""));
-      const id = String(c.channelId || "").trim();
-      if (nm) out[nm] = id;
-    }
-  };
-  addList(channelStore.global);
-  if (allianceCode) addList(channelStore.alliances?.[allianceCode]);
+  for (const c of channelStore.global || []) {
+    const nm = norm(c?.name);
+    if (nm) out[nm] = String(c?.channelId || "").trim();
+  }
   return out;
 }
 
 function resolveMentions(input: string, roleLut: Record<string, string>, chanLut: Record<string, string>) {
   let text = input || "";
 
-  // {{role:Leadership}} and {{Leadership}}
   text = text.replace(/\{\{\s*role\s*:\s*([A-Za-z0-9_\- ]{1,64})\s*\}\}/g, (_m, k) => {
-    const key = norm(String(k));
-    const id = roleLut[key];
+    const id = roleLut[norm(k)];
     return id ? `<@&${id}>` : `{{role:${String(k)}}}`;
   });
   text = text.replace(/\{\{\s*([A-Za-z0-9_\- ]{1,64})\s*\}\}/g, (_m, k) => {
-    const key = norm(String(k));
-    const id = roleLut[key];
+    const id = roleLut[norm(k)];
     return id ? `<@&${id}>` : `{{${String(k)}}}`;
   });
 
-  // @Leadership
   text = text.replace(/(^|[\s(])@([A-Za-z0-9_\-]{2,64})(?=$|[\s),.!?])/g, (_m, pre, k) => {
-    const key = norm(String(k));
-    const id = roleLut[key];
+    const id = roleLut[norm(k)];
     return id ? `${pre}<@&${id}>` : `${pre}@${String(k)}`;
   });
 
-  // {{#announcements}} and {{channel:announcements}}
   text = text.replace(/\{\{\s*#([A-Za-z0-9_\-]{2,64})\s*\}\}/g, (_m, k) => {
-    const key = norm(String(k));
-    const id = chanLut[key];
+    const id = chanLut[norm(k)];
     return id ? `<#${id}>` : `{{#${String(k)}}}`;
   });
   text = text.replace(/\{\{\s*channel\s*:\s*([A-Za-z0-9_\-]{2,64})\s*\}\}/g, (_m, k) => {
-    const key = norm(String(k));
-    const id = chanLut[key];
+    const id = chanLut[norm(k)];
     return id ? `<#${id}>` : `{{channel:${String(k)}}}`;
   });
 
-  // #announcements (only when name exists in lut)
   text = text.replace(/(^|[\s(])#([A-Za-z0-9_\-]{2,64})(?=$|[\s),.!?])/g, (_m, pre, k) => {
-    const key = norm(String(k));
-    const id = chanLut[key];
+    const id = chanLut[norm(k)];
     return id ? `${pre}<#${id}>` : `${pre}#${String(k)}`;
   });
 
   return text;
 }
 
-function fmtAlert(a: { title: string; body: string }) {
-  const t = (a.title || "").trim();
-  const b = (a.body || "").trim();
-  if (t && b) return `🚨 STATE 789 ALERT — ${t}\n\n${b}`;
-  if (t) return `🚨 STATE 789 ALERT — ${t}`;
-  return b || "";
+function pickTags(csv: string): string[] {
+  const arr = (csv || "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .map((x) => x.replace(/^#/, ""));
+  return Array.from(new Set(arr));
+}
+
+function sevLabel(s: Severity) {
+  if (s === "critical") return "CRITICAL";
+  if (s === "warning") return "WARNING";
+  return "INFO";
+}
+
+function sevIcon(s: Severity) {
+  if (s === "critical") return "🛑";
+  if (s === "warning") return "⚠️";
+  return "📣";
 }
 
 export default function State789AlertsPage() {
-  const nav = useNavigate();
-  const dir = useMemo(() => loadDir(), []);
-
-  const [store, setStore] = useState<AlertsStore>(() => loadAlerts());
-  useEffect(() => saveAlerts(store), [store]);
-
-  const [scope, setScope] = useState<"global" | "alliance">("global");
-  const [allianceCode, setAllianceCode] = useState<string>((dir[0]?.code || "WOC").toUpperCase());
+  const [store, setStore] = useState<Store>(() => loadStore());
+  useEffect(() => saveStore(store), [store]);
 
   const [roleStore, setRoleStore] = useState<RoleMapStore>(() => loadRoleStore());
   const [chanStore, setChanStore] = useState<ChannelMapStore>(() => loadChannelStore());
+  const roleLut = useMemo(() => makeRoleLookup(roleStore), [roleStore]);
+  const chanLut = useMemo(() => makeChannelLookup(chanStore), [chanStore]);
 
-  const effectiveAlliance = useMemo(() => (scope === "alliance" ? String(allianceCode || "").toUpperCase() : null), [scope, allianceCode]);
-  const roleLut = useMemo(() => makeRoleLookup(roleStore, effectiveAlliance), [roleStore, effectiveAlliance]);
-  const chanLut = useMemo(() => makeChannelLookup(chanStore, effectiveAlliance), [chanStore, effectiveAlliance]);
+  const [search, setSearch] = useState("");
+  const [tagFilter, setTagFilter] = useState<string>("");
 
-  const channelKeys = useMemo(() => Object.keys(chanLut || {}).sort(), [chanLut]);
-  const roleKeys = useMemo(() => Object.keys(roleLut || {}).sort(), [roleLut]);
+  const allTags = useMemo(() => {
+    const s = new Set<string>();
+    for (const a of store.alerts || []) for (const tag of (a.tags || [])) s.add(tag);
+    return Array.from(s).sort((x, y) => x.localeCompare(y));
+  }, [store.alerts]);
+
+  const alerts = useMemo(() => {
+    const q = (search || "").trim().toLowerCase();
+    const tf = (tagFilter || "").trim().toLowerCase();
+
+    let arr = (store.alerts || []).slice();
+    if (tf) arr = arr.filter((a) => (a.tags || []).some((x) => String(x).toLowerCase() === tf));
+    if (q) {
+      arr = arr.filter((a) => {
+        const hay = `${a.title} ${a.body} ${(a.tags || []).join(" ")} ${a.authorLabel} ${a.severity}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    arr.sort((a, b) => {
+      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+      return String(b.updatedUtc).localeCompare(String(a.updatedUtc));
+    });
+
+    return arr;
+  }, [store.alerts, search, tagFilter]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = useMemo(() => (selectedId ? (store.items || []).find((x) => x.id === selectedId) || null : null), [store.items, selectedId]);
+  const selected = useMemo(
+    () => (selectedId ? (store.alerts || []).find((a) => a.id === selectedId) || null : null),
+    [selectedId, store.alerts]
+  );
 
   const [title, setTitle] = useState("");
+  const [tagsCsv, setTagsCsv] = useState("");
+  const [authorLabel, setAuthorLabel] = useState("Unknown");
+  const [severity, setSeverity] = useState<Severity>("info");
   const [body, setBody] = useState("");
-
-  // Send controls
-  const [targetChannelName, setTargetChannelName] = useState<string>("");
-  const [mentionRoleNames, setMentionRoleNames] = useState<string>(""); // comma list
-  const [sending, setSending] = useState(false);
-  const [sendMsg, setSendMsg] = useState<string | null>(null);
-
-  // Auto-fill Discord defaults (channel + roles) when empty
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DEFAULTS_KEY);
-      if (!raw) return;
-      const s = JSON.parse(raw);
-      if (!s || s.version !== 1) return;
-
-      const ac = scope === "alliance" ? String(allianceCode || "").toUpperCase() : null;
-      const d =
-        scope === "global"
-          ? (s.global || {})
-          : ((s.alliances && ac && s.alliances[ac]) ? s.alliances[ac] : (s.global || {}));
-
-      if (!targetChannelName && d.channelName) setTargetChannelName(String(d.channelName));
-      if (!mentionRoleNames && d.rolesCsv) setMentionRoleNames(String(d.rolesCsv));
-    } catch {}
-  }, [scope, allianceCode]);
-
 
   useEffect(() => {
     if (!selected) return;
     setTitle(selected.title || "");
+    setTagsCsv((selected.tags || []).join(","));
+    setAuthorLabel(selected.authorLabel || "Unknown");
+    setSeverity(selected.severity || "info");
     setBody(selected.body || "");
   }, [selectedId]);
 
-  function resetEditor() {
+  function resetComposer() {
     setSelectedId(null);
     setTitle("");
+    setTagsCsv("");
+    setAuthorLabel("Unknown");
+    setSeverity("info");
     setBody("");
   }
 
-  function saveAlert() {
+  function upsertAlert() {
     const t = title.trim();
-    const b = body.trim();
-    if (!t && !b) return alert("Enter a title or body.");
-
+    if (!t) return alert("Title required.");
     const now = nowUtc();
-    const next: AlertsStore = { ...store, items: [...(store.items || [])] };
 
-    if (selectedId) {
-      const idx = next.items.findIndex((x) => x.id === selectedId);
-      if (idx >= 0) {
-        next.items[idx] = { ...next.items[idx], title: t, body: b, updatedUtc: now };
-      }
-    } else {
-      next.items.unshift({
-        id: uid(),
-        title: t || "(untitled)",
-        body: b || "",
-        pinned: false,
-        createdUtc: now,
-        updatedUtc: now,
-      });
-    }
+    const row: AlertRow = {
+      id: selectedId || uid(),
+      createdUtc: selected?.createdUtc || now,
+      updatedUtc: now,
+      title: t,
+      body: body || "",
+      tags: pickTags(tagsCsv),
+      pinned: selected?.pinned || false,
+      authorLabel: (authorLabel || "Unknown").trim() || "Unknown",
+      severity: severity || "info",
+    };
 
-    setStore(next);
-    resetEditor();
+    setStore((p) => {
+      const next: Store = { version: 1, updatedUtc: now, alerts: [...(p.alerts || [])] };
+      const idx = next.alerts.findIndex((x) => x.id === row.id);
+      if (idx >= 0) next.alerts[idx] = row;
+      if (idx < 0) next.alerts.unshift(row);
+      return next;
+    });
+
+    setSelectedId(row.id);
   }
 
-  function deleteAlert(id: string) {
-    if (!confirm("Delete this alert?")) return;
-    setStore((p) => ({ ...p, items: (p.items || []).filter((x) => x.id !== id) }));
-    if (selectedId === id) resetEditor();
+  function delAlert(id: string) {
+    const row = (store.alerts || []).find((x) => x.id === id);
+    if (!row) return;
+    if (!confirm(`Delete "${row.title}"?`)) return;
+
+    setStore((p) => ({ version: 1, updatedUtc: nowUtc(), alerts: (p.alerts || []).filter((a) => a.id !== id) }));
+    if (selectedId === id) resetComposer();
   }
 
   function togglePin(id: string) {
     setStore((p) => ({
-      ...p,
-      items: (p.items || []).map((x) => (x.id === id ? { ...x, pinned: !x.pinned, updatedUtc: nowUtc() } : x)),
+      version: 1,
+      updatedUtc: nowUtc(),
+      alerts: (p.alerts || []).map((a) => (a.id === id ? { ...a, pinned: !a.pinned, updatedUtc: nowUtc() } : a)),
     }));
   }
 
   async function exportJson() {
     const txt = JSON.stringify({ ...store, exportedUtc: nowUtc() }, null, 2);
     try { await navigator.clipboard.writeText(txt); alert("Copied alerts JSON."); }
-    catch { window.prompt("Copy alerts JSON:", txt); }
+    catch { window.prompt("Copy:", txt); }
   }
 
   function importJson() {
@@ -313,121 +289,108 @@ export default function State789AlertsPage() {
     if (!raw) return;
     try {
       const p = JSON.parse(raw);
-      if (p?.version !== 1 || !Array.isArray(p.items)) throw new Error("Invalid");
-      setStore({ version: 1, items: p.items });
-      resetEditor();
+      if (!p || p.version !== 1 || (!Array.isArray(p.alerts) && !Array.isArray(p.items))) throw new Error("Invalid");
+      localStorage.setItem(KEY, JSON.stringify(p));
+      setStore(loadStore());
+      resetComposer();
       alert("Imported.");
     } catch {
       alert("Invalid JSON.");
     }
   }
 
-  function buildMessageRaw() {
-    const a = selected ? { title: selected.title, body: selected.body } : { title, body };
-    return fmtAlert(a);
-  }
+  // -----------------------------
+  // Optional: Send-to-Discord payload copy (UI-only)
+  // -----------------------------
+  const [targetChannelName, setTargetChannelName] = useState<string>("");
+  const [mentionRoleNames, setMentionRoleNames] = useState<string>("");
 
-  const messageResolved = useMemo(() => resolveMentions(buildMessageRaw(), roleLut, chanLut), [selectedId, title, body, roleLut, chanLut]);
-
-  function applyDiscordDefaults(force: boolean = true) {
+  useEffect(() => {
     try {
-      const raw = localStorage.getItem(DEFAULTS_KEY);
-      if (!raw) return;
-      const s = JSON.parse(raw);
-      if (!s || s.version !== 1) return;
-      const ac = scope === "alliance" ? String(allianceCode || "").toUpperCase() : null;
-      const d =
-        scope === "global"
-          ? (s.global || {})
-          : ((s.alliances && ac && s.alliances[ac]) ? s.alliances[ac] : (s.global || {}));
-      if (d.channelName && (force || !targetChannelName)) setTargetChannelName(String(d.channelName));
-      if (d.rolesCsv && (force || !mentionRoleNames)) setMentionRoleNames(String(d.rolesCsv));
+      const d = loadDefaults();
+      if (!d) return;
+      if (!targetChannelName && d.global?.channelName) setTargetChannelName(String(d.global.channelName));
+      if (!mentionRoleNames && d.global?.rolesCsv) setMentionRoleNames(String(d.global.rolesCsv));
     } catch {}
+  }, []);
+
+  const channelKeys = useMemo(() => Object.keys(chanLut || {}).sort(), [chanLut]);
+  const roleKeys = useMemo(() => Object.keys(roleLut || {}).sort(), [roleLut]);
+
+  const resolvedChannelId = useMemo(() => {
+    const k = norm(targetChannelName);
+    return k ? (chanLut[k] || "") : "";
+  }, [targetChannelName, chanLut]);
+
+  const mentionRoles = useMemo(() => {
+    return (mentionRoleNames || "")
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+  }, [mentionRoleNames]);
+
+  const mentionRoleIds = useMemo(() => {
+    return mentionRoles.map((r) => roleLut[norm(r)] || "").filter(Boolean);
+  }, [mentionRoles, roleLut]);
+
+  function reloadMentions() {
+    setRoleStore(loadRoleStore());
+    setChanStore(loadChannelStore());
+    alert("Reloaded role/channel maps.");
   }
 
-  async function sendToDiscord() {
-    setSendMsg(null);
+  const alertToSend = selected;
 
-    const chKey = norm(targetChannelName);
-    const targetChannelId = chKey ? (chanLut[chKey] || "") : "";
-    if (!targetChannelId) {
-      setSendMsg("❌ Missing channel ID. Add it in /owner/discord-mentions, then select the channel here.");
-      return;
-    }
+  const payloadTemplate = useMemo(() => {
+    if (!alertToSend) return "Select an alert to build a Discord payload.";
+    const tags = (alertToSend.tags || []).map((t) => `#${t}`).join(" ");
+    const link = `${window.location.origin}/state/789/alerts`;
+    const head = `${sevIcon(alertToSend.severity)} State 789 — ALERT (${sevLabel(alertToSend.severity)})`;
+    return `${head}\n\n**${alertToSend.title}**\n${tags ? tags + "\n" : ""}\n${alertToSend.body}\n\n— ${alertToSend.authorLabel}\n${link}`;
+  }, [alertToSend]);
 
-    const roles = mentionRoleNames.split(",").map((x) => x.trim()).filter(Boolean);
-    const roleIds = roles.map((r) => roleLut[norm(r)] || "").filter(Boolean);
+  const payloadResolved = useMemo(() => resolveMentions(payloadTemplate, roleLut, chanLut), [payloadTemplate, roleLut, chanLut]);
 
+  async function copyPayloadJson() {
     const payload = {
       version: 1,
       createdUtc: nowUtc(),
-      source: "state_alerts",
-      allianceCode: null,
-      targetChannelId,
-      mentionRoles: roles,
-      mentionRoleIds: roleIds,
-      messageResolved,
+      source: "state789_alerts_ui",
+      target: {
+        channelName: targetChannelName || null,
+        channelId: resolvedChannelId || null,
+      },
+      mentionRoles,
+      mentionRoleIds,
+      alert: alertToSend ? {
+        id: alertToSend.id,
+        title: alertToSend.title,
+        tags: alertToSend.tags,
+        authorLabel: alertToSend.authorLabel,
+        severity: alertToSend.severity,
+        updatedUtc: alertToSend.updatedUtc,
+        pinned: alertToSend.pinned,
+      } : null,
+      messageRaw: payloadTemplate,
+      messageResolved: payloadResolved,
+      note: "UI-only payload. Bot/webhook posting comes later.",
     };
 
-    if (!payload.messageResolved || !String(payload.messageResolved).trim()) {
-      setSendMsg("❌ Message is empty.");
-      return;
-    }
-
-    setSending(true);
-    try {
-      const r = await supabase.functions.invoke("discord-broadcast", { body: payload as any });
-      if ((r as any).error) {
-        const e = (r as any).error;
-        throw new Error(e?.message || JSON.stringify(e));
-      }
-
-      appendLog({
-        id: uid(),
-        tsUtc: nowUtc(),
-        source: "state_alerts",
-        allianceCode: null,
-        channelName: targetChannelName || null,
-        channelId: targetChannelId || null,
-        mentionRoles: roles,
-        mentionRoleIds: roleIds,
-        ok: true,
-        detail: JSON.stringify((r as any).data),
-      });
-
-      setSendMsg("✅ Sent to Discord.");
-    } catch (e: any) {
-      appendLog({
-        id: uid(),
-        tsUtc: nowUtc(),
-        source: "state_alerts",
-        allianceCode: null,
-        channelName: targetChannelName || null,
-        channelId: targetChannelId || null,
-        mentionRoles: roles,
-        mentionRoleIds: roleIds,
-        ok: false,
-        detail: String(e?.message || e),
-      });
-
-      setSendMsg("❌ Send failed: " + String(e?.message || e));
-    } finally {
-      setSending(false);
-    }
+    const txt = JSON.stringify(payload, null, 2);
+    try { await navigator.clipboard.writeText(txt); alert("Copied Discord payload JSON."); }
+    catch { window.prompt("Copy payload JSON:", txt); }
   }
 
-  const pinned = useMemo(() => (store.items || []).filter((x) => x.pinned), [store.items]);
-  const others = useMemo(() => (store.items || []).filter((x) => !x.pinned), [store.items]);
+  async function copyResolvedMessage() {
+    try { await navigator.clipboard.writeText(payloadResolved); alert("Copied Discord-ready message."); }
+    catch { window.prompt("Copy message:", payloadResolved); }
+  }
 
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🚨 State 789 — Alerts</h2>
-
+        <h2 style={{ margin: 0 }}>🧟 State 789 — Alerts</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789")}>⬅ Back</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/discord-mentions")}>🔧 Mentions</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/discord-send-log")}>📜 Send Log</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportJson}>Export</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importJson}>Import</button>
           <SupportBundleButton />
@@ -435,119 +398,170 @@ export default function State789AlertsPage() {
       </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
-        <div style={{ fontWeight: 900 }}>Send to Discord</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <input className="zombie-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", minWidth: 240, flex: 1 }} />
 
-        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ opacity: 0.75, fontSize: 12 }}>Scope</div>
-          <select className="zombie-input" value={scope} onChange={(e) => setScope(e.target.value as any)} style={{ padding: "10px 12px" }}>
-            <option value="global">Global</option>
-            <option value="alliance">Alliance</option>
+          <div style={{ opacity: 0.75, fontSize: 12 }}>Tag filter</div>
+          <select className="zombie-input" value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} style={{ padding: "10px 12px", minWidth: 180 }}>
+            <option value="">(all)</option>
+            {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
 
-          {scope === "alliance" ? (
-            <>
-              <div style={{ opacity: 0.75, fontSize: 12 }}>Alliance</div>
-              <select className="zombie-input" value={allianceCode} onChange={(e) => setAllianceCode(e.target.value.toUpperCase())} style={{ padding: "10px 12px" }}>
-                {(dir.length ? dir : [{ id: "x", code: "WOC", name: "WOC", state: "789" }]).map((d) => (
-                  <option key={d.code} value={d.code}>{d.code} — {d.name}</option>
-                ))}
-              </select>
-            </>
-          ) : null}
-
-          <div style={{ opacity: 0.75, fontSize: 12 }}>Channel</div>
-          <select className="zombie-input" value={targetChannelName} onChange={(e) => setTargetChannelName(e.target.value)} style={{ padding: "10px 12px", minWidth: 220 }}>
-            <option value="">(select)</option>
-            {channelKeys.map((k) => <option key={k} value={k}>{k}{chanLut[k] ? "" : " (no id yet)"}</option>)}
-          </select>
-
-          <div style={{ opacity: 0.75, fontSize: 12 }}>Mention Roles (comma names)</div>
-          <input className="zombie-input" value={mentionRoleNames} onChange={(e) => setMentionRoleNames(e.target.value)} placeholder="Leadership,R5" style={{ padding: "10px 12px", minWidth: 220 }} />
-
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => applyDiscordDefaults(true)}>Use Defaults</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendToDiscord} disabled={sending}>
-            {sending ? "Sending…" : "🚀 Send Alert"}
-          </button>
-
-          <div style={{ opacity: 0.7, fontSize: 12 }}>
-            Mapped roles: {roleKeys.length} • Mapped channels: {channelKeys.length}
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetComposer}>+ New</button>
+          <div style={{ opacity: 0.65, fontSize: 12, marginLeft: "auto" }}>
+            localStorage: {KEY}
           </div>
-        </div>
-
-        {sendMsg ? (
-          <div style={{ marginTop: 10, whiteSpace: "pre-wrap", fontSize: 12, color: sendMsg.startsWith("✅") ? "inherit" : "#ffb3b3" }}>
-            {sendMsg}
-          </div>
-        ) : null}
-
-        <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
-          Tip: Use tokens in your alert body like {"{{Leadership}}"} or {"{{channel:announcements}}"} or @Leadership / #announcements.
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(320px, 1.1fr)", gap: 12 }}>
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(360px, 1.2fr)", gap: 12 }}>
         <div className="zombie-card">
-          <div style={{ fontWeight: 900 }}>Alerts</div>
+          <div style={{ fontWeight: 900 }}>Alerts ({alerts.length})</div>
 
-          {pinned.length ? <div style={{ marginTop: 10, opacity: 0.75, fontSize: 12 }}>Pinned</div> : null}
-          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-            {pinned.map((a) => (
-              <div key={a.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(120,255,120,0.08)" }}>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                  <div style={{ fontWeight: 900, cursor: "pointer" }} onClick={() => setSelectedId(a.id)}>{a.title}</div>
-                  <div style={{ marginLeft: "auto", opacity: 0.65, fontSize: 12 }}>{a.updatedUtc}</div>
-                </div>
-                <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={() => togglePin(a.id)}>Unpin</button>
-                  <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={() => deleteAlert(a.id)}>Delete</button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            {alerts.map((a) => {
+              const sel = a.id === selectedId;
+              const preview = (a.body || "").slice(0, 120);
+              return (
+                <div
+                  key={a.id}
+                  onClick={() => setSelectedId(a.id)}
+                  style={{
+                    cursor: "pointer",
+                    padding: 10,
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: sel ? "rgba(120,255,120,0.08)" : "rgba(0,0,0,0.20)",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <div style={{ fontWeight: 900 }}>
+                      {a.pinned ? "📌 " : ""}{sevIcon(a.severity)} {a.title}
+                    </div>
+                    <div style={{ marginLeft: "auto", opacity: 0.65, fontSize: 12 }}>{a.updatedUtc}</div>
+                  </div>
+                  <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
+                    {(a.tags || []).map((x) => "#" + x).join(" ")}{a.authorLabel ? " • " + a.authorLabel : ""} • {sevLabel(a.severity)}
+                  </div>
+                  {preview ? (
+                    <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
+                      {preview}{preview.length >= 120 ? "…" : ""}
+                    </div>
+                  ) : null}
 
-          <div style={{ marginTop: 12, opacity: 0.75, fontSize: 12 }}>All</div>
-          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-            {others.map((a) => (
-              <div key={a.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                  <div style={{ fontWeight: 900, cursor: "pointer" }} onClick={() => setSelectedId(a.id)}>{a.title}</div>
-                  <div style={{ marginLeft: "auto", opacity: 0.65, fontSize: 12 }}>{a.updatedUtc}</div>
+                  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={(ev) => { ev.stopPropagation(); togglePin(a.id); }}>
+                      {a.pinned ? "Unpin" : "Pin"}
+                    </button>
+                    <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={(ev) => { ev.stopPropagation(); delAlert(a.id); }}>
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={() => togglePin(a.id)}>Pin</button>
-                  <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={() => deleteAlert(a.id)}>Delete</button>
-                </div>
-              </div>
-            ))}
-            {(store.items || []).length === 0 ? <div style={{ opacity: 0.75 }}>No alerts yet.</div> : null}
+              );
+            })}
+            {alerts.length === 0 ? <div style={{ opacity: 0.75 }}>No alerts yet.</div> : null}
           </div>
         </div>
 
-        <div className="zombie-card">
-          <div style={{ fontWeight: 900 }}>{selected ? "Edit Alert" : "Create Alert"}</div>
+        <div>
+          <div className="zombie-card">
+            <div style={{ fontWeight: 900 }}>{selected ? "Edit Alert" : "New Alert"}</div>
 
-          <div style={{ marginTop: 10 }}>
-            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Title</div>
-            <input className="zombie-input" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: "100%", padding: "10px 12px" }} />
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <div>
+                <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Severity</div>
+                <select className="zombie-input" value={severity} onChange={(e) => setSeverity(e.target.value as any)} style={{ width: "100%", padding: "10px 12px" }}>
+                  <option value="info">Info</option>
+                  <option value="warning">Warning</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+
+              <div>
+                <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Title</div>
+                <input className="zombie-input" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: "100%", padding: "10px 12px" }} />
+              </div>
+
+              <div>
+                <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Tags (comma)</div>
+                <input className="zombie-input" value={tagsCsv} onChange={(e) => setTagsCsv(e.target.value)} style={{ width: "100%", padding: "10px 12px" }} placeholder="nap,war,ops,shield" />
+              </div>
+
+              <div>
+                <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Author label</div>
+                <input className="zombie-input" value={authorLabel} onChange={(e) => setAuthorLabel(e.target.value)} style={{ width: "100%", padding: "10px 12px" }} placeholder="Leadership / Mod" />
+              </div>
+
+              <div>
+                <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Body</div>
+                <textarea className="zombie-input" value={body} onChange={(e) => setBody(e.target.value)} style={{ width: "100%", minHeight: 160, padding: "10px 12px" }} />
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={upsertAlert}>
+                  {selected ? "Save" : "Publish"}
+                </button>
+                {selected ? (
+                  <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => togglePin(selected.id)}>
+                    {selected.pinned ? "Unpin" : "Pin"}
+                  </button>
+                ) : null}
+                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetComposer}>Clear</button>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
+              UI-only alerts. Later we’ll move to Supabase + RLS + realtime.
+            </div>
           </div>
 
-          <div style={{ marginTop: 10 }}>
-            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Body</div>
-            <textarea className="zombie-input" value={body} onChange={(e) => setBody(e.target.value)} style={{ width: "100%", minHeight: 180, padding: "10px 12px" }} />
-          </div>
+          <div className="zombie-card" style={{ marginTop: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ fontWeight: 900 }}>📣 Optional: Send-to-Discord (payload copy)</div>
+              <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={reloadMentions}>Reload Mentions</button>
+            </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={saveAlert}>
-              {selected ? "Save" : "Create"}
-            </button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetEditor}>Clear</button>
-          </div>
+            <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ opacity: 0.75, fontSize: 12 }}>Channel</div>
+              <select className="zombie-input" value={targetChannelName} onChange={(e) => setTargetChannelName(e.target.value)} style={{ padding: "10px 12px", minWidth: 240 }}>
+                <option value="">(none)</option>
+                {channelKeys.map((k) => (
+                  <option key={k} value={k}>{k}{chanLut[k] ? "" : " (no id yet)"}</option>
+                ))}
+              </select>
 
-          <div style={{ marginTop: 12 }}>
-            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Preview (Resolved)</div>
-            <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 12, padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-{messageResolved}
-            </pre>
+              <div style={{ opacity: 0.75, fontSize: 12 }}>Mention Roles (comma)</div>
+              <input className="zombie-input" value={mentionRoleNames} onChange={(e) => setMentionRoleNames(e.target.value)} placeholder="Leadership,StateLeadership" style={{ padding: "10px 12px", minWidth: 260 }} />
+
+              <div style={{ opacity: 0.65, fontSize: 12 }}>
+                Mapped roles: {roleKeys.length} • Mapped channels: {channelKeys.length}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyPayloadJson} disabled={!alertToSend}>
+                Copy Payload JSON
+              </button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolvedMessage} disabled={!alertToSend}>
+                Copy Discord-ready Message
+              </button>
+            </div>
+
+            {!alertToSend ? <div style={{ marginTop: 10, opacity: 0.75 }}>Select an alert to enable payload copy.</div> : null}
+
+            <div style={{ marginTop: 12 }}>
+              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Preview (resolved)</div>
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 12, padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+{payloadResolved}
+              </pre>
+              <div style={{ marginTop: 8, opacity: 0.65, fontSize: 12 }}>
+                This does not post to Discord yet — it prepares the exact payload your bot/edge-function can send later.
+              </div>
+              <div style={{ marginTop: 6, opacity: 0.6, fontSize: 12 }}>
+                Channel ID: {resolvedChannelId || "(missing)"} (set in Owner → Discord Mentions)
+              </div>
+            </div>
           </div>
         </div>
       </div>
