@@ -1,88 +1,46 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
-
-type LogItem = {
-  id: string;
-  tsUtc: string;
-  source: string;
-  allianceCode: string | null;
-  channelName: string | null;
-  channelId: string | null;
-  mentionRoles: string[];
-  mentionRoleIds: string[];
-  ok: boolean;
-  detail: string;
-};
-
-type Store = { version: 1; items: LogItem[] };
-
-const KEY = "sad_discord_send_log_v1";
-
-function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
-function nowUtc() { return new Date().toISOString(); }
-
-function load(): Store {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return { version: 1, items: [] };
-    const s = JSON.parse(raw) as Store;
-    if (s && s.version === 1 && Array.isArray(s.items)) return s;
-  } catch {}
-  return { version: 1, items: [] };
-}
-
-function save(s: Store) {
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {}
-}
+import { clearDiscordSendLog, exportDiscordSendLog, importDiscordSendLog, loadDiscordSendLog } from "../../lib/discordSendLog";
 
 export default function OwnerDiscordSendLogPage() {
-  const [store, setStore] = useState<Store>(() => load());
+  const [tick, setTick] = useState(0);
+  const items = useMemo(() => loadDiscordSendLog(), [tick]);
+
   const [q, setQ] = useState("");
+  const [onlyFails, setOnlyFails] = useState(false);
 
-  useEffect(() => save(store), [store]);
+  const filtered = useMemo(() => {
+    const s = (q || "").trim().toLowerCase();
+    let arr = items.slice();
+    if (onlyFails) arr = arr.filter((x) => x && x.ok === false);
+    if (s) {
+      arr = arr.filter((x) => {
+        const hay = `${x.source} ${x.channelId || ""} ${x.channelName || ""} ${x.contentPreview || ""} ${x.error || ""}`.toLowerCase();
+        return hay.includes(s);
+      });
+    }
+    return arr;
+  }, [items, q, onlyFails]);
 
-  const items = useMemo(() => {
-    const qq = q.trim().toLowerCase();
-    const arr = (store.items || []).slice();
-    arr.sort((a, b) => b.tsUtc.localeCompare(a.tsUtc));
-    if (!qq) return arr;
-    return arr.filter((x) => {
-      const blob = [
-        x.source,
-        x.allianceCode,
-        x.channelName,
-        x.channelId,
-        x.ok ? "ok" : "fail",
-        x.detail,
-        (x.mentionRoles || []).join(","),
-        (x.mentionRoleIds || []).join(","),
-      ].join(" ").toLowerCase();
-      return blob.includes(qq);
-    });
-  }, [store.items, q]);
-
-  async function exportJson() {
-    const txt = JSON.stringify({ ...store, exportedUtc: nowUtc() }, null, 2);
-    try { await navigator.clipboard.writeText(txt); alert("Copied send log JSON."); }
+  async function copyExport() {
+    const txt = exportDiscordSendLog();
+    try { await navigator.clipboard.writeText(txt); alert("Copied send log export JSON."); }
     catch { window.prompt("Copy:", txt); }
   }
 
-  function importJson() {
-    const raw = window.prompt("Paste send log JSON:");
+  function doImport() {
+    const raw = window.prompt("Paste send log export JSON:");
     if (!raw) return;
-    try {
-      const p = JSON.parse(raw);
-      if (p?.version !== 1 || !Array.isArray(p.items)) throw new Error("Invalid");
-      setStore({ version: 1, items: p.items });
-      alert("Imported.");
-    } catch {
-      alert("Invalid JSON.");
-    }
+    const ok = importDiscordSendLog(raw);
+    if (!ok) return alert("Invalid JSON.");
+    setTick((x) => x + 1);
+    alert("Imported.");
   }
 
-  function clear() {
+  function doClear() {
     if (!confirm("Clear send log?")) return;
-    setStore({ version: 1, items: [] });
+    clearDiscordSendLog();
+    setTick((x) => x + 1);
   }
 
   return (
@@ -90,40 +48,46 @@ export default function OwnerDiscordSendLogPage() {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>📜 Owner — Discord Send Log</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportJson}>Export</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importJson}>Import</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={clear}>Clear</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => setTick((x) => x + 1)}>Refresh</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyExport}>Export</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={doImport}>Import</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={doClear}>Clear</button>
           <SupportBundleButton />
         </div>
       </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <input className="zombie-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", minWidth: 240 }} />
-          <div style={{ opacity: 0.75, fontSize: 12 }}>Count: {(store.items || []).length}</div>
+          <input className="zombie-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", minWidth: 240, flex: 1 }} />
+          <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.85 }}>
+            <input type="checkbox" checked={onlyFails} onChange={(e) => setOnlyFails(e.target.checked)} />
+            Failures only
+          </label>
+          <div style={{ marginLeft: "auto", opacity: 0.65, fontSize: 12 }}>
+            Stored: sad_discord_send_log_v1 • Showing {filtered.length}/{items.length}
+          </div>
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-        {items.map((it) => (
-          <div key={it.id} className="zombie-card">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontWeight: 900 }}>
-                {it.ok ? "✅" : "❌"} {it.source.toUpperCase()} • {it.tsUtc}
+      <div className="zombie-card" style={{ marginTop: 12 }}>
+        <div style={{ display: "grid", gap: 10 }}>
+          {filtered.map((x) => (
+            <div key={x.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 900 }}>{x.ok ? "✅" : "❌"} {x.source}</div>
+                <div style={{ opacity: 0.7, fontSize: 12 }}>{x.tsUtc}</div>
+                <div style={{ marginLeft: "auto", opacity: 0.75, fontSize: 12 }}>
+                  ch: {x.channelName || "(name?)"} • {x.channelId || "(id?)"} • status: {x.status ?? "—"}
+                </div>
               </div>
-              <div style={{ opacity: 0.75, fontSize: 12 }}>
-                {it.allianceCode ? `Alliance: ${it.allianceCode}` : "Alliance: (none)"} • {it.channelName ? `#${it.channelName}` : "(no channel name)"} • {it.channelId || "(no channel id)"}
+              <div style={{ marginTop: 6, fontSize: 12, whiteSpace: "pre-wrap", opacity: 0.9 }}>
+                {x.contentPreview}
               </div>
+              {x.error ? <div style={{ marginTop: 6, fontSize: 12, color: "#ffb3b3" }}>{x.error}</div> : null}
             </div>
-            <div style={{ marginTop: 8, opacity: 0.8, fontSize: 12, whiteSpace: "pre-wrap" }}>{it.detail}</div>
-            {(it.mentionRoles || []).length ? (
-              <div style={{ marginTop: 8, opacity: 0.75, fontSize: 12 }}>
-                Roles: {(it.mentionRoles || []).join(", ")} • IDs: {(it.mentionRoleIds || []).join(", ")}
-              </div>
-            ) : null}
-          </div>
-        ))}
-        {items.length === 0 ? <div style={{ opacity: 0.75 }}>No log items yet.</div> : null}
+          ))}
+          {filtered.length === 0 ? <div style={{ opacity: 0.75 }}>No log entries.</div> : null}
+        </div>
       </div>
     </div>
   );
