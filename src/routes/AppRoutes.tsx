@@ -77,6 +77,9 @@ import OwnerPermissionsMatrixPage from "../pages/owner/OwnerPermissionsMatrixPag
 import OwnerScheduledSendsPage from "../pages/owner/OwnerScheduledSendsPage";
 import OwnerDirectoryEditorPage from "../pages/owner/OwnerDirectoryEditorPage";
 import State789AchievementsPage from "../pages/state/State789AchievementsPage";
+import OwnerAchievementRequestsPage from "../pages/owner/OwnerAchievementRequestsPage";
+import OwnerAchievementConfigPage from "../pages/owner/OwnerAchievementConfigPage";
+import OwnerAchievementAccessPage from "../pages/owner/OwnerAchievementAccessPage";
 
 export default function AppRoutes() {
   return (
@@ -150,6 +153,9 @@ export default function AppRoutes() {
       <Route path="/owner/scheduled-sends" element={<RequireAdmin><OwnerScheduledDiscordSendsPage /></RequireAdmin>} />
       <Route path="/owner/directory-editor" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
       <Route path="/state/789/achievements" element={<State789AchievementsPage />} />
+      <Route path="/owner/achievements/requests" element={<RequireAdmin><OwnerAchievementRequestsPage /></RequireAdmin>} />
+      <Route path="/owner/achievements/config" element={<RequireAdmin><OwnerAchievementConfigPage /></RequireAdmin>} />
+      <Route path="/owner/achievements/access" element={<RequireAdmin><OwnerAchievementAccessPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
