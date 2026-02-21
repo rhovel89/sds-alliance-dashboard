@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
+import { supabase } from "../../lib/supabaseClient";
 
 type RoleMapStore = {
   version: 1;
@@ -157,9 +158,13 @@ export default function OwnerBroadcastComposerPage() {
   const [tplName, setTplName] = useState<string>("");
   const [draft, setDraft] = useState<string>("");
 
-  // NEW: targeting controls
+  // targeting controls
   const [targetChannelName, setTargetChannelName] = useState<string>("");
   const [mentionRoleNames, setMentionRoleNames] = useState<string>(""); // comma list of role keys
+
+  // send state
+  const [sending, setSending] = useState(false);
+  const [sendMsg, setSendMsg] = useState<string | null>(null);
 
   const effectiveAlliance = useMemo(() => (scope === "alliance" ? String(allianceCode || "").toUpperCase() : null), [scope, allianceCode]);
   const roleLut = useMemo(() => makeRoleLookup(roleStore, effectiveAlliance), [roleStore, effectiveAlliance]);
@@ -256,12 +261,31 @@ export default function OwnerBroadcastComposerPage() {
     if (selectedTplId === id) newTemplate();
   }
 
+  function buildPayload() {
+    const chKey = norm(targetChannelName);
+    const targetChannelId = chKey ? (chanLut[chKey] || "") : "";
+
+    const roles = mentionRoleNames.split(",").map((x) => x.trim()).filter(Boolean);
+    const roleIds = roles.map((r) => roleLut[norm(r)] || "").filter(Boolean);
+
+    return {
+      version: 1,
+      createdUtc: nowUtc(),
+      scope,
+      allianceCode: scope === "alliance" ? String(allianceCode || "").toUpperCase() : null,
+      templateName: tplName || (selectedTpl?.name || ""),
+      targetChannel: { name: targetChannelName || null, id: targetChannelId || null },
+      targetChannelId: targetChannelId || null,
+      mentionRoles: roles,
+      mentionRoleIds: roleIds,
+      messageRaw: draft,
+      messageResolved: resolved,
+    };
+  }
+
   function insertTargets() {
     const ch = targetChannelName.trim();
-    const roles = mentionRoleNames
-      .split(",")
-      .map((x) => x.trim())
-      .filter(Boolean);
+    const roles = mentionRoleNames.split(",").map((x) => x.trim()).filter(Boolean);
 
     const parts: string[] = [];
     if (ch) parts.push(`{{channel:${ch}}}`);
@@ -274,26 +298,7 @@ export default function OwnerBroadcastComposerPage() {
   }
 
   async function copyResolvedPayload() {
-    const chKey = norm(targetChannelName);
-    const targetChannelId = chKey ? (chanLut[chKey] || "") : "";
-
-    const roles = mentionRoleNames.split(",").map((x) => x.trim()).filter(Boolean);
-    const roleIds = roles.map((r) => roleLut[norm(r)] || "").filter(Boolean);
-
-    const payload = {
-      version: 1,
-      createdUtc: nowUtc(),
-      scope,
-      allianceCode: scope === "alliance" ? String(allianceCode || "").toUpperCase() : null,
-      templateName: tplName || (selectedTpl?.name || ""),
-      targetChannel: { name: targetChannelName || null, id: targetChannelId || null },
-      mentionRoles: roles,
-      mentionRoleIds: roleIds,
-      messageRaw: draft,
-      messageResolved: resolved,
-      note: "UI-only payload. Bot/webhook send comes later.",
-    };
-
+    const payload = buildPayload();
     const txt = JSON.stringify(payload, null, 2);
     try { await navigator.clipboard.writeText(txt); window.alert("Copied Discord payload JSON."); }
     catch { window.prompt("Copy payload JSON:", txt); }
@@ -304,10 +309,35 @@ export default function OwnerBroadcastComposerPage() {
     catch { window.prompt("Copy message:", resolved); }
   }
 
+  async function sendToDiscord() {
+    setSendMsg(null);
+    const payload = buildPayload();
+
+    // Bot-token mode REQUIRES a real channelId
+    if (!payload.targetChannelId || String(payload.targetChannelId).trim() === "") {
+      setSendMsg("❌ Missing target channel ID. Add channel ID in /owner/discord-mentions, then select it here.");
+      return;
+    }
+
+    setSending(true);
+    try {
+      const r = await supabase.functions.invoke("discord-broadcast", { body: payload as any });
+      if ((r as any).error) {
+        const e = (r as any).error;
+        throw new Error(e?.message || JSON.stringify(e));
+      }
+      setSendMsg("✅ Sent to Discord. Response: " + JSON.stringify((r as any).data));
+    } catch (e: any) {
+      setSendMsg("❌ Send failed: " + String(e?.message || e));
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>📣 Owner — Broadcast Composer (UI-only)</h2>
+        <h2 style={{ margin: 0 }}>📣 Owner — Broadcast Composer</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/discord-mentions")}>
             🔧 Mentions
@@ -356,7 +386,7 @@ export default function OwnerBroadcastComposerPage() {
         <div style={{ fontWeight: 900 }}>Target Channel + Mentions</div>
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ opacity: 0.75, fontSize: 12 }}>Post Target Channel (UI-only for now)</div>
+          <div style={{ opacity: 0.75, fontSize: 12 }}>Post Target Channel</div>
           <select className="zombie-input" value={targetChannelName} onChange={(e) => setTargetChannelName(e.target.value)} style={{ padding: "10px 12px", minWidth: 240 }}>
             <option value="">(none)</option>
             {channelKeys.map((k) => <option key={k} value={k}>{k}{chanLut[k] ? "" : " (no id yet)"}</option>)}
@@ -373,10 +403,19 @@ export default function OwnerBroadcastComposerPage() {
 
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={insertTargets}>Insert into Draft</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolvedPayload}>Copy Payload JSON</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendToDiscord} disabled={sending}>
+            {sending ? "Sending…" : "🚀 Send to Discord"}
+          </button>
         </div>
 
+        {sendMsg ? (
+          <div style={{ marginTop: 10, whiteSpace: "pre-wrap", fontSize: 12, color: sendMsg.startsWith("✅") ? "inherit" : "#ffb3b3" }}>
+            {sendMsg}
+          </div>
+        ) : null}
+
         <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
-          Copy Payload JSON is what we’ll feed to your Discord bot later to “push directly to Discord.”
+          Bot-token mode requires a real channelId. Add it in <b>/owner/discord-mentions</b>.
         </div>
       </div>
 
@@ -444,7 +483,7 @@ export default function OwnerBroadcastComposerPage() {
           </div>
 
           <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
-            Next step: Discord bot reads “Payload JSON” and posts to the selected channel.
+            “Send to Discord” calls Supabase Edge Function: <b>discord-broadcast</b>.
           </div>
         </div>
       </div>
