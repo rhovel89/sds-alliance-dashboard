@@ -8,6 +8,7 @@ import { detectAllianceFromPath } from "../../utils/detectAllianceFromPath";
 import { getCurrentAlliance } from "../../utils/getCurrentAlliance";
 import { getCurrentTheme } from "../../utils/getCurrentTheme";
 import { DashboardHomeQuickLinks } from "../../components/nav/DashboardHomeQuickLinks";
+import AllianceAnnouncementsHomePreview from "../../components/announcements/AllianceAnnouncementsHomePreview";
 
 export default function AllianceDashboardIndexPage() {
   const { alliance_id } = useParams();
@@ -53,6 +54,7 @@ export default function AllianceDashboardIndexPage() {
           </div>
           <RealtimeStatusBadge allianceCode={alliance || null} />
           <DashboardHomeQuickLinks />
+          <AllianceAnnouncementsHomePreview />
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
