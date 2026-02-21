@@ -129,7 +129,7 @@ export default function AppRoutes() {
       {/* fallback */}
       <Route path="/state/789" element={<State789DashboardPage />} />
       <Route path="/alliances" element={<AllianceDirectoryPage />} />
-      <Route path="/mail" element={<MyMailShellPage />} />
+      <Route path="/mail" element={<MyMailPage />} />
       <Route path="/owner/alliance-directory" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
       <Route path="/owner/permissions-matrix" element={<RequireAdmin><OwnerPermissionsMatrixShellPage /></RequireAdmin>} />
       <Route path="/debug" element={<DebugPage />} />
