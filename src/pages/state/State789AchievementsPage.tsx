@@ -190,6 +190,7 @@ export default function State789AchievementsPage() {
 
   return (
     <div style={{ padding: 14 }}>
+      <StateAchievementsProgressPanel stateCode="789" />
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>🏆 State 789 — Achievements</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
