@@ -45,6 +45,7 @@ const DIR_KEY = "sad_alliance_directory_v1";
 const TPL_KEY = "sad_discord_broadcast_templates_v1";
 const PREFILL_KEY = "sad_broadcast_prefill_v1";
 const LOG_KEY = "sad_discord_send_log_v1";
+const DEFAULTS_KEY = "sad_discord_defaults_v1";
 
 function nowUtc() { return new Date().toISOString(); }
 function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }

@@ -62,6 +62,7 @@ const TPL_KEY = "sad_discord_broadcast_templates_v1";
 const ROLE_MAP_KEY = "sad_discord_role_map_v1";
 const CHANNEL_MAP_KEY = "sad_discord_channel_map_v1";
 const LOG_KEY = "sad_discord_send_log_v1";
+const DEFAULTS_KEY = "sad_discord_defaults_v1";
 
 function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
 function nowUtc() { return new Date().toISOString(); }
