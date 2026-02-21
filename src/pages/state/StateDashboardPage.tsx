@@ -3,11 +3,18 @@ import { useNavigate } from "react-router-dom";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 import { RealtimeStatusBadge } from "../../components/system/RealtimeStatusBadge";
 import StateAchievementsMiniProgressCard from "../../components/state/StateAchievementsMiniProgressCard";
+import StateAchievementsProgressPanel from "../../components/state/StateAchievementsProgressPanel";
 
 function CardButton(props: { emoji: string; label: string; to: string; sub?: string }) {
   const nav = useNavigate();
   return (
     <button
+      <div className="zombie-card" style={{ marginTop: 12 }}>
+        <div style={{ fontWeight: 900 }}>🏆 Achievement Progress (State 789)</div>
+        <div style={{ marginTop: 8 }}>
+          <StateAchievementsProgressPanel stateCode="789" />
+        </div>
+      </div>
       className="zombie-btn"
       style={{
         width: "100%",

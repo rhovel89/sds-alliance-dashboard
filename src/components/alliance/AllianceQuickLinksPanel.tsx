@@ -365,6 +365,7 @@ export default function State789DiscussionPage() {
     if (!threadToSend) return "Select a thread to build a Discord payload.";
     const tags = (threadToSend.tags || []).map((t) => `#${t}`).join(" ");
     const link = `${window.location.origin}/state/789/discussion`;
+    <a className="zombie-btn" style={{ padding: "10px 12px" }} href="/state/789/achievement-request">📝 Achievement Request</a>
     return `🧟 State 789 — Discussion\n\n**${threadToSend.title}**\n${tags ? tags + "\n" : ""}\n${threadToSend.body}\n\n— ${threadToSend.authorLabel}\n${link}`;
   }, [threadToSend]);
 
