@@ -405,6 +405,19 @@ export default function OwnerLiveOpsPage() {
     }));
   }
 
+  function applyDiscordDefaults(force: boolean = true) {
+    try {
+      const raw = localStorage.getItem(DEFAULTS_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (!s || s.version !== 1) return;
+      const ac = String(alliance || "").toUpperCase();
+      const d = (s.alliances && ac && s.alliances[ac]) ? s.alliances[ac] : (s.global || {});
+      if (d.channelName && (force || !targetChannelName)) setTargetChannelName(String(d.channelName));
+      if (d.rolesCsv && (force || !mentionRoleNames)) setMentionRoleNames(String(d.rolesCsv));
+    } catch {}
+  }
+
   async function sendToDiscord() {
     setSendMsg(null);
 
@@ -548,6 +561,7 @@ export default function OwnerLiveOpsPage() {
             <div style={{ opacity: 0.75, fontSize: 12 }}>Mention Roles (comma)</div>
             <input className="zombie-input" value={mentionRoleNames} onChange={(e) => setMentionRoleNames(e.target.value)} placeholder="Leadership,R5" style={{ padding: "10px 12px", minWidth: 240 }} />
 
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => applyDiscordDefaults(true)}>Use Defaults</button>
             <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendToDiscord} disabled={sending}>
               {sending ? "Sending…" : "🚀 Send"}
             </button>

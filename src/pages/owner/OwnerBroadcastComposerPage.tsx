@@ -353,6 +353,22 @@ export default function OwnerBroadcastComposerPage() {
     catch { window.prompt("Copy message:", resolved); }
   }
 
+  function applyDiscordDefaults(force: boolean = true) {
+    try {
+      const raw = localStorage.getItem(DEFAULTS_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (!s || s.version !== 1) return;
+      const ac = scope === "alliance" ? String(allianceCode || "").toUpperCase() : null;
+      const d =
+        scope === "global"
+          ? (s.global || {})
+          : ((s.alliances && ac && s.alliances[ac]) ? s.alliances[ac] : (s.global || {}));
+      if (d.channelName && (force || !targetChannelName)) setTargetChannelName(String(d.channelName));
+      if (d.rolesCsv && (force || !mentionRoleNames)) setMentionRoleNames(String(d.rolesCsv));
+    } catch {}
+  }
+
   async function sendToDiscord() {
     setSendMsg(null);
     const payload = buildPayload();
@@ -500,6 +516,7 @@ export default function OwnerBroadcastComposerPage() {
 
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={insertTargets}>Insert into Draft</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolvedPayload}>Copy Payload JSON</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => applyDiscordDefaults(true)}>Use Defaults</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendToDiscord} disabled={sending}>
             {sending ? "Sending…" : "🚀 Send to Discord"}
           </button>
