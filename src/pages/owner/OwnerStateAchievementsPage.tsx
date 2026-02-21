@@ -20,7 +20,6 @@ type AchOption = {
   label: string;
   sort: number;
   active: boolean;
-  // decorated for export/import
   achievement_type_name?: string;
 };
 
@@ -98,7 +97,6 @@ export default function OwnerStateAchievementsPage() {
   // Dropdowns
   const [types, setTypes] = useState<AchType[]>([]);
   const [selectedTypeId, setSelectedTypeId] = useState<string>("");
-  const selectedType = useMemo(() => types.find((t) => t.id === selectedTypeId) || null, [types, selectedTypeId]);
   const [options, setOptions] = useState<AchOption[]>([]);
   const [allOptions, setAllOptions] = useState<AchOption[]>([]);
 
@@ -137,7 +135,6 @@ export default function OwnerStateAchievementsPage() {
 
   async function loadAllOptionsForState() {
     setMsg(null);
-    // pull all options + their type name via FK join
     const r = await supabase
       .from("state_achievement_options")
       .select("id,achievement_type_id,label,sort,active,state_achievement_types!inner(name,state_code)")
@@ -199,6 +196,83 @@ export default function OwnerStateAchievementsPage() {
     const r = await supabase.from("state_achievement_options").update(patch as any).eq("id", id);
     if (r.error) return setMsg("Update option failed: " + r.error.message);
     await loadOptions(selectedTypeId);
+  }
+
+  // ✅ NEW: Seed defaults (only inserts if missing)
+  async function seedDefaults() {
+    setMsg(null);
+
+    // 1) SWP Weapon type
+    let swpId: string | null = null;
+    const swp = await supabase
+      .from("state_achievement_types")
+      .select("id")
+      .eq("state_code", STATE)
+      .eq("name", "SWP Weapon")
+      .maybeSingle();
+
+    if (swp.error && swp.status !== 406) { setMsg("Seed failed (SWP lookup): " + swp.error.message); return; }
+    if (swp.data?.id) {
+      swpId = swp.data.id as any;
+    } else {
+      const ins = await supabase
+        .from("state_achievement_types")
+        .insert({ state_code: STATE, name: "SWP Weapon", kind: "swp_weapon", requires_option: true, required_count: 1, active: true } as any)
+        .select("id")
+        .maybeSingle();
+
+      if (ins.error) { setMsg("Seed failed (SWP insert): " + ins.error.message); return; }
+      swpId = (ins.data as any)?.id || null;
+    }
+
+    // 2) Governor (3x) type
+    const gov = await supabase
+      .from("state_achievement_types")
+      .select("id")
+      .eq("state_code", STATE)
+      .eq("name", "Governor (3x)")
+      .maybeSingle();
+
+    if (gov.error && gov.status !== 406) { setMsg("Seed failed (Governor lookup): " + gov.error.message); return; }
+    if (!gov.data?.id) {
+      const insGov = await supabase
+        .from("state_achievement_types")
+        .insert({ state_code: STATE, name: "Governor (3x)", kind: "governor_count", requires_option: false, required_count: 3, active: true } as any)
+        .select("id")
+        .maybeSingle();
+
+      if (insGov.error) { setMsg("Seed failed (Governor insert): " + insGov.error.message); return; }
+    }
+
+    // 3) Rail Gun option for SWP
+    if (swpId) {
+      const rail = await supabase
+        .from("state_achievement_options")
+        .select("id")
+        .eq("achievement_type_id", swpId)
+        .eq("label", "Rail Gun")
+        .maybeSingle();
+
+      if (rail.error && rail.status !== 406) { setMsg("Seed failed (Rail lookup): " + rail.error.message); return; }
+      if (!rail.data?.id) {
+        const insRail = await supabase
+          .from("state_achievement_options")
+          .insert({ achievement_type_id: swpId, label: "Rail Gun", sort: 1, active: true } as any)
+          .select("id")
+          .maybeSingle();
+
+        if (insRail.error) { setMsg("Seed failed (Rail insert): " + insRail.error.message); return; }
+      }
+    }
+
+    await loadTypes();
+    await loadAllOptionsForState();
+    if (swpId) {
+      setSelectedTypeId(swpId);
+      await loadOptions(swpId);
+    }
+
+    setMsg("✅ Seeded defaults: SWP Weapon + Governor (3x) + Rail Gun (if missing).");
   }
 
   // Access
@@ -349,7 +423,6 @@ export default function OwnerStateAchievementsPage() {
 
   async function exportAllBundle() {
     setMsg(null);
-    // ensure latest
     await loadTypes();
     await loadAccess();
     await loadAllOptionsForState();
@@ -363,7 +436,7 @@ export default function OwnerStateAchievementsPage() {
       options: allOptions,
       access,
       requests: reqs,
-      note: "Use Import Types/Options/Access to restore lists + permissions. Requests import is intentionally not implemented yet.",
+      note: "Use Import tools on Summary tab to restore lists + permissions. Requests import is intentionally not implemented.",
     };
     await copyText(JSON.stringify(bundle, null, 2));
   }
@@ -395,7 +468,6 @@ export default function OwnerStateAchievementsPage() {
 
     if (!data.length) { setMsg("Import types: no data found in JSON."); return; }
 
-    // Upsert by (state_code,name)
     let ok = 0, fail = 0;
     for (const row of data) {
       try {
@@ -444,7 +516,6 @@ export default function OwnerStateAchievementsPage() {
 
     if (!data.length) { setMsg("Import options: no data found in JSON."); return; }
 
-    // ensure types loaded for mapping
     await loadTypes();
     const typeByName: Record<string, AchType> = {};
     for (const t of types) typeByName[safeUpper(t.name)] = t;
@@ -465,7 +536,6 @@ export default function OwnerStateAchievementsPage() {
           if (t?.id) typeId = t.id;
         }
         if (!typeId && typeIdRaw) {
-          // only trust if it exists in current DB types list
           const exists = types.find((t) => t.id === typeIdRaw);
           if (exists) typeId = typeIdRaw;
         }
@@ -474,7 +544,6 @@ export default function OwnerStateAchievementsPage() {
         const sort = Math.max(0, Number(row.sort || 0));
         const active = (row.active !== false);
 
-        // upsert-by-select (no unique constraint on options label)
         const ex = await supabase
           .from("state_achievement_options")
           .select("id")
@@ -549,14 +618,11 @@ export default function OwnerStateAchievementsPage() {
     setMsg(`Import access done. OK=${ok} FAIL=${fail}`);
   }
 
-  // Requests import intentionally NOT implemented yet (to avoid duplicating/rewriting player submissions)
   async function importRequestsNotice() {
-    window.alert("Requests import is intentionally not enabled yet to avoid corrupting player submissions. If you need it, tell me and we’ll add a SAFE import mode.");
+    window.alert("Requests import is intentionally disabled to avoid corrupting player submissions.");
   }
 
-  useEffect(() => {
-    loadRequests();
-  }, []);
+  useEffect(() => { loadRequests(); }, []);
 
   useEffect(() => {
     if (tab === "requests") loadRequests();
@@ -565,9 +631,7 @@ export default function OwnerStateAchievementsPage() {
     if (tab === "summary") { loadRequests(); loadTypes(); loadAccess(); loadAllOptionsForState(); }
   }, [tab]);
 
-  useEffect(() => {
-    if (tab === "dropdowns") loadOptions(selectedTypeId);
-  }, [selectedTypeId]);
+  useEffect(() => { if (tab === "dropdowns") loadOptions(selectedTypeId); }, [selectedTypeId]);
 
   return (
     <div style={{ padding: 14 }}>
@@ -672,7 +736,13 @@ export default function OwnerStateAchievementsPage() {
                     <select
                       className="zombie-input"
                       value={r.status}
-                      onChange={(e) => updateRequest(r.id, { status: e.target.value })}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const patch: any = { status: v };
+                        if (v === "completed" && !r.completed_at) patch.completed_at = nowUtc();
+                        if (v !== "completed") patch.completed_at = null;
+                        updateRequest(r.id, patch);
+                      }}
                       style={{ padding: "10px 12px" }}
                     >
                       <option value="submitted">submitted</option>
@@ -684,12 +754,47 @@ export default function OwnerStateAchievementsPage() {
                     {needsCount ? (
                       <>
                         <div style={{ opacity: 0.75, fontSize: 12 }}>Count</div>
-                        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => updateRequest(r.id, { current_count: Math.max(0, (r.current_count || 0) - 1) })}>-1</button>
-                        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => updateRequest(r.id, { current_count: (r.current_count || 0) + 1 })}>+1</button>
+                        <button
+                          className="zombie-btn"
+                          style={{ padding: "10px 12px" }}
+                          onClick={() => {
+                            const nextCount = Math.max(0, (r.current_count || 0) - 1);
+                            const patch: any = { current_count: nextCount };
+                            if (r.status === "completed" && nextCount < (r.required_count || 1)) {
+                              patch.status = "in_progress";
+                              patch.completed_at = null;
+                            }
+                            updateRequest(r.id, patch);
+                          }}
+                        >
+                          -1
+                        </button>
+
+                        <button
+                          className="zombie-btn"
+                          style={{ padding: "10px 12px" }}
+                          onClick={() => {
+                            const nextCount = (r.current_count || 0) + 1;
+                            const patch: any = { current_count: nextCount };
+                            if (nextCount >= (r.required_count || 1)) {
+                              patch.status = "completed";
+                              patch.completed_at = nowUtc();
+                            } else if (r.status === "submitted") {
+                              patch.status = "in_progress";
+                            }
+                            updateRequest(r.id, patch);
+                          }}
+                        >
+                          +1
+                        </button>
                       </>
                     ) : null}
 
-                    <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => updateRequest(r.id, { current_count: r.required_count, status: "completed" })}>
+                    <button
+                      className="zombie-btn"
+                      style={{ padding: "10px 12px" }}
+                      onClick={() => updateRequest(r.id, { current_count: r.required_count, status: "completed", completed_at: nowUtc() })}
+                    >
                       Mark Complete
                     </button>
                   </div>
@@ -706,7 +811,12 @@ export default function OwnerStateAchievementsPage() {
       {tab === "dropdowns" ? (
         <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(340px, 1fr) minmax(340px, 1fr)", gap: 12 }}>
           <div className="zombie-card">
-            <div style={{ fontWeight: 900 }}>Achievement Types</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ fontWeight: 900 }}>Achievement Types</div>
+              <button className="zombie-btn" style={{ marginLeft: "auto", padding: "10px 12px" }} onClick={seedDefaults}>
+                Seed Defaults (SWP + Governor + Rail Gun)
+              </button>
+            </div>
 
             <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
               <input className="zombie-input" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} placeholder="New achievement name" style={{ padding: "10px 12px" }} />
@@ -724,8 +834,6 @@ export default function OwnerStateAchievementsPage() {
                 </label>
 
                 <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={createType}>Create</button>
-                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("types")}>Export Types</button>
-                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importTypesFromJson}>Import Types</button>
               </div>
             </div>
 
@@ -763,11 +871,6 @@ export default function OwnerStateAchievementsPage() {
                   <input className="zombie-input" value={newOptLabel} onChange={(e) => setNewOptLabel(e.target.value)} placeholder="Weapon name" style={{ padding: "10px 12px", flex: 1, minWidth: 220 }} />
                   <input className="zombie-input" type="number" value={newOptSort} onChange={(e) => setNewOptSort(Number(e.target.value))} style={{ padding: "10px 12px", width: 120 }} />
                   <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={createOption}>Add</button>
-                </div>
-
-                <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("options")}>Export Options</button>
-                  <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importOptionsFromJson}>Import Options</button>
                 </div>
 
                 <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
@@ -808,11 +911,6 @@ export default function OwnerStateAchievementsPage() {
                 <input type="checkbox" checked={canManageTypes} onChange={(e) => setCanManageTypes(e.target.checked)} /> can_manage_types
               </label>
               <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={addAccess}>Add</button>
-            </div>
-
-            <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("access")}>Export Access</button>
-              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importAccessFromJson}>Import Access</button>
             </div>
 
             <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
