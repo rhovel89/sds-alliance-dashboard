@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import MyAlliance from "../MyAlliance";
-import AllianceQuickLinksPanel from "../../components/alliance/AllianceQuickLinksPanel";
 import { AllianceThemePicker } from "../../components/theme/AllianceThemePicker";
 import { RealtimeStatusBadge } from "../../components/system/RealtimeStatusBadge";
 import { detectAllianceFromPath } from "../../utils/detectAllianceFromPath";
