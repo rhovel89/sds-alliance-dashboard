@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
 type AchType = {
@@ -11,9 +10,18 @@ type AchType = {
   active: boolean;
 };
 
+type AchOption = {
+  id: string;
+  achievement_type_id: string;
+  label: string;
+  sort: number;
+  active: boolean;
+};
+
 type ReqRow = {
   id: string;
   state_code: string;
+  requester_user_id: string;
   player_name: string;
   alliance_name: string;
   achievement_type_id: string;
@@ -22,16 +30,22 @@ type ReqRow = {
   current_count: number;
   required_count: number;
   created_at: string;
-  completed_at: string | null;
 };
 
+function norm(s: any) { return String(s || "").trim().toLowerCase(); }
+
 export function State789AchievementsProgressWidget() {
-  const nav = useNavigate();
-  const STATE = "789";
+  const stateCode = "789";
+
+  const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [userId, setUserId] = useState<string | null>(null);
+  const [canViewAll, setCanViewAll] = useState(false);
 
   const [types, setTypes] = useState<AchType[]>([]);
+  const [options, setOptions] = useState<AchOption[]>([]);
   const [rows, setRows] = useState<ReqRow[]>([]);
-  const [err, setErr] = useState<string | null>(null);
 
   const typeById = useMemo(() => {
     const m: Record<string, AchType> = {};
@@ -39,95 +53,206 @@ export function State789AchievementsProgressWidget() {
     return m;
   }, [types]);
 
-  const govTypeIds = useMemo(() => {
+  const optionById = useMemo(() => {
+    const m: Record<string, AchOption> = {};
+    for (const o of options) m[o.id] = o;
+    return m;
+  }, [options]);
+
+  const governorTypeIds = useMemo(() => {
     return types
       .filter((t) => t.active !== false)
-      .filter((t) => t.kind === "governor_count" || String(t.name || "").toLowerCase().includes("governor"))
+      .filter((t) => t.kind === "governor_count" || norm(t.name).includes("governor"))
       .map((t) => t.id);
   }, [types]);
 
-  const govRows = useMemo(() => {
-    const set = new Set(govTypeIds);
-    return rows
-      .filter((r) => set.has(r.achievement_type_id))
-      .filter((r) => r.status !== "denied")
-      .sort((a, b) => (b.current_count || 0) - (a.current_count || 0));
-  }, [rows, govTypeIds]);
+  const swpTypeIds = useMemo(() => {
+    return types
+      .filter((t) => t.active !== false)
+      .filter((t) => t.kind === "swp_weapon" || norm(t.name).includes("swp"))
+      .map((t) => t.id);
+  }, [types]);
 
   async function load() {
-    setErr(null);
+    setLoading(true);
+    setMsg(null);
+
+    const u = await supabase.auth.getUser();
+    const uid = u.data.user?.id || null;
+    setUserId(uid);
+
+    // Determine view permissions (Owner/AppAdmin OR access.can_view)
+    let viewAll = false;
+    try {
+      const a1 = await supabase.rpc("is_app_admin" as any);
+      const a2 = await supabase.rpc("is_dashboard_owner" as any);
+      viewAll = (a1.data === true) || (a2.data === true);
+    } catch {}
+
+    if (!viewAll && uid) {
+      const acc = await supabase
+        .from("state_achievement_access")
+        .select("can_view")
+        .eq("state_code", stateCode)
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      if (!acc.error && acc.data?.can_view === true) viewAll = true;
+    }
+
+    setCanViewAll(viewAll);
 
     const t = await supabase
       .from("state_achievement_types")
       .select("id,state_code,name,kind,required_count,active")
-      .eq("state_code", STATE)
+      .eq("state_code", stateCode)
+      .eq("active", true)
       .order("name", { ascending: true });
 
-    if (t.error) { setErr("Types load failed: " + t.error.message); setTypes([]); setRows([]); return; }
+    if (t.error) {
+      setMsg("Types load failed: " + t.error.message);
+      setTypes([]);
+      setOptions([]);
+      setRows([]);
+      setLoading(false);
+      return;
+    }
     const typesData = (t.data as any) || [];
     setTypes(typesData);
 
-    // If user lacks permission (RLS), this select will fail -> show message (no crash)
-    const r = await supabase
+    const ids = typesData.map((x: any) => x.id).filter(Boolean);
+    if (ids.length) {
+      const o = await supabase
+        .from("state_achievement_options")
+        .select("id,achievement_type_id,label,sort,active")
+        .in("achievement_type_id", ids)
+        .eq("active", true)
+        .order("sort", { ascending: true })
+        .order("label", { ascending: true });
+
+      if (!o.error) setOptions((o.data as any) || []);
+      else setOptions([]);
+    } else {
+      setOptions([]);
+    }
+
+    // Fetch requests:
+    // - if canViewAll: all state rows
+    // - else: only your own rows (RLS-safe)
+    let q = supabase
       .from("state_achievement_requests")
-      .select("id,state_code,player_name,alliance_name,achievement_type_id,option_id,status,current_count,required_count,created_at,completed_at")
-      .eq("state_code", STATE)
+      .select("id,state_code,requester_user_id,player_name,alliance_name,achievement_type_id,option_id,status,current_count,required_count,created_at")
+      .eq("state_code", stateCode)
       .order("created_at", { ascending: false });
 
+    if (!viewAll && uid) q = q.eq("requester_user_id", uid);
+
+    const r = await q;
     if (r.error) {
+      setMsg("Requests load failed: " + r.error.message);
       setRows([]);
-      setErr("Progress not available (RLS): " + r.error.message);
+      setLoading(false);
       return;
     }
     setRows((r.data as any) || []);
+    setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
 
+  const governorProgress = useMemo(() => {
+    const set = new Set(governorTypeIds);
+    const m: Record<string, { player: string; alliance: string; cur: number; req: number }> = {};
+    for (const r of rows) {
+      if (!set.has(r.achievement_type_id)) continue;
+      if (r.status === "denied") continue;
+
+      const key = norm(r.player_name) + "|" + norm(r.alliance_name);
+      const req = r.required_count || typeById[r.achievement_type_id]?.required_count || 3;
+      const cur = r.current_count || 0;
+
+      if (!m[key] || cur > m[key].cur) {
+        m[key] = { player: r.player_name, alliance: r.alliance_name, cur, req };
+      }
+    }
+
+    return Object.values(m).sort((a, b) => (b.cur - a.cur) || a.player.localeCompare(b.player));
+  }, [rows, governorTypeIds, typeById]);
+
+  const swpWishlist = useMemo(() => {
+    const set = new Set(swpTypeIds);
+    const m: Record<string, { player: string; alliance: string; weapons: string[] }> = {};
+    for (const r of rows) {
+      if (!set.has(r.achievement_type_id)) continue;
+      if (r.status === "denied") continue;
+      if (r.status === "completed") continue;
+
+      const key = norm(r.player_name) + "|" + norm(r.alliance_name);
+      if (!m[key]) m[key] = { player: r.player_name, alliance: r.alliance_name, weapons: [] };
+
+      const w = r.option_id ? (optionById[r.option_id]?.label || "Unknown") : "Unknown";
+      if (!m[key].weapons.includes(w)) m[key].weapons.push(w);
+    }
+
+    return Object.values(m).sort((a, b) => a.player.localeCompare(b.player));
+  }, [rows, swpTypeIds, optionById]);
+
   return (
-    <div className="zombie-card">
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ fontWeight: 900 }}>📈 State Achievements — Progress Tracker</div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/achievements")}>
-            Open Achievements
-          </button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={load}>
-            Refresh
-          </button>
+    <div className="zombie-card" style={{ marginTop: 12 }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ fontWeight: 900 }}>🏆 Achievements Progress</div>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={load}>Refresh</button>
         </div>
       </div>
 
-      {err ? (
-        <div style={{ marginTop: 10, opacity: 0.85, border: "1px solid rgba(255,80,80,0.35)", borderRadius: 12, padding: 10 }}>
-          {err}
-        </div>
-      ) : null}
+      <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+        {loading ? "Loading…" : (canViewAll ? "Viewing: state-wide progress" : "Viewing: your progress only (RLS)")}
+      </div>
 
-      <div style={{ marginTop: 12 }}>
-        <div style={{ fontWeight: 900 }}>👑 Governor (3x) Tracker</div>
-        <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
-          Shows each player’s current rotations like 2/3. Auto-complete happens when Owner bumps count to required.
-        </div>
+      {msg ? <div style={{ marginTop: 10, opacity: 0.85 }}>{msg}</div> : null}
 
-        <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-          {govRows.slice(0, 50).map((r) => {
-            const t = typeById[r.achievement_type_id];
-            const req = r.required_count || t?.required_count || 3;
-            const prog = `${r.current_count || 0}/${req}`;
-            const done = (r.status === "completed" || (r.current_count || 0) >= req) ? " ✅" : "";
-            return (
-              <div key={r.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                  <div style={{ fontWeight: 900 }}>{r.player_name} <span style={{ opacity: 0.7 }}>({r.alliance_name})</span></div>
-                  <div style={{ marginLeft: "auto", fontWeight: 900 }}>{prog}{done}</div>
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(280px, 1fr)", gap: 12 }}>
+        <div style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+          <div style={{ fontWeight: 900 }}>👑 Governor Rotations</div>
+          <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>Shows X/3 progress (auto ✅ at 3).</div>
+
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            {governorProgress.slice(0, 25).map((p) => {
+              const done = p.cur >= p.req;
+              return (
+                <div key={p.player + "|" + p.alliance} style={{ padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.18)" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ fontWeight: 900 }}>{p.player} <span style={{ opacity: 0.7 }}>({p.alliance})</span></div>
+                    <div style={{ marginLeft: "auto", fontWeight: 900 }}>
+                      {p.cur}/{p.req}{done ? " ✅" : ""}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ marginTop: 6, opacity: 0.75, fontSize: 12 }}>Status: {r.status}</div>
-              </div>
-            );
-          })}
-          {govRows.length === 0 ? <div style={{ opacity: 0.75 }}>No Governor requests visible.</div> : null}
+              );
+            })}
+            {!loading && governorProgress.length === 0 ? <div style={{ opacity: 0.75 }}>No governor progress yet.</div> : null}
+          </div>
         </div>
+
+        <div style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+          <div style={{ fontWeight: 900 }}>🔫 SWP Weapon Wishlist</div>
+          <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>Shows pending SWP weapons (not completed).</div>
+
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            {swpWishlist.slice(0, 25).map((p) => (
+              <div key={p.player + "|" + p.alliance} style={{ padding: 8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.18)" }}>
+                <div style={{ fontWeight: 900 }}>{p.player} <span style={{ opacity: 0.7 }}>({p.alliance})</span></div>
+                <div style={{ opacity: 0.85, marginTop: 6 }}>{p.weapons.join(", ")}</div>
+              </div>
+            ))}
+            {!loading && swpWishlist.length === 0 ? <div style={{ opacity: 0.75 }}>No SWP wishlists yet.</div> : null}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 10, opacity: 0.6, fontSize: 12 }}>
+        Tip: If you want leadership/mods to see state-wide lists, add them in Owner → State Achievements → Access (can_view).
       </div>
     </div>
   );

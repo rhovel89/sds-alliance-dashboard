@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
-import { State789AchievementsProgressWidget } from "../../components/state/State789AchievementsProgressWidget";
 
 type AchType = {
   id: string;
+  state_code: string;
   name: string;
   kind: string;
   requires_option: boolean;
@@ -22,44 +22,40 @@ type AchOption = {
 
 type ReqRow = {
   id: string;
+  state_code: string;
+  requester_user_id: string;
   player_name: string;
   alliance_name: string;
+  achievement_type_id: string;
+  option_id: string | null;
   status: string;
   current_count: number;
   required_count: number;
   completed_at: string | null;
   notes: string | null;
   created_at: string;
-
-  achievement_type_id: string;
-  option_id: string | null;
+  updated_at: string;
 };
 
 function nowUtc() { return new Date().toISOString(); }
-
-async function copyText(txt: string) {
-  try { await navigator.clipboard.writeText(txt); window.alert("Copied."); }
-  catch { window.prompt("Copy:", txt); }
-}
+function norm(s: any) { return String(s || "").trim(); }
 
 export default function State789AchievementsPage() {
-  const STATE = "789";
-  const [msg, setMsg] = useState<string | null>(null);
+  const stateCode = "789";
+
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [types, setTypes] = useState<AchType[]>([]);
-  const [typeId, setTypeId] = useState<string>("");
-  const type = useMemo(() => types.find((t) => t.id === typeId) || null, [types, typeId]);
-
   const [options, setOptions] = useState<AchOption[]>([]);
-  const [optionId, setOptionId] = useState<string>("");
+  const [myRequests, setMyRequests] = useState<ReqRow[]>([]);
 
-  // All options for mapping (no embedded joins)
-  const [allOptions, setAllOptions] = useState<AchOption[]>([]);
-  const optById = useMemo(() => {
-    const m: Record<string, AchOption> = {};
-    for (const o of allOptions) m[o.id] = o;
-    return m;
-  }, [allOptions]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const [playerName, setPlayerName] = useState("");
+  const [allianceName, setAllianceName] = useState("");
+  const [typeId, setTypeId] = useState<string>("");
+  const [optionId, setOptionId] = useState<string>("");
 
   const typeById = useMemo(() => {
     const m: Record<string, AchType> = {};
@@ -67,128 +63,137 @@ export default function State789AchievementsPage() {
     return m;
   }, [types]);
 
-  const [playerName, setPlayerName] = useState("");
-  const [allianceName, setAllianceName] = useState("");
-  const [notes, setNotes] = useState("");
+  const activeTypes = useMemo(() => {
+    return (types || []).filter((t) => t.active !== false);
+  }, [types]);
 
-  const [myReqs, setMyReqs] = useState<ReqRow[]>([]);
+  const optionsForType = useMemo(() => {
+    if (!typeId) return [];
+    return (options || [])
+      .filter((o) => o.achievement_type_id === typeId)
+      .filter((o) => o.active !== false)
+      .sort((a, b) => (a.sort - b.sort) || a.label.localeCompare(b.label));
+  }, [options, typeId]);
 
-  async function loadTypes(): Promise<AchType[]> {
+  const selectedType = useMemo(() => (typeId ? typeById[typeId] : null), [typeId, typeById]);
+
+  async function loadAll() {
+    setLoading(true);
     setMsg(null);
-    const r = await supabase
+
+    const u = await supabase.auth.getUser();
+    const uid = u.data.user?.id || null;
+    setUserId(uid);
+
+    const t = await supabase
       .from("state_achievement_types")
-      .select("id,name,kind,requires_option,required_count,active")
-      .eq("state_code", STATE)
+      .select("id,state_code,name,kind,requires_option,required_count,active")
+      .eq("state_code", stateCode)
       .eq("active", true)
       .order("name", { ascending: true });
 
-    if (r.error) { setMsg("Load achievements failed: " + r.error.message); setTypes([]); return []; }
-    const data = ((r.data as any) || []) as AchType[];
-    setTypes(data);
-    return data;
+    if (t.error) {
+      setTypes([]);
+      setOptions([]);
+      setMyRequests([]);
+      setMsg("Types load failed: " + t.error.message);
+      setLoading(false);
+      return;
+    }
+
+    const typesData = (t.data as any) || [];
+    setTypes(typesData);
+
+    const ids = typesData.map((x: any) => x.id).filter(Boolean);
+    if (ids.length) {
+      const o = await supabase
+        .from("state_achievement_options")
+        .select("id,achievement_type_id,label,sort,active")
+        .in("achievement_type_id", ids)
+        .eq("active", true)
+        .order("sort", { ascending: true })
+        .order("label", { ascending: true });
+
+      if (o.error) {
+        setOptions([]);
+        setMsg((prev) => (prev ? prev + " | " : "") + "Options load failed: " + o.error.message);
+      } else {
+        setOptions((o.data as any) || []);
+      }
+    } else {
+      setOptions([]);
+    }
+
+    if (uid) {
+      const r = await supabase
+        .from("state_achievement_requests")
+        .select("id,state_code,requester_user_id,player_name,alliance_name,achievement_type_id,option_id,status,current_count,required_count,completed_at,notes,created_at,updated_at")
+        .eq("state_code", stateCode)
+        .eq("requester_user_id", uid)
+        .order("created_at", { ascending: false });
+
+      if (r.error) {
+        setMyRequests([]);
+        setMsg((prev) => (prev ? prev + " | " : "") + "My requests load failed: " + r.error.message);
+      } else {
+        setMyRequests((r.data as any) || []);
+      }
+    } else {
+      setMyRequests([]);
+      setMsg((prev) => (prev ? prev + " | " : "") + "Not logged in.");
+    }
+
+    setLoading(false);
   }
 
-  async function loadAllOptionsForTypes(typeIds: string[]) {
-    setMsg(null);
-    if (!typeIds.length) { setAllOptions([]); return; }
+  useEffect(() => { loadAll(); }, []);
 
-    const r = await supabase
-      .from("state_achievement_options")
-      .select("id,achievement_type_id,label,sort,active")
-      .in("achievement_type_id", typeIds)
-      .eq("active", true)
-      .order("sort", { ascending: true })
-      .order("label", { ascending: true });
-
-    if (r.error) { setMsg("Load options failed: " + r.error.message); setAllOptions([]); return; }
-    setAllOptions(((r.data as any) || []) as AchOption[]);
-  }
-
-  async function loadOptionsForType(tid: string) {
-    if (!tid) { setOptions([]); setOptionId(""); return; }
-    const r = await supabase
-      .from("state_achievement_options")
-      .select("id,achievement_type_id,label,sort,active")
-      .eq("achievement_type_id", tid)
-      .eq("active", true)
-      .order("sort", { ascending: true })
-      .order("label", { ascending: true });
-
-    if (r.error) { setMsg("Load options failed: " + r.error.message); setOptions([]); return; }
-    setOptions(((r.data as any) || []) as AchOption[]);
-  }
-
-  async function loadMyReqs() {
-    setMsg(null);
-    const u = await supabase.auth.getUser();
-    const uid = u.data.user?.id || null;
-    if (!uid) { setMyReqs([]); return; }
-
-    // IMPORTANT: NO embedded selects here (prevents PostgREST 400)
-    const r = await supabase
-      .from("state_achievement_requests")
-      .select("id,player_name,alliance_name,status,current_count,required_count,completed_at,notes,created_at,achievement_type_id,option_id")
-      .eq("state_code", STATE)
-      .eq("requester_user_id", uid)
-      .order("created_at", { ascending: false });
-
-    if (r.error) { setMsg("Load submissions failed: " + r.error.message); setMyReqs([]); return; }
-    setMyReqs(((r.data as any) || []) as ReqRow[]);
-  }
+  useEffect(() => {
+    // If type changes and it doesn't require option, clear optionId
+    if (!selectedType?.requires_option) setOptionId("");
+  }, [selectedType?.requires_option]);
 
   async function submit() {
     setMsg(null);
-    const pn = playerName.trim();
-    const an = allianceName.trim();
+
+    const pn = norm(playerName);
+    const an = norm(allianceName);
     if (!pn) return setMsg("Name is required.");
     if (!an) return setMsg("Alliance name is required.");
     if (!typeId) return setMsg("Select an achievement.");
-    if (type?.requires_option && !optionId) return setMsg("This achievement requires selecting a weapon/option.");
 
-    // Let DB defaults/triggers set requester_user_id + required_count + timestamps
+    const t = selectedType;
+    if (!t) return setMsg("Invalid achievement selection.");
+
+    if (t.requires_option && !optionId) return setMsg("Select a weapon/option.");
+
     const payload: any = {
-      state_code: STATE,
+      state_code: stateCode,
       player_name: pn,
       alliance_name: an,
       achievement_type_id: typeId,
-      option_id: optionId || null,
-      notes: notes.trim() || null,
-      status: "submitted",
-      current_count: 0
+      option_id: t.requires_option ? optionId : null
+      // requester_user_id is set by DB trigger; do not trust client
     };
 
-    const r = await supabase.from("state_achievement_requests").insert(payload).select("id").maybeSingle();
-    if (r.error) return setMsg("Submit failed: " + r.error.message);
+    const ins = await supabase.from("state_achievement_requests").insert(payload).select("id").maybeSingle();
+    if (ins.error) {
+      setMsg("Submit failed: " + ins.error.message);
+      return;
+    }
 
-    setMsg("✅ Submitted! Owner will track progress on the Owner dashboard.");
-    setNotes("");
-    await loadMyReqs();
+    setMsg("✅ Submitted. Owner will track progress.");
+    setTypeId("");
+    setOptionId("");
+    await loadAll();
   }
-
-  async function refreshAll() {
-    const t = await loadTypes();
-    await loadAllOptionsForTypes(t.map((x) => x.id));
-    await loadMyReqs();
-    await loadOptionsForType(typeId);
-  }
-
-  useEffect(() => {
-    (async () => {
-      const t = await loadTypes();
-      await loadAllOptionsForTypes(t.map((x) => x.id));
-      await loadMyReqs();
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => { loadOptionsForType(typeId); }, [typeId]);
 
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>🏆 State 789 — Achievements</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={refreshAll}>Refresh</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
           <SupportBundleButton />
         </div>
       </div>
@@ -200,80 +205,92 @@ export default function State789AchievementsPage() {
         </div>
       ) : null}
 
-      {/* Progress tracker (will show if RLS allows; otherwise shows message) */}
-      <div style={{ marginTop: 12 }}>
-        <State789AchievementsProgressWidget />
-      </div>
-
       <div className="zombie-card" style={{ marginTop: 12 }}>
-        <div style={{ fontWeight: 900 }}>Submit Achievement Request</div>
+        <div style={{ fontWeight: 900 }}>Submit a new Achievement Goal</div>
+        <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+          Fill this out to request tracking. Owner/Helpers will update your progress.
+        </div>
 
-        <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-          <input className="zombie-input" value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="Name (in-game)" style={{ padding: "10px 12px" }} />
-          <input className="zombie-input" value={allianceName} onChange={(e) => setAllianceName(e.target.value)} placeholder="Alliance name" style={{ padding: "10px 12px" }} />
+        <div style={{ marginTop: 12, display: "grid", gap: 10, maxWidth: 720 }}>
+          <div>
+            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Name</div>
+            <input className="zombie-input" value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="Your in-game name" style={{ padding: "10px 12px", width: "100%" }} />
+          </div>
 
-          <select className="zombie-input" value={typeId} onChange={(e) => setTypeId(e.target.value)} style={{ padding: "10px 12px" }}>
-            <option value="">Select Achievement…</option>
-            {types.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}{t.required_count > 1 ? ` (${t.required_count}x)` : ""}
-              </option>
-            ))}
-          </select>
+          <div>
+            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Alliance name</div>
+            <input className="zombie-input" value={allianceName} onChange={(e) => setAllianceName(e.target.value)} placeholder="WOC / SDS / etc" style={{ padding: "10px 12px", width: "100%" }} />
+          </div>
 
-          {type?.requires_option ? (
-            <select className="zombie-input" value={optionId} onChange={(e) => setOptionId(e.target.value)} style={{ padding: "10px 12px" }}>
-              <option value="">Select Weapon/Option…</option>
-              {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          <div>
+            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Achievement</div>
+            <select className="zombie-input" value={typeId} onChange={(e) => setTypeId(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
+              <option value="">Select…</option>
+              {activeTypes.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}{t.kind ? ` (${t.kind})` : ""}{t.required_count ? ` — ${t.required_count}x` : ""}
+                </option>
+              ))}
             </select>
+          </div>
+
+          {selectedType?.requires_option ? (
+            <div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Weapon / Option</div>
+              <select className="zombie-input" value={optionId} onChange={(e) => setOptionId(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
+                <option value="">Select…</option>
+                {optionsForType.map((o) => (
+                  <option key={o.id} value={o.id}>{o.label}</option>
+                ))}
+              </select>
+              <div style={{ opacity: 0.65, fontSize: 12, marginTop: 6 }}>
+                If you don’t see the weapon you want, Owner can add it in Owner → State Achievements.
+              </div>
+            </div>
           ) : null}
 
-          <textarea className="zombie-input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" style={{ padding: "10px 12px", minHeight: 90 }} />
-
-          <button className="zombie-btn" style={{ padding: "12px 14px", fontWeight: 900 }} onClick={submit}>
+          <button className="zombie-btn" style={{ padding: "12px 14px", fontWeight: 900, width: 220 }} onClick={submit} disabled={loading || !userId}>
             Submit
           </button>
         </div>
-
-        <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
-          SWP Weapon requires a weapon selection. Owner can add more achievements/weapons later.
-        </div>
       </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ fontWeight: 900 }}>My Submissions</div>
-          <button
-            className="zombie-btn"
-            style={{ padding: "10px 12px" }}
-            onClick={() => copyText(JSON.stringify({ version: 1, state: STATE, exportedUtc: nowUtc(), submissions: myReqs }, null, 2))}
-          >
-            Export My Submissions
-          </button>
+        <div style={{ fontWeight: 900 }}>My Requests</div>
+        <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+          Progress is updated by Owner/Helpers. Completed items auto-mark ✅ when count hits required.
         </div>
 
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-          {myReqs.map((r) => {
+          {myRequests.map((r) => {
             const t = typeById[r.achievement_type_id];
-            const tName = t?.name || "Achievement";
-            const optLabel = r.option_id ? (optById[r.option_id]?.label || "Unknown Option") : null;
-
-            const prog = (r.required_count || 1) > 1 ? ` (${r.current_count || 0}/${r.required_count})` : "";
-            const done = r.status === "completed" ? " ✅" : "";
+            const o = r.option_id ? (options.find((x) => x.id === r.option_id) || null) : null;
+            const req = r.required_count || t?.required_count || 1;
+            const cur = r.current_count || 0;
+            const done = r.status === "completed" || cur >= req;
 
             return (
               <div key={r.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-                <div style={{ fontWeight: 900 }}>
-                  {tName}{optLabel ? (" — " + optLabel) : ""}{prog}{done}
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ fontWeight: 900 }}>
+                    {(t?.name || "Achievement")}{o ? (" — " + o.label) : ""}
+                  </div>
+                  <div style={{ marginLeft: "auto", fontWeight: 900 }}>
+                    {cur}/{req}{done ? " ✅" : ""}
+                  </div>
                 </div>
-                <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
+                <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
                   Status: {r.status} • Submitted: {r.created_at}
                 </div>
-                {r.notes ? <div style={{ marginTop: 8, opacity: 0.8, whiteSpace: "pre-wrap" }}>{r.notes}</div> : null}
+                {r.notes ? (
+                  <div style={{ opacity: 0.85, marginTop: 8, whiteSpace: "pre-wrap" }}>
+                    Notes: {r.notes}
+                  </div>
+                ) : null}
               </div>
             );
           })}
-          {myReqs.length === 0 ? <div style={{ opacity: 0.75 }}>No submissions yet.</div> : null}
+          {!loading && myRequests.length === 0 ? <div style={{ opacity: 0.75 }}>No requests yet.</div> : null}
         </div>
       </div>
     </div>
