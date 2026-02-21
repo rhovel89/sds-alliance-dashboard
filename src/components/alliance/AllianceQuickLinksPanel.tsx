@@ -1,5 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useRef, useEffect, useMemo, useState } from "react";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
+
+// Singleton guard: prevents duplicate mounts from rendering twice
+let __sad_state789_discussion_mount_count_v1 = 0;
+
 
 type RoleMapStore = {
   version: 1;
@@ -155,6 +159,23 @@ function pickTags(csv: string): string[] {
 }
 
 export default function State789DiscussionPage() {
+
+  // --- singleton render guard (prevents doubled UI) ---
+  const __sadOnce = useRef(false);
+  if (!__sadOnce.current) {
+    __sad_state789_discussion_mount_count_v1 += 1;
+    __sadOnce.current = true;
+  }
+  const __sadIsDuplicate = __sad_state789_discussion_mount_count_v1 > 1;
+  useEffect(() => {
+    return () => {
+      if (__sadOnce.current) {
+        __sad_state789_discussion_mount_count_v1 = Math.max(0, __sad_state789_discussion_mount_count_v1 - 1);
+      }
+    };
+  }, []);
+  if (__sadIsDuplicate) return null;
+
   const [store, setStore] = useState<Store>(() => loadStore());
   useEffect(() => saveStore(store), [store]);
 
