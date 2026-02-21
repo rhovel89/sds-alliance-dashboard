@@ -72,6 +72,7 @@ import OwnerDiscordMentionsPage from "../pages/owner/OwnerDiscordMentionsPage";
 import OwnerDiscordSendLogPage from "../pages/owner/OwnerDiscordSendLogPage";
 import OwnerDiscordTestSendPage from "../pages/owner/OwnerDiscordTestSendPage";
 import OwnerDiscordDefaultsPage from "../pages/owner/OwnerDiscordDefaultsPage";
+import OwnerScheduledDiscordSendsPage from "../pages/owner/OwnerScheduledDiscordSendsPage";
 
 export default function AppRoutes() {
   return (
@@ -142,6 +143,7 @@ export default function AppRoutes() {
       <Route path="/owner/discord-send-log" element={<RequireAdmin><OwnerDiscordSendLogPage /></RequireAdmin>} />
       <Route path="/owner/discord-test-send" element={<RequireAdmin><OwnerDiscordTestSendPage /></RequireAdmin>} />
       <Route path="/owner/discord-defaults" element={<RequireAdmin><OwnerDiscordDefaultsPage /></RequireAdmin>} />
+      <Route path="/owner/scheduled-sends" element={<RequireAdmin><OwnerScheduledDiscordSendsPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
