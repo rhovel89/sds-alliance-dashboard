@@ -13,7 +13,7 @@ type Thread = {
   createdUtc: string;
   updatedUtc: string;
   title: string;
-  toLabel: string;        // free text for now
+  toLabel: string;
   tags: string[];
   pinned: boolean;
   archived: boolean;
@@ -92,7 +92,6 @@ export default function MyMailPage() {
       });
     }
 
-    // pinned first, then updated desc
     arr.sort((a, b) => {
       if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
       return String(b.updatedUtc).localeCompare(String(a.updatedUtc));
@@ -101,16 +100,17 @@ export default function MyMailPage() {
   }, [store.threads, view, search]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = useMemo(() => (selectedId ? (store.threads || []).find((t) => t.id === selectedId) || null : null), [selectedId, store.threads]);
+  const selected = useMemo(
+    () => (selectedId ? (store.threads || []).find((t) => t.id === selectedId) || null : null),
+    [selectedId, store.threads]
+  );
 
-  // Composer
   const [toLabel, setToLabel] = useState("");
   const [title, setTitle] = useState("");
   const [tagsCsv, setTagsCsv] = useState("");
   const [body, setBody] = useState("");
 
   useEffect(() => {
-    // when selecting, load metadata into composer header (not body)
     if (!selected) return;
     setToLabel(selected.toLabel || "");
     setTitle(selected.title || "");
@@ -133,7 +133,7 @@ export default function MyMailPage() {
     const tTags = (tagsCsv || "").split(",").map((x) => x.trim()).filter(Boolean);
 
     const msgBody = (body || "").trim();
-    const newMsg: Message | null = withMessage && msgBody
+    const newMsg = withMessage && msgBody
       ? { id: uid(), createdUtc: now, fromLabel: "Me", body: msgBody }
       : null;
 
@@ -150,7 +150,6 @@ export default function MyMailPage() {
         }
       }
 
-      // create new
       const thr: Thread = {
         id: uid(),
         createdUtc: now,
@@ -229,18 +228,10 @@ export default function MyMailPage() {
           <button className="zombie-btn" style={{ padding: "10px 12px", opacity: view === "inbox" ? 1 : 0.7 }} onClick={() => setView("inbox")}>Inbox</button>
           <button className="zombie-btn" style={{ padding: "10px 12px", opacity: view === "archived" ? 1 : 0.7 }} onClick={() => setView("archived")}>Archived</button>
 
-          <input
-            className="zombie-input"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search…"
-            style={{ padding: "10px 12px", minWidth: 240, flex: 1 }}
-          />
+          <input className="zombie-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", minWidth: 240, flex: 1 }} />
 
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetComposer}>+ New</button>
-          <div style={{ opacity: 0.65, fontSize: 12, marginLeft: "auto" }}>
-            localStorage: {KEY}
-          </div>
+          <div style={{ opacity: 0.65, fontSize: 12, marginLeft: "auto" }}>localStorage: {KEY}</div>
         </div>
       </div>
 
@@ -253,17 +244,7 @@ export default function MyMailPage() {
               const sel = t.id === selectedId;
               const preview = (t.messages?.[0]?.body || "").slice(0, 90);
               return (
-                <div
-                  key={t.id}
-                  onClick={() => setSelectedId(t.id)}
-                  style={{
-                    cursor: "pointer",
-                    padding: 10,
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    background: sel ? "rgba(120,255,120,0.08)" : "rgba(0,0,0,0.20)",
-                  }}
-                >
+                <div key={t.id} onClick={() => setSelectedId(t.id)} style={{ cursor: "pointer", padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: sel ? "rgba(120,255,120,0.08)" : "rgba(0,0,0,0.20)" }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ fontWeight: 900 }}>{t.pinned ? "📌 " : ""}{t.title}</div>
                     <div style={{ marginLeft: "auto", opacity: 0.65, fontSize: 12 }}>{t.updatedUtc}</div>
@@ -274,15 +255,9 @@ export default function MyMailPage() {
                   {preview ? <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>{preview}{preview.length >= 90 ? "…" : ""}</div> : null}
 
                   <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={(ev) => { ev.stopPropagation(); togglePin(t.id); }}>
-                      {t.pinned ? "Unpin" : "Pin"}
-                    </button>
-                    <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={(ev) => { ev.stopPropagation(); toggleArchive(t.id); }}>
-                      {t.archived ? "Unarchive" : "Archive"}
-                    </button>
-                    <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={(ev) => { ev.stopPropagation(); deleteThread(t.id); }}>
-                      Delete
-                    </button>
+                    <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={(ev) => { ev.stopPropagation(); togglePin(t.id); }}>{t.pinned ? "Unpin" : "Pin"}</button>
+                    <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={(ev) => { ev.stopPropagation(); toggleArchive(t.id); }}>{t.archived ? "Unarchive" : "Archive"}</button>
+                    <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={(ev) => { ev.stopPropagation(); deleteThread(t.id); }}>Delete</button>
                   </div>
                 </div>
               );
@@ -316,15 +291,9 @@ export default function MyMailPage() {
             </div>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => upsertThread(false)}>
-                {selected ? "Save Meta" : "Create Thread"}
-              </button>
-              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => upsertThread(true)}>
-                Send Message
-              </button>
-              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetComposer}>
-                Clear
-              </button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => upsertThread(false)}>{selected ? "Save Meta" : "Create Thread"}</button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => upsertThread(true)}>Send Message</button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetComposer}>Clear</button>
             </div>
           </div>
 
@@ -347,7 +316,7 @@ export default function MyMailPage() {
           ) : null}
 
           <div style={{ marginTop: 12, opacity: 0.65, fontSize: 12 }}>
-            Next step later: move this store to Supabase + RLS + realtime + per-user inbox.
+            Next later: Supabase tables + RLS + realtime per-user inbox.
           </div>
         </div>
       </div>
