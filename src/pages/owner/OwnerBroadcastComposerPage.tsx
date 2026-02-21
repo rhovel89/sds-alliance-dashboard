@@ -189,6 +189,26 @@ export default function OwnerBroadcastComposerPage() {
   const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState<string | null>(null);
 
+  // Auto-fill Discord defaults (channel + roles) when empty
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DEFAULTS_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (!s || s.version !== 1) return;
+
+      const ac = scope === "alliance" ? String(allianceCode || "").toUpperCase() : null;
+      const d =
+        scope === "global"
+          ? (s.global || {})
+          : ((s.alliances && ac && s.alliances[ac]) ? s.alliances[ac] : (s.global || {}));
+
+      if (!targetChannelName && d.channelName) setTargetChannelName(String(d.channelName));
+      if (!mentionRoleNames && d.rolesCsv) setMentionRoleNames(String(d.rolesCsv));
+    } catch {}
+  }, [scope, allianceCode]);
+
+
   const effectiveAlliance = useMemo(() => (scope === "alliance" ? String(allianceCode || "").toUpperCase() : null), [scope, allianceCode]);
   const roleLut = useMemo(() => makeRoleLookup(roleStore, effectiveAlliance), [roleStore, effectiveAlliance]);
   const chanLut = useMemo(() => makeChannelLookup(chanStore, effectiveAlliance), [chanStore, effectiveAlliance]);
