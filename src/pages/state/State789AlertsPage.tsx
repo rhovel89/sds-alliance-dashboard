@@ -352,14 +352,6 @@ async function sendNowBot() {
   }
 }
 
-// sendNowBot HOTFIX (prevents runtime crash on /state/789/alerts)
-
-const sendNowBot = async () => {
-  try {
-    window.alert("Send Now (Bot) is not wired on this page yet. Use Copy Payload JSON / Owner tools for now.");
-  } catch {}
-};
-
 return (mentionRoleNames || "")
       .split(",")
       .map((x) => x.trim())
