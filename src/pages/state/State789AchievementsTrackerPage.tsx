@@ -143,7 +143,7 @@ export default function State789AchievementsTrackerPage() {
     // Requests: state-wide (RLS must allow this for helpers)
     const r = await supabase
       .from("state_achievement_requests")
-      .select("id,state_code,requester_user_id,player_name,alliance_name,achievement_type_id,option_id,status,current_count,required_count,completed_at,notes,created_at,updated_at")
+      .select("*")
       .eq("state_code", stateCode)
       .order("created_at", { ascending: false });
 

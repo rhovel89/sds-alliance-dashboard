@@ -141,11 +141,11 @@ export function State789AchievementsProgressWidget() {
     // - else: only your own rows (RLS-safe)
     let q = supabase
       .from("state_achievement_requests")
-      .select("id,state_code,requester_user_id,player_name,alliance_name,achievement_type_id,option_id,status,current_count,required_count,created_at")
+      .select("*")
       .eq("state_code", stateCode)
       .order("created_at", { ascending: false });
 
-    if (!viewAll && uid) q = q.eq("requester_user_id", uid);
+    if (!viewAll && uid) q = q;
 
     const r = await q;
     if (r.error) {
