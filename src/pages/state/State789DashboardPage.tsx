@@ -1,140 +1,141 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, RealtimeStatusBadge } from "../../components/system/RealtimeStatusBadge";
-
-type Note = { id: string; text: string; createdUtc: string };
+import { useNavigate } from "react-router-dom";
+import SupportBundleButton from "../../components/system/SupportBundleButton";
+import { RealtimeStatusBadge } from "../../components/system/RealtimeStatusBadge";
 
 const NOTES_KEY = "sad_state789_notes_v1";
+const ALERTS_KEY = "sad_state789_alerts_v1";
+const DISCUSSION_KEY = "sad_state789_discussion_v1";
 
-function uid() {
-  return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
-}
+type NotesStore = { version: 1; updatedUtc: string; notes: string };
 
 function nowUtc() {
   return new Date().toISOString();
 }
 
-function loadNotes(): Note[] {
+function loadNotes(): NotesStore {
   try {
     const raw = localStorage.getItem(NOTES_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return [];
-    return arr as Note[];
+    if (raw) {
+      const s = JSON.parse(raw) as NotesStore;
+      if (s && s.version === 1) return s;
+    }
+  } catch {}
+  return { version: 1, updatedUtc: nowUtc(), notes: "" };
+}
+
+function saveNotes(s: NotesStore) {
+  try { localStorage.setItem(NOTES_KEY, JSON.stringify(s)); } catch {}
+}
+
+function readAny(key: string): any {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
   } catch {
-    return [];
+    return null;
   }
 }
 
-function saveNotes(n: Note[]) {
-  try {
-    localStorage.setItem(NOTES_KEY, JSON.stringify(n));
-  } catch {}
+function writeAny(key: string, value: any) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+function Card(props: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="zombie-card" style={{ marginTop: 12 }}>
+      <div style={{ fontWeight: 900 }}>{props.title}</div>
+      <div style={{ marginTop: 10 }}>{props.children}</div>
+    </div>
+  );
 }
 
 export default function State789DashboardPage() {
-  const title = useMemo(() => "🧟 State 789 Dashboard", []);
-  const [notes, setNotes] = useState<Note[]>(() => loadNotes());
-  const [text, setText] = useState("");
+  const nav = useNavigate();
+  const [store, setStore] = useState<NotesStore>(() => loadNotes());
 
-  useEffect(() => {
-    saveNotes(notes);
-  }, [notes]);
+  useEffect(() => saveNotes(store), [store]);
 
-  function addNote() {
-    const t = text.trim();
-    if (!t) return;
-    setNotes((p) => [{ id: uid(), text: t, createdUtc: nowUtc() }, ...(p || [])]);
-    setText("");
-  }
+  const lastUtc = useMemo(() => store.updatedUtc, [store.updatedUtc]);
 
-  function del(id: string) {
-    if (!window.confirm("Delete this note?")) return;
-    setNotes((p) => (p || []).filter((x) => x.id !== id));
-  }
-
-  async function exportNotes() {
-    const payload = { version: 1, exportedUtc: nowUtc(), notes };
+  async function exportBundle() {
+    const payload = {
+      version: 1,
+      exportedUtc: nowUtc(),
+      state: "789",
+      notes: store,
+      alerts: readAny(ALERTS_KEY),
+      discussion: readAny(DISCUSSION_KEY),
+    };
     const txt = JSON.stringify(payload, null, 2);
     try {
       await navigator.clipboard.writeText(txt);
-      window.alert("Copied notes export JSON.");
+      window.alert("Copied State 789 bundle JSON.");
     } catch {
-      window.prompt("Copy notes JSON:", txt);
+      window.prompt("Copy bundle JSON:", txt);
     }
   }
 
-  function importNotes() {
-    const raw = window.prompt("Paste notes export JSON:");
+  function importBundle() {
+    const raw = window.prompt("Paste State 789 bundle JSON:");
     if (!raw) return;
     try {
-      const parsed = JSON.parse(raw);
-      const arr = parsed.notes;
-      if (!Array.isArray(arr)) throw new Error("Invalid notes array");
-      const cleaned: Note[] = arr
-        .filter((x: any) => x && typeof x.text === "string")
-        .map((x: any) => ({ id: String(x.id || uid()), text: String(x.text), createdUtc: String(x.createdUtc || nowUtc()) }));
-      setNotes(cleaned);
-      window.alert("Imported notes.");
+      const p = JSON.parse(raw);
+      if (!p || p.version !== 1) throw new Error("Invalid");
+      if (p.notes && p.notes.version === 1) {
+        setStore({
+          version: 1,
+          updatedUtc: nowUtc(),
+          notes: String(p.notes.notes || ""),
+        });
+      }
+      if (p.alerts) writeAny(ALERTS_KEY, p.alerts);
+      if (p.discussion) writeAny(DISCUSSION_KEY, p.discussion);
+      window.alert("Imported bundle. (Reload Alerts/Discussion pages if open.)");
     } catch {
-      window.alert("Import failed (invalid JSON).");
+      window.alert("Invalid JSON.");
     }
   }
 
   return (
     <div style={{ padding: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <h2 style={{ margin: 0 }}>{title}</h2>
-        <RealtimeStatusBadge allianceCode={null} />
-      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <h2 style={{ margin: 0 }}>🧟 State 789 Dashboard</h2>
 
-      <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
-        <div className="zombie-card">
-          <div style={{ fontWeight: 900, marginBottom: 8 }}>📝 State Notes (UI-only)</div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportNotes}>Export</button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importNotes}>Import</button>
-          </div>
-
-          <div style={{ marginTop: 10 }}>
-            <textarea
-              className="zombie-input"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Write a state note…"
-              style={{ width: "100%", minHeight: 90, padding: "10px 12px" }}
-            />
-            <button className="zombie-btn" style={{ marginTop: 10, padding: "10px 12px" }} onClick={addNote}>
-              Add Note
-            </button>
-          </div>
-
-          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            {notes.length === 0 ? <div style={{ opacity: 0.75 }}>No notes yet.</div> : null}
-            {notes.map((n) => (
-              <div key={n.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-                <div style={{ whiteSpace: "pre-wrap" }}>{n.text}</div>
-                <div style={{ marginTop: 8, opacity: 0.6, fontSize: 11 }}>UTC: {n.createdUtc}</div>
-                <button className="zombie-btn" style={{ marginTop: 8, padding: "6px 8px", fontSize: 12 }} onClick={() => del(n.id)}>Delete</button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="zombie-card">
-          <div style={{ fontWeight: 900, marginBottom: 8 }}>🚨 State Alerts</div>
-          <div style={{ opacity: 0.85, fontSize: 13, lineHeight: "18px" }}>
-            Placeholder widget. Later: state-wide announcements + pings + approvals workflow.
-          </div>
-        </div>
-
-        <div className="zombie-card">
-          <div style={{ fontWeight: 900, marginBottom: 8 }}>🗓️ Upcoming State Events</div>
-          <div style={{ opacity: 0.85, fontSize: 13, lineHeight: "18px" }}>
-            Placeholder widget. Later: connect to state calendar + alliance feeds (RLS + realtime).
-          </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <RealtimeStatusBadge allianceCode={null} />
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportBundle}>Export Bundle</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importBundle}>Import Bundle</button>
+          <SupportBundleButton />
         </div>
       </div>
+
+      <Card title="Quick Actions">
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/alerts")}>🚨 Alerts</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/discussion")}>💬 Discussion</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/alliances")}>🗂️ Alliances</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/dashboard")}>⚡ Dashboards</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner")}>🧰 Owner</button>
+        </div>
+      </Card>
+
+      <Card title="State Notes (UI-only)">
+        <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 8 }}>
+          Autosaved to localStorage. Last updated (UTC): {lastUtc}
+        </div>
+        <textarea
+          className="zombie-input"
+          value={store.notes}
+          onChange={(e) => setStore({ version: 1, updatedUtc: nowUtc(), notes: e.target.value })}
+          placeholder="State notes… reminders… leadership plans…"
+          style={{ width: "100%", minHeight: 220, padding: "10px 12px" }}
+        />
+        <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
+          Export/Import Bundle includes Notes + Alerts + Discussion.
+        </div>
+      </Card>
     </div>
   );
 }
