@@ -2,130 +2,85 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 
-type AchType = {
-  id: string;
-  state_code: string;
-  name: string;
-  kind: string;
-  requires_option: boolean;
-  required_count: number;
-  active: boolean;
-};
-
-type AchOption = {
-  id: string;
-  achievement_type_id: string;
-  label: string;
-  sort: number;
-  active: boolean;
-};
-
-type AccessRow = {
-  id: string;
-  state_code: string;
-  user_id: string;
-  can_view: boolean;
-  can_edit: boolean;
-  can_manage_types: boolean;
-  created_at: string;
-};
-
-type ReqRow = {
-  id: string;
-  state_code: string;
-  requester_user_id: string;
-  player_name: string;
-  alliance_name: string;
-  achievement_type_id: string;
-  option_id: string | null;
-  status: "submitted" | "in_progress" | "completed" | "denied";
-  current_count: number;
-  required_count: number;
-  completed_at: string | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
 function nowUtc() { return new Date().toISOString(); }
-
-async function copyText(txt: string) {
-  try { await navigator.clipboard.writeText(txt); window.alert("Copied."); }
-  catch { window.prompt("Copy:", txt); }
+function norm(s: any) { return String(s || "").trim(); }
+function normLower(s: any) { return String(s || "").trim().toLowerCase(); }
+function asBool(v: any, fallback: boolean) {
+  if (typeof v === "boolean") return v;
+  if (v === 1 || v === "1" || v === "true") return true;
+  if (v === 0 || v === "0" || v === "false") return false;
+  return fallback;
+}
+function asInt(v: any, fallback: number) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.floor(n) : fallback;
 }
 
-function clampInt(x: any, min: number, max: number) {
-  const n = Number(x);
-  if (!isFinite(n)) return min;
-  return Math.max(min, Math.min(max, Math.floor(n)));
-}
-
-function norm(s: any) {
-  return String(s || "").trim().toLowerCase();
-}
+type AnyRow = Record<string, any>;
 
 export default function OwnerStateAchievementsPage() {
-  const [stateCode, setStateCode] = useState("789");
-  const [tab, setTab] = useState<"requests" | "types" | "access">("requests");
-  const [msg, setMsg] = useState<string | null>(null);
+  const stateCode = "789";
 
-  const [types, setTypes] = useState<AchType[]>([]);
-  const [options, setOptions] = useState<AchOption[]>([]);
-  const [requests, setRequests] = useState<ReqRow[]>([]);
-  const [access, setAccess] = useState<AccessRow[]>([]);
+  const [tab, setTab] = useState<"requests"|"types"|"options"|"access"|"export">("requests");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [types, setTypes] = useState<AnyRow[]>([]);
+  const [options, setOptions] = useState<AnyRow[]>([]);
+  const [requests, setRequests] = useState<AnyRow[]>([]);
+  const [accessRows, setAccessRows] = useState<AnyRow[]>([]);
 
   const typeById = useMemo(() => {
-    const m: Record<string, AchType> = {};
-    for (const t of types) m[t.id] = t;
+    const m: Record<string, AnyRow> = {};
+    for (const t of types) if (t?.id) m[String(t.id)] = t;
     return m;
   }, [types]);
 
   const optionById = useMemo(() => {
-    const m: Record<string, AchOption> = {};
-    for (const o of options) m[o.id] = o;
+    const m: Record<string, AnyRow> = {};
+    for (const o of options) if (o?.id) m[String(o.id)] = o;
     return m;
   }, [options]);
 
-  const typeIds = useMemo(() => types.map((t) => t.id), [types]);
-
-  const governorTypeIds = useMemo(() => {
-    return types
-      .filter((t) => t.active !== false)
-      .filter((t) => t.kind === "governor_count" || norm(t.name).includes("governor"))
-      .map((t) => t.id);
-  }, [types]);
-
-  const swpTypeIds = useMemo(() => {
-    return types
-      .filter((t) => t.active !== false)
-      .filter((t) => t.kind === "swp_weapon" || norm(t.name).includes("swp"))
-      .map((t) => t.id);
-  }, [types]);
+  const [filter, setFilter] = useState("");
 
   async function loadAll() {
+    setLoading(true);
     setMsg(null);
 
     const t = await supabase
       .from("state_achievement_types")
-      .select("id,state_code,name,kind,requires_option,required_count,active")
+      .select("*")
       .eq("state_code", stateCode)
       .order("name", { ascending: true });
 
-    if (t.error) { setMsg("Types load failed: " + t.error.message); setTypes([]); return; }
-    const typesData = (t.data as any) || [];
-    setTypes(typesData);
+    if (t.error) {
+      setTypes([]);
+      setOptions([]);
+      setRequests([]);
+      setAccessRows([]);
+      setMsg("Types load failed: " + t.error.message);
+      setLoading(false);
+      return;
+    }
+    const tData = (t.data as any[]) || [];
+    setTypes(tData);
 
-    const ids = typesData.map((x: any) => x.id).filter(Boolean);
+    const ids = tData.map((x) => x?.id).filter(Boolean);
     if (ids.length) {
       const o = await supabase
         .from("state_achievement_options")
-        .select("id,achievement_type_id,label,sort,active")
+        .select("*")
         .in("achievement_type_id", ids)
         .order("sort", { ascending: true })
         .order("label", { ascending: true });
 
-      if (o.error) { setMsg("Options load failed: " + o.error.message); setOptions([]); }
-      else setOptions((o.data as any) || []);
+      if (o.error) {
+        setOptions([]);
+        setMsg((prev) => (prev ? prev + " | " : "") + "Options load failed: " + o.error.message);
+      } else {
+        setOptions((o.data as any[]) || []);
+      }
     } else {
       setOptions([]);
     }
@@ -136,339 +91,362 @@ export default function OwnerStateAchievementsPage() {
       .eq("state_code", stateCode)
       .order("created_at", { ascending: false });
 
-    if (r.error) { setMsg("Requests load failed: " + r.error.message); setRequests([]); }
-    else setRequests((r.data as any) || []);
+    if (r.error) {
+      setRequests([]);
+      setMsg((prev) => (prev ? prev + " | " : "") + "Requests load failed: " + r.error.message);
+    } else {
+      setRequests((r.data as any[]) || []);
+    }
 
     const a = await supabase
       .from("state_achievement_access")
-      .select("id,state_code,user_id,can_view,can_edit,can_manage_types,created_at")
+      .select("*")
       .eq("state_code", stateCode)
       .order("created_at", { ascending: false });
 
-    if (a.error) { setMsg("Access load failed: " + a.error.message); setAccess([]); }
-    else setAccess((a.data as any) || []);
+    if (a.error) {
+      setAccessRows([]);
+      setMsg((prev) => (prev ? prev + " | " : "") + "Access load failed: " + a.error.message);
+    } else {
+      setAccessRows((a.data as any[]) || []);
+    }
+
+    setLoading(false);
   }
 
-  useEffect(() => { loadAll(); }, [stateCode]);
+  useEffect(() => { loadAll(); }, []);
 
-  // ---------------- REQUESTS ----------------
-  const [q, setQ] = useState("");
-  const [includeCompletedInSummary, setIncludeCompletedInSummary] = useState(false);
-
-  const filteredRequests = useMemo(() => {
-    const s = norm(q);
-    if (!s) return requests;
-    return requests.filter((r) => {
-      const t = typeById[r.achievement_type_id]?.name || "";
-      const o = r.option_id ? (optionById[r.option_id]?.label || "") : "";
-      return (
-        norm(r.player_name).includes(s) ||
-        norm(r.alliance_name).includes(s) ||
-        norm(t).includes(s) ||
-        norm(o).includes(s) ||
-        norm(r.status).includes(s)
-      );
-    });
-  }, [q, requests, typeById, optionById]);
-
-  async function saveRequest(r: ReqRow) {
+  // ----------------------------
+  // Requests actions
+  // ----------------------------
+  async function saveRequest(row: AnyRow) {
     setMsg(null);
-    const req = clampInt(r.required_count || 1, 1, 999);
-    const cur = clampInt(r.current_count || 0, 0, 999);
-    const willComplete = (r.status === "completed") || (cur >= req);
+
+    const id = row?.id;
+    if (!id) return;
+
+    const reqCount = asInt(row.required_count ?? typeById[String(row.achievement_type_id)]?.required_count ?? 1, 1);
+    const curCount = Math.max(0, asInt(row.current_count ?? 0, 0));
+    const statusRaw = String(row.status || "submitted");
+    const done = (statusRaw === "completed") || (curCount >= reqCount);
 
     const patch: any = {
-      status: willComplete ? "completed" : r.status,
-      current_count: cur,
-      notes: r.notes || null
+      status: done ? "completed" : statusRaw,
+      current_count: curCount,
+      notes: row.notes ?? null
     };
-    if (willComplete && !r.completed_at) patch.completed_at = nowUtc();
 
-    const u = await supabase.from("state_achievement_requests").update(patch).eq("id", r.id);
-    if (u.error) return setMsg("Update failed: " + u.error.message);
+    // set completed_at if the column exists and it's being completed
+    if (done && (row.completed_at == null)) patch.completed_at = nowUtc();
 
-    setMsg("✅ Updated.");
+    const u = await supabase.from("state_achievement_requests").update(patch).eq("id", id);
+    if (u.error) {
+      setMsg("Update failed: " + u.error.message);
+      return;
+    }
+    setMsg("✅ Updated request.");
     await loadAll();
   }
 
-  async function bump(r: ReqRow, delta: number) {
-    const req = clampInt(r.required_count || 1, 1, 999);
-    const cur = clampInt((r.current_count || 0) + delta, 0, 999);
-    const status: any = cur >= req ? "completed" : (r.status === "completed" ? "in_progress" : r.status);
-    const next: ReqRow = { ...r, current_count: cur, status };
-    await saveRequest(next);
-  }
-
-  // Discord-ready summaries (no sending here; just copy)
-  function buildGovernorSummary(): string {
-    const set = new Set(governorTypeIds);
-    const rows = requests
-      .filter((r) => set.has(r.achievement_type_id))
-      .filter((r) => r.status !== "denied")
-      .filter((r) => includeCompletedInSummary ? true : r.status !== "completed")
-      .sort((a, b) => (b.current_count || 0) - (a.current_count || 0));
-
-    const lines: string[] = [];
-    lines.push(`🧟 State ${stateCode} — Governor Progress (${new Date().toISOString()})`);
-    if (!rows.length) { lines.push("- (none)"); return lines.join("\n"); }
-
-    for (const r of rows) {
-      const req = r.required_count || 3;
-      const cur = r.current_count || 0;
-      const done = (r.status === "completed" || cur >= req) ? " ✅" : "";
-      lines.push(`- ${r.player_name} (${r.alliance_name}): ${cur}/${req}${done}`);
-    }
-    return lines.join("\n");
-  }
-
-  function buildSwpWishlistSummary(): string {
-    const set = new Set(swpTypeIds);
-    const rows = requests
-      .filter((r) => set.has(r.achievement_type_id))
-      .filter((r) => r.status !== "denied")
-      .filter((r) => includeCompletedInSummary ? true : r.status !== "completed");
-
-    const byPlayer: Record<string, { alliance: string; weapons: string[] }> = {};
-    for (const r of rows) {
-      const key = norm(r.player_name) + "|" + norm(r.alliance_name);
-      if (!byPlayer[key]) byPlayer[key] = { alliance: r.alliance_name, weapons: [] };
-      const w = r.option_id ? (optionById[r.option_id]?.label || "Unknown") : "Unknown";
-      if (!byPlayer[key].weapons.includes(w)) byPlayer[key].weapons.push(w);
-    }
-
-    const lines: string[] = [];
-    lines.push(`🧟 State ${stateCode} — SWP Weapon Wishlist (${new Date().toISOString()})`);
-    const keys = Object.keys(byPlayer).sort();
-    if (!keys.length) { lines.push("- (none)"); return lines.join("\n"); }
-
-    for (const k of keys) {
-      const player = k.split("|")[0];
-      const rec = byPlayer[k];
-      lines.push(`- ${player} (${rec.alliance}): ${rec.weapons.join(", ")}`);
-    }
-    return lines.join("\n");
-  }
-
-  async function copySummary(which: "governor" | "swp") {
-    const txt = which === "governor" ? buildGovernorSummary() : buildSwpWishlistSummary();
-    await copyText(txt);
-  }
-
-  // ---------------- TYPES ----------------
+  // ----------------------------
+  // Types CRUD
+  // ----------------------------
   const [newTypeName, setNewTypeName] = useState("");
-  const [newTypeKind, setNewTypeKind] = useState<AchType["kind"]>("generic");
-  const [newTypeReqOpt, setNewTypeReqOpt] = useState(false);
-  const [newTypeReqCount, setNewTypeReqCount] = useState(1);
+  const [newTypeKind, setNewTypeKind] = useState("swp_weapon");
+  const [newTypeRequiresOption, setNewTypeRequiresOption] = useState(true);
+  const [newTypeRequiredCount, setNewTypeRequiredCount] = useState(1);
 
   async function addType() {
     setMsg(null);
-    const name = newTypeName.trim();
-    if (!name) return setMsg("Type name required.");
+    const name = norm(newTypeName);
+    if (!name) return setMsg("Type name is required.");
+
     const payload: any = {
       state_code: stateCode,
       name,
-      kind: newTypeKind,
-      requires_option: !!newTypeReqOpt,
-      required_count: clampInt(newTypeReqCount, 1, 999),
+      kind: norm(newTypeKind) || null,
+      requires_option: !!newTypeRequiresOption,
+      required_count: Math.max(1, asInt(newTypeRequiredCount, 1)),
       active: true
     };
+
     const ins = await supabase.from("state_achievement_types").insert(payload).select("id").maybeSingle();
-    if (ins.error) return setMsg("Create type failed: " + ins.error.message);
+    if (ins.error) return setMsg("Add type failed: " + ins.error.message);
+
     setNewTypeName("");
-    setNewTypeKind("generic");
-    setNewTypeReqOpt(false);
-    setNewTypeReqCount(1);
+    setMsg("✅ Type added.");
     await loadAll();
   }
 
-  async function updateType(t: AchType) {
+  async function toggleTypeActive(t: AnyRow) {
     setMsg(null);
+    const id = t?.id; if (!id) return;
+    const next = !asBool(t.active, true);
+    const u = await supabase.from("state_achievement_types").update({ active: next }).eq("id", id);
+    if (u.error) return setMsg("Toggle failed: " + u.error.message);
+    await loadAll();
+  }
+
+  async function saveType(t: AnyRow) {
+    setMsg(null);
+    const id = t?.id; if (!id) return;
     const patch: any = {
-      name: t.name,
-      kind: t.kind,
+      name: t.name ?? null,
+      kind: t.kind ?? null,
       requires_option: !!t.requires_option,
-      required_count: clampInt(t.required_count, 1, 999),
-      active: !!t.active
+      required_count: Math.max(1, asInt(t.required_count, 1))
     };
-    const u = await supabase.from("state_achievement_types").update(patch).eq("id", t.id);
-    if (u.error) return setMsg("Update type failed: " + u.error.message);
-    setMsg("✅ Type updated.");
+    const u = await supabase.from("state_achievement_types").update(patch).eq("id", id);
+    if (u.error) return setMsg("Save failed: " + u.error.message);
+    setMsg("✅ Type saved.");
     await loadAll();
   }
 
-  async function deleteType(id: string) {
-    if (!confirm("Delete achievement type? (options will cascade)")) return;
+  async function hardDeleteType(t: AnyRow) {
+    if (!confirm("Hard delete this type? (This may fail if rows reference it.)")) return;
     setMsg(null);
+    const id = t?.id; if (!id) return;
     const d = await supabase.from("state_achievement_types").delete().eq("id", id);
-    if (d.error) return setMsg("Delete type failed: " + d.error.message);
-    setMsg("✅ Type deleted.");
+    if (d.error) return setMsg("Delete failed: " + d.error.message);
+    setMsg("✅ Deleted type.");
     await loadAll();
   }
 
-  const [optLabel, setOptLabel] = useState("");
-  const [optSort, setOptSort] = useState(0);
+  // ----------------------------
+  // Options CRUD
+  // ----------------------------
   const [optTypeId, setOptTypeId] = useState<string>("");
+  const [newOptLabel, setNewOptLabel] = useState("Rail Gun");
+  const [newOptSort, setNewOptSort] = useState(10);
 
   async function addOption() {
     setMsg(null);
-    if (!optTypeId) return setMsg("Select a type first.");
-    const label = optLabel.trim();
-    if (!label) return setMsg("Option label required.");
-    const payload: any = { achievement_type_id: optTypeId, label, sort: clampInt(optSort, -999, 999), active: true };
-    const ins = await supabase.from("state_achievement_options").insert(payload).select("id").maybeSingle();
-    if (ins.error) return setMsg("Create option failed: " + ins.error.message);
-    setOptLabel("");
-    setOptSort(0);
-    await loadAll();
-  }
+    const tid = optTypeId || (types[0]?.id ? String(types[0].id) : "");
+    if (!tid) return setMsg("Select a type first.");
+    const label = norm(newOptLabel).replace(/^#/, "");
+    if (!label) return setMsg("Option label is required.");
 
-  async function updateOption(o: AchOption) {
-    setMsg(null);
-    const patch: any = { label: o.label, sort: clampInt(o.sort, -999, 999), active: !!o.active };
-    const u = await supabase.from("state_achievement_options").update(patch).eq("id", o.id);
-    if (u.error) return setMsg("Update option failed: " + u.error.message);
-    setMsg("✅ Option updated.");
-    await loadAll();
-  }
-
-  async function deleteOption(id: string) {
-    if (!confirm("Delete option?")) return;
-    setMsg(null);
-    const d = await supabase.from("state_achievement_options").delete().eq("id", id);
-    if (d.error) return setMsg("Delete option failed: " + d.error.message);
-    setMsg("✅ Option deleted.");
-    await loadAll();
-  }
-
-  // Bulk add options (weapons) for a type
-  const [bulkTypeId, setBulkTypeId] = useState<string>("");
-  const [bulkText, setBulkText] = useState<string>("Rail Gun");
-
-  const bulkType = useMemo(() => (bulkTypeId ? typeById[bulkTypeId] : null), [bulkTypeId, typeById]);
-
-  async function bulkAddOptions() {
-    setMsg(null);
-    const tid = bulkTypeId;
-    if (!tid) return setMsg("Select a type for bulk add.");
-    const t = typeById[tid];
-    if (!t) return setMsg("Selected type not found.");
-    if (!t.requires_option) return setMsg("This type does not use options (requires_option = false).");
-
-    const lines = (bulkText || "")
-      .split(/\r?\n/)
-      .map((x) => x.trim())
-      .filter(Boolean);
-
-    const uniq: string[] = [];
-    const seen = new Set<string>();
-    for (const l of lines) {
-      const k = norm(l);
-      if (!k) continue;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      uniq.push(l);
-    }
-
-    if (!uniq.length) return setMsg("No option labels found.");
-
-    const payload = uniq.map((label, idx) => ({
+    const payload: any = {
       achievement_type_id: tid,
       label,
-      sort: idx,
+      sort: asInt(newOptSort, 10),
       active: true
-    }));
+    };
 
-    // Use upsert so running twice does not error (unique constraint exists)
-    const r = await supabase.from("state_achievement_options").upsert(payload as any, { onConflict: "achievement_type_id,label" } as any);
-    if ((r as any).error) return setMsg("Bulk add failed: " + (r as any).error.message);
+    const ins = await supabase.from("state_achievement_options").insert(payload).select("id").maybeSingle();
+    if (ins.error) return setMsg("Add option failed: " + ins.error.message);
 
-    setMsg(`✅ Bulk added/updated ${payload.length} options for "${t.name}".`);
+    setNewOptLabel("");
+    setMsg("✅ Option added.");
     await loadAll();
   }
 
-  // ---------------- ACCESS ----------------
-  const [accUserId, setAccUserId] = useState("");
+  async function toggleOptionActive(o: AnyRow) {
+    setMsg(null);
+    const id = o?.id; if (!id) return;
+    const next = !asBool(o.active, true);
+    const u = await supabase.from("state_achievement_options").update({ active: next }).eq("id", id);
+    if (u.error) return setMsg("Toggle failed: " + u.error.message);
+    await loadAll();
+  }
+
+  async function saveOption(o: AnyRow) {
+    setMsg(null);
+    const id = o?.id; if (!id) return;
+    const patch: any = {
+      label: o.label ?? null,
+      sort: asInt(o.sort, 0)
+    };
+    const u = await supabase.from("state_achievement_options").update(patch).eq("id", id);
+    if (u.error) return setMsg("Save failed: " + u.error.message);
+    setMsg("✅ Option saved.");
+    await loadAll();
+  }
+
+  async function hardDeleteOption(o: AnyRow) {
+    if (!confirm("Hard delete this option?")) return;
+    setMsg(null);
+    const id = o?.id; if (!id) return;
+    const d = await supabase.from("state_achievement_options").delete().eq("id", id);
+    if (d.error) return setMsg("Delete failed: " + d.error.message);
+    setMsg("✅ Deleted option.");
+    await loadAll();
+  }
+
+  // ----------------------------
+  // Access CRUD
+  // ----------------------------
+  const [accessUserId, setAccessUserId] = useState("");
   const [accView, setAccView] = useState(true);
   const [accEdit, setAccEdit] = useState(false);
-  const [accManage, setAccManage] = useState(false);
+  const [accManageTypes, setAccManageTypes] = useState(false);
 
   async function upsertAccess() {
     setMsg(null);
-    const uid = accUserId.trim();
-    if (!uid) return setMsg("User UUID required.");
+    const uid = norm(accessUserId);
+    if (!uid) return setMsg("User ID is required.");
+
     const payload: any = {
       state_code: stateCode,
       user_id: uid,
       can_view: !!accView,
       can_edit: !!accEdit,
-      can_manage_types: !!accManage
+      can_manage_types: !!accManageTypes
     };
-    const r = await supabase.from("state_achievement_access").upsert(payload, { onConflict: "state_code,user_id" }).select("id").maybeSingle();
-    if (r.error) return setMsg("Access save failed: " + r.error.message);
-    setAccUserId("");
-    setAccView(true); setAccEdit(false); setAccManage(false);
+
+    // Use upsert; if no unique constraint exists, Supabase may error -> we show it.
+    const up = await supabase.from("state_achievement_access").upsert(payload as any).select("*");
+    if (up.error) return setMsg("Upsert failed: " + up.error.message);
+
     setMsg("✅ Access saved.");
     await loadAll();
   }
 
-  async function deleteAccess(id: string) {
-    if (!confirm("Remove access row?")) return;
+  async function deleteAccess(row: AnyRow) {
+    if (!confirm("Delete access row?")) return;
     setMsg(null);
-    const d = await supabase.from("state_achievement_access").delete().eq("id", id);
-    if (d.error) return setMsg("Delete access failed: " + d.error.message);
-    setMsg("✅ Access removed.");
+    const id = row?.id;
+    if (id) {
+      const d = await supabase.from("state_achievement_access").delete().eq("id", id);
+      if (d.error) return setMsg("Delete failed: " + d.error.message);
+    } else {
+      // fallback
+      const d = await supabase.from("state_achievement_access").delete().eq("state_code", stateCode).eq("user_id", row.user_id);
+      if (d.error) return setMsg("Delete failed: " + d.error.message);
+    }
+    setMsg("✅ Access deleted.");
     await loadAll();
   }
 
-  async function exportAll() {
+  // ----------------------------
+  // Export/Import + Seed
+  // ----------------------------
+  async function copyExport() {
     const payload = {
       version: 1,
       exportedUtc: nowUtc(),
-      stateCode,
+      state_code: stateCode,
       types,
-      options,
-      access,
-      requests
+      options
     };
-    await copyText(JSON.stringify(payload, null, 2));
+    const txt = JSON.stringify(payload, null, 2);
+    try { await navigator.clipboard.writeText(txt); setMsg("✅ Copied export JSON."); }
+    catch { window.prompt("Copy:", txt); }
   }
 
-  async function importAll() {
-    const raw = window.prompt("Paste exported JSON:");
+  async function importJson() {
+    const raw = window.prompt("Paste export JSON:");
     if (!raw) return;
+    setMsg(null);
     try {
       const p = JSON.parse(raw);
-      if (!p || p.version !== 1) throw new Error("Invalid version");
-      // Import is optional and DB-backed; do small safe upserts.
-      if (Array.isArray(p.types)) {
-        const tPayload = p.types.map((x: any) => ({
-          state_code: stateCode,
-          name: String(x.name || "").trim(),
-          kind: String(x.kind || "generic"),
-          requires_option: !!x.requires_option,
-          required_count: clampInt(x.required_count, 1, 999),
-          active: x.active !== false
-        })).filter((x: any) => x.name);
+      const tArr: any[] = Array.isArray(p?.types) ? p.types : [];
+      const oArr: any[] = Array.isArray(p?.options) ? p.options : [];
 
-        if (tPayload.length) {
-          const r = await supabase.from("state_achievement_types").upsert(tPayload as any, { onConflict: "state_code,name" } as any);
-          if ((r as any).error) return setMsg("Import types failed: " + (r as any).error.message);
-        }
+      // Import strategy: upsert by id if present, else insert.
+      // (If your DB doesn't allow upsert, errors will be shown.)
+      if (tArr.length) {
+        const upT = await supabase.from("state_achievement_types").upsert(tArr as any);
+        if (upT.error) return setMsg("Import types failed: " + upT.error.message);
       }
-      setMsg("✅ Imported (types upserted). Refreshing…");
+      if (oArr.length) {
+        const upO = await supabase.from("state_achievement_options").upsert(oArr as any);
+        if (upO.error) return setMsg("Import options failed: " + upO.error.message);
+      }
+
+      setMsg("✅ Imported.");
       await loadAll();
     } catch {
-      setMsg("Import failed: invalid JSON.");
+      setMsg("Invalid JSON.");
     }
   }
+
+  async function seedDefaults() {
+    setMsg(null);
+
+    // 1) Ensure SWP Weapon type exists (requires option)
+    const hasSwp = types.some((t) => normLower(t.name) === "swp weapon" || normLower(t.kind) === "swp_weapon");
+    const hasGov = types.some((t) => normLower(t.name).includes("governor") || normLower(t.kind) === "governor_count");
+
+    let swpId: string | null = null;
+
+    if (!hasSwp) {
+      const ins = await supabase.from("state_achievement_types").insert({
+        state_code: stateCode,
+        name: "SWP Weapon",
+        kind: "swp_weapon",
+        requires_option: true,
+        required_count: 1,
+        active: true
+      } as any).select("id").maybeSingle();
+
+      if (ins.error) return setMsg("Seed SWP type failed: " + ins.error.message);
+      swpId = (ins.data as any)?.id ? String((ins.data as any).id) : null;
+    } else {
+      // try to locate id to seed option
+      const t = types.find((x) => normLower(x.kind) === "swp_weapon" || normLower(x.name) === "swp weapon");
+      swpId = t?.id ? String(t.id) : null;
+    }
+
+    if (!hasGov) {
+      const ins2 = await supabase.from("state_achievement_types").insert({
+        state_code: stateCode,
+        name: "Governor Rotations",
+        kind: "governor_count",
+        requires_option: false,
+        required_count: 3,
+        active: true
+      } as any).select("id").maybeSingle();
+
+      if (ins2.error) return setMsg("Seed Governor type failed: " + ins2.error.message);
+    }
+
+    // 2) Ensure Rail Gun option exists under SWP
+    if (swpId) {
+      const railExists = options.some((o) => String(o.achievement_type_id) === swpId && normLower(o.label) === "rail gun");
+      if (!railExists) {
+        const ins3 = await supabase.from("state_achievement_options").insert({
+          achievement_type_id: swpId,
+          label: "Rail Gun",
+          sort: 10,
+          active: true
+        } as any).select("id").maybeSingle();
+
+        if (ins3.error) return setMsg("Seed Rail Gun failed: " + ins3.error.message);
+      }
+    }
+
+    setMsg("✅ Seeded defaults (SWP Weapon + Rail Gun, Governor Rotations 3x).");
+    await loadAll();
+  }
+
+  // ----------------------------
+  // Render helpers
+  // ----------------------------
+  const filteredRequests = useMemo(() => {
+    const s = normLower(filter);
+    if (!s) return requests;
+    return requests.filter((r) => {
+      const t = typeById[String(r.achievement_type_id)]?.name || "";
+      const o = r.option_id ? (optionById[String(r.option_id)]?.label || "") : "";
+      return (
+        normLower(r.player_name).includes(s) ||
+        normLower(r.alliance_name).includes(s) ||
+        normLower(t).includes(s) ||
+        normLower(o).includes(s) ||
+        normLower(r.status).includes(s)
+      );
+    });
+  }, [filter, requests, typeById, optionById]);
 
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🏆 Owner — State Achievements</h2>
+        <h2 style={{ margin: 0 }}>🧟 Owner — State Achievements</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportAll}>Export</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importAll}>Import</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements")}>
+            Open Player Form
+          </button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
           <SupportBundleButton />
         </div>
@@ -476,79 +454,54 @@ export default function OwnerStateAchievementsPage() {
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ opacity: 0.75, fontSize: 12 }}>State</div>
-          <input className="zombie-input" value={stateCode} onChange={(e) => setStateCode(e.target.value.trim())} style={{ padding: "10px 12px", width: 100 }} />
+          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="requests" ? 900 : 700 }} onClick={() => setTab("requests")}>Requests</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="types" ? 900 : 700 }} onClick={() => setTab("types")}>Types</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="options" ? 900 : 700 }} onClick={() => setTab("options")}>Options</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="access" ? 900 : 700 }} onClick={() => setTab("access")}>Access</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="export" ? 900 : 700 }} onClick={() => setTab("export")}>Export/Import</button>
 
-          <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="zombie-btn" style={{ padding: "10px 12px", opacity: tab==="requests" ? 1 : 0.75 }} onClick={() => setTab("requests")}>Requests</button>
-            <button className="zombie-btn" style={{ padding: "10px 12px", opacity: tab==="types" ? 1 : 0.75 }} onClick={() => setTab("types")}>Types</button>
-            <button className="zombie-btn" style={{ padding: "10px 12px", opacity: tab==="access" ? 1 : 0.75 }} onClick={() => setTab("access")}>Access</button>
+          <div style={{ marginLeft: "auto", opacity: 0.75, fontSize: 12 }}>
+            {loading ? "Loading…" : `Types: ${types.length} • Options: ${options.length} • Requests: ${requests.length}`}
           </div>
         </div>
-      </div>
 
-      {msg ? (
-        <div className="zombie-card" style={{ marginTop: 12, border: "1px solid rgba(255,80,80,0.35)" }}>
-          <div style={{ fontWeight: 900 }}>Message</div>
-          <div style={{ opacity: 0.85, marginTop: 6 }}>{msg}</div>
-        </div>
-      ) : null}
+        {msg ? <div style={{ marginTop: 10, opacity: 0.9 }}>{msg}</div> : null}
+      </div>
 
       {tab === "requests" ? (
         <div className="zombie-card" style={{ marginTop: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ fontWeight: 900 }}>Requests Tracker</div>
-            <input className="zombie-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search (name, alliance, achievement, status…)" style={{ padding: "10px 12px", minWidth: 280 }} />
-          </div>
-
-          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={includeCompletedInSummary} onChange={(e) => setIncludeCompletedInSummary(e.target.checked)} />
-              <span style={{ opacity: 0.85 }}>Include completed in summaries</span>
-            </label>
-
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => copySummary("governor")}>
-              Copy Discord Summary — Governor
-            </button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => copySummary("swp")}>
-              Copy Discord Summary — SWP Wishlist
-            </button>
+            <div style={{ fontWeight: 900 }}>Submitted Forms</div>
+            <input className="zombie-input" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", minWidth: 280 }} />
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
             {filteredRequests.map((r) => {
-              const t = typeById[r.achievement_type_id];
-              const o = r.option_id ? optionById[r.option_id] : null;
-              const req = r.required_count || t?.required_count || 1;
-              const cur = r.current_count || 0;
-              const left = Math.max(0, req - cur);
-              const title = (t?.name || "Achievement") + (o ? (" — " + o.label) : "");
-              const done = (r.status === "completed" || cur >= req);
+              const t = typeById[String(r.achievement_type_id)];
+              const o = r.option_id ? optionById[String(r.option_id)] : null;
+
+              const req = asInt(r.required_count ?? t?.required_count ?? 1, 1);
+              const cur = asInt(r.current_count ?? 0, 0);
+              const done = (String(r.status) === "completed") || (cur >= req);
 
               return (
-                <div key={r.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+                <div key={String(r.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                     <div style={{ fontWeight: 900 }}>{r.player_name} <span style={{ opacity: 0.7 }}>({r.alliance_name})</span></div>
-                    <div style={{ marginLeft: "auto", fontWeight: 900 }}>
-                      {cur}/{req}{done ? " ✅" : ""}
-                    </div>
+                    <div style={{ marginLeft: "auto", fontWeight: 900 }}>{cur}/{req}{done ? " ✅" : ""}</div>
                   </div>
 
-                  <div style={{ opacity: 0.8, marginTop: 6 }}>{title}</div>
-                  <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
-                    Status: {r.status} • Left: {left} • Submitted: {r.created_at}
+                  <div style={{ opacity: 0.85, marginTop: 6 }}>
+                    {(t?.name || "Achievement")}{o ? (" — " + o.label) : ""}
                   </div>
 
                   <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <button className="zombie-btn" style={{ padding: "8px 10px" }} onClick={() => bump(r, -1)}>-1</button>
-                    <button className="zombie-btn" style={{ padding: "8px 10px" }} onClick={() => bump(r, +1)}>+1</button>
-
                     <div style={{ opacity: 0.75, fontSize: 12 }}>Count</div>
                     <input
                       className="zombie-input"
                       value={String(r.current_count ?? 0)}
                       onChange={(e) => {
-                        const v = clampInt(e.target.value, 0, 999);
+                        const v = Math.max(0, asInt(e.target.value, 0));
                         setRequests((prev) => prev.map((x) => x.id === r.id ? { ...x, current_count: v } : x));
                       }}
                       style={{ padding: "8px 10px", width: 90 }}
@@ -557,11 +510,8 @@ export default function OwnerStateAchievementsPage() {
                     <div style={{ opacity: 0.75, fontSize: 12 }}>Status</div>
                     <select
                       className="zombie-input"
-                      value={r.status}
-                      onChange={(e) => {
-                        const v = e.target.value as any;
-                        setRequests((prev) => prev.map((x) => x.id === r.id ? { ...x, status: v } : x));
-                      }}
+                      value={String(r.status || "submitted")}
+                      onChange={(e) => setRequests((prev) => prev.map((x) => x.id === r.id ? { ...x, status: e.target.value } : x))}
                       style={{ padding: "8px 10px" }}
                     >
                       <option value="submitted">submitted</option>
@@ -571,227 +521,201 @@ export default function OwnerStateAchievementsPage() {
                     </select>
 
                     <button className="zombie-btn" style={{ padding: "8px 10px", fontWeight: 900 }} onClick={() => saveRequest(r)}>Save</button>
-                    <button className="zombie-btn" style={{ padding: "8px 10px" }} onClick={() => saveRequest({ ...r, status: "completed" })}>Mark Complete</button>
                   </div>
 
                   <div style={{ marginTop: 10 }}>
                     <textarea
                       className="zombie-input"
-                      value={r.notes || ""}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setRequests((prev) => prev.map((x) => x.id === r.id ? { ...x, notes: v } : x));
-                      }}
-                      placeholder="Notes (owner + helpers)"
+                      value={String(r.notes || "")}
+                      onChange={(e) => setRequests((prev) => prev.map((x) => x.id === r.id ? { ...x, notes: e.target.value } : x))}
+                      placeholder="Notes"
                       style={{ padding: "10px 12px", width: "100%", minHeight: 70 }}
                     />
+                  </div>
+
+                  <div style={{ opacity: 0.6, fontSize: 12, marginTop: 8 }}>
+                    Created: {String(r.created_at || "—")}
                   </div>
                 </div>
               );
             })}
-            {filteredRequests.length === 0 ? <div style={{ opacity: 0.75 }}>No requests found.</div> : null}
+            {!loading && filteredRequests.length === 0 ? <div style={{ opacity: 0.75 }}>No requests found.</div> : null}
           </div>
         </div>
       ) : null}
 
       {tab === "types" ? (
-        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(320px, 1fr)", gap: 12 }}>
-          <div className="zombie-card">
-            <div style={{ fontWeight: 900 }}>Create Type</div>
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              <input className="zombie-input" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} placeholder="Name (e.g. SWP Weapon)" style={{ padding: "10px 12px" }} />
-              <select className="zombie-input" value={newTypeKind} onChange={(e) => setNewTypeKind(e.target.value as any)} style={{ padding: "10px 12px" }}>
-                <option value="generic">generic</option>
-                <option value="swp_weapon">swp_weapon</option>
-                <option value="governor_count">governor_count</option>
-              </select>
+        <div className="zombie-card" style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 900 }}>Achievement Types</div>
+          <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+            Examples: SWP Weapon (requires option), Governor Rotations (required_count=3).
+          </div>
 
+          <div style={{ marginTop: 12, display: "grid", gap: 10, maxWidth: 720 }}>
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ fontWeight: 900 }}>Add Type</div>
+              <input className="zombie-input" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} placeholder="Name (e.g. SWP Weapon)" style={{ padding: "10px 12px" }} />
+              <input className="zombie-input" value={newTypeKind} onChange={(e) => setNewTypeKind(e.target.value)} placeholder="Kind (swp_weapon / governor_count)" style={{ padding: "10px 12px" }} />
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                 <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input type="checkbox" checked={newTypeReqOpt} onChange={(e) => setNewTypeReqOpt(e.target.checked)} />
-                  <span style={{ opacity: 0.85 }}>Requires option (weapon)</span>
+                  <input type="checkbox" checked={!!newTypeRequiresOption} onChange={(e) => setNewTypeRequiresOption(e.target.checked)} />
+                  requires option (weapon dropdown)
                 </label>
-
-                <div style={{ opacity: 0.75, fontSize: 12 }}>Required count</div>
-                <input className="zombie-input" value={String(newTypeReqCount)} onChange={(e) => setNewTypeReqCount(clampInt(e.target.value, 1, 999))} style={{ padding: "10px 12px", width: 120 }} />
+                <div style={{ opacity: 0.75, fontSize: 12 }}>required count</div>
+                <input className="zombie-input" value={String(newTypeRequiredCount)} onChange={(e) => setNewTypeRequiredCount(asInt(e.target.value, 1))} style={{ padding: "8px 10px", width: 90 }} />
+                <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={addType}>Add</button>
+                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={seedDefaults}>Seed Defaults</button>
               </div>
-
-              <button className="zombie-btn" style={{ padding: "12px 14px", fontWeight: 900 }} onClick={addType}>Create</button>
             </div>
           </div>
 
-          <div className="zombie-card">
-            <div style={{ fontWeight: 900 }}>Add Option (Weapon)</div>
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              <select className="zombie-input" value={optTypeId} onChange={(e) => setOptTypeId(e.target.value)} style={{ padding: "10px 12px" }}>
-                <option value="">Select type…</option>
-                {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-              <input className="zombie-input" value={optLabel} onChange={(e) => setOptLabel(e.target.value)} placeholder="Option label (e.g. Rail Gun)" style={{ padding: "10px 12px" }} />
-              <input className="zombie-input" value={String(optSort)} onChange={(e) => setOptSort(clampInt(e.target.value, -999, 999))} placeholder="Sort" style={{ padding: "10px 12px", width: 140 }} />
-              <button className="zombie-btn" style={{ padding: "12px 14px", fontWeight: 900 }} onClick={addOption}>Add Option</button>
-            </div>
-          </div>
+          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            {types.map((t) => {
+              const active = asBool(t.active, true);
+              return (
+                <div key={String(t.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <div style={{ fontWeight: 900 }}>{String(t.name || "Untitled")}</div>
+                    <div style={{ marginLeft: "auto", opacity: 0.85 }}>{active ? "active" : "inactive"}</div>
+                  </div>
 
-          <div className="zombie-card" style={{ gridColumn: "1 / -1" }}>
-            <div style={{ fontWeight: 900 }}>Bulk Add Weapons/Options</div>
-            <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
-              Paste one weapon per line (Owner can add more later). Uses UPSERT, so reruns are safe.
-            </div>
+                  <div style={{ marginTop: 10, display: "grid", gap: 8, maxWidth: 720 }}>
+                    <div>
+                      <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Name</div>
+                      <input className="zombie-input" value={String(t.name || "")} onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, name: e.target.value } : x))} style={{ padding: "10px 12px", width: "100%" }} />
+                    </div>
 
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              <select className="zombie-input" value={bulkTypeId} onChange={(e) => setBulkTypeId(e.target.value)} style={{ padding: "10px 12px" }}>
-                <option value="">Select achievement type…</option>
-                {types.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}{t.requires_option ? "" : " (no options)"}
-                  </option>
-                ))}
-              </select>
-
-              <textarea className="zombie-input" value={bulkText} onChange={(e) => setBulkText(e.target.value)} style={{ padding: "10px 12px", minHeight: 120 }} />
-
-              <button className="zombie-btn" style={{ padding: "12px 14px", fontWeight: 900 }} onClick={bulkAddOptions}>
-                Bulk Add Options {bulkType ? `→ ${bulkType.name}` : ""}
-              </button>
-            </div>
-          </div>
-
-          <div className="zombie-card" style={{ gridColumn: "1 / -1" }}>
-            <div style={{ fontWeight: 900 }}>Existing Types + Options</div>
-
-            <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-              {types.map((t) => {
-                const opts = options.filter((o) => o.achievement_type_id === t.id);
-                return (
-                  <div key={t.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                      <input
-                        className="zombie-input"
-                        value={t.name}
-                        onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, name: e.target.value } : x))}
-                        style={{ padding: "8px 10px", minWidth: 240 }}
-                      />
+                      <div style={{ flex: 1, minWidth: 220 }}>
+                        <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Kind</div>
+                        <input className="zombie-input" value={String(t.kind || "")} onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, kind: e.target.value } : x))} style={{ padding: "10px 12px", width: "100%" }} />
+                      </div>
 
-                      <select
-                        className="zombie-input"
-                        value={t.kind}
-                        onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, kind: e.target.value as any } : x))}
-                        style={{ padding: "8px 10px" }}
-                      >
-                        <option value="generic">generic</option>
-                        <option value="swp_weapon">swp_weapon</option>
-                        <option value="governor_count">governor_count</option>
-                      </select>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input type="checkbox" checked={!!t.requires_option} onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, requires_option: e.target.checked } : x))} />
+                          requires option
+                        </label>
 
-                      <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                          type="checkbox"
-                          checked={!!t.requires_option}
-                          onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, requires_option: e.target.checked } : x))}
-                        />
-                        <span style={{ opacity: 0.85, fontSize: 12 }}>requires option</span>
-                      </label>
-
-                      <div style={{ opacity: 0.75, fontSize: 12 }}>count</div>
-                      <input
-                        className="zombie-input"
-                        value={String(t.required_count)}
-                        onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, required_count: clampInt(e.target.value, 1, 999) } : x))}
-                        style={{ padding: "8px 10px", width: 90 }}
-                      />
-
-                      <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                          type="checkbox"
-                          checked={!!t.active}
-                          onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, active: e.target.checked } : x))}
-                        />
-                        <span style={{ opacity: 0.85, fontSize: 12 }}>active</span>
-                      </label>
-
-                      <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <button className="zombie-btn" style={{ padding: "8px 10px", fontWeight: 900 }} onClick={() => updateType(t)}>Save</button>
-                        <button className="zombie-btn" style={{ padding: "8px 10px" }} onClick={() => deleteType(t.id)}>Delete</button>
+                        <div style={{ opacity: 0.75, fontSize: 12 }}>required</div>
+                        <input className="zombie-input" value={String(t.required_count ?? 1)} onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, required_count: asInt(e.target.value, 1) } : x))} style={{ padding: "8px 10px", width: 90 }} />
                       </div>
                     </div>
 
-                    {t.requires_option ? (
-                      <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                        <div style={{ opacity: 0.75, fontSize: 12 }}>Options</div>
-                        {opts.map((o) => (
-                          <div key={o.id} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                            <input
-                              className="zombie-input"
-                              value={o.label}
-                              onChange={(e) => setOptions((prev) => prev.map((x) => x.id === o.id ? { ...x, label: e.target.value } : x))}
-                              style={{ padding: "8px 10px", minWidth: 220 }}
-                            />
-                            <input
-                              className="zombie-input"
-                              value={String(o.sort)}
-                              onChange={(e) => setOptions((prev) => prev.map((x) => x.id === o.id ? { ...x, sort: clampInt(e.target.value, -999, 999) } : x))}
-                              style={{ padding: "8px 10px", width: 90 }}
-                            />
-                            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                              <input
-                                type="checkbox"
-                                checked={!!o.active}
-                                onChange={(e) => setOptions((prev) => prev.map((x) => x.id === o.id ? { ...x, active: e.target.checked } : x))}
-                              />
-                              <span style={{ opacity: 0.85, fontSize: 12 }}>active</span>
-                            </label>
-                            <button className="zombie-btn" style={{ padding: "8px 10px", fontWeight: 900 }} onClick={() => updateOption(o)}>Save</button>
-                            <button className="zombie-btn" style={{ padding: "8px 10px" }} onClick={() => deleteOption(o.id)}>Delete</button>
-                          </div>
-                        ))}
-                        {opts.length === 0 ? <div style={{ opacity: 0.75 }}>No options yet.</div> : null}
-                      </div>
-                    ) : null}
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={() => saveType(t)}>Save</button>
+                      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => toggleTypeActive(t)}>{active ? "Deactivate" : "Activate"}</button>
+                      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => hardDeleteType(t)}>Hard Delete</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {!loading && types.length === 0 ? <div style={{ opacity: 0.75 }}>No types yet.</div> : null}
+          </div>
+        </div>
+      ) : null}
+
+      {tab === "options" ? (
+        <div className="zombie-card" style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 900 }}>Options (Weapons / Dropdown items)</div>
+          <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+            These appear only for types with requires_option=true (e.g. SWP Weapon).
+          </div>
+
+          <div style={{ marginTop: 12, display: "grid", gap: 10, maxWidth: 720 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <select className="zombie-input" value={optTypeId} onChange={(e) => setOptTypeId(e.target.value)} style={{ padding: "10px 12px", minWidth: 260 }}>
+                <option value="">Select type…</option>
+                {types.map((t) => <option key={String(t.id)} value={String(t.id)}>{String(t.name || t.id)}</option>)}
+              </select>
+              <input className="zombie-input" value={newOptLabel} onChange={(e) => setNewOptLabel(e.target.value)} placeholder="Label (Rail Gun)" style={{ padding: "10px 12px", flex: 1, minWidth: 220 }} />
+              <input className="zombie-input" value={String(newOptSort)} onChange={(e) => setNewOptSort(asInt(e.target.value, 10))} placeholder="Sort" style={{ padding: "10px 12px", width: 90 }} />
+              <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={addOption}>Add</button>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            {options
+              .filter((o) => !optTypeId || String(o.achievement_type_id) === String(optTypeId))
+              .map((o) => {
+                const active = asBool(o.active, true);
+                const t = typeById[String(o.achievement_type_id)];
+                return (
+                  <div key={String(o.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                      <div style={{ fontWeight: 900 }}>#{String(o.label || "Option")}</div>
+                      <div style={{ opacity: 0.75, fontSize: 12 }}>Type: {String(t?.name || o.achievement_type_id)}</div>
+                      <div style={{ marginLeft: "auto", opacity: 0.85 }}>{active ? "active" : "inactive"}</div>
+                    </div>
+
+                    <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                      <input className="zombie-input" value={String(o.label || "")} onChange={(e) => setOptions((prev) => prev.map((x) => x.id === o.id ? { ...x, label: e.target.value } : x))} style={{ padding: "10px 12px", minWidth: 240 }} />
+                      <input className="zombie-input" value={String(o.sort ?? 0)} onChange={(e) => setOptions((prev) => prev.map((x) => x.id === o.id ? { ...x, sort: asInt(e.target.value, 0) } : x))} style={{ padding: "10px 12px", width: 90 }} />
+                      <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={() => saveOption(o)}>Save</button>
+                      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => toggleOptionActive(o)}>{active ? "Deactivate" : "Activate"}</button>
+                      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => hardDeleteOption(o)}>Hard Delete</button>
+                    </div>
                   </div>
                 );
               })}
-              {types.length === 0 ? <div style={{ opacity: 0.75 }}>No types found.</div> : null}
-            </div>
+            {!loading && options.length === 0 ? <div style={{ opacity: 0.75 }}>No options yet.</div> : null}
           </div>
         </div>
       ) : null}
 
       {tab === "access" ? (
         <div className="zombie-card" style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 900 }}>Grant Access (paste User UUID)</div>
+          <div style={{ fontWeight: 900 }}>Access (Helpers)</div>
           <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
-            can_view: can see tracker • can_edit: can update requests • can_manage_types: can edit dropdowns (types/options)
+            Grant view/edit for the tracker page: /state/789/achievements-tracker
           </div>
 
-          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <input className="zombie-input" value={accUserId} onChange={(e) => setAccUserId(e.target.value)} placeholder="user uuid" style={{ padding: "10px 12px", minWidth: 320 }} />
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={accView} onChange={(e) => setAccView(e.target.checked)} />
-              <span>view</span>
-            </label>
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={accEdit} onChange={(e) => setAccEdit(e.target.checked)} />
-              <span>edit</span>
-            </label>
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={accManage} onChange={(e) => setAccManage(e.target.checked)} />
-              <span>manage types</span>
-            </label>
-            <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={upsertAccess}>Save</button>
+          <div style={{ marginTop: 12, display: "grid", gap: 10, maxWidth: 720 }}>
+            <div style={{ fontWeight: 900 }}>Add/Update Access</div>
+            <input className="zombie-input" value={accessUserId} onChange={(e) => setAccessUserId(e.target.value)} placeholder="User ID (uuid)" style={{ padding: "10px 12px" }} />
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="checkbox" checked={!!accView} onChange={(e) => setAccView(e.target.checked)} />
+                can_view
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="checkbox" checked={!!accEdit} onChange={(e) => setAccEdit(e.target.checked)} />
+                can_edit
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="checkbox" checked={!!accManageTypes} onChange={(e) => setAccManageTypes(e.target.checked)} />
+                can_manage_types
+              </label>
+              <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={upsertAccess}>Save Access</button>
+            </div>
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-            {access.map((a) => (
-              <div key={a.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-                <div style={{ fontWeight: 900 }}>{a.user_id}</div>
-                <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
-                  view={String(a.can_view)} • edit={String(a.can_edit)} • manage_types={String(a.can_manage_types)}
+            {accessRows.map((a) => (
+              <div key={String(a.id || (a.user_id || ""))} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+                <div style={{ fontWeight: 900 }}>{String(a.user_id || "user")}</div>
+                <div style={{ opacity: 0.8, fontSize: 12, marginTop: 6 }}>
+                  view={String(!!a.can_view)} • edit={String(!!a.can_edit)} • manage_types={String(!!a.can_manage_types)}
                 </div>
-                <button className="zombie-btn" style={{ marginTop: 10, padding: "8px 10px" }} onClick={() => deleteAccess(a.id)}>Remove</button>
+                <button className="zombie-btn" style={{ marginTop: 8, padding: "8px 10px" }} onClick={() => deleteAccess(a)}>Delete</button>
               </div>
             ))}
-            {access.length === 0 ? <div style={{ opacity: 0.75 }}>No access rows yet.</div> : null}
+            {!loading && accessRows.length === 0 ? <div style={{ opacity: 0.75 }}>No access rows yet.</div> : null}
+          </div>
+        </div>
+      ) : null}
+
+      {tab === "export" ? (
+        <div className="zombie-card" style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 900 }}>Export / Import</div>
+          <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+            Export/import Types + Options JSON (for backup/migration between states later).
+          </div>
+          <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={copyExport}>Copy Export JSON</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={importJson}>Import JSON</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={seedDefaults}>Seed Defaults</button>
           </div>
         </div>
       ) : null}
