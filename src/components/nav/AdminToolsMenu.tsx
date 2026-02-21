@@ -1,156 +1,93 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
-import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 
-function getAllianceFromPath(pathname: string): string | null {
-  const m = (pathname || "").match(/^\/dashboard\/([^\/]+)/);
-  if (!m) return null;
-  const code = (m[1] || "").toString().trim();
-  return code ? code.toUpperCase() : null;
-}
+type Btn = { label: string; emoji: string; to: string };
 
-async function isDashboardOwnerSafe(): Promise<boolean>
-{/* SAD_ADMINTOOLS_BUTTONS_V1 */}
-<div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-  <div style={{ opacity: 0.75, fontSize: 12, fontWeight: 900 }}>Owner Tools</div>
+const OWNER_BUTTONS: Btn[] = [
+  { emoji: "🧟", label: "Live Ops (timer + checklist)", to: "/owner/live-ops" },
+  { emoji: "📣", label: "Broadcast Composer", to: "/owner/broadcast" },
+  { emoji: "🗂️", label: "Alliance Directory Editor", to: "/owner/alliance-directory" },
+  { emoji: "🧩", label: "Permissions Matrix (shell)", to: "/owner/permissions-matrix" },
+  { emoji: "✅", label: "One-click Approve + Provision", to: "/owner/oneclick-provision" },
+  { emoji: "🎯", label: "Event Types Library", to: "/owner/event-types-library" },
+];
 
-  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/live-ops")}>
-    🧟 Live Ops (timer + checklist)
-  </button>
-
-  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/broadcast")}>
-    📣 Broadcast Composer
-  </button>
-
-  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/alliance-directory")}>
-    🗂️ Alliance Directory Editor
-  </button>
-
-  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/permissions-matrix")}>
-    🧩 Permissions Matrix (shell)
-  </button>
-
-  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/oneclick-provision")}>
-    ✅ One-click Approve + Provision
-  </button>
-
-  <button className="zombie-btn" style={{ width: "100%", textAlign: "left", padding: "10px 12px" }} onClick={() => (window.location.href = "/owner/event-types-library")}>
-    🎯 Event Types Library
-  </button>
-</div>
- {
+async function safeRpcBool(name: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase.rpc("is_dashboard_owner" as any);
-    if (error) return false;
-    return data === true;
+    const r = await supabase.rpc(name as any, {} as any);
+    if (r.error) return false;
+    return r.data === true;
   } catch {
     return false;
   }
 }
 
 export function AdminToolsMenu() {
-  const nav = useNavigate();
-  const admin = useIsAppAdmin();
-  const [isOwner, setIsOwner] = useState(false);
   const [open, setOpen] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  const alliance = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    return getAllianceFromPath(window.location.pathname);
-  }, []);
+  const [canShow, setCanShow] = useState<boolean>(false);
 
   useEffect(() => {
-    let cancelled = false;
+    let cancel = false;
     (async () => {
-      const u = await supabase.auth.getUser();
-      const uid = (u as any)?.data?.user?.id ?? null;
-      if (!cancelled) setUserId(uid);
-
-      const o = await isDashboardOwnerSafe();
-      if (!cancelled) setIsOwner(o);
+      const a = await safeRpcBool("is_app_admin");
+      const o1 = await safeRpcBool("is_dashboard_owner");
+      const o2 = await safeRpcBool("is_dashboard_owner_current");
+      if (!cancel) setCanShow(!!(a || o1 || o2));
     })();
-    return () => { cancelled = true; };
+    return () => { cancel = true; };
   }, []);
 
-  const allowed = !!isOwner || !!admin.isAdmin;
-  if (!allowed) return null;
+  const title = useMemo(() => "Admin Tools", []);
 
-  const go = (path: string) => {
-    setOpen(false);
-    nav(path);
-  };
-
-  const copySupportBundle = async () => {
-    const href = typeof window !== "undefined" ? window.location.href : "";
-    const path = typeof window !== "undefined" ? window.location.pathname : "";
-    const a = getAllianceFromPath(path);
-    const payload = {
-      tsUtc: new Date().toISOString(),
-      href,
-      path,
-      alliance: a,
-      userId,
-      isAppAdmin: admin.isAdmin,
-      isDashboardOwner: isOwner,
-      browserOnline: typeof navigator !== "undefined" ? navigator.onLine : null,
-      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-    };
-    await navigator.clipboard?.writeText(JSON.stringify(payload, null, 2));
-    window.alert("Copied support bundle JSON to clipboard.");
-  };
+  if (!canShow) return null;
 
   return (
-    <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+    <div style={{ position: "relative", display: "inline-block" }}>
       <button
         className="zombie-btn"
-        style={{ height: 34, padding: "0 12px" }}
+        style={{ padding: "10px 12px" }}
         onClick={() => setOpen((v) => !v)}
-        title="Admin Tools"
+        aria-expanded={open}
       >
-        🧰 Admin Tools
+        🛠️ {title}
       </button>
 
       {open ? (
         <div
+          className="zombie-card"
           style={{
             position: "absolute",
-            top: 40,
             right: 0,
-            zIndex: 99999,
-            minWidth: 260,
-            padding: 10,
-            borderRadius: 12,
-            border: "1px solid rgba(120,255,120,0.18)",
-            background: "rgba(0,0,0,0.85)",
-            boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+            marginTop: 10,
+            minWidth: 320,
+            zIndex: 9999,
           }}
-          onMouseLeave={() => setOpen(false)}
         >
-          <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 8 }}>
-            {isOwner ? "Owner" : "Admin"} {alliance ? `• ${alliance}` : ""}
+          <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.85 }}>Owner Tools</div>
+
+          {/* SAD_ADMINTOOLS_BUTTONS_V1 */}
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            {OWNER_BUTTONS.map((b) => (
+              <button
+                key={b.to}
+                className="zombie-btn"
+                style={{ width: "100%", textAlign: "left", padding: "10px 12px", display: "flex", gap: 10, alignItems: "center" }}
+                onClick={() => {
+                  setOpen(false);
+                  window.location.href = b.to;
+                }}
+              >
+                <div style={{ fontSize: 18 }}>{b.emoji}</div>
+                <div style={{ fontWeight: 900 }}>{b.label}</div>
+                <div style={{ marginLeft: "auto", opacity: 0.65, fontSize: 12 }}>{b.to}</div>
+              </button>
+            ))}
           </div>
 
-          <MenuBtn label="🧪 System Status" onClick={() => go("/status")} />
-          <MenuBtn label="🧟 Dashboard Select (/me)" onClick={() => go("/me")} />
-          <MenuBtn label="🧩 Owner Area (/owner)" onClick={() => go("/owner")} />
-
-          {alliance ? (
-            <>
-              <Divider />
-              <MenuBtn label={`🏠 Alliance Dashboard (${alliance})`} onClick={() => go(`/dashboard/${alliance}`)} />
-              <MenuBtn label="📅 Calendar" onClick={() => go(`/dashboard/${alliance}/calendar`)} />
-              <MenuBtn label="📚 Guides" onClick={() => go(`/dashboard/${alliance}/guides`)} />
-              <MenuBtn label="🗺️ HQ Map" onClick={() => go(`/dashboard/${alliance}/hq-map`)} />
-            </>
-          ) : null}
-
-          <Divider />
-          <MenuBtn label="🧾 Copy Support Bundle" onClick={copySupportBundle} />
-
-          <div style={{ fontSize: 11, opacity: 0.6, marginTop: 8 }}>
-            UI-only helpers. No DB writes.
+          <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+            <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={() => setOpen(false)}>
+              Close
+            </button>
           </div>
         </div>
       ) : null}
@@ -158,18 +95,4 @@ export function AdminToolsMenu() {
   );
 }
 
-function Divider() {
-  return <div style={{ height: 1, background: "rgba(120,255,120,0.14)", margin: "10px 0" }} />;
-}
-
-function MenuBtn(props: { label: string; onClick: () => void }) {
-  return (
-    <button
-      className="zombie-btn"
-      style={{ width: "100%", textAlign: "left", height: 34, padding: "0 10px", marginTop: 6 }}
-      onClick={props.onClick}
-    >
-      {props.label}
-    </button>
-  );
-}
+export default AdminToolsMenu;
