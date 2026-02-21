@@ -6,6 +6,7 @@ import AllianceQuickLinksPanel from "../../components/alliance/AllianceQuickLink
 import { AllianceThemePicker } from "../../components/theme/AllianceThemePicker";
 import { RealtimeStatusBadge } from "../../components/system/RealtimeStatusBadge";
 import { detectAllianceFromPath } from "../../utils/detectAllianceFromPath";
+import { getCurrentAlliance } from "../../utils/getCurrentAlliance";
 
 export default function AllianceDashboardIndexPage() {
   const { alliance_id } = useParams();
@@ -22,7 +23,7 @@ export default function AllianceDashboardIndexPage() {
         tsUtc: new Date().toISOString(),
         href: window.location.href,
         path: window.location.pathname,
-        alliance: detectAllianceFromPath(window.location.pathname),
+        alliance: getCurrentAlliance(window.location.pathname),
         theme: document.documentElement.dataset.theme || null,
         userId,
         browserOnline: navigator.onLine,
