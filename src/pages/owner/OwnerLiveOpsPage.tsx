@@ -1,27 +1,55 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 
 type ChecklistItem = { id: string; text: string; done: boolean; createdUtc: string };
+
 type Store = {
   version: 1;
   updatedUtc: string;
   targetUtc: string | null;
   label: string;
+  targetAlliance: string; // NEW: feeds Broadcast composer
   checklist: ChecklistItem[];
   announcementTemplate: string;
 };
 
+type DirItem = { id: string; code: string; name: string; state: string };
+
 const KEY = "sad_live_ops_v1";
+const DIR_KEY = "sad_alliance_directory_v1";
+const PREFILL_KEY = "sad_broadcast_prefill_v1";
 
 function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
 function nowUtc() { return new Date().toISOString(); }
+
+function loadDir(): DirItem[] {
+  try {
+    const raw = localStorage.getItem(DIR_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const items = Array.isArray(parsed?.items) ? parsed.items : [];
+    return items
+      .filter((x: any) => x && x.code)
+      .map((x: any) => ({
+        id: String(x.id || uid()),
+        code: String(x.code).toUpperCase(),
+        name: String(x.name || x.code),
+        state: String(x.state || "789"),
+      }));
+  } catch {
+    return [];
+  }
+}
 
 function load(): Store {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw) as Store;
-      if (s && s.version === 1 && Array.isArray(s.checklist)) return s;
+      if (s && s.version === 1 && Array.isArray(s.checklist)) {
+        return { ...s, targetAlliance: (s.targetAlliance || "WOC").toUpperCase() };
+      }
     }
   } catch {}
   return {
@@ -29,6 +57,7 @@ function load(): Store {
     updatedUtc: nowUtc(),
     targetUtc: null,
     label: "Next Op",
+    targetAlliance: "WOC",
     checklist: [],
     announcementTemplate:
       "🚨 {{Leadership}} LIVE OPS — {{opLabel}}\n\n" +
@@ -50,33 +79,35 @@ function fmtCountdown(ms: number): string {
   const hh = Math.floor(s / 3600);
   const mm = Math.floor((s % 3600) / 60);
   const ss = s % 60;
-  const str = `${hh.toString().padStart(2,"0")}:${mm.toString().padStart(2,"0")}:${ss.toString().padStart(2,"0")}`;
+  const str = `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}:${ss.toString().padStart(2, "0")}`;
   return neg ? `+${str} past` : str;
 }
 
 function safeParseUtc(input: string): Date | null {
-  // Accept:
-  // - ISO string
-  // - "YYYY-MM-DD HH:mm" treated as UTC
   const t = (input || "").trim();
   if (!t) return null;
+
   if (t.includes("T")) {
     const d = new Date(t);
     return isNaN(d.getTime()) ? null : d;
   }
+
   const m = t.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/);
   if (m) {
     const y = Number(m[1]), mo = Number(m[2]) - 1, da = Number(m[3]), h = Number(m[4]), mi = Number(m[5]);
     const d = new Date(Date.UTC(y, mo, da, h, mi, 0));
     return isNaN(d.getTime()) ? null : d;
   }
+
   const d2 = new Date(t);
   return isNaN(d2.getTime()) ? null : d2;
 }
 
 export default function OwnerLiveOpsPage() {
+  const nav = useNavigate();
   const [store, setStore] = useState<Store>(() => load());
   const [tick, setTick] = useState(0);
+  const [dir, setDir] = useState<DirItem[]>(() => loadDir());
 
   useEffect(() => save(store), [store]);
 
@@ -141,7 +172,7 @@ export default function OwnerLiveOpsPage() {
     try {
       const p = JSON.parse(raw) as Store;
       if (!p || p.version !== 1) throw new Error("Invalid");
-      setStore({ ...p, updatedUtc: nowUtc() });
+      setStore({ ...p, updatedUtc: nowUtc(), targetAlliance: String(p.targetAlliance || "WOC").toUpperCase() });
       alert("Imported.");
     } catch {
       alert("Invalid JSON.");
@@ -164,6 +195,23 @@ export default function OwnerLiveOpsPage() {
     catch { window.prompt("Copy announcement:", msg); }
   }
 
+  function openInBroadcast() {
+    const msg = generateAnnouncement();
+    const alliance = String(store.targetAlliance || "WOC").toUpperCase();
+
+    const payload = {
+      version: 1,
+      createdUtc: nowUtc(),
+      scope: "alliance",
+      allianceCode: alliance,
+      templateName: `LiveOps: ${store.label || "Op"} (${utcString === "—" ? "no-time" : utcString.slice(0, 16)}Z)`,
+      body: msg,
+    };
+
+    try { localStorage.setItem(PREFILL_KEY, JSON.stringify(payload)); } catch {}
+    nav("/owner/broadcast");
+  }
+
   const [newItem, setNewItem] = useState("");
 
   return (
@@ -174,6 +222,33 @@ export default function OwnerLiveOpsPage() {
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportJson}>Export</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importJson}>Import</button>
           <SupportBundleButton />
+        </div>
+      </div>
+
+      <div className="zombie-card" style={{ marginTop: 12 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ opacity: 0.75, fontSize: 12 }}>Target Alliance</div>
+          <select
+            className="zombie-input"
+            value={store.targetAlliance}
+            onChange={(e) => setStore((p) => ({ ...p, updatedUtc: nowUtc(), targetAlliance: e.target.value.toUpperCase() }))}
+            style={{ padding: "10px 12px" }}
+          >
+            {(dir.length ? dir : [{ id: "x", code: "WOC", name: "WOC", state: "789" }]).map((d) => (
+              <option key={d.code} value={d.code}>{d.code} — {d.name}</option>
+            ))}
+          </select>
+
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => setDir(loadDir())}>Reload Directory</button>
+
+          <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={openInBroadcast}>Open in Broadcast</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyAnnouncement}>Copy Announcement</button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 8, opacity: 0.7, fontSize: 12 }}>
+          “Open in Broadcast” will prefill /owner/broadcast with this announcement + selected alliance.
         </div>
       </div>
 
@@ -239,20 +314,18 @@ export default function OwnerLiveOpsPage() {
       </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
-        <div style={{ fontWeight: 900 }}>📣 Discord-ready Announcement (placeholders)</div>
+        <div style={{ fontWeight: 900 }}>📣 Announcement Template (placeholders)</div>
 
         <div style={{ marginTop: 10 }}>
-          <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Template (supports {{opLabel}} {{opUtc}} {{opLocal}} {{checklist}} + role/channel placeholders)</div>
+          <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>
+            Supports {"{{opLabel}}"} {"{{opUtc}}"} {"{{opLocal}}"} {"{{checklist}}"} and role/channel placeholders like {"{{Leadership}}"} and {"{{#announcements}}"}.
+          </div>
           <textarea
             className="zombie-input"
             value={store.announcementTemplate}
             onChange={(e) => setStore((p) => ({ ...p, updatedUtc: nowUtc(), announcementTemplate: e.target.value }))}
             style={{ width: "100%", minHeight: 140, padding: "10px 12px" }}
           />
-        </div>
-
-        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyAnnouncement}>Copy Announcement</button>
         </div>
 
         <div style={{ marginTop: 12 }}>
@@ -263,7 +336,7 @@ export default function OwnerLiveOpsPage() {
         </div>
 
         <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
-          Placeholders like {{Leadership}} or #announcements will be resolved by the Broadcast Composer (/owner/broadcast) using your role/channel maps.
+          Use “Open in Broadcast” to resolve role/channel mentions via your Discord settings maps.
         </div>
       </div>
     </div>
