@@ -2,33 +2,41 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 
+type AnyRow = Record<string, any>;
+
 function nowUtc() { return new Date().toISOString(); }
 function norm(s: any) { return String(s || "").trim(); }
 function normLower(s: any) { return String(s || "").trim().toLowerCase(); }
-function asBool(v: any, fallback: boolean) {
-  if (typeof v === "boolean") return v;
-  if (v === 1 || v === "1" || v === "true") return true;
-  if (v === 0 || v === "0" || v === "false") return false;
-  return fallback;
-}
 function asInt(v: any, fallback: number) {
   const n = Number(v);
   return Number.isFinite(n) ? Math.floor(n) : fallback;
 }
 
-type AnyRow = Record<string, any>;
+async function safeRpcBool(name: string): Promise<boolean> {
+  try {
+    const r = await supabase.rpc(name as any);
+    if (r.error) return false;
+    return r.data === true;
+  } catch {
+    return false;
+  }
+}
 
 export default function OwnerStateAchievementsPage() {
-  const stateCode = "789";
+  const [stateCode, setStateCode] = useState("789");
+  const [tab, setTab] = useState<"requests" | "types" | "options" | "access" | "export">("requests");
 
-  const [tab, setTab] = useState<"requests"|"types"|"options"|"access"|"export">("requests");
-  const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isAppAdmin, setIsAppAdmin] = useState(false);
+  const [isDashboardOwner, setIsDashboardOwner] = useState(false);
 
   const [types, setTypes] = useState<AnyRow[]>([]);
   const [options, setOptions] = useState<AnyRow[]>([]);
   const [requests, setRequests] = useState<AnyRow[]>([]);
-  const [accessRows, setAccessRows] = useState<AnyRow[]>([]);
+  const [access, setAccess] = useState<AnyRow[]>([]);
 
   const typeById = useMemo(() => {
     const m: Record<string, AnyRow> = {};
@@ -36,17 +44,46 @@ export default function OwnerStateAchievementsPage() {
     return m;
   }, [types]);
 
-  const optionById = useMemo(() => {
-    const m: Record<string, AnyRow> = {};
-    for (const o of options) if (o?.id) m[String(o.id)] = o;
+  const optionsByType = useMemo(() => {
+    const m: Record<string, AnyRow[]> = {};
+    for (const o of options || []) {
+      const tid = String(o.achievement_type_id || "");
+      if (!tid) continue;
+      if (!m[tid]) m[tid] = [];
+      m[tid].push(o);
+    }
+    for (const k of Object.keys(m)) {
+      m[k].sort((a, b) => {
+        const sa = asInt(a.sort, 0), sb = asInt(b.sort, 0);
+        if (sa !== sb) return sa - sb;
+        return String(a.label || "").localeCompare(String(b.label || ""));
+      });
+    }
     return m;
   }, [options]);
 
-  const [filter, setFilter] = useState("");
+  const canAdmin = useMemo(() => !!(isAppAdmin || isDashboardOwner), [isAppAdmin, isDashboardOwner]);
+
+  function reqRequired(r: AnyRow) {
+    const t = typeById[String(r.achievement_type_id)] || {};
+    return Math.max(1, asInt(r.required_count ?? t.required_count, 1));
+  }
+  function reqCurrent(r: AnyRow) {
+    return Math.max(0, asInt(r.current_count, 0));
+  }
 
   async function loadAll() {
     setLoading(true);
     setMsg(null);
+
+    const u = await supabase.auth.getUser();
+    const uid = u.data.user?.id || null;
+    setUserId(uid);
+
+    const a = await safeRpcBool("is_app_admin");
+    const o = await safeRpcBool("is_dashboard_owner");
+    setIsAppAdmin(a);
+    setIsDashboardOwner(o);
 
     const t = await supabase
       .from("state_achievement_types")
@@ -55,10 +92,7 @@ export default function OwnerStateAchievementsPage() {
       .order("name", { ascending: true });
 
     if (t.error) {
-      setTypes([]);
-      setOptions([]);
-      setRequests([]);
-      setAccessRows([]);
+      setTypes([]); setOptions([]); setRequests([]); setAccess([]);
       setMsg("Types load failed: " + t.error.message);
       setLoading(false);
       return;
@@ -68,19 +102,14 @@ export default function OwnerStateAchievementsPage() {
 
     const ids = tData.map((x) => x?.id).filter(Boolean);
     if (ids.length) {
-      const o = await supabase
+      const op = await supabase
         .from("state_achievement_options")
         .select("*")
         .in("achievement_type_id", ids)
         .order("sort", { ascending: true })
         .order("label", { ascending: true });
-
-      if (o.error) {
-        setOptions([]);
-        setMsg((prev) => (prev ? prev + " | " : "") + "Options load failed: " + o.error.message);
-      } else {
-        setOptions((o.data as any[]) || []);
-      }
+      if (!op.error) setOptions((op.data as any[]) || []);
+      else setOptions([]);
     } else {
       setOptions([]);
     }
@@ -89,364 +118,361 @@ export default function OwnerStateAchievementsPage() {
       .from("state_achievement_requests")
       .select("*")
       .eq("state_code", stateCode)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(800);
 
-    if (r.error) {
+    if (!r.error) setRequests((r.data as any[]) || []);
+    else {
       setRequests([]);
-      setMsg((prev) => (prev ? prev + " | " : "") + "Requests load failed: " + r.error.message);
-    } else {
-      setRequests((r.data as any[]) || []);
+      setMsg((p) => (p ? p + " | " : "") + "Requests load failed: " + r.error.message);
     }
 
-    const a = await supabase
+    const ac = await supabase
       .from("state_achievement_access")
       .select("*")
       .eq("state_code", stateCode)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(300);
 
-    if (a.error) {
-      setAccessRows([]);
-      setMsg((prev) => (prev ? prev + " | " : "") + "Access load failed: " + a.error.message);
-    } else {
-      setAccessRows((a.data as any[]) || []);
+    if (!ac.error) setAccess((ac.data as any[]) || []);
+    else {
+      setAccess([]);
+      setMsg((p) => (p ? p + " | " : "") + "Access load failed: " + ac.error.message);
     }
 
     setLoading(false);
   }
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); }, [stateCode]);
 
-  // ----------------------------
-  // Requests actions
-  // ----------------------------
-  async function saveRequest(row: AnyRow) {
+  function setLocalRequests(id: any, patch: AnyRow) {
+    setRequests((prev) => prev.map((x) => (String(x.id) === String(id) ? { ...x, ...patch } : x)));
+  }
+
+  async function safeUpdateRequest(id: string, patch: AnyRow) {
+    // Retry without completed_at if column doesn't exist
+    const attempt = async (p: AnyRow) => supabase.from("state_achievement_requests").update(p as any).eq("id", id);
+
+    let res = await attempt(patch);
+    if (!res.error) return res;
+
+    const m = (res.error.message || "").toLowerCase();
+    if (m.includes("completed_at") && Object.prototype.hasOwnProperty.call(patch, "completed_at")) {
+      const p2 = { ...patch };
+      delete p2.completed_at;
+      res = await attempt(p2);
+      return res;
+    }
+    return res;
+  }
+
+  async function saveRequestRow(r: AnyRow) {
+    if (!canAdmin) return;
     setMsg(null);
 
-    const id = row?.id;
+    const id = String(r.id || "");
     if (!id) return;
 
-    const reqCount = asInt(row.required_count ?? typeById[String(row.achievement_type_id)]?.required_count ?? 1, 1);
-    const curCount = Math.max(0, asInt(row.current_count ?? 0, 0));
-    const statusRaw = String(row.status || "submitted");
-    const done = (statusRaw === "completed") || (curCount >= reqCount);
+    const req = reqRequired(r);
+    const cur = reqCurrent(r);
+    const status = String(r.status || "submitted");
+    const done = (status === "completed") || (cur >= req);
 
-    const patch: any = {
-      status: done ? "completed" : statusRaw,
-      current_count: curCount,
-      notes: row.notes ?? null
+    const patch: AnyRow = {
+      current_count: cur,
+      status: done ? "completed" : status,
+      notes: r.notes ?? null
     };
+    if (done && (r.completed_at == null)) patch.completed_at = nowUtc();
 
-    // set completed_at if the column exists and it's being completed
-    if (done && (row.completed_at == null)) patch.completed_at = nowUtc();
-
-    const u = await supabase.from("state_achievement_requests").update(patch).eq("id", id);
+    const u = await safeUpdateRequest(id, patch);
     if (u.error) {
       setMsg("Update failed: " + u.error.message);
       return;
     }
-    setMsg("✅ Updated request.");
+    setMsg("✅ Request updated.");
     await loadAll();
   }
 
-  // ----------------------------
-  // Types CRUD
-  // ----------------------------
+  // ---- Types CRUD ----
+  const [editType, setEditType] = useState<AnyRow | null>(null);
   const [newTypeName, setNewTypeName] = useState("");
-  const [newTypeKind, setNewTypeKind] = useState("swp_weapon");
-  const [newTypeRequiresOption, setNewTypeRequiresOption] = useState(true);
-  const [newTypeRequiredCount, setNewTypeRequiredCount] = useState(1);
+  const [newTypeKind, setNewTypeKind] = useState("count");
+  const [newTypeReqCount, setNewTypeReqCount] = useState("1");
+  const [newTypeRequiresOption, setNewTypeRequiresOption] = useState(false);
 
-  async function addType() {
+  async function createType() {
+    if (!canAdmin) return;
     setMsg(null);
-    const name = norm(newTypeName);
-    if (!name) return setMsg("Type name is required.");
 
-    const payload: any = {
+    const name = norm(newTypeName);
+    if (!name) return setMsg("Type name required.");
+
+    const payload: AnyRow = {
       state_code: stateCode,
       name,
-      kind: norm(newTypeKind) || null,
+      kind: norm(newTypeKind) || "count",
       requires_option: !!newTypeRequiresOption,
-      required_count: Math.max(1, asInt(newTypeRequiredCount, 1)),
+      required_count: Math.max(1, asInt(newTypeReqCount, 1)),
       active: true
     };
 
-    const ins = await supabase.from("state_achievement_types").insert(payload).select("id").maybeSingle();
-    if (ins.error) return setMsg("Add type failed: " + ins.error.message);
+    const ins = await supabase.from("state_achievement_types").insert(payload as any).select("*").maybeSingle();
+    if (ins.error) return setMsg("Create type failed: " + ins.error.message);
 
     setNewTypeName("");
-    setMsg("✅ Type added.");
-    await loadAll();
-  }
-
-  async function toggleTypeActive(t: AnyRow) {
-    setMsg(null);
-    const id = t?.id; if (!id) return;
-    const next = !asBool(t.active, true);
-    const u = await supabase.from("state_achievement_types").update({ active: next }).eq("id", id);
-    if (u.error) return setMsg("Toggle failed: " + u.error.message);
+    setMsg("✅ Type created.");
     await loadAll();
   }
 
   async function saveType(t: AnyRow) {
+    if (!canAdmin) return;
     setMsg(null);
-    const id = t?.id; if (!id) return;
-    const patch: any = {
-      name: t.name ?? null,
-      kind: t.kind ?? null,
-      requires_option: !!t.requires_option,
-      required_count: Math.max(1, asInt(t.required_count, 1))
+
+    const id = String(t.id || "");
+    if (!id) return;
+
+    const patch: AnyRow = {
+      name: norm(t.name),
+      kind: norm(t.kind) || "count",
+      requires_option: t.requires_option === true,
+      required_count: Math.max(1, asInt(t.required_count, 1)),
+      active: t.active === true
     };
-    const u = await supabase.from("state_achievement_types").update(patch).eq("id", id);
-    if (u.error) return setMsg("Save failed: " + u.error.message);
-    setMsg("✅ Type saved.");
+
+    const up = await supabase.from("state_achievement_types").update(patch as any).eq("id", id);
+    if (up.error) return setMsg("Update type failed: " + up.error.message);
+
+    setMsg("✅ Type updated.");
     await loadAll();
   }
 
-  async function hardDeleteType(t: AnyRow) {
-    if (!confirm("Hard delete this type? (This may fail if rows reference it.)")) return;
-    setMsg(null);
-    const id = t?.id; if (!id) return;
-    const d = await supabase.from("state_achievement_types").delete().eq("id", id);
-    if (d.error) return setMsg("Delete failed: " + d.error.message);
-    setMsg("✅ Deleted type.");
+  async function disableType(id: string) {
+    if (!canAdmin) return;
+    if (!window.confirm("Disable this type? (safer than delete)")) return;
+    const up = await supabase.from("state_achievement_types").update({ active: false } as any).eq("id", id);
+    if (up.error) return setMsg("Disable failed: " + up.error.message);
+    setMsg("✅ Disabled.");
     await loadAll();
   }
 
-  // ----------------------------
-  // Options CRUD
-  // ----------------------------
-  const [optTypeId, setOptTypeId] = useState<string>("");
-  const [newOptLabel, setNewOptLabel] = useState("Rail Gun");
-  const [newOptSort, setNewOptSort] = useState(10);
+  // ---- Options CRUD ----
+  const [selectedTypeId, setSelectedTypeId] = useState<string>("");
+  const [newOptLabel, setNewOptLabel] = useState("");
+  const [newOptSort, setNewOptSort] = useState("0");
 
-  async function addOption() {
+  useEffect(() => {
+    if (!selectedTypeId && types.length) setSelectedTypeId(String(types[0].id));
+  }, [types, selectedTypeId]);
+
+  async function createOption() {
+    if (!canAdmin) return;
     setMsg(null);
-    const tid = optTypeId || (types[0]?.id ? String(types[0].id) : "");
-    if (!tid) return setMsg("Select a type first.");
+
+    const tid = String(selectedTypeId || "");
+    if (!tid) return setMsg("Pick a type first.");
+
     const label = norm(newOptLabel).replace(/^#/, "");
-    if (!label) return setMsg("Option label is required.");
+    if (!label) return setMsg("Option label required (ex: Rail Gun).");
 
-    const payload: any = {
+    const payload: AnyRow = {
       achievement_type_id: tid,
       label,
-      sort: asInt(newOptSort, 10),
+      sort: asInt(newOptSort, 0),
       active: true
     };
 
-    const ins = await supabase.from("state_achievement_options").insert(payload).select("id").maybeSingle();
-    if (ins.error) return setMsg("Add option failed: " + ins.error.message);
+    const ins = await supabase.from("state_achievement_options").insert(payload as any).select("*").maybeSingle();
+    if (ins.error) return setMsg("Create option failed: " + ins.error.message);
 
     setNewOptLabel("");
-    setMsg("✅ Option added.");
-    await loadAll();
-  }
-
-  async function toggleOptionActive(o: AnyRow) {
-    setMsg(null);
-    const id = o?.id; if (!id) return;
-    const next = !asBool(o.active, true);
-    const u = await supabase.from("state_achievement_options").update({ active: next }).eq("id", id);
-    if (u.error) return setMsg("Toggle failed: " + u.error.message);
+    setMsg("✅ Option created.");
     await loadAll();
   }
 
   async function saveOption(o: AnyRow) {
+    if (!canAdmin) return;
     setMsg(null);
-    const id = o?.id; if (!id) return;
-    const patch: any = {
-      label: o.label ?? null,
-      sort: asInt(o.sort, 0)
+
+    const id = String(o.id || "");
+    if (!id) return;
+
+    const patch: AnyRow = {
+      label: norm(o.label),
+      sort: asInt(o.sort, 0),
+      active: o.active === true
     };
-    const u = await supabase.from("state_achievement_options").update(patch).eq("id", id);
-    if (u.error) return setMsg("Save failed: " + u.error.message);
-    setMsg("✅ Option saved.");
+
+    const up = await supabase.from("state_achievement_options").update(patch as any).eq("id", id);
+    if (up.error) return setMsg("Update option failed: " + up.error.message);
+
+    setMsg("✅ Option updated.");
     await loadAll();
   }
 
-  async function hardDeleteOption(o: AnyRow) {
-    if (!confirm("Hard delete this option?")) return;
-    setMsg(null);
-    const id = o?.id; if (!id) return;
-    const d = await supabase.from("state_achievement_options").delete().eq("id", id);
-    if (d.error) return setMsg("Delete failed: " + d.error.message);
-    setMsg("✅ Deleted option.");
+  async function disableOption(id: string) {
+    if (!canAdmin) return;
+    if (!window.confirm("Disable this option? (safer than delete)")) return;
+    const up = await supabase.from("state_achievement_options").update({ active: false } as any).eq("id", id);
+    if (up.error) return setMsg("Disable failed: " + up.error.message);
+    setMsg("✅ Disabled.");
     await loadAll();
   }
 
-  // ----------------------------
-  // Access CRUD
-  // ----------------------------
-  const [accessUserId, setAccessUserId] = useState("");
-  const [accView, setAccView] = useState(true);
-  const [accEdit, setAccEdit] = useState(false);
-  const [accManageTypes, setAccManageTypes] = useState(false);
+  // ---- Access CRUD ----
+  const [newAccessUserId, setNewAccessUserId] = useState("");
+  const [newAccessCanView, setNewAccessCanView] = useState(true);
+  const [newAccessCanEdit, setNewAccessCanEdit] = useState(false);
 
   async function upsertAccess() {
+    if (!canAdmin) return;
     setMsg(null);
-    const uid = norm(accessUserId);
-    if (!uid) return setMsg("User ID is required.");
 
-    const payload: any = {
+    const uid = norm(newAccessUserId);
+    if (!uid) return setMsg("User ID required.");
+
+    const payload: AnyRow = {
       state_code: stateCode,
       user_id: uid,
-      can_view: !!accView,
-      can_edit: !!accEdit,
-      can_manage_types: !!accManageTypes
+      can_view: !!newAccessCanView,
+      can_edit: !!newAccessCanEdit
     };
 
-    // Use upsert; if no unique constraint exists, Supabase may error -> we show it.
-    const up = await supabase.from("state_achievement_access").upsert(payload as any).select("*");
-    if (up.error) return setMsg("Upsert failed: " + up.error.message);
+    const ins = await supabase.from("state_achievement_access").upsert(payload as any, { onConflict: "state_code,user_id" } as any).select("*").maybeSingle();
+    if (ins.error) return setMsg("Access upsert failed: " + ins.error.message);
 
+    setNewAccessUserId("");
     setMsg("✅ Access saved.");
     await loadAll();
   }
 
-  async function deleteAccess(row: AnyRow) {
-    if (!confirm("Delete access row?")) return;
+  async function saveAccessRow(a: AnyRow) {
+    if (!canAdmin) return;
     setMsg(null);
-    const id = row?.id;
+
+    const id = a.id ? String(a.id) : null;
     if (id) {
-      const d = await supabase.from("state_achievement_access").delete().eq("id", id);
-      if (d.error) return setMsg("Delete failed: " + d.error.message);
-    } else {
-      // fallback
-      const d = await supabase.from("state_achievement_access").delete().eq("state_code", stateCode).eq("user_id", row.user_id);
-      if (d.error) return setMsg("Delete failed: " + d.error.message);
+      const patch: AnyRow = { can_view: a.can_view === true, can_edit: a.can_edit === true };
+      const up = await supabase.from("state_achievement_access").update(patch as any).eq("id", id);
+      if (up.error) return setMsg("Access update failed: " + up.error.message);
+      setMsg("✅ Access updated.");
+      await loadAll();
+      return;
     }
-    setMsg("✅ Access deleted.");
+
+    // fallback if table uses composite keys and no id
+    const uid = String(a.user_id || "");
+    if (!uid) return setMsg("Access row missing user_id.");
+    const payload: AnyRow = { state_code: stateCode, user_id: uid, can_view: a.can_view === true, can_edit: a.can_edit === true };
+    const up2 = await supabase.from("state_achievement_access").upsert(payload as any, { onConflict: "state_code,user_id" } as any);
+    if (up2.error) return setMsg("Access save failed: " + up2.error.message);
+    setMsg("✅ Access saved.");
     await loadAll();
   }
 
-  // ----------------------------
-  // Export/Import + Seed
-  // ----------------------------
-  async function copyExport() {
-    const payload = {
-      version: 1,
-      exportedUtc: nowUtc(),
-      state_code: stateCode,
-      types,
-      options
-    };
-    const txt = JSON.stringify(payload, null, 2);
-    try { await navigator.clipboard.writeText(txt); setMsg("✅ Copied export JSON."); }
-    catch { window.prompt("Copy:", txt); }
+  async function removeAccess(a: AnyRow) {
+    if (!canAdmin) return;
+    if (!window.confirm("Remove access row?")) return;
+
+    setMsg(null);
+    if (a.id) {
+      const del = await supabase.from("state_achievement_access").delete().eq("id", String(a.id));
+      if (del.error) return setMsg("Delete failed: " + del.error.message);
+      setMsg("✅ Removed.");
+      await loadAll();
+      return;
+    }
+
+    const uid = String(a.user_id || "");
+    if (!uid) return setMsg("Row missing user_id.");
+    const del2 = await supabase.from("state_achievement_access").delete().eq("state_code", stateCode).eq("user_id", uid);
+    if (del2.error) return setMsg("Delete failed: " + del2.error.message);
+    setMsg("✅ Removed.");
+    await loadAll();
   }
 
-  async function importJson() {
-    const raw = window.prompt("Paste export JSON:");
-    if (!raw) return;
-    setMsg(null);
-    try {
-      const p = JSON.parse(raw);
-      const tArr: any[] = Array.isArray(p?.types) ? p.types : [];
-      const oArr: any[] = Array.isArray(p?.options) ? p.options : [];
-
-      // Import strategy: upsert by id if present, else insert.
-      // (If your DB doesn't allow upsert, errors will be shown.)
-      if (tArr.length) {
-        const upT = await supabase.from("state_achievement_types").upsert(tArr as any);
-        if (upT.error) return setMsg("Import types failed: " + upT.error.message);
-      }
-      if (oArr.length) {
-        const upO = await supabase.from("state_achievement_options").upsert(oArr as any);
-        if (upO.error) return setMsg("Import options failed: " + upO.error.message);
-      }
-
-      setMsg("✅ Imported.");
-      await loadAll();
-    } catch {
-      setMsg("Invalid JSON.");
-    }
+  // ---- Export/Import ----
+  async function copyJson(obj: any, label: string) {
+    const txt = JSON.stringify(obj, null, 2);
+    try { await navigator.clipboard.writeText(txt); setMsg("✅ Copied " + label + " JSON."); }
+    catch { window.prompt("Copy " + label + " JSON:", txt); }
   }
 
   async function seedDefaults() {
+    if (!canAdmin) return;
     setMsg(null);
 
-    // 1) Ensure SWP Weapon type exists (requires option)
-    const hasSwp = types.some((t) => normLower(t.name) === "swp weapon" || normLower(t.kind) === "swp_weapon");
-    const hasGov = types.some((t) => normLower(t.name).includes("governor") || normLower(t.kind) === "governor_count");
+    // SWP Weapon type
+    const existingSwp = (types || []).find((t) => normLower(t.name) === "swp weapon");
+    let swpId: string | null = existingSwp?.id ? String(existingSwp.id) : null;
 
-    let swpId: string | null = null;
-
-    if (!hasSwp) {
+    if (!swpId) {
       const ins = await supabase.from("state_achievement_types").insert({
         state_code: stateCode,
         name: "SWP Weapon",
-        kind: "swp_weapon",
+        kind: "count",
         requires_option: true,
         required_count: 1,
         active: true
-      } as any).select("id").maybeSingle();
+      } as any).select("*").maybeSingle();
 
       if (ins.error) return setMsg("Seed SWP type failed: " + ins.error.message);
-      swpId = (ins.data as any)?.id ? String((ins.data as any).id) : null;
-    } else {
-      // try to locate id to seed option
-      const t = types.find((x) => normLower(x.kind) === "swp_weapon" || normLower(x.name) === "swp weapon");
-      swpId = t?.id ? String(t.id) : null;
+      swpId = ins.data?.id ? String(ins.data.id) : null;
     }
 
-    if (!hasGov) {
+    // Governor Rotations type
+    const existingGov = (types || []).find((t) => normLower(t.name) === "governor rotations");
+    if (!existingGov) {
       const ins2 = await supabase.from("state_achievement_types").insert({
         state_code: stateCode,
         name: "Governor Rotations",
-        kind: "governor_count",
+        kind: "count",
         requires_option: false,
         required_count: 3,
         active: true
-      } as any).select("id").maybeSingle();
+      } as any).select("*").maybeSingle();
 
       if (ins2.error) return setMsg("Seed Governor type failed: " + ins2.error.message);
     }
 
-    // 2) Ensure Rail Gun option exists under SWP
+    // Rail Gun option
     if (swpId) {
-      const railExists = options.some((o) => String(o.achievement_type_id) === swpId && normLower(o.label) === "rail gun");
-      if (!railExists) {
+      const existsRail = (options || []).some((o) => String(o.achievement_type_id) === swpId && normLower(o.label) === "rail gun");
+      if (!existsRail) {
         const ins3 = await supabase.from("state_achievement_options").insert({
           achievement_type_id: swpId,
           label: "Rail Gun",
-          sort: 10,
+          sort: 0,
           active: true
-        } as any).select("id").maybeSingle();
+        } as any).select("*").maybeSingle();
 
         if (ins3.error) return setMsg("Seed Rail Gun failed: " + ins3.error.message);
       }
     }
 
-    setMsg("✅ Seeded defaults (SWP Weapon + Rail Gun, Governor Rotations 3x).");
+    setMsg("✅ Seeded defaults (SWP Weapon, Governor Rotations, Rail Gun).");
     await loadAll();
   }
 
-  // ----------------------------
-  // Render helpers
-  // ----------------------------
-  const filteredRequests = useMemo(() => {
-    const s = normLower(filter);
-    if (!s) return requests;
-    return requests.filter((r) => {
-      const t = typeById[String(r.achievement_type_id)]?.name || "";
-      const o = r.option_id ? (optionById[String(r.option_id)]?.label || "") : "";
-      return (
-        normLower(r.player_name).includes(s) ||
-        normLower(r.alliance_name).includes(s) ||
-        normLower(t).includes(s) ||
-        normLower(o).includes(s) ||
-        normLower(r.status).includes(s)
-      );
-    });
-  }, [filter, requests, typeById, optionById]);
+  // UI helpers
+  function typeName(id: any) {
+    const t = id ? typeById[String(id)] : null;
+    return String(t?.name || "Achievement");
+  }
+  function optionLabel(id: any) {
+    if (!id) return "";
+    const o = options.find((x) => String(x.id) === String(id));
+    return o ? String(o.label || "") : "";
+  }
 
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🧟 Owner — State Achievements</h2>
+        <h2 style={{ margin: 0 }}>🧟 Owner — State Achievements Admin</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements")}>
-            Open Player Form
-          </button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/owner")}>Back to Owner</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements")}>Player Form</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements-tracker")}>Tracker</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
           <SupportBundleButton />
         </div>
@@ -454,45 +480,52 @@ export default function OwnerStateAchievementsPage() {
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="requests" ? 900 : 700 }} onClick={() => setTab("requests")}>Requests</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="types" ? 900 : 700 }} onClick={() => setTab("types")}>Types</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="options" ? 900 : 700 }} onClick={() => setTab("options")}>Options</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="access" ? 900 : 700 }} onClick={() => setTab("access")}>Access</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="export" ? 900 : 700 }} onClick={() => setTab("export")}>Export/Import</button>
-
+          <div style={{ opacity: 0.75, fontSize: 12 }}>State</div>
+          <input className="zombie-input" value={stateCode} onChange={(e) => setStateCode(e.target.value)} style={{ padding: "10px 12px", width: 120 }} />
           <div style={{ marginLeft: "auto", opacity: 0.75, fontSize: 12 }}>
-            {loading ? "Loading…" : `Types: ${types.length} • Options: ${options.length} • Requests: ${requests.length}`}
+            user={userId ? "yes" : "no"} • admin={String(isAppAdmin)} • owner={String(isDashboardOwner)}
           </div>
         </div>
-
+        <div style={{ opacity: 0.75, fontSize: 12, marginTop: 8 }}>
+          {loading ? "Loading…" : `types=${types.length} • options=${options.length} • requests=${requests.length} • access=${access.length}`}
+        </div>
         {msg ? <div style={{ marginTop: 10, opacity: 0.9 }}>{msg}</div> : null}
+      </div>
+
+      <div className="zombie-card" style={{ marginTop: 12 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="requests" ? 900 : 600 }} onClick={() => setTab("requests")}>Requests</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="types" ? 900 : 600 }} onClick={() => setTab("types")}>Types</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="options" ? 900 : 600 }} onClick={() => setTab("options")}>Options</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="access" ? 900 : 600 }} onClick={() => setTab("access")}>Access</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="export" ? 900 : 600 }} onClick={() => setTab("export")}>Export/Import</button>
+          <div style={{ marginLeft: "auto" }}>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={seedDefaults} disabled={!canAdmin}>Seed Defaults</button>
+          </div>
+        </div>
       </div>
 
       {tab === "requests" ? (
         <div className="zombie-card" style={{ marginTop: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ fontWeight: 900 }}>Submitted Forms</div>
-            <input className="zombie-input" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", minWidth: 280 }} />
+          <div style={{ fontWeight: 900 }}>Requests Queue</div>
+          <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
+            Update counts/status/notes. Auto marks ✅ at 100%.
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-            {filteredRequests.map((r) => {
-              const t = typeById[String(r.achievement_type_id)];
-              const o = r.option_id ? optionById[String(r.option_id)] : null;
-
-              const req = asInt(r.required_count ?? t?.required_count ?? 1, 1);
-              const cur = asInt(r.current_count ?? 0, 0);
+            {requests.slice(0, 200).map((r) => {
+              const req = reqRequired(r);
+              const cur = reqCurrent(r);
               const done = (String(r.status) === "completed") || (cur >= req);
-
               return (
                 <div key={String(r.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <div style={{ fontWeight: 900 }}>{r.player_name} <span style={{ opacity: 0.7 }}>({r.alliance_name})</span></div>
+                    <div style={{ fontWeight: 900 }}>{String(r.player_name || "Player")} <span style={{ opacity: 0.7 }}>({String(r.alliance_name || "—")})</span></div>
                     <div style={{ marginLeft: "auto", fontWeight: 900 }}>{cur}/{req}{done ? " ✅" : ""}</div>
                   </div>
 
                   <div style={{ opacity: 0.85, marginTop: 6 }}>
-                    {(t?.name || "Achievement")}{o ? (" — " + o.label) : ""}
+                    {typeName(r.achievement_type_id)}{r.option_id ? (" — " + optionLabel(r.option_id)) : ""}
                   </div>
 
                   <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -500,46 +533,42 @@ export default function OwnerStateAchievementsPage() {
                     <input
                       className="zombie-input"
                       value={String(r.current_count ?? 0)}
-                      onChange={(e) => {
-                        const v = Math.max(0, asInt(e.target.value, 0));
-                        setRequests((prev) => prev.map((x) => x.id === r.id ? { ...x, current_count: v } : x));
-                      }}
+                      disabled={!canAdmin}
+                      onChange={(e) => setLocalRequests(r.id, { current_count: Math.max(0, asInt(e.target.value, 0)) })}
                       style={{ padding: "8px 10px", width: 90 }}
                     />
+                    <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} disabled={!canAdmin} onClick={() => setLocalRequests(r.id, { current_count: cur + 1, status: "in_progress" })}>+1</button>
+                    <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} disabled={!canAdmin} onClick={() => setLocalRequests(r.id, { current_count: req, status: "completed" })}>Set ✅</button>
 
                     <div style={{ opacity: 0.75, fontSize: 12 }}>Status</div>
-                    <select
-                      className="zombie-input"
-                      value={String(r.status || "submitted")}
-                      onChange={(e) => setRequests((prev) => prev.map((x) => x.id === r.id ? { ...x, status: e.target.value } : x))}
-                      style={{ padding: "8px 10px" }}
-                    >
+                    <select className="zombie-input" value={String(r.status || "submitted")} disabled={!canAdmin} onChange={(e) => setLocalRequests(r.id, { status: e.target.value })} style={{ padding: "8px 10px" }}>
                       <option value="submitted">submitted</option>
                       <option value="in_progress">in_progress</option>
                       <option value="completed">completed</option>
                       <option value="denied">denied</option>
                     </select>
 
-                    <button className="zombie-btn" style={{ padding: "8px 10px", fontWeight: 900 }} onClick={() => saveRequest(r)}>Save</button>
+                    <button className="zombie-btn" style={{ padding: "8px 10px", fontWeight: 900 }} disabled={!canAdmin} onClick={() => saveRequestRow(r)}>Save</button>
                   </div>
 
                   <div style={{ marginTop: 10 }}>
                     <textarea
                       className="zombie-input"
                       value={String(r.notes || "")}
-                      onChange={(e) => setRequests((prev) => prev.map((x) => x.id === r.id ? { ...x, notes: e.target.value } : x))}
+                      disabled={!canAdmin}
+                      onChange={(e) => setLocalRequests(r.id, { notes: e.target.value })}
                       placeholder="Notes"
-                      style={{ padding: "10px 12px", width: "100%", minHeight: 70 }}
+                      style={{ padding: "10px 12px", width: "100%", minHeight: 60 }}
                     />
                   </div>
 
                   <div style={{ opacity: 0.6, fontSize: 12, marginTop: 8 }}>
-                    Created: {String(r.created_at || "—")}
+                    created: {String(r.created_at || "—")}{r.completed_at ? (" • completed: " + String(r.completed_at)) : ""}
                   </div>
                 </div>
               );
             })}
-            {!loading && filteredRequests.length === 0 ? <div style={{ opacity: 0.75 }}>No requests found.</div> : null}
+            {!loading && requests.length === 0 ? <div style={{ opacity: 0.75 }}>No requests.</div> : null}
           </div>
         </div>
       ) : null}
@@ -547,70 +576,53 @@ export default function OwnerStateAchievementsPage() {
       {tab === "types" ? (
         <div className="zombie-card" style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 900 }}>Achievement Types</div>
-          <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
-            Examples: SWP Weapon (requires option), Governor Rotations (required_count=3).
-          </div>
 
-          <div style={{ marginTop: 12, display: "grid", gap: 10, maxWidth: 720 }}>
-            <div style={{ display: "grid", gap: 8 }}>
-              <div style={{ fontWeight: 900 }}>Add Type</div>
-              <input className="zombie-input" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} placeholder="Name (e.g. SWP Weapon)" style={{ padding: "10px 12px" }} />
-              <input className="zombie-input" value={newTypeKind} onChange={(e) => setNewTypeKind(e.target.value)} placeholder="Kind (swp_weapon / governor_count)" style={{ padding: "10px 12px" }} />
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input type="checkbox" checked={!!newTypeRequiresOption} onChange={(e) => setNewTypeRequiresOption(e.target.checked)} />
-                  requires option (weapon dropdown)
-                </label>
-                <div style={{ opacity: 0.75, fontSize: 12 }}>required count</div>
-                <input className="zombie-input" value={String(newTypeRequiredCount)} onChange={(e) => setNewTypeRequiredCount(asInt(e.target.value, 1))} style={{ padding: "8px 10px", width: 90 }} />
-                <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={addType}>Add</button>
-                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={seedDefaults}>Seed Defaults</button>
-              </div>
+          <div style={{ marginTop: 10, display: "grid", gap: 10, maxWidth: 760 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <input className="zombie-input" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} placeholder="Type name (SWP Weapon)" style={{ padding: "10px 12px", minWidth: 240, flex: 1 }} />
+              <input className="zombie-input" value={newTypeKind} onChange={(e) => setNewTypeKind(e.target.value)} placeholder="kind (count)" style={{ padding: "10px 12px", width: 140 }} />
+              <input className="zombie-input" value={newTypeReqCount} onChange={(e) => setNewTypeReqCount(e.target.value)} placeholder="required_count" style={{ padding: "10px 12px", width: 140 }} />
+              <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.85 }}>
+                <input type="checkbox" checked={newTypeRequiresOption} onChange={(e) => setNewTypeRequiresOption(e.target.checked)} />
+                requires option
+              </label>
+              <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} disabled={!canAdmin} onClick={createType}>Create</button>
+            </div>
+
+            <div style={{ opacity: 0.65, fontSize: 12 }}>
+              For Governor Rotations set required_count=3 and requires option unchecked.
             </div>
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-            {types.map((t) => {
-              const active = asBool(t.active, true);
-              return (
-                <div key={String(t.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <div style={{ fontWeight: 900 }}>{String(t.name || "Untitled")}</div>
-                    <div style={{ marginLeft: "auto", opacity: 0.85 }}>{active ? "active" : "inactive"}</div>
-                  </div>
-
-                  <div style={{ marginTop: 10, display: "grid", gap: 8, maxWidth: 720 }}>
-                    <div>
-                      <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Name</div>
-                      <input className="zombie-input" value={String(t.name || "")} onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, name: e.target.value } : x))} style={{ padding: "10px 12px", width: "100%" }} />
-                    </div>
-
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                      <div style={{ flex: 1, minWidth: 220 }}>
-                        <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Kind</div>
-                        <input className="zombie-input" value={String(t.kind || "")} onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, kind: e.target.value } : x))} style={{ padding: "10px 12px", width: "100%" }} />
-                      </div>
-
-                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input type="checkbox" checked={!!t.requires_option} onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, requires_option: e.target.checked } : x))} />
-                          requires option
-                        </label>
-
-                        <div style={{ opacity: 0.75, fontSize: 12 }}>required</div>
-                        <input className="zombie-input" value={String(t.required_count ?? 1)} onChange={(e) => setTypes((prev) => prev.map((x) => x.id === t.id ? { ...x, required_count: asInt(e.target.value, 1) } : x))} style={{ padding: "8px 10px", width: 90 }} />
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={() => saveType(t)}>Save</button>
-                      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => toggleTypeActive(t)}>{active ? "Deactivate" : "Activate"}</button>
-                      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => hardDeleteType(t)}>Hard Delete</button>
-                    </div>
-                  </div>
+            {types.map((t) => (
+              <div key={String(t.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ fontWeight: 900 }}>{String(t.name || t.id)}</div>
+                  <div style={{ marginLeft: "auto", opacity: 0.75, fontSize: 12 }}>{String(t.kind || "")}</div>
                 </div>
-              );
-            })}
+
+                <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ opacity: 0.75, fontSize: 12 }}>required_count</div>
+                  <input className="zombie-input" value={String(t.required_count ?? 1)} disabled={!canAdmin} onChange={(e) => setTypes((p) => p.map((x) => x.id===t.id ? { ...x, required_count: asInt(e.target.value, 1) } : x))} style={{ padding: "8px 10px", width: 100 }} />
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.85 }}>
+                    <input type="checkbox" checked={t.requires_option === true} disabled={!canAdmin} onChange={(e) => setTypes((p) => p.map((x) => x.id===t.id ? { ...x, requires_option: e.target.checked } : x))} />
+                    requires option
+                  </label>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.85 }}>
+                    <input type="checkbox" checked={t.active === true} disabled={!canAdmin} onChange={(e) => setTypes((p) => p.map((x) => x.id===t.id ? { ...x, active: e.target.checked } : x))} />
+                    active
+                  </label>
+
+                  <button className="zombie-btn" style={{ padding: "8px 10px", fontWeight: 900 }} disabled={!canAdmin} onClick={() => saveType(t)}>Save</button>
+                  <button className="zombie-btn" style={{ padding: "8px 10px" }} disabled={!canAdmin} onClick={() => disableType(String(t.id))}>Disable</button>
+
+                  <button className="zombie-btn" style={{ padding: "8px 10px" }} onClick={() => { setSelectedTypeId(String(t.id)); setTab("options"); }}>
+                    Edit Options
+                  </button>
+                </div>
+              </div>
+            ))}
             {!loading && types.length === 0 ? <div style={{ opacity: 0.75 }}>No types yet.</div> : null}
           </div>
         </div>
@@ -618,48 +630,38 @@ export default function OwnerStateAchievementsPage() {
 
       {tab === "options" ? (
         <div className="zombie-card" style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 900 }}>Options (Weapons / Dropdown items)</div>
-          <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
-            These appear only for types with requires_option=true (e.g. SWP Weapon).
-          </div>
+          <div style={{ fontWeight: 900 }}>Options (Weapons / Sub-choices)</div>
 
-          <div style={{ marginTop: 12, display: "grid", gap: 10, maxWidth: 720 }}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <select className="zombie-input" value={optTypeId} onChange={(e) => setOptTypeId(e.target.value)} style={{ padding: "10px 12px", minWidth: 260 }}>
-                <option value="">Select type…</option>
-                {types.map((t) => <option key={String(t.id)} value={String(t.id)}>{String(t.name || t.id)}</option>)}
-              </select>
-              <input className="zombie-input" value={newOptLabel} onChange={(e) => setNewOptLabel(e.target.value)} placeholder="Label (Rail Gun)" style={{ padding: "10px 12px", flex: 1, minWidth: 220 }} />
-              <input className="zombie-input" value={String(newOptSort)} onChange={(e) => setNewOptSort(asInt(e.target.value, 10))} placeholder="Sort" style={{ padding: "10px 12px", width: 90 }} />
-              <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={addOption}>Add</button>
-            </div>
+          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ opacity: 0.75, fontSize: 12 }}>Type</div>
+            <select className="zombie-input" value={selectedTypeId} onChange={(e) => setSelectedTypeId(e.target.value)} style={{ padding: "10px 12px", minWidth: 280 }}>
+              {types.map((t) => (
+                <option key={String(t.id)} value={String(t.id)}>{String(t.name || t.id)}</option>
+              ))}
+            </select>
+
+            <input className="zombie-input" value={newOptLabel} onChange={(e) => setNewOptLabel(e.target.value)} placeholder="Option label (Rail Gun)" style={{ padding: "10px 12px", minWidth: 220, flex: 1 }} />
+            <input className="zombie-input" value={newOptSort} onChange={(e) => setNewOptSort(e.target.value)} placeholder="sort" style={{ padding: "10px 12px", width: 120 }} />
+            <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} disabled={!canAdmin} onClick={createOption}>Add</button>
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-            {options
-              .filter((o) => !optTypeId || String(o.achievement_type_id) === String(optTypeId))
-              .map((o) => {
-                const active = asBool(o.active, true);
-                const t = typeById[String(o.achievement_type_id)];
-                return (
-                  <div key={String(o.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                      <div style={{ fontWeight: 900 }}>#{String(o.label || "Option")}</div>
-                      <div style={{ opacity: 0.75, fontSize: 12 }}>Type: {String(t?.name || o.achievement_type_id)}</div>
-                      <div style={{ marginLeft: "auto", opacity: 0.85 }}>{active ? "active" : "inactive"}</div>
-                    </div>
-
-                    <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                      <input className="zombie-input" value={String(o.label || "")} onChange={(e) => setOptions((prev) => prev.map((x) => x.id === o.id ? { ...x, label: e.target.value } : x))} style={{ padding: "10px 12px", minWidth: 240 }} />
-                      <input className="zombie-input" value={String(o.sort ?? 0)} onChange={(e) => setOptions((prev) => prev.map((x) => x.id === o.id ? { ...x, sort: asInt(e.target.value, 0) } : x))} style={{ padding: "10px 12px", width: 90 }} />
-                      <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={() => saveOption(o)}>Save</button>
-                      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => toggleOptionActive(o)}>{active ? "Deactivate" : "Activate"}</button>
-                      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => hardDeleteOption(o)}>Hard Delete</button>
-                    </div>
-                  </div>
-                );
-              })}
-            {!loading && options.length === 0 ? <div style={{ opacity: 0.75 }}>No options yet.</div> : null}
+            {(optionsByType[String(selectedTypeId || "")] || []).map((o) => (
+              <div key={String(o.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <input className="zombie-input" value={String(o.label || "")} disabled={!canAdmin} onChange={(e) => setOptions((p) => p.map((x) => x.id===o.id ? { ...x, label: e.target.value } : x))} style={{ padding: "8px 10px", minWidth: 240, flex: 1 }} />
+                  <div style={{ opacity: 0.75, fontSize: 12 }}>sort</div>
+                  <input className="zombie-input" value={String(o.sort ?? 0)} disabled={!canAdmin} onChange={(e) => setOptions((p) => p.map((x) => x.id===o.id ? { ...x, sort: asInt(e.target.value, 0) } : x))} style={{ padding: "8px 10px", width: 100 }} />
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.85 }}>
+                    <input type="checkbox" checked={o.active === true} disabled={!canAdmin} onChange={(e) => setOptions((p) => p.map((x) => x.id===o.id ? { ...x, active: e.target.checked } : x))} />
+                    active
+                  </label>
+                  <button className="zombie-btn" style={{ padding: "8px 10px", fontWeight: 900 }} disabled={!canAdmin} onClick={() => saveOption(o)}>Save</button>
+                  <button className="zombie-btn" style={{ padding: "8px 10px" }} disabled={!canAdmin} onClick={() => disableOption(String(o.id))}>Disable</button>
+                </div>
+              </div>
+            ))}
+            {!loading && (!selectedTypeId || (optionsByType[String(selectedTypeId)] || []).length === 0) ? <div style={{ opacity: 0.75 }}>No options for this type yet.</div> : null}
           </div>
         </div>
       ) : null}
@@ -667,41 +669,42 @@ export default function OwnerStateAchievementsPage() {
       {tab === "access" ? (
         <div className="zombie-card" style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 900 }}>Access (Helpers)</div>
-          <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
-            Grant view/edit for the tracker page: /state/789/achievements-tracker
+          <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
+            Grant a helper Supabase user_id view/edit access for the tracker page.
           </div>
 
-          <div style={{ marginTop: 12, display: "grid", gap: 10, maxWidth: 720 }}>
-            <div style={{ fontWeight: 900 }}>Add/Update Access</div>
-            <input className="zombie-input" value={accessUserId} onChange={(e) => setAccessUserId(e.target.value)} placeholder="User ID (uuid)" style={{ padding: "10px 12px" }} />
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input type="checkbox" checked={!!accView} onChange={(e) => setAccView(e.target.checked)} />
-                can_view
-              </label>
-              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input type="checkbox" checked={!!accEdit} onChange={(e) => setAccEdit(e.target.checked)} />
-                can_edit
-              </label>
-              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input type="checkbox" checked={!!accManageTypes} onChange={(e) => setAccManageTypes(e.target.checked)} />
-                can_manage_types
-              </label>
-              <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={upsertAccess}>Save Access</button>
-            </div>
+          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <input className="zombie-input" value={newAccessUserId} onChange={(e) => setNewAccessUserId(e.target.value)} placeholder="helper user_id (UUID)" style={{ padding: "10px 12px", minWidth: 320, flex: 1 }} />
+            <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.85 }}>
+              <input type="checkbox" checked={newAccessCanView} onChange={(e) => setNewAccessCanView(e.target.checked)} />
+              can_view
+            </label>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.85 }}>
+              <input type="checkbox" checked={newAccessCanEdit} onChange={(e) => setNewAccessCanEdit(e.target.checked)} />
+              can_edit
+            </label>
+            <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} disabled={!canAdmin} onClick={upsertAccess}>Save</button>
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-            {accessRows.map((a) => (
-              <div key={String(a.id || (a.user_id || ""))} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-                <div style={{ fontWeight: 900 }}>{String(a.user_id || "user")}</div>
-                <div style={{ opacity: 0.8, fontSize: 12, marginTop: 6 }}>
-                  view={String(!!a.can_view)} • edit={String(!!a.can_edit)} • manage_types={String(!!a.can_manage_types)}
+            {access.map((a) => (
+              <div key={String(a.id || (a.user_id + "_" + a.state_code))} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+                <div style={{ fontWeight: 900 }}>user_id: {String(a.user_id || "—")}</div>
+                <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.85 }}>
+                    <input type="checkbox" checked={a.can_view === true} disabled={!canAdmin} onChange={(e) => setAccess((p) => p.map((x) => (x===a ? { ...x, can_view: e.target.checked } : x)))} />
+                    can_view
+                  </label>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.85 }}>
+                    <input type="checkbox" checked={a.can_edit === true} disabled={!canAdmin} onChange={(e) => setAccess((p) => p.map((x) => (x===a ? { ...x, can_edit: e.target.checked } : x)))} />
+                    can_edit
+                  </label>
+                  <button className="zombie-btn" style={{ padding: "8px 10px", fontWeight: 900 }} disabled={!canAdmin} onClick={() => saveAccessRow(a)}>Save</button>
+                  <button className="zombie-btn" style={{ padding: "8px 10px" }} disabled={!canAdmin} onClick={() => removeAccess(a)}>Remove</button>
                 </div>
-                <button className="zombie-btn" style={{ marginTop: 8, padding: "8px 10px" }} onClick={() => deleteAccess(a)}>Delete</button>
               </div>
             ))}
-            {!loading && accessRows.length === 0 ? <div style={{ opacity: 0.75 }}>No access rows yet.</div> : null}
+            {!loading && access.length === 0 ? <div style={{ opacity: 0.75 }}>No helper access rows yet.</div> : null}
           </div>
         </div>
       ) : null}
@@ -709,13 +712,20 @@ export default function OwnerStateAchievementsPage() {
       {tab === "export" ? (
         <div className="zombie-card" style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 900 }}>Export / Import</div>
-          <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
-            Export/import Types + Options JSON (for backup/migration between states later).
+          <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
+            Safe exports (copy JSON). Imports are intentionally limited to PATCH operations to avoid corrupting data.
           </div>
+
           <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={copyExport}>Copy Export JSON</button>
-            <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={importJson}>Import JSON</button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={seedDefaults}>Seed Defaults</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => copyJson({ version: 1, exportedUtc: nowUtc(), state_code: stateCode, types }, "types")}>Copy Types JSON</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => copyJson({ version: 1, exportedUtc: nowUtc(), state_code: stateCode, options }, "options")}>Copy Options JSON</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => copyJson({ version: 1, exportedUtc: nowUtc(), state_code: stateCode, requests }, "requests")}>Copy Requests JSON</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => copyJson({ version: 1, exportedUtc: nowUtc(), state_code: stateCode, access }, "access")}>Copy Access JSON</button>
+          </div>
+
+          <div style={{ marginTop: 12, opacity: 0.75, fontSize: 12 }}>
+            Importing full datasets is intentionally not enabled yet (to avoid duplicate/invalid rows).
+            If you want bulk-import for types/options later, we’ll add a strict validator first.
           </div>
         </div>
       ) : null}
