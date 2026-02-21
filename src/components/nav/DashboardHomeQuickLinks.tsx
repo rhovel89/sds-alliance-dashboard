@@ -6,6 +6,7 @@ import React from "react";
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
         <QuickLink icon="🏴" label="State Dashboard" to="/state" />
         <QuickLink icon="🧪" label="State 789" to="/state/789" />
+        <QuickLink icon="💬" label="State 789 Discussion" to="/state/789/discussion" />
       </div>
  * We keep the main Quick Links panel on:
  *   /dashboard/:alliance_id  (AllianceDashboardIndexPage -> AllianceQuickLinksPanel)
