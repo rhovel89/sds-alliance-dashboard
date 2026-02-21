@@ -75,6 +75,7 @@ import OwnerDiscordDefaultsPage from "../pages/owner/OwnerDiscordDefaultsPage";
 import OwnerScheduledDiscordSendsPage from "../pages/owner/OwnerScheduledDiscordSendsPage";
 import OwnerPermissionsMatrixPage from "../pages/owner/OwnerPermissionsMatrixPage";
 import OwnerScheduledSendsPage from "../pages/owner/OwnerScheduledSendsPage";
+import OwnerDirectoryEditorPage from "../pages/owner/OwnerDirectoryEditorPage";
 
 export default function AppRoutes() {
   return (

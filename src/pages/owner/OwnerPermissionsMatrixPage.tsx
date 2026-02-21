@@ -1,295 +1,108 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
+import { loadAllianceDirectory } from "../../lib/allianceDirectoryStore";
+import {
+  exportPermissionsMatrix,
+  getMatrixForScope,
+  importPermissionsMatrix,
+  loadPermissionsMatrix,
+  savePermissionsMatrix,
+  setMatrixForScope,
+  type FeatureKey,
+  type Matrix,
+  type RoleKey,
+} from "../../lib/permissionsMatrixStore";
 
-type DirItem = { id: string; code: string; name: string; state: string };
-
-type Matrix = {
-  version: 1;
-  updatedUtc: string;
-  roles: string[];                // columns
-  permissionKeys: string[];        // rows
-  global: Record<string, Record<string, boolean>>; // role -> key -> bool
-  alliances: Record<string, Record<string, Record<string, boolean>>>; // alliance -> role -> key -> bool
-};
-
-const MATRIX_KEY = "sad_permissions_matrix_v1";
-const DIR_KEY = "sad_alliance_directory_v1";
-
-function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
-function nowUtc() { return new Date().toISOString(); }
-
-const DEFAULT_ROLES = [
-  "owner",
-  "dashboard_assist",
-  "r5",
-  "r4",
-  "member",
-  "leadership",
-  "mod",
-  "state_member",
-] as const;
-
-const DEFAULT_PERMS = [
-  "tab:my_alliance",
-  "tab:state_alliance",
-  "tab:my_mail",
-  "tab:event_calendar",
-  "tab:guides",
-  "tab:hq_map",
-  "tab:permissions",
-  "tab:events_library",
-  "owner:access_requests",
-  "owner:live_ops",
-  "owner:broadcast",
-  "owner:directory_editor",
-  "owner:permissions_matrix",
-] as const;
-
-function loadDir(): DirItem[] {
-  try {
-    const raw = localStorage.getItem(DIR_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    const items = Array.isArray(parsed?.items) ? parsed.items : [];
-    return items
-      .filter((x: any) => x && x.code)
-      .map((x: any) => ({
-        id: String(x.id || uid()),
-        code: String(x.code).toUpperCase(),
-        name: String(x.name || x.code),
-        state: String(x.state || "789"),
-      }));
-  } catch {
-    return [];
-  }
-}
-
-function emptyMatrix(): Matrix {
-  const roles = [...DEFAULT_ROLES];
-  const keys = [...DEFAULT_PERMS];
-
-  const mk = (): Record<string, Record<string, boolean>> => {
-    const g: Record<string, Record<string, boolean>> = {};
-    for (const r of roles) {
-      g[r] = {};
-      for (const k of keys) g[r][k] = false;
-    }
-    // sensible defaults: owner gets everything in UI shell
-    for (const k of keys) g["owner"][k] = true;
-    return g;
-  };
-
-  return {
-    version: 1,
-    updatedUtc: nowUtc(),
-    roles,
-    permissionKeys: keys,
-    global: mk(),
-    alliances: {},
-  };
-}
-
-function loadMatrix(): Matrix {
-  try {
-    const raw = localStorage.getItem(MATRIX_KEY);
-    if (!raw) return emptyMatrix();
-    const p = JSON.parse(raw);
-    if (!p || p.version !== 1) return emptyMatrix();
-
-    const m: Matrix = {
-      version: 1,
-      updatedUtc: String(p.updatedUtc || nowUtc()),
-      roles: Array.isArray(p.roles) ? p.roles.map((x: any) => String(x)) : [...DEFAULT_ROLES],
-      permissionKeys: Array.isArray(p.permissionKeys) ? p.permissionKeys.map((x: any) => String(x)) : [...DEFAULT_PERMS],
-      global: (p.global && typeof p.global === "object") ? p.global : {},
-      alliances: (p.alliances && typeof p.alliances === "object") ? p.alliances : {},
-    };
-
-    // normalize structure (fill missing cells)
-    for (const r of m.roles) {
-      if (!m.global[r]) m.global[r] = {};
-      for (const k of m.permissionKeys) {
-        if (typeof m.global[r][k] !== "boolean") m.global[r][k] = false;
-      }
-    }
-    if (m.global["owner"]) for (const k of m.permissionKeys) m.global["owner"][k] = true;
-
-    return m;
-  } catch {
-    return emptyMatrix();
-  }
-}
-
-function saveMatrix(m: Matrix) {
-  try { localStorage.setItem(MATRIX_KEY, JSON.stringify(m)); } catch {}
+function cloneMatrix(m: Matrix): Matrix {
+  return JSON.parse(JSON.stringify(m));
 }
 
 export default function OwnerPermissionsMatrixPage() {
-  const dir = useMemo(() => loadDir(), []);
-  const [matrix, setMatrix] = useState<Matrix>(() => loadMatrix());
-  useEffect(() => saveMatrix(matrix), [matrix]);
-
+  const [tick, setTick] = useState(0);
   const [scope, setScope] = useState<"global" | "alliance">("global");
-  const [alliance, setAlliance] = useState<string>((dir[0]?.code || "WOC").toUpperCase());
+  const [allianceCode, setAllianceCode] = useState<string>("WOC");
 
-  const view = useMemo(() => {
-    if (scope === "global") return matrix.global;
-    const a = alliance.toUpperCase();
-    const existing = matrix.alliances?.[a] || null;
-    if (existing) return existing;
+  const dir = useMemo(() => loadAllianceDirectory().items || [], [tick]);
 
-    // create blank override from global
-    const clone: Record<string, Record<string, boolean>> = {};
-    for (const r of matrix.roles) {
-      clone[r] = {};
-      for (const k of matrix.permissionKeys) clone[r][k] = !!(matrix.global?.[r]?.[k]);
+  const store = useMemo(() => loadPermissionsMatrix(), [tick]);
+  const roles = store.roles || [];
+  const features = store.features || [];
+
+  const activeAllianceCode = scope === "alliance" ? (allianceCode || (dir[0]?.code || "WOC")).toUpperCase() : null;
+
+  const matrix = useMemo(() => {
+    return getMatrixForScope(store, activeAllianceCode);
+  }, [store, activeAllianceCode]);
+
+  const grouped = useMemo(() => {
+    const map: Record<string, { key: FeatureKey; label: string; group: string }[]> = {};
+    for (const f of features) {
+      const g = String((f as any).group || "Other");
+      map[g] = map[g] || [];
+      map[g].push(f as any);
     }
-    return clone;
-  }, [matrix, scope, alliance]);
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [features]);
 
-  function ensureAllianceOverride(): Record<string, Record<string, boolean>> {
-    const a = alliance.toUpperCase();
-    const next: Matrix = { ...matrix, alliances: { ...(matrix.alliances || {}) }, updatedUtc: nowUtc() };
-    if (!next.alliances[a]) {
-      const clone: Record<string, Record<string, boolean>> = {};
-      for (const r of next.roles) {
-        clone[r] = {};
-        for (const k of next.permissionKeys) clone[r][k] = !!(next.global?.[r]?.[k]);
-      }
-      next.alliances[a] = clone;
-      setMatrix(next);
-      return clone;
-    }
-    return next.alliances[a];
+  function setCell(role: RoleKey, feature: FeatureKey, val: boolean) {
+    const m2 = cloneMatrix(matrix);
+    m2[role][feature] = val;
+    const next = setMatrixForScope(store, activeAllianceCode, m2);
+    savePermissionsMatrix(next);
+    setTick((x) => x + 1);
   }
 
-  function toggleCell(role: string, key: string) {
-    setMatrix((p) => {
-      const next: Matrix = { ...p, updatedUtc: nowUtc() };
-
-      if (scope === "global") {
-        next.global = { ...(next.global || {}) };
-        next.global[role] = { ...(next.global[role] || {}) };
-        next.global[role][key] = !next.global[role][key];
-        if (role === "owner") next.global[role][key] = true; // owner stays true
-        return next;
-      }
-
-      const a = alliance.toUpperCase();
-      next.alliances = { ...(next.alliances || {}) };
-      const ov = next.alliances[a] ? { ...next.alliances[a] } : ensureAllianceOverride();
-      ov[role] = { ...(ov[role] || {}) };
-      ov[role][key] = !ov[role][key];
-      if (role === "owner") ov[role][key] = true;
-      next.alliances[a] = ov;
-      return next;
-    });
+  function toggleCell(role: RoleKey, feature: FeatureKey) {
+    const cur = !!matrix?.[role]?.[feature];
+    setCell(role, feature, !cur);
   }
 
-  const [newPerm, setNewPerm] = useState("");
-  function addPerm() {
-    const k = (newPerm || "").trim();
-    if (!k) return;
-    if (matrix.permissionKeys.includes(k)) return alert("Permission key already exists.");
-    setMatrix((p) => {
-      const next: Matrix = { ...p, updatedUtc: nowUtc(), permissionKeys: [...p.permissionKeys, k] };
-      next.global = { ...(next.global || {}) };
-      for (const r of next.roles) {
-        next.global[r] = { ...(next.global[r] || {}) };
-        next.global[r][k] = (r === "owner");
-      }
-      next.alliances = { ...(next.alliances || {}) };
-      for (const a of Object.keys(next.alliances)) {
-        const ov = { ...(next.alliances[a] || {}) };
-        for (const r of next.roles) {
-          ov[r] = { ...(ov[r] || {}) };
-          if (typeof ov[r][k] !== "boolean") ov[r][k] = next.global[r][k];
-          if (r === "owner") ov[r][k] = true;
-        }
-        next.alliances[a] = ov;
-      }
-      return next;
-    });
-    setNewPerm("");
+  function setRow(feature: FeatureKey, val: boolean) {
+    const m2 = cloneMatrix(matrix);
+    for (const r of roles) m2[r][feature] = val;
+    const next = setMatrixForScope(store, activeAllianceCode, m2);
+    savePermissionsMatrix(next);
+    setTick((x) => x + 1);
   }
 
-  function removePerm(k: string) {
-    if (!confirm(`Remove permission key "${k}"?`)) return;
-    setMatrix((p) => {
-      const next: Matrix = { ...p, updatedUtc: nowUtc(), permissionKeys: p.permissionKeys.filter((x) => x !== k) };
-      next.global = { ...(next.global || {}) };
-      for (const r of next.roles) {
-        const row = { ...(next.global[r] || {}) };
-        delete row[k];
-        next.global[r] = row;
-      }
-      next.alliances = { ...(next.alliances || {}) };
-      for (const a of Object.keys(next.alliances)) {
-        const ov = { ...(next.alliances[a] || {}) };
-        for (const r of next.roles) {
-          const row = { ...(ov[r] || {}) };
-          delete row[k];
-          ov[r] = row;
-        }
-        next.alliances[a] = ov;
-      }
-      return next;
-    });
+  function setCol(role: RoleKey, val: boolean) {
+    const m2 = cloneMatrix(matrix);
+    for (const f of features) m2[role][(f as any).key] = val;
+    const next = setMatrixForScope(store, activeAllianceCode, m2);
+    savePermissionsMatrix(next);
+    setTick((x) => x + 1);
   }
 
-  async function exportJson() {
-    const txt = JSON.stringify({ ...matrix, exportedUtc: nowUtc() }, null, 2);
-    try { await navigator.clipboard.writeText(txt); alert("Copied permissions matrix JSON."); }
+  async function copyExport() {
+    const txt = exportPermissionsMatrix();
+    try { await navigator.clipboard.writeText(txt); alert("Copied matrix export JSON."); }
     catch { window.prompt("Copy:", txt); }
   }
 
-  function importJson() {
-    const raw = window.prompt("Paste permissions matrix JSON:");
+  function doImport() {
+    const raw = window.prompt("Paste matrix export JSON:");
     if (!raw) return;
-    try {
-      const p = JSON.parse(raw);
-      if (!p || p.version !== 1) throw new Error("Invalid");
-      setMatrix(loadMatrix.call(null) as any); // reset once, then load below cleanly
-      // directly accept p, but keep owner always true
-      const m: Matrix = {
-        version: 1,
-        updatedUtc: nowUtc(),
-        roles: Array.isArray(p.roles) ? p.roles.map((x: any) => String(x)) : [...DEFAULT_ROLES],
-        permissionKeys: Array.isArray(p.permissionKeys) ? p.permissionKeys.map((x: any) => String(x)) : [...DEFAULT_PERMS],
-        global: (p.global && typeof p.global === "object") ? p.global : {},
-        alliances: (p.alliances && typeof p.alliances === "object") ? p.alliances : {},
-      };
-      for (const r of m.roles) {
-        if (!m.global[r]) m.global[r] = {};
-        for (const k of m.permissionKeys) if (typeof m.global[r][k] !== "boolean") m.global[r][k] = false;
-      }
-      if (m.global["owner"]) for (const k of m.permissionKeys) m.global["owner"][k] = true;
-      setMatrix(m);
-      alert("Imported.");
-    } catch {
-      alert("Invalid JSON.");
-    }
+    const ok = importPermissionsMatrix(raw);
+    if (!ok) return alert("Invalid JSON.");
+    setTick((x) => x + 1);
+    alert("Imported.");
   }
 
-  function clearAllianceOverride() {
-    if (scope !== "alliance") return;
-    const a = alliance.toUpperCase();
-    if (!matrix.alliances?.[a]) return alert("No override exists for this alliance.");
-    if (!confirm(`Remove ALL overrides for ${a} and revert to global?`)) return;
-    setMatrix((p) => {
-      const next: Matrix = { ...p, updatedUtc: nowUtc(), alliances: { ...(p.alliances || {}) } };
-      delete next.alliances[a];
-      return next;
-    });
+  function resetDefaults() {
+    if (!confirm("Reset matrix to defaults?")) return;
+    try { localStorage.removeItem("sad_permissions_matrix_v1"); } catch {}
+    setTick((x) => x + 1);
   }
 
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🧬 Owner — Permissions Matrix (UI shell)</h2>
+        <h2 style={{ margin: 0 }}>🧩 Owner — Permissions Matrix (UI shell)</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportJson}>Export</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importJson}>Import</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => setTick((x) => x + 1)}>Refresh</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyExport}>Export</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={doImport}>Import</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetDefaults}>Reset</button>
           <SupportBundleButton />
         </div>
       </div>
@@ -299,90 +112,89 @@ export default function OwnerPermissionsMatrixPage() {
           <div style={{ opacity: 0.75, fontSize: 12 }}>Scope</div>
           <select className="zombie-input" value={scope} onChange={(e) => setScope(e.target.value as any)} style={{ padding: "10px 12px" }}>
             <option value="global">Global</option>
-            <option value="alliance">Alliance Override</option>
+            <option value="alliance">Per-Alliance Override</option>
           </select>
 
           {scope === "alliance" ? (
             <>
               <div style={{ opacity: 0.75, fontSize: 12 }}>Alliance</div>
-              <select className="zombie-input" value={alliance} onChange={(e) => setAlliance(e.target.value.toUpperCase())} style={{ padding: "10px 12px" }}>
-                {(dir.length ? dir : [{ id: "x", code: "WOC", name: "WOC", state: "789" }]).map((d) => (
+              <select className="zombie-input" value={activeAllianceCode || ""} onChange={(e) => setAllianceCode(e.target.value.toUpperCase())} style={{ padding: "10px 12px" }}>
+                {(dir.length ? dir : [{ code: "WOC", name: "WOC", state: "789" } as any]).map((d: any) => (
                   <option key={d.code} value={d.code}>{d.code} — {d.name}</option>
                 ))}
               </select>
-
-              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={clearAllianceOverride}>Clear Override</button>
             </>
           ) : null}
 
-          <div style={{ marginLeft: "auto", opacity: 0.7, fontSize: 12 }}>
-            UI-only config. Supabase RLS still enforces actual access.
+          <div style={{ marginLeft: "auto", opacity: 0.65, fontSize: 12 }}>
+            UI-only visibility rules. Backend RLS still decides real access.
           </div>
-        </div>
-      </div>
-
-      <div className="zombie-card" style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ fontWeight: 900 }}>Permission Keys</div>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <input className="zombie-input" value={newPerm} onChange={(e) => setNewPerm(e.target.value)} placeholder="Add key (e.g. tab:guides)" style={{ padding: "10px 12px", minWidth: 260 }} />
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={addPerm}>Add</button>
-          </div>
-        </div>
-
-        <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {matrix.permissionKeys.map((k) => (
-            <button key={k} className="zombie-btn" style={{ padding: "6px 10px", fontSize: 12, opacity: 0.9 }} onClick={() => removePerm(k)}>
-              🗑 {k}
-            </button>
-          ))}
-          {matrix.permissionKeys.length === 0 ? <div style={{ opacity: 0.75 }}>No permission keys.</div> : null}
         </div>
       </div>
 
       <div className="zombie-card" style={{ marginTop: 12, overflowX: "auto" }}>
-        <div style={{ fontWeight: 900, marginBottom: 10 }}>Matrix</div>
+        <div style={{ minWidth: 980 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontWeight: 900 }}>Bulk actions</div>
+            <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={() => { for (const r of roles) setCol(r as any, true); }}>
+              Allow all by role (one-by-one)
+            </button>
+            <div style={{ opacity: 0.6, fontSize: 12 }}>
+              Tip: click any cell to toggle. Use row/column buttons for mass changes.
+            </div>
+          </div>
 
-        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: "left", padding: 10, position: "sticky", left: 0, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }}>
-                Permission
-              </th>
-              {matrix.roles.map((r) => (
-                <th key={r} style={{ textAlign: "center", padding: 10, whiteSpace: "nowrap" }}>
-                  {r}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {matrix.permissionKeys.map((k) => (
-              <tr key={k}>
-                <td style={{ padding: 10, position: "sticky", left: 0, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(6px)", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                  <div style={{ fontWeight: 900 }}>{k}</div>
-                </td>
-                {matrix.roles.map((r) => {
-                  const v = !!(view?.[r]?.[k]);
-                  const disabled = (r === "owner");
-                  return (
-                    <td key={r} style={{ textAlign: "center", padding: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                      <input
-                        type="checkbox"
-                        checked={disabled ? true : v}
-                        disabled={disabled}
-                        onChange={() => toggleCell(r, k)}
-                      />
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          {grouped.map(([group, feats]) => (
+            <div key={group} style={{ marginTop: 12 }}>
+              <div style={{ fontWeight: 900, marginBottom: 8 }}>{group}</div>
 
-        <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
-          Owner is always forced ON in the matrix.
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid rgba(255,255,255,0.12)" }}>Feature</th>
+                    {roles.map((r) => (
+                      <th key={r} style={{ textAlign: "center", padding: 8, borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
+                        <div style={{ fontWeight: 900 }}>{r}</div>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 6 }}>
+                          <button className="zombie-btn" style={{ padding: "4px 6px", fontSize: 11 }} onClick={() => setCol(r as any, true)}>All</button>
+                          <button className="zombie-btn" style={{ padding: "4px 6px", fontSize: 11 }} onClick={() => setCol(r as any, false)}>None</button>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {feats.map((f: any) => (
+                    <tr key={f.key}>
+                      <td style={{ padding: 8, borderBottom: "1px solid rgba(255,255,255,0.08)", opacity: 0.95 }}>
+                        <div style={{ fontWeight: 900 }}>{f.label}</div>
+                        <div style={{ opacity: 0.6, fontSize: 12 }}>{f.key}</div>
+                        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                          <button className="zombie-btn" style={{ padding: "4px 6px", fontSize: 11 }} onClick={() => setRow(f.key, true)}>Row all</button>
+                          <button className="zombie-btn" style={{ padding: "4px 6px", fontSize: 11 }} onClick={() => setRow(f.key, false)}>Row none</button>
+                        </div>
+                      </td>
+
+                      {roles.map((r) => {
+                        const v = !!matrix?.[r]?.[f.key];
+                        return (
+                          <td key={r + ":" + f.key} style={{ textAlign: "center", padding: 8, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                            <button
+                              className="zombie-btn"
+                              style={{ padding: "6px 8px", fontSize: 12, opacity: v ? 1 : 0.55 }}
+                              onClick={() => toggleCell(r as any, f.key)}
+                            >
+                              {v ? "✅" : "—"}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </div>
       </div>
     </div>
