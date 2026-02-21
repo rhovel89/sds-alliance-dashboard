@@ -25,11 +25,26 @@ type Template = {
 
 type TemplateStore = { version: 1; templates: Template[] };
 
+type LogItem = {
+  id: string;
+  tsUtc: string;
+  source: string; // "broadcast" | "liveops" | "state_alerts" | ...
+  allianceCode: string | null;
+  channelName: string | null;
+  channelId: string | null;
+  mentionRoles: string[];
+  mentionRoleIds: string[];
+  ok: boolean;
+  detail: string;
+};
+type LogStore = { version: 1; items: LogItem[] };
+
 const ROLE_MAP_KEY = "sad_discord_role_map_v1";
 const CHANNEL_MAP_KEY = "sad_discord_channel_map_v1";
 const DIR_KEY = "sad_alliance_directory_v1";
 const TPL_KEY = "sad_discord_broadcast_templates_v1";
 const PREFILL_KEY = "sad_broadcast_prefill_v1";
+const LOG_KEY = "sad_discord_send_log_v1";
 
 function nowUtc() { return new Date().toISOString(); }
 function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
@@ -75,6 +90,20 @@ function saveTemplates(s: TemplateStore) {
   try { localStorage.setItem(TPL_KEY, JSON.stringify(s)); } catch {}
 }
 
+function loadLog(): LogStore {
+  const s = safeJson<LogStore>(localStorage.getItem(LOG_KEY));
+  if (s && s.version === 1 && Array.isArray(s.items)) return s;
+  return { version: 1, items: [] };
+}
+
+function appendLog(item: LogItem) {
+  try {
+    const s = loadLog();
+    const next: LogStore = { version: 1, items: [item, ...(s.items || [])].slice(0, 80) };
+    localStorage.setItem(LOG_KEY, JSON.stringify(next));
+  } catch {}
+}
+
 function makeRoleLookup(roleStore: RoleMapStore, allianceCode: string | null) {
   const global = roleStore.global || {};
   const per = allianceCode ? (roleStore.alliances?.[allianceCode] || {}) : {};
@@ -101,7 +130,6 @@ function makeChannelLookup(channelStore: ChannelMapStore, allianceCode: string |
 function resolveMentions(input: string, roleLut: Record<string, string>, chanLut: Record<string, string>) {
   let text = input || "";
 
-  // {{role:Leadership}} and {{Leadership}}
   text = text.replace(/\{\{\s*role\s*:\s*([A-Za-z0-9_\- ]{1,64})\s*\}\}/g, (_m, k) => {
     const key = norm(String(k));
     const id = roleLut[key];
@@ -113,14 +141,12 @@ function resolveMentions(input: string, roleLut: Record<string, string>, chanLut
     return id ? `<@&${id}>` : `{{${String(k)}}}`;
   });
 
-  // @Leadership
   text = text.replace(/(^|[\s(])@([A-Za-z0-9_\-]{2,64})(?=$|[\s),.!?])/g, (_m, pre, k) => {
     const key = norm(String(k));
     const id = roleLut[key];
     return id ? `${pre}<@&${id}>` : `${pre}@${String(k)}`;
   });
 
-  // {{#announcements}} and {{channel:announcements}}
   text = text.replace(/\{\{\s*#([A-Za-z0-9_\-]{2,64})\s*\}\}/g, (_m, k) => {
     const key = norm(String(k));
     const id = chanLut[key];
@@ -132,7 +158,6 @@ function resolveMentions(input: string, roleLut: Record<string, string>, chanLut
     return id ? `<#${id}>` : `{{channel:${String(k)}}}`;
   });
 
-  // #announcements (only when name exists in lut)
   text = text.replace(/(^|[\s(])#([A-Za-z0-9_\-]{2,64})(?=$|[\s),.!?])/g, (_m, pre, k) => {
     const key = norm(String(k));
     const id = chanLut[key];
@@ -158,11 +183,9 @@ export default function OwnerBroadcastComposerPage() {
   const [tplName, setTplName] = useState<string>("");
   const [draft, setDraft] = useState<string>("");
 
-  // targeting controls
   const [targetChannelName, setTargetChannelName] = useState<string>("");
-  const [mentionRoleNames, setMentionRoleNames] = useState<string>(""); // comma list of role keys
+  const [mentionRoleNames, setMentionRoleNames] = useState<string>("");
 
-  // send state
   const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState<string | null>(null);
 
@@ -189,7 +212,6 @@ export default function OwnerBroadcastComposerPage() {
 
   useEffect(() => { saveTemplates(tplStore); }, [tplStore]);
 
-  // One-time prefill from Live Ops
   useEffect(() => {
     try {
       const raw = localStorage.getItem(PREFILL_KEY);
@@ -271,6 +293,7 @@ export default function OwnerBroadcastComposerPage() {
     return {
       version: 1,
       createdUtc: nowUtc(),
+      source: "broadcast",
       scope,
       allianceCode: scope === "alliance" ? String(allianceCode || "").toUpperCase() : null,
       templateName: tplName || (selectedTpl?.name || ""),
@@ -313,9 +336,39 @@ export default function OwnerBroadcastComposerPage() {
     setSendMsg(null);
     const payload = buildPayload();
 
-    // Bot-token mode REQUIRES a real channelId
     if (!payload.targetChannelId || String(payload.targetChannelId).trim() === "") {
-      setSendMsg("❌ Missing target channel ID. Add channel ID in /owner/discord-mentions, then select it here.");
+      const msg = "❌ Missing target channel ID. Add channel ID in /owner/discord-mentions, then select it here.";
+      setSendMsg(msg);
+      appendLog({
+        id: uid(),
+        tsUtc: nowUtc(),
+        source: "broadcast",
+        allianceCode: payload.allianceCode || null,
+        channelName: payload.targetChannel?.name || null,
+        channelId: payload.targetChannelId || null,
+        mentionRoles: payload.mentionRoles || [],
+        mentionRoleIds: payload.mentionRoleIds || [],
+        ok: false,
+        detail: msg,
+      });
+      return;
+    }
+
+    if (!payload.messageResolved || !String(payload.messageResolved).trim()) {
+      const msg = "❌ Message is empty.";
+      setSendMsg(msg);
+      appendLog({
+        id: uid(),
+        tsUtc: nowUtc(),
+        source: "broadcast",
+        allianceCode: payload.allianceCode || null,
+        channelName: payload.targetChannel?.name || null,
+        channelId: payload.targetChannelId || null,
+        mentionRoles: payload.mentionRoles || [],
+        mentionRoleIds: payload.mentionRoleIds || [],
+        ok: false,
+        detail: msg,
+      });
       return;
     }
 
@@ -326,8 +379,34 @@ export default function OwnerBroadcastComposerPage() {
         const e = (r as any).error;
         throw new Error(e?.message || JSON.stringify(e));
       }
-      setSendMsg("✅ Sent to Discord. Response: " + JSON.stringify((r as any).data));
+
+      appendLog({
+        id: uid(),
+        tsUtc: nowUtc(),
+        source: "broadcast",
+        allianceCode: payload.allianceCode || null,
+        channelName: payload.targetChannel?.name || null,
+        channelId: payload.targetChannelId || null,
+        mentionRoles: payload.mentionRoles || [],
+        mentionRoleIds: payload.mentionRoleIds || [],
+        ok: true,
+        detail: JSON.stringify((r as any).data),
+      });
+
+      setSendMsg("✅ Sent to Discord.");
     } catch (e: any) {
+      appendLog({
+        id: uid(),
+        tsUtc: nowUtc(),
+        source: "broadcast",
+        allianceCode: payload.allianceCode || null,
+        channelName: payload.targetChannel?.name || null,
+        channelId: payload.targetChannelId || null,
+        mentionRoles: payload.mentionRoles || [],
+        mentionRoleIds: payload.mentionRoleIds || [],
+        ok: false,
+        detail: String(e?.message || e),
+      });
       setSendMsg("❌ Send failed: " + String(e?.message || e));
     } finally {
       setSending(false);
@@ -339,12 +418,9 @@ export default function OwnerBroadcastComposerPage() {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>📣 Owner — Broadcast Composer</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/discord-mentions")}>
-            🔧 Mentions
-          </button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={refreshStores}>
-            Reload Role/Channel Maps
-          </button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/discord-mentions")}>🔧 Mentions</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/discord-send-log")}>📜 Send Log</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={refreshStores}>Reload Role/Channel Maps</button>
           <SupportBundleButton />
         </div>
       </div>
@@ -483,7 +559,7 @@ export default function OwnerBroadcastComposerPage() {
           </div>
 
           <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
-            “Send to Discord” calls Supabase Edge Function: <b>discord-broadcast</b>.
+            Send results are recorded in <b>/owner/discord-send-log</b>.
           </div>
         </div>
       </div>
