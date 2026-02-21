@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
+import { detectAllianceFromPath } from "../../utils/detectAllianceFromPath";
 
 async function isDashboardOwnerSafe(): Promise<boolean> {
   try {
