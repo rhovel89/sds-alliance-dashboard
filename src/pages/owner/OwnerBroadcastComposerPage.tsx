@@ -461,13 +461,6 @@ export default function OwnerBroadcastComposerPage() {
       window.alert("Send failed: " + String(e?.message || e));
     }
   }
-// sendNowBot shim (prevents runtime crash; wire to Edge Function later)
-
-const sendNowBot = async () => {
-  try {
-    window.alert("Send to Discord is not wired yet on this page. Use Copy Payload JSON for now.");
-  } catch {}
-};
 
 return (
     <div style={{ padding: 14 }}>
