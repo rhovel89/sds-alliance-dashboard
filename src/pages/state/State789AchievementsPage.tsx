@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
+import { State789AchievementsProgressWidget } from "../../components/state/State789AchievementsProgressWidget";
 
 type AchType = {
   id: string;
@@ -29,8 +30,9 @@ type ReqRow = {
   completed_at: string | null;
   notes: string | null;
   created_at: string;
-  state_achievement_types?: { name: string; kind: string; required_count: number } | null;
-  state_achievement_options?: { label: string } | null;
+
+  achievement_type_id: string;
+  option_id: string | null;
 };
 
 function nowUtc() { return new Date().toISOString(); }
@@ -51,13 +53,27 @@ export default function State789AchievementsPage() {
   const [options, setOptions] = useState<AchOption[]>([]);
   const [optionId, setOptionId] = useState<string>("");
 
+  // All options for mapping (no embedded joins)
+  const [allOptions, setAllOptions] = useState<AchOption[]>([]);
+  const optById = useMemo(() => {
+    const m: Record<string, AchOption> = {};
+    for (const o of allOptions) m[o.id] = o;
+    return m;
+  }, [allOptions]);
+
+  const typeById = useMemo(() => {
+    const m: Record<string, AchType> = {};
+    for (const t of types) m[t.id] = t;
+    return m;
+  }, [types]);
+
   const [playerName, setPlayerName] = useState("");
   const [allianceName, setAllianceName] = useState("");
   const [notes, setNotes] = useState("");
 
   const [myReqs, setMyReqs] = useState<ReqRow[]>([]);
 
-  async function loadTypes() {
+  async function loadTypes(): Promise<AchType[]> {
     setMsg(null);
     const r = await supabase
       .from("state_achievement_types")
@@ -66,14 +82,30 @@ export default function State789AchievementsPage() {
       .eq("active", true)
       .order("name", { ascending: true });
 
-    if (r.error) { setMsg("Load achievements failed: " + r.error.message); setTypes([]); return; }
-    setTypes((r.data as any) || []);
+    if (r.error) { setMsg("Load achievements failed: " + r.error.message); setTypes([]); return []; }
+    const data = ((r.data as any) || []) as AchType[];
+    setTypes(data);
+    return data;
   }
 
-  async function loadOptions(tid: string) {
+  async function loadAllOptionsForTypes(typeIds: string[]) {
     setMsg(null);
-    if (!tid) { setOptions([]); setOptionId(""); return; }
+    if (!typeIds.length) { setAllOptions([]); return; }
 
+    const r = await supabase
+      .from("state_achievement_options")
+      .select("id,achievement_type_id,label,sort,active")
+      .in("achievement_type_id", typeIds)
+      .eq("active", true)
+      .order("sort", { ascending: true })
+      .order("label", { ascending: true });
+
+    if (r.error) { setMsg("Load options failed: " + r.error.message); setAllOptions([]); return; }
+    setAllOptions(((r.data as any) || []) as AchOption[]);
+  }
+
+  async function loadOptionsForType(tid: string) {
+    if (!tid) { setOptions([]); setOptionId(""); return; }
     const r = await supabase
       .from("state_achievement_options")
       .select("id,achievement_type_id,label,sort,active")
@@ -83,7 +115,7 @@ export default function State789AchievementsPage() {
       .order("label", { ascending: true });
 
     if (r.error) { setMsg("Load options failed: " + r.error.message); setOptions([]); return; }
-    setOptions((r.data as any) || []);
+    setOptions(((r.data as any) || []) as AchOption[]);
   }
 
   async function loadMyReqs() {
@@ -92,19 +124,16 @@ export default function State789AchievementsPage() {
     const uid = u.data.user?.id || null;
     if (!uid) { setMyReqs([]); return; }
 
+    // IMPORTANT: NO embedded selects here (prevents PostgREST 400)
     const r = await supabase
       .from("state_achievement_requests")
-      .select(`
-        id,player_name,alliance_name,status,current_count,required_count,completed_at,notes,created_at,
-        state_achievement_types(name,kind,required_count),
-        state_achievement_options(label)
-      `)
+      .select("id,player_name,alliance_name,status,current_count,required_count,completed_at,notes,created_at,achievement_type_id,option_id")
       .eq("state_code", STATE)
       .eq("requester_user_id", uid)
       .order("created_at", { ascending: false });
 
     if (r.error) { setMsg("Load submissions failed: " + r.error.message); setMyReqs([]); return; }
-    setMyReqs((r.data as any) || []);
+    setMyReqs(((r.data as any) || []) as ReqRow[]);
   }
 
   async function submit() {
@@ -114,25 +143,18 @@ export default function State789AchievementsPage() {
     if (!pn) return setMsg("Name is required.");
     if (!an) return setMsg("Alliance name is required.");
     if (!typeId) return setMsg("Select an achievement.");
-
     if (type?.requires_option && !optionId) return setMsg("This achievement requires selecting a weapon/option.");
 
-    const u = await supabase.auth.getUser();
-    const uid = u.data.user?.id || null;
-    if (!uid) return setMsg("Not logged in.");
-
+    // Let DB defaults/triggers set requester_user_id + required_count + timestamps
     const payload: any = {
       state_code: STATE,
-      requester_user_id: uid,
       player_name: pn,
       alliance_name: an,
       achievement_type_id: typeId,
       option_id: optionId || null,
-      status: "submitted",
-      current_count: 0,
       notes: notes.trim() || null,
-      created_at: nowUtc(),
-      updated_at: nowUtc(),
+      status: "submitted",
+      current_count: 0
     };
 
     const r = await supabase.from("state_achievement_requests").insert(payload).select("id").maybeSingle();
@@ -143,17 +165,30 @@ export default function State789AchievementsPage() {
     await loadMyReqs();
   }
 
-  useEffect(() => { loadTypes(); loadMyReqs(); }, []);
-  useEffect(() => { loadOptions(typeId); }, [typeId]);
+  async function refreshAll() {
+    const t = await loadTypes();
+    await loadAllOptionsForTypes(t.map((x) => x.id));
+    await loadMyReqs();
+    await loadOptionsForType(typeId);
+  }
+
+  useEffect(() => {
+    (async () => {
+      const t = await loadTypes();
+      await loadAllOptionsForTypes(t.map((x) => x.id));
+      await loadMyReqs();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => { loadOptionsForType(typeId); }, [typeId]);
 
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>🏆 State 789 — Achievements</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => { loadTypes(); loadMyReqs(); }}>
-            Refresh
-          </button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={refreshAll}>Refresh</button>
           <SupportBundleButton />
         </div>
       </div>
@@ -164,6 +199,11 @@ export default function State789AchievementsPage() {
           <div style={{ opacity: 0.85, marginTop: 6 }}>{msg}</div>
         </div>
       ) : null}
+
+      {/* Progress tracker (will show if RLS allows; otherwise shows message) */}
+      <div style={{ marginTop: 12 }}>
+        <State789AchievementsProgressWidget />
+      </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ fontWeight: 900 }}>Submit Achievement Request</div>
@@ -184,11 +224,7 @@ export default function State789AchievementsPage() {
           {type?.requires_option ? (
             <select className="zombie-input" value={optionId} onChange={(e) => setOptionId(e.target.value)} style={{ padding: "10px 12px" }}>
               <option value="">Select Weapon/Option…</option>
-              {options.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
+              {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
             </select>
           ) : null}
 
@@ -200,27 +236,36 @@ export default function State789AchievementsPage() {
         </div>
 
         <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
-          If you chose SWP Weapon, you must select a weapon. Owner can add more achievements/weapons later.
+          SWP Weapon requires a weapon selection. Owner can add more achievements/weapons later.
         </div>
       </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ fontWeight: 900 }}>My Submissions</div>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => copyText(JSON.stringify({ version: 1, state: STATE, exportedUtc: nowUtc(), submissions: myReqs }, null, 2))}>
+          <button
+            className="zombie-btn"
+            style={{ padding: "10px 12px" }}
+            onClick={() => copyText(JSON.stringify({ version: 1, state: STATE, exportedUtc: nowUtc(), submissions: myReqs }, null, 2))}
+          >
             Export My Submissions
           </button>
         </div>
 
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
           {myReqs.map((r) => {
-            const t = r.state_achievement_types?.name || "Achievement";
-            const opt = r.state_achievement_options?.label ? (" — " + r.state_achievement_options.label) : "";
+            const t = typeById[r.achievement_type_id];
+            const tName = t?.name || "Achievement";
+            const optLabel = r.option_id ? (optById[r.option_id]?.label || "Unknown Option") : null;
+
             const prog = (r.required_count || 1) > 1 ? ` (${r.current_count || 0}/${r.required_count})` : "";
             const done = r.status === "completed" ? " ✅" : "";
+
             return (
               <div key={r.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-                <div style={{ fontWeight: 900 }}>{t}{opt}{prog}{done}</div>
+                <div style={{ fontWeight: 900 }}>
+                  {tName}{optLabel ? (" — " + optLabel) : ""}{prog}{done}
+                </div>
                 <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
                   Status: {r.status} • Submitted: {r.created_at}
                 </div>
