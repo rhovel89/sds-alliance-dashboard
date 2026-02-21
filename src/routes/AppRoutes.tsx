@@ -83,6 +83,7 @@ import OwnerAchievementAccessPage from "../pages/owner/OwnerAchievementAccessPag
 import OwnerStateAchievementsPage from "../pages/owner/OwnerStateAchievementsPage";
 import State789AchievementsTrackerPage from "../pages/state/State789AchievementsTrackerPage";
 import State789AchievementsProgressPage from "../pages/state/State789AchievementsProgressPage";
+import State789AchievementsFormPage from "../pages/state/State789AchievementsFormPage";
 
 export default function AppRoutes() {
   return (
@@ -162,6 +163,7 @@ export default function AppRoutes() {
       <Route path="/owner/state-achievements" element={<RequireAdmin><OwnerStateAchievementsPage /></RequireAdmin>} />
       <Route path="/state/789/achievements-tracker" element={<State789AchievementsTrackerPage />} />
       <Route path="/state/789/achievements-progress" element={<State789AchievementsProgressPage />} />
+      <Route path="/state/789/achievements-form" element={<State789AchievementsFormPage />} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
