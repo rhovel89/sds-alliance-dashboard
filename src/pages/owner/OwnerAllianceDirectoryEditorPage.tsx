@@ -1,291 +1,208 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 
-type AllianceItem = {
+type DirItem = {
   id: string;
   code: string;
   name: string;
   state: string;
+  createdUtc: string;
+  updatedUtc: string;
 };
 
 type Store = {
   version: 1;
   updatedUtc: string;
-  items: AllianceItem[];
+  items: DirItem[];
 };
 
 const KEY = "sad_alliance_directory_v1";
 
-function uid() {
-  return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
-}
-
-function nowUtc() {
-  return new Date().toISOString();
-}
+function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
+function nowUtc() { return new Date().toISOString(); }
 
 function loadStore(): Store {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const s = JSON.parse(raw) as Store;
-      if (s && s.version === 1 && Array.isArray(s.items)) return s;
+      const s = JSON.parse(raw) as any;
+      const items = Array.isArray(s?.items) ? s.items : [];
+      return {
+        version: 1,
+        updatedUtc: String(s?.updatedUtc || nowUtc()),
+        items: items.map((x: any) => ({
+          id: String(x?.id || uid()),
+          code: String(x?.code || "").toUpperCase(),
+          name: String(x?.name || x?.code || ""),
+          state: String(x?.state || "789"),
+          createdUtc: String(x?.createdUtc || nowUtc()),
+          updatedUtc: String(x?.updatedUtc || nowUtc()),
+        })).filter((x: DirItem) => x.code),
+      };
     }
   } catch {}
   return { version: 1, updatedUtc: nowUtc(), items: [] };
 }
 
 function saveStore(s: Store) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(s));
-  } catch {}
+  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {}
 }
 
 export default function OwnerAllianceDirectoryEditorPage() {
-  const nav = useNavigate();
   const [store, setStore] = useState<Store>(() => loadStore());
+  useEffect(() => saveStore(store), [store]);
 
-  const [q, setQ] = useState("");
-  const [editId, setEditId] = useState<string | null>(null);
-
-  const editing = useMemo(
-    () => (editId ? store.items.find((x) => x.id === editId) || null : null),
-    [editId, store.items]
-  );
+  const items = useMemo(() => {
+    const arr = (store.items || []).slice();
+    arr.sort((a, b) => a.code.localeCompare(b.code));
+    return arr;
+  }, [store.items]);
 
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [state, setState] = useState("789");
 
-  useEffect(() => {
-    saveStore(store);
-  }, [store]);
+  const [editId, setEditId] = useState<string | null>(null);
+  const editing = useMemo(() => (editId ? items.find((x) => x.id === editId) || null : null), [editId, items]);
 
   useEffect(() => {
-    if (!editing) {
-      setCode("");
-      setName("");
-      setState("789");
-    } else {
-      setCode(String(editing.code || "").toUpperCase());
-      setName(String(editing.name || ""));
-      setState(String(editing.state || "789"));
-    }
+    if (!editing) return;
+    setCode(editing.code || "");
+    setName(editing.name || "");
+    setState(editing.state || "789");
   }, [editId]);
 
-  const filtered = useMemo(() => {
-    const qq = q.trim().toLowerCase();
-    if (!qq) return store.items;
-    return store.items.filter((x) => {
-      return (
-        String(x.code || "").toLowerCase().includes(qq) ||
-        String(x.name || "").toLowerCase().includes(qq) ||
-        String(x.state || "").toLowerCase().includes(qq)
-      );
-    });
-  }, [store.items, q]);
-
-  function clearForm() {
+  function resetForm() {
     setEditId(null);
     setCode("");
     setName("");
     setState("789");
   }
 
-  function save() {
-    const c = code.trim().toUpperCase();
-    if (!c) return window.alert("Alliance code is required.");
-    const n = name.trim() || c;
-    const st = state.trim() || "789";
+  function upsert() {
+    const c = (code || "").trim().toUpperCase();
+    if (!c) return alert("Alliance code required (e.g. WOC).");
+    if (c.length > 12) return alert("Code too long.");
 
-    const next: Store = { ...store, updatedUtc: nowUtc(), items: [...(store.items || [])] };
+    const n = (name || "").trim() || c;
+    const st = (state || "").trim() || "789";
+    const now = nowUtc();
 
-    if (!editId) {
-      if (next.items.some((x) => String(x.code).toUpperCase() === c)) {
-        return window.alert("That alliance code already exists.");
+    setStore((p) => {
+      const next: Store = { version: 1, updatedUtc: now, items: [...(p.items || [])] };
+
+      // If editing, update by id; else upsert by code
+      if (editId) {
+        const idx = next.items.findIndex((x) => x.id === editId);
+        if (idx >= 0) {
+          next.items[idx] = { ...next.items[idx], code: c, name: n, state: st, updatedUtc: now };
+          return next;
+        }
       }
-      next.items.unshift({ id: uid(), code: c, name: n, state: st });
-      setStore(next);
-      return;
-    }
 
-    next.items = next.items.map((x) => (x.id === editId ? { ...x, code: c, name: n, state: st } : x));
-    setStore(next);
+      const idx2 = next.items.findIndex((x) => x.code === c);
+      if (idx2 >= 0) {
+        next.items[idx2] = { ...next.items[idx2], name: n, state: st, updatedUtc: now };
+      } else {
+        next.items.unshift({ id: uid(), code: c, name: n, state: st, createdUtc: now, updatedUtc: now });
+      }
+      return next;
+    });
+
+    resetForm();
   }
 
-  function del(id: string) {
-    if (!window.confirm("Delete this alliance from the directory (UI-only)?")) return;
-    const next: Store = { ...store, updatedUtc: nowUtc(), items: (store.items || []).filter((x) => x.id !== id) };
-    setStore(next);
-    if (editId === id) clearForm();
+  function remove(id: string) {
+    const row = items.find((x) => x.id === id);
+    if (!row) return;
+    if (!confirm(`Delete alliance ${row.code}?`)) return;
+
+    setStore((p) => ({ version: 1, updatedUtc: nowUtc(), items: (p.items || []).filter((x) => x.id !== id) }));
+    if (editId === id) resetForm();
   }
 
-  async function copyJson() {
-    const txt = JSON.stringify(store, null, 2);
-    try {
-      await navigator.clipboard.writeText(txt);
-      window.alert("Copied directory JSON.");
-    } catch {
-      window.prompt("Copy JSON:", txt);
-    }
+  function pickEdit(id: string) {
+    setEditId(id);
+  }
+
+  async function exportJson() {
+    const txt = JSON.stringify({ ...store, exportedUtc: nowUtc() }, null, 2);
+    try { await navigator.clipboard.writeText(txt); alert("Copied directory JSON."); }
+    catch { window.prompt("Copy:", txt); }
   }
 
   function importJson() {
     const raw = window.prompt("Paste directory JSON:");
     if (!raw) return;
     try {
-      const parsed = JSON.parse(raw) as any;
-      const items = Array.isArray(parsed?.items) ? parsed.items : [];
-      const cleaned: AllianceItem[] = items
-        .filter((x: any) => x && x.code)
-        .map((x: any) => ({
-          id: String(x.id || uid()),
-          code: String(x.code).toUpperCase(),
-          name: String(x.name || x.code),
-          state: String(x.state || "789"),
-        }));
-      setStore({ version: 1, updatedUtc: nowUtc(), items: cleaned });
-      window.alert("Imported directory.");
+      const p = JSON.parse(raw);
+      if (p?.version !== 1 || !Array.isArray(p.items)) throw new Error("Invalid");
+      const now = nowUtc();
+      const cleaned = (p.items as any[]).map((x) => ({
+        id: String(x?.id || uid()),
+        code: String(x?.code || "").toUpperCase(),
+        name: String(x?.name || x?.code || ""),
+        state: String(x?.state || "789"),
+        createdUtc: String(x?.createdUtc || now),
+        updatedUtc: String(x?.updatedUtc || now),
+      })).filter((x) => x.code);
+      setStore({ version: 1, updatedUtc: now, items: cleaned });
+      resetForm();
+      alert("Imported.");
     } catch {
-      window.alert("Invalid JSON.");
+      alert("Invalid JSON.");
     }
   }
 
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🗂️ Owner — Alliance Directory Editor (UI-only)</h2>
+        <h2 style={{ margin: 0 }}>🧟 Owner — Alliance Directory Editor</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/alliances")}>
-            Open /alliances
-          </button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/jump")}>
-            Open /owner/jump
-          </button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyJson}>
-            Copy JSON
-          </button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importJson}>
-            Import JSON
-          </button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportJson}>Export</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importJson}>Import</button>
           <SupportBundleButton />
         </div>
       </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <input
-            className="zombie-input"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search code/name/state…"
-            style={{ padding: "10px 12px", minWidth: 220 }}
-          />
-          <div style={{ opacity: 0.75, fontSize: 12 }}>Count: {store.items.length}</div>
-          <div style={{ opacity: 0.75, fontSize: 12 }}>Updated UTC: {store.updatedUtc}</div>
+        <div style={{ fontWeight: 900 }}>{editing ? `Edit ${editing.code}` : "Add / Update Alliance"}</div>
+
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <input className="zombie-input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Code (WOC)" style={{ padding: "10px 12px", minWidth: 140 }} />
+          <input className="zombie-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name (War of...)" style={{ padding: "10px 12px", minWidth: 240, flex: 1 }} />
+          <input className="zombie-input" value={state} onChange={(e) => setState(e.target.value)} placeholder="State (789)" style={{ padding: "10px 12px", minWidth: 140 }} />
+
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={upsert}>{editing ? "Save" : "Add/Update"}</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetForm}>Clear</button>
+
+          <div style={{ marginLeft: "auto", opacity: 0.7, fontSize: 12 }}>
+            Stored in localStorage: {KEY}
+          </div>
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1.1fr)", gap: 12 }}>
-        <div className="zombie-card">
-          <div style={{ fontWeight: 900 }}>Directory</div>
-          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-            {filtered.map((x) => {
-              const sel = x.id === editId;
-              return (
-                <div
-                  key={x.id}
-                  onClick={() => setEditId(x.id)}
-                  style={{
-                    cursor: "pointer",
-                    padding: 10,
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    background: sel ? "rgba(120,255,120,0.10)" : "rgba(0,0,0,0.20)",
-                  }}
-                >
-                  <div style={{ fontWeight: 900 }}>{x.code}</div>
-                  <div style={{ opacity: 0.85, marginTop: 4 }}>{x.name}</div>
-                  <div style={{ opacity: 0.65, fontSize: 12, marginTop: 4 }}>State: {x.state}</div>
+      <div className="zombie-card" style={{ marginTop: 12 }}>
+        <div style={{ fontWeight: 900 }}>Alliances ({items.length})</div>
 
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                    <button
-                      className="zombie-btn"
-                      style={{ padding: "6px 8px", fontSize: 12 }}
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        nav("/dashboard/" + x.code);
-                      }}
-                    >
-                      Open Dashboard
-                    </button>
-                    <button
-                      className="zombie-btn"
-                      style={{ padding: "6px 8px", fontSize: 12 }}
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        del(x.id);
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            {filtered.length === 0 ? <div style={{ opacity: 0.75 }}>No matches.</div> : null}
-          </div>
-        </div>
-
-        <div className="zombie-card">
-          <div style={{ fontWeight: 900 }}>{editing ? "Edit Alliance" : "Add Alliance"}</div>
-
-          <div style={{ marginTop: 10 }}>
-            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Code</div>
-            <input
-              className="zombie-input"
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="WOC"
-              style={{ width: "100%", padding: "10px 12px" }}
-            />
-          </div>
-
-          <div style={{ marginTop: 10 }}>
-            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Name</div>
-            <input
-              className="zombie-input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Alliance name…"
-              style={{ width: "100%", padding: "10px 12px" }}
-            />
-          </div>
-
-          <div style={{ marginTop: 10 }}>
-            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>State</div>
-            <input
-              className="zombie-input"
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-              placeholder="789"
-              style={{ width: "100%", padding: "10px 12px" }}
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={save}>
-              Save
-            </button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={clearForm}>
-              Clear
-            </button>
-          </div>
-
-          <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
-            UI-only. Later we’ll store this in Supabase with RLS.
-          </div>
+        <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+          {items.map((a) => (
+            <div key={a.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ fontWeight: 900, fontSize: 16 }}>{a.code}</div>
+                <div style={{ opacity: 0.85 }}>{a.name}</div>
+                <div style={{ marginLeft: "auto", opacity: 0.75, fontSize: 12 }}>State: {a.state}</div>
+              </div>
+              <div style={{ marginTop: 6, opacity: 0.65, fontSize: 12 }}>
+                Updated: {a.updatedUtc}
+              </div>
+              <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={() => pickEdit(a.id)}>Edit</button>
+                <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={() => remove(a.id)}>Delete</button>
+              </div>
+            </div>
+          ))}
+          {items.length === 0 ? <div style={{ opacity: 0.75 }}>No alliances yet. Add one above.</div> : null}
         </div>
       </div>
     </div>

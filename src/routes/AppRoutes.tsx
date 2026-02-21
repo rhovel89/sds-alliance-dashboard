@@ -144,6 +144,7 @@ export default function AppRoutes() {
       <Route path="/owner/discord-test-send" element={<RequireAdmin><OwnerDiscordTestSendPage /></RequireAdmin>} />
       <Route path="/owner/discord-defaults" element={<RequireAdmin><OwnerDiscordDefaultsPage /></RequireAdmin>} />
       <Route path="/owner/scheduled-sends" element={<RequireAdmin><OwnerScheduledDiscordSendsPage /></RequireAdmin>} />
+      <Route path="/owner/directory-editor" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );

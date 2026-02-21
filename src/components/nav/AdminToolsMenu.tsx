@@ -15,6 +15,7 @@ const OWNER_BUTTONS: Btn[] = [
   { emoji: "🧩", label: "Permissions Matrix (shell)", to: "/owner/permissions-matrix" },
   { emoji: "✅", label: "One-click Approve + Provision", to: "/owner/oneclick-provision" },
   { emoji: "🎯", label: "Event Types Library", to: "/owner/event-types-library" },
+{ emoji: "📚", label: "Directory Editor", to: "/owner/directory-editor" },
 ];
 
 async function safeRpcBool(name: string): Promise<boolean> {
