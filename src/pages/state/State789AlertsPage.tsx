@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
+import { sendDiscordBot } from "../../lib/discordEdgeSend";
 
 type RoleMapStore = {
   version: 1;
@@ -323,7 +324,17 @@ export default function State789AlertsPage() {
   }, [targetChannelName, chanLut]);
 
   const mentionRoles = useMemo(() => {
-    return (mentionRoleNames || "")
+      async function sendNowBot() {
+    try {
+      if (!resolvedChannelId) return window.alert("Set a channel WITH an ID first (Owner → Discord Mentions).");
+      const r = await sendDiscordBot({ mode: "bot", channelId: resolvedChannelId, content: payloadResolved });
+      if (!r.ok) return window.alert("Send failed: " + r.error);
+      window.alert("✅ Sent to Discord (bot).");
+    } catch (e: any) {
+      window.alert("Send failed: " + String(e?.message || e));
+    }
+  }
+return (mentionRoleNames || "")
       .split(",")
       .map((x) => x.trim())
       .filter(Boolean);
@@ -542,6 +553,7 @@ export default function State789AlertsPage() {
             <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyPayloadJson} disabled={!alertToSend}>
                 Copy Payload JSON
+                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendNowBot} disabled={!alertToSend}>Send Now (Bot)</button>
               </button>
               <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolvedMessage} disabled={!alertToSend}>
                 Copy Discord-ready Message
