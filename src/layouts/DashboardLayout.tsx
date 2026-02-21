@@ -1,20 +1,38 @@
 import React from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation, useParams } from "react-router-dom";
 import AuthRedirector from "../components/auth/AuthRedirector";
+import AllianceSidebarTabs from "../components/nav/AllianceSidebarTabs";
 
-type Props = { children?: React.ReactNode };
+type Params = { alliance_id?: string };
 
-export default function DashboardLayout({ children }: Props) {
+export default function DashboardLayout() {
+  const loc = useLocation();
+  const { alliance_id } = useParams<Params>();
+
+  const path = loc.pathname || "";
+  const isAllianceArea = path.startsWith("/dashboard/") && !!alliance_id && path !== "/dashboard";
+
   return (
     <div className="dashboard-layout">
-      {/* Keeps session flow consistent (was used throughout the app) */}
       <AuthRedirector />
 
-      {/* Restores ALL top-level UI controls (Admin Tools, badge, theme, etc) */}
+      {isAllianceArea ? (
+        <div style={{ display: "flex", gap: 18, alignItems: "stretch" }}>
+          <aside style={{ width: 240, minWidth: 240 }}>
+            <div className="zombie-card" style={{ padding: 12 }}>
+              <AllianceSidebarTabs allianceCode={String(alliance_id || "")} />
+            </div>
+          </aside>
 
-      <main className="dashboard-main">
-        {children ?? <Outlet />}
-      </main>
+          <main className="dashboard-main" style={{ flex: 1 }}>
+            <Outlet />
+          </main>
+        </div>
+      ) : (
+        <main className="dashboard-main">
+          <Outlet />
+        </main>
+      )}
     </div>
   );
 }
