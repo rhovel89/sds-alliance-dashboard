@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
+import { supabase } from "../../lib/supabaseClient";
 
 type ChecklistItem = { id: string; text: string; done: boolean; createdUtc: string };
 
@@ -29,13 +30,42 @@ type Template = {
 
 type TemplateStore = { version: 1; templates: Template[] };
 
+type RoleMapStore = {
+  version: 1;
+  global: Record<string, string>;
+  alliances: Record<string, Record<string, string>>;
+};
+
+type ChannelEntry = { id: string; name: string; channelId: string; createdUtc: string };
+type ChannelMapStore = { version: 1; global: ChannelEntry[]; alliances: Record<string, ChannelEntry[]> };
+
+type LogItem = {
+  id: string;
+  tsUtc: string;
+  source: "liveops";
+  allianceCode: string | null;
+  channelName: string | null;
+  channelId: string | null;
+  mentionRoles: string[];
+  mentionRoleIds: string[];
+  ok: boolean;
+  detail: string;
+};
+
+type LogStore = { version: 1; items: LogItem[] };
+
 const KEY = "sad_live_ops_v1";
 const DIR_KEY = "sad_alliance_directory_v1";
 const PREFILL_KEY = "sad_broadcast_prefill_v1";
 const TPL_KEY = "sad_discord_broadcast_templates_v1";
 
+const ROLE_MAP_KEY = "sad_discord_role_map_v1";
+const CHANNEL_MAP_KEY = "sad_discord_channel_map_v1";
+const LOG_KEY = "sad_discord_send_log_v1";
+
 function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
 function nowUtc() { return new Date().toISOString(); }
+function norm(s: any) { return String(s || "").trim().toLowerCase(); }
 
 function loadDir(): DirItem[] {
   try {
@@ -66,6 +96,44 @@ function loadTemplates(): Template[] {
   } catch {
     return [];
   }
+}
+
+function loadRoleStore(): RoleMapStore {
+  try {
+    const raw = localStorage.getItem(ROLE_MAP_KEY);
+    if (!raw) return { version: 1, global: {}, alliances: {} };
+    const s = JSON.parse(raw) as RoleMapStore;
+    if (s && s.version === 1) return s;
+  } catch {}
+  return { version: 1, global: {}, alliances: {} };
+}
+
+function loadChannelStore(): ChannelMapStore {
+  try {
+    const raw = localStorage.getItem(CHANNEL_MAP_KEY);
+    if (!raw) return { version: 1, global: [], alliances: {} };
+    const s = JSON.parse(raw) as ChannelMapStore;
+    if (s && s.version === 1) return s;
+  } catch {}
+  return { version: 1, global: [], alliances: {} };
+}
+
+function loadLog(): LogStore {
+  try {
+    const raw = localStorage.getItem(LOG_KEY);
+    if (!raw) return { version: 1, items: [] };
+    const s = JSON.parse(raw) as LogStore;
+    if (s && s.version === 1 && Array.isArray(s.items)) return s;
+  } catch {}
+  return { version: 1, items: [] };
+}
+
+function appendLog(item: LogItem) {
+  try {
+    const s = loadLog();
+    const next: LogStore = { version: 1, items: [item, ...(s.items || [])].slice(0, 50) };
+    localStorage.setItem(LOG_KEY, JSON.stringify(next));
+  } catch {}
 }
 
 function load(): Store {
@@ -144,6 +212,69 @@ function applyOpsTokens(template: string, opLabel: string, opUtc: string, opLoca
     .replace(/\{\{\s*checklist\s*\}\}/g, checklist || "- (none)");
 }
 
+function makeRoleLookup(roleStore: RoleMapStore, allianceCode: string | null) {
+  const global = roleStore.global || {};
+  const per = allianceCode ? (roleStore.alliances?.[allianceCode] || {}) : {};
+  const out: Record<string, string> = {};
+  for (const k of Object.keys(global)) out[norm(k)] = String(global[k] || "");
+  for (const k of Object.keys(per)) out[norm(k)] = String(per[k] || "");
+  return out;
+}
+
+function makeChannelLookup(channelStore: ChannelMapStore, allianceCode: string | null) {
+  const out: Record<string, string> = {};
+  const addList = (lst: ChannelEntry[] | undefined) => {
+    for (const c of lst || []) {
+      const nm = norm(String(c.name || ""));
+      const id = String(c.channelId || "").trim();
+      if (nm) out[nm] = id;
+    }
+  };
+  addList(channelStore.global);
+  if (allianceCode) addList(channelStore.alliances?.[allianceCode]);
+  return out;
+}
+
+function resolveMentions(input: string, roleLut: Record<string, string>, chanLut: Record<string, string>) {
+  let text = input || "";
+
+  text = text.replace(/\{\{\s*role\s*:\s*([A-Za-z0-9_\- ]{1,64})\s*\}\}/g, (_m, k) => {
+    const key = norm(String(k));
+    const id = roleLut[key];
+    return id ? `<@&${id}>` : `{{role:${String(k)}}}`;
+  });
+  text = text.replace(/\{\{\s*([A-Za-z0-9_\- ]{1,64})\s*\}\}/g, (_m, k) => {
+    const key = norm(String(k));
+    const id = roleLut[key];
+    return id ? `<@&${id}>` : `{{${String(k)}}}`;
+  });
+
+  text = text.replace(/(^|[\s(])@([A-Za-z0-9_\-]{2,64})(?=$|[\s),.!?])/g, (_m, pre, k) => {
+    const key = norm(String(k));
+    const id = roleLut[key];
+    return id ? `${pre}<@&${id}>` : `${pre}@${String(k)}`;
+  });
+
+  text = text.replace(/\{\{\s*#([A-Za-z0-9_\-]{2,64})\s*\}\}/g, (_m, k) => {
+    const key = norm(String(k));
+    const id = chanLut[key];
+    return id ? `<#${id}>` : `{{#${String(k)}}}`;
+  });
+  text = text.replace(/\{\{\s*channel\s*:\s*([A-Za-z0-9_\-]{2,64})\s*\}\}/g, (_m, k) => {
+    const key = norm(String(k));
+    const id = chanLut[key];
+    return id ? `<#${id}>` : `{{channel:${String(k)}}}`;
+  });
+
+  text = text.replace(/(^|[\s(])#([A-Za-z0-9_\-]{2,64})(?=$|[\s),.!?])/g, (_m, pre, k) => {
+    const key = norm(String(k));
+    const id = chanLut[key];
+    return id ? `${pre}<#${id}>` : `${pre}#${String(k)}`;
+  });
+
+  return text;
+}
+
 export default function OwnerLiveOpsPage() {
   const nav = useNavigate();
   const [store, setStore] = useState<Store>(() => load());
@@ -151,6 +282,15 @@ export default function OwnerLiveOpsPage() {
 
   const [dir, setDir] = useState<DirItem[]>(() => loadDir());
   const [templates, setTemplates] = useState<Template[]>(() => loadTemplates());
+
+  const [roleStore, setRoleStore] = useState<RoleMapStore>(() => loadRoleStore());
+  const [chanStore, setChanStore] = useState<ChannelMapStore>(() => loadChannelStore());
+
+  // NEW send controls
+  const [targetChannelName, setTargetChannelName] = useState<string>("");
+  const [mentionRoleNames, setMentionRoleNames] = useState<string>(""); // comma list
+  const [sending, setSending] = useState(false);
+  const [sendMsg, setSendMsg] = useState<string | null>(null);
 
   useEffect(() => save(store), [store]);
 
@@ -184,43 +324,41 @@ export default function OwnerLiveOpsPage() {
     return filteredTemplates.find((t) => t.id === store.selectedBroadcastTemplateId) || null;
   }, [filteredTemplates, store.selectedBroadcastTemplateId]);
 
-  function generateMessage() {
+  const roleLut = useMemo(() => makeRoleLookup(roleStore, alliance), [roleStore, alliance]);
+  const chanLut = useMemo(() => makeChannelLookup(chanStore, alliance), [chanStore, alliance]);
+  const channelKeys = useMemo(() => Object.keys(chanLut || {}).sort(), [chanLut]);
+  const roleKeys = useMemo(() => Object.keys(roleLut || {}).sort(), [roleLut]);
+
+  function generateMessageRaw() {
     const base =
       store.templateMode === "broadcast"
         ? (selectedTpl?.body || store.announcementTemplate)
         : store.announcementTemplate;
 
-    // Always apply op tokens if present in template
     const msg = applyOpsTokens(base, store.label || "Op", utcString, localString, checklistText);
-
-    // If template didn't include checklist token, add it automatically at bottom (small helper)
-    if ((base || "").indexOf("{{checklist}}") < 0) {
-      return msg + "\n\n✅ Checklist:\n" + checklistText + "\n";
-    }
+    if ((base || "").indexOf("{{checklist}}") < 0) return msg + "\n\n✅ Checklist:\n" + checklistText + "\n";
     return msg;
   }
 
-  async function copyAnnouncement() {
-    const msg = generateMessage();
-    try { await navigator.clipboard.writeText(msg); alert("Copied announcement (with placeholders)."); }
-    catch { window.prompt("Copy announcement:", msg); }
+  const messageResolved = useMemo(() => resolveMentions(generateMessageRaw(), roleLut, chanLut), [store, selectedTpl, roleLut, chanLut, tick]);
+
+  async function copyMessage() {
+    try { await navigator.clipboard.writeText(messageResolved); alert("Copied Discord-ready message."); }
+    catch { window.prompt("Copy:", messageResolved); }
   }
 
   function openInBroadcast() {
-    const msg = generateMessage();
     const payload = {
       version: 1,
       createdUtc: nowUtc(),
       scope: "alliance",
       allianceCode: alliance,
       templateName: (store.templateMode === "broadcast" && selectedTpl) ? selectedTpl.name : ("LiveOps: " + (store.label || "Op")),
-      body: msg,
+      body: generateMessageRaw(),
     };
     try { localStorage.setItem(PREFILL_KEY, JSON.stringify(payload)); } catch {}
     nav("/owner/broadcast");
   }
-
-  const [newItem, setNewItem] = useState("");
 
   function addItem(text: string) {
     const t = (text || "").trim();
@@ -249,33 +387,83 @@ export default function OwnerLiveOpsPage() {
     }));
   }
 
-  async function exportJson() {
-    const txt = JSON.stringify({ ...store, exportedUtc: nowUtc() }, null, 2);
-    try { await navigator.clipboard.writeText(txt); alert("Copied Live Ops export JSON."); }
-    catch { window.prompt("Copy:", txt); }
-  }
+  async function sendToDiscord() {
+    setSendMsg(null);
 
-  function importJson() {
-    const raw = window.prompt("Paste Live Ops export JSON:");
-    if (!raw) return;
+    const chKey = norm(targetChannelName);
+    const targetChannelId = chKey ? (chanLut[chKey] || "") : "";
+    if (!targetChannelId) {
+      setSendMsg("❌ Missing channel ID. Add it in /owner/discord-mentions, then select the channel here.");
+      return;
+    }
+
+    const roles = mentionRoleNames.split(",").map((x) => x.trim()).filter(Boolean);
+    const roleIds = roles.map((r) => roleLut[norm(r)] || "").filter(Boolean);
+
+    const payload = {
+      version: 1,
+      createdUtc: nowUtc(),
+      source: "liveops",
+      allianceCode: alliance,
+      targetChannelId,
+      mentionRoles: roles,
+      mentionRoleIds: roleIds,
+      messageResolved,
+    };
+
+    setSending(true);
     try {
-      const p = JSON.parse(raw) as Store;
-      if (!p || p.version !== 1) throw new Error("Invalid");
-      setStore({ ...p, updatedUtc: nowUtc(), targetAlliance: String(p.targetAlliance || "WOC").toUpperCase() });
-      alert("Imported.");
-    } catch {
-      alert("Invalid JSON.");
+      const r = await supabase.functions.invoke("discord-broadcast", { body: payload as any });
+      if ((r as any).error) {
+        const e = (r as any).error;
+        throw new Error(e?.message || JSON.stringify(e));
+      }
+
+      appendLog({
+        id: uid(),
+        tsUtc: nowUtc(),
+        source: "liveops",
+        allianceCode: alliance,
+        channelName: targetChannelName || null,
+        channelId: targetChannelId || null,
+        mentionRoles: roles,
+        mentionRoleIds: roleIds,
+        ok: true,
+        detail: JSON.stringify((r as any).data),
+      });
+
+      setSendMsg("✅ Sent to Discord.");
+    } catch (e: any) {
+      appendLog({
+        id: uid(),
+        tsUtc: nowUtc(),
+        source: "liveops",
+        allianceCode: alliance,
+        channelName: targetChannelName || null,
+        channelId: targetChannelId || null,
+        mentionRoles: roles,
+        mentionRoleIds: roleIds,
+        ok: false,
+        detail: String(e?.message || e),
+      });
+
+      setSendMsg("❌ Send failed: " + String(e?.message || e));
+    } finally {
+      setSending(false);
     }
   }
+
+  const [newItem, setNewItem] = useState("");
 
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🧟 Owner — Live Ops (UI-only)</h2>
+        <h2 style={{ margin: 0 }}>🧟 Owner — Live Ops</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => setTemplates(loadTemplates())}>Reload Templates</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportJson}>Export</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importJson}>Import</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => { setTemplates(loadTemplates()); setRoleStore(loadRoleStore()); setChanStore(loadChannelStore()); }}>
+            Reload Templates/Maps
+          </button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/discord-send-log")}>📜 Send Log</button>
           <SupportBundleButton />
         </div>
       </div>
@@ -298,7 +486,7 @@ export default function OwnerLiveOpsPage() {
 
           <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={openInBroadcast}>Open in Broadcast</button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyAnnouncement}>Copy Message</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyMessage}>Copy Message</button>
           </div>
         </div>
 
@@ -327,10 +515,35 @@ export default function OwnerLiveOpsPage() {
               </select>
             </>
           ) : null}
+        </div>
 
-          <div style={{ opacity: 0.7, fontSize: 12 }}>
-            Tip: use {"{{opLabel}}"} {"{{opUtc}}"} {"{{opLocal}}"} {"{{checklist}}"} inside templates.
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)" }}>
+          <div style={{ fontWeight: 900 }}>Send to Discord (direct)</div>
+
+          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ opacity: 0.75, fontSize: 12 }}>Channel</div>
+            <select className="zombie-input" value={targetChannelName} onChange={(e) => setTargetChannelName(e.target.value)} style={{ padding: "10px 12px", minWidth: 240 }}>
+              <option value="">(select)</option>
+              {channelKeys.map((k) => <option key={k} value={k}>{k}{chanLut[k] ? "" : " (no id yet)"}</option>)}
+            </select>
+
+            <div style={{ opacity: 0.75, fontSize: 12 }}>Mention Roles (comma)</div>
+            <input className="zombie-input" value={mentionRoleNames} onChange={(e) => setMentionRoleNames(e.target.value)} placeholder="Leadership,R5" style={{ padding: "10px 12px", minWidth: 240 }} />
+
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendToDiscord} disabled={sending}>
+              {sending ? "Sending…" : "🚀 Send"}
+            </button>
+
+            <div style={{ opacity: 0.75, fontSize: 12 }}>
+              Mapped roles: {roleKeys.length} • Mapped channels: {channelKeys.length}
+            </div>
           </div>
+
+          {sendMsg ? (
+            <div style={{ marginTop: 10, whiteSpace: "pre-wrap", fontSize: 12, color: sendMsg.startsWith("✅") ? "inherit" : "#ffb3b3" }}>
+              {sendMsg}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -358,10 +571,6 @@ export default function OwnerLiveOpsPage() {
             <div style={{ fontWeight: 900, fontSize: 20 }}>⏳ {isFinite(msLeft) ? fmtCountdown(msLeft) : "—"}</div>
             <div style={{ opacity: 0.8, fontSize: 12 }}>UTC: {utcString}</div>
             <div style={{ opacity: 0.8, fontSize: 12 }}>Local: {localString}</div>
-          </div>
-
-          <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
-            Timer is client-side; UTC is the source-of-truth value you paste.
           </div>
         </div>
 
@@ -392,9 +601,9 @@ export default function OwnerLiveOpsPage() {
       </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
-        <div style={{ fontWeight: 900 }}>Preview</div>
+        <div style={{ fontWeight: 900 }}>Preview (Resolved)</div>
         <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 12, padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-{generateMessage()}
+{messageResolved}
         </pre>
       </div>
     </div>
