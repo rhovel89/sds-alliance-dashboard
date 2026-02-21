@@ -95,6 +95,7 @@ import OwnerDiscordTemplatesPage from "../pages/owner/OwnerDiscordTemplatesPage"
 import OwnerDiscordMentionsToolsPage from "../pages/owner/OwnerDiscordMentionsToolsPage";
 import OwnerRealtimeHistoryPage from "../pages/owner/OwnerRealtimeHistoryPage";
 import OwnerOneClickProvisionPlusPage from "../pages/owner/OwnerOneClickProvisionPlusPage";
+import OwnerStateAchievementInboxPage from "../pages/owner/OwnerStateAchievementInboxPage";
 
 export default function AppRoutes() {
   return (
@@ -186,6 +187,8 @@ export default function AppRoutes() {
       <Route path="/owner/discord-mentions-tools" element={<RequireAdmin><OwnerDiscordMentionsToolsPage /></RequireAdmin>} />
       <Route path="/owner/realtime-history" element={<RequireAdmin><OwnerRealtimeHistoryPage /></RequireAdmin>} />
       <Route path="/owner/oneclick-provision-plus" element={<RequireAdmin><OwnerOneClickProvisionPlusPage /></RequireAdmin>} />
+      <Route path="/state/789/achievement-request" element={<State789AchievementRequestPage />} />
+      <Route path="/owner/state-achievement-inbox" element={<RequireAdmin><OwnerStateAchievementInboxPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
