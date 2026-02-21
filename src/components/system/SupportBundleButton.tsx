@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { detectAllianceFromPath } from "../../utils/detectAllianceFromPath";
 import { getCurrentAlliance } from "../../utils/getCurrentAlliance";
+import { getCurrentTheme } from "../../utils/getCurrentTheme";
 
 export function SupportBundleButton(props: { label?: string; allianceCode?: string | null }) {
   const label = props.label || "Copy Support Bundle";
@@ -32,7 +33,7 @@ export function SupportBundleButton(props: { label?: string; allianceCode?: stri
         href: window.location.href,
         path: window.location.pathname,
         alliance: getCurrentAlliance(window.location.pathname),
-        theme: document.documentElement.dataset.theme || null,
+        theme: getCurrentTheme(getCurrentAlliance(window.location.pathname)),
         userId,
         isAppAdmin: !!isAppAdmin,
         isDashboardOwner: !!isDashOwner,

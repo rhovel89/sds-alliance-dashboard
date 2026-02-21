@@ -7,6 +7,7 @@ import { AllianceThemePicker } from "../../components/theme/AllianceThemePicker"
 import { RealtimeStatusBadge } from "../../components/system/RealtimeStatusBadge";
 import { detectAllianceFromPath } from "../../utils/detectAllianceFromPath";
 import { getCurrentAlliance } from "../../utils/getCurrentAlliance";
+import { getCurrentTheme } from "../../utils/getCurrentTheme";
 
 export default function AllianceDashboardIndexPage() {
   const { alliance_id } = useParams();
@@ -24,7 +25,7 @@ export default function AllianceDashboardIndexPage() {
         href: window.location.href,
         path: window.location.pathname,
         alliance: getCurrentAlliance(window.location.pathname),
-        theme: document.documentElement.dataset.theme || null,
+        theme: getCurrentTheme(getCurrentAlliance(window.location.pathname)),
         userId,
         browserOnline: navigator.onLine,
         userAgent: navigator.userAgent,
