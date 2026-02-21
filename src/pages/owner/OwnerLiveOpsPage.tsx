@@ -9,16 +9,30 @@ type Store = {
   updatedUtc: string;
   targetUtc: string | null;
   label: string;
-  targetAlliance: string; // NEW: feeds Broadcast composer
+  targetAlliance: string;
   checklist: ChecklistItem[];
   announcementTemplate: string;
+  templateMode: "liveops" | "broadcast";
+  selectedBroadcastTemplateId: string | null;
 };
 
 type DirItem = { id: string; code: string; name: string; state: string };
 
+type Template = {
+  id: string;
+  scope: "global" | "alliance";
+  allianceCode: string | null;
+  name: string;
+  body: string;
+  updatedUtc: string;
+};
+
+type TemplateStore = { version: 1; templates: Template[] };
+
 const KEY = "sad_live_ops_v1";
 const DIR_KEY = "sad_alliance_directory_v1";
 const PREFILL_KEY = "sad_broadcast_prefill_v1";
+const TPL_KEY = "sad_discord_broadcast_templates_v1";
 
 function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
 function nowUtc() { return new Date().toISOString(); }
@@ -42,13 +56,30 @@ function loadDir(): DirItem[] {
   }
 }
 
+function loadTemplates(): Template[] {
+  try {
+    const raw = localStorage.getItem(TPL_KEY);
+    if (!raw) return [];
+    const s = JSON.parse(raw) as TemplateStore;
+    if (!s || s.version !== 1 || !Array.isArray(s.templates)) return [];
+    return s.templates;
+  } catch {
+    return [];
+  }
+}
+
 function load(): Store {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw) as Store;
       if (s && s.version === 1 && Array.isArray(s.checklist)) {
-        return { ...s, targetAlliance: (s.targetAlliance || "WOC").toUpperCase() };
+        return {
+          ...s,
+          targetAlliance: String(s.targetAlliance || "WOC").toUpperCase(),
+          templateMode: (s.templateMode === "broadcast" ? "broadcast" : "liveops"),
+          selectedBroadcastTemplateId: s.selectedBroadcastTemplateId || null,
+        };
       }
     }
   } catch {}
@@ -64,6 +95,8 @@ function load(): Store {
       "⏰ Starts: {{opUtc}} (UTC) | Local: {{opLocal}}\n" +
       "📍 Rally: {{#announcements}}\n\n" +
       "✅ Checklist:\n{{checklist}}\n",
+    templateMode: "broadcast",
+    selectedBroadcastTemplateId: null,
   };
 }
 
@@ -79,7 +112,7 @@ function fmtCountdown(ms: number): string {
   const hh = Math.floor(s / 3600);
   const mm = Math.floor((s % 3600) / 60);
   const ss = s % 60;
-  const str = `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}:${ss.toString().padStart(2, "0")}`;
+  const str = `${hh.toString().padStart(2,"0")}:${mm.toString().padStart(2,"0")}:${ss.toString().padStart(2,"0")}`;
   return neg ? `+${str} past` : str;
 }
 
@@ -103,11 +136,21 @@ function safeParseUtc(input: string): Date | null {
   return isNaN(d2.getTime()) ? null : d2;
 }
 
+function applyOpsTokens(template: string, opLabel: string, opUtc: string, opLocal: string, checklist: string) {
+  return (template || "")
+    .replace(/\{\{\s*opLabel\s*\}\}/g, opLabel || "Op")
+    .replace(/\{\{\s*opUtc\s*\}\}/g, opUtc || "—")
+    .replace(/\{\{\s*opLocal\s*\}\}/g, opLocal || "—")
+    .replace(/\{\{\s*checklist\s*\}\}/g, checklist || "- (none)");
+}
+
 export default function OwnerLiveOpsPage() {
   const nav = useNavigate();
   const [store, setStore] = useState<Store>(() => load());
   const [tick, setTick] = useState(0);
+
   const [dir, setDir] = useState<DirItem[]>(() => loadDir());
+  const [templates, setTemplates] = useState<Template[]>(() => loadTemplates());
 
   useEffect(() => save(store), [store]);
 
@@ -129,9 +172,55 @@ export default function OwnerLiveOpsPage() {
     return items.map((it) => `${it.done ? "✅" : "⬜️"} ${it.text}`).join("\n");
   }, [store.checklist]);
 
-  function setTarget(v: string) {
-    setStore((p) => ({ ...p, updatedUtc: nowUtc(), targetUtc: v }));
+  const alliance = useMemo(() => String(store.targetAlliance || "WOC").toUpperCase(), [store.targetAlliance]);
+
+  const filteredTemplates = useMemo(() => {
+    const ac = alliance.toUpperCase();
+    return (templates || []).filter((t) => t.scope === "global" || (t.scope === "alliance" && String(t.allianceCode || "").toUpperCase() === ac));
+  }, [templates, alliance]);
+
+  const selectedTpl = useMemo(() => {
+    if (!store.selectedBroadcastTemplateId) return null;
+    return filteredTemplates.find((t) => t.id === store.selectedBroadcastTemplateId) || null;
+  }, [filteredTemplates, store.selectedBroadcastTemplateId]);
+
+  function generateMessage() {
+    const base =
+      store.templateMode === "broadcast"
+        ? (selectedTpl?.body || store.announcementTemplate)
+        : store.announcementTemplate;
+
+    // Always apply op tokens if present in template
+    const msg = applyOpsTokens(base, store.label || "Op", utcString, localString, checklistText);
+
+    // If template didn't include checklist token, add it automatically at bottom (small helper)
+    if ((base || "").indexOf("{{checklist}}") < 0) {
+      return msg + "\n\n✅ Checklist:\n" + checklistText + "\n";
+    }
+    return msg;
   }
+
+  async function copyAnnouncement() {
+    const msg = generateMessage();
+    try { await navigator.clipboard.writeText(msg); alert("Copied announcement (with placeholders)."); }
+    catch { window.prompt("Copy announcement:", msg); }
+  }
+
+  function openInBroadcast() {
+    const msg = generateMessage();
+    const payload = {
+      version: 1,
+      createdUtc: nowUtc(),
+      scope: "alliance",
+      allianceCode: alliance,
+      templateName: (store.templateMode === "broadcast" && selectedTpl) ? selectedTpl.name : ("LiveOps: " + (store.label || "Op")),
+      body: msg,
+    };
+    try { localStorage.setItem(PREFILL_KEY, JSON.stringify(payload)); } catch {}
+    nav("/owner/broadcast");
+  }
+
+  const [newItem, setNewItem] = useState("");
 
   function addItem(text: string) {
     const t = (text || "").trim();
@@ -179,46 +268,12 @@ export default function OwnerLiveOpsPage() {
     }
   }
 
-  function generateAnnouncement(): string {
-    const template = store.announcementTemplate || "";
-    const out = template
-      .replace(/\{\{\s*opLabel\s*\}\}/g, store.label || "Op")
-      .replace(/\{\{\s*opUtc\s*\}\}/g, utcString)
-      .replace(/\{\{\s*opLocal\s*\}\}/g, localString)
-      .replace(/\{\{\s*checklist\s*\}\}/g, checklistText);
-    return out;
-  }
-
-  async function copyAnnouncement() {
-    const msg = generateAnnouncement();
-    try { await navigator.clipboard.writeText(msg); alert("Copied announcement (with placeholders)."); }
-    catch { window.prompt("Copy announcement:", msg); }
-  }
-
-  function openInBroadcast() {
-    const msg = generateAnnouncement();
-    const alliance = String(store.targetAlliance || "WOC").toUpperCase();
-
-    const payload = {
-      version: 1,
-      createdUtc: nowUtc(),
-      scope: "alliance",
-      allianceCode: alliance,
-      templateName: `LiveOps: ${store.label || "Op"} (${utcString === "—" ? "no-time" : utcString.slice(0, 16)}Z)`,
-      body: msg,
-    };
-
-    try { localStorage.setItem(PREFILL_KEY, JSON.stringify(payload)); } catch {}
-    nav("/owner/broadcast");
-  }
-
-  const [newItem, setNewItem] = useState("");
-
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>🧟 Owner — Live Ops (UI-only)</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => setTemplates(loadTemplates())}>Reload Templates</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportJson}>Export</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importJson}>Import</button>
           <SupportBundleButton />
@@ -230,7 +285,7 @@ export default function OwnerLiveOpsPage() {
           <div style={{ opacity: 0.75, fontSize: 12 }}>Target Alliance</div>
           <select
             className="zombie-input"
-            value={store.targetAlliance}
+            value={alliance}
             onChange={(e) => setStore((p) => ({ ...p, updatedUtc: nowUtc(), targetAlliance: e.target.value.toUpperCase() }))}
             style={{ padding: "10px 12px" }}
           >
@@ -243,12 +298,39 @@ export default function OwnerLiveOpsPage() {
 
           <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={openInBroadcast}>Open in Broadcast</button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyAnnouncement}>Copy Announcement</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyAnnouncement}>Copy Message</button>
           </div>
         </div>
 
-        <div style={{ marginTop: 8, opacity: 0.7, fontSize: 12 }}>
-          “Open in Broadcast” will prefill /owner/broadcast with this announcement + selected alliance.
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ opacity: 0.75, fontSize: 12 }}>Template Mode</div>
+          <select className="zombie-input" value={store.templateMode} onChange={(e) => setStore((p) => ({ ...p, updatedUtc: nowUtc(), templateMode: e.target.value as any }))} style={{ padding: "10px 12px" }}>
+            <option value="broadcast">Broadcast Template</option>
+            <option value="liveops">Live Ops Template</option>
+          </select>
+
+          {store.templateMode === "broadcast" ? (
+            <>
+              <div style={{ opacity: 0.75, fontSize: 12 }}>Broadcast Template</div>
+              <select
+                className="zombie-input"
+                value={store.selectedBroadcastTemplateId || ""}
+                onChange={(e) => setStore((p) => ({ ...p, updatedUtc: nowUtc(), selectedBroadcastTemplateId: e.target.value || null }))}
+                style={{ padding: "10px 12px", minWidth: 260 }}
+              >
+                <option value="">(select template)</option>
+                {filteredTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.scope === "global" ? "[Global] " : "[Alliance] "}{t.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : null}
+
+          <div style={{ opacity: 0.7, fontSize: 12 }}>
+            Tip: use {"{{opLabel}}"} {"{{opUtc}}"} {"{{opLocal}}"} {"{{checklist}}"} inside templates.
+          </div>
         </div>
       </div>
 
@@ -266,7 +348,7 @@ export default function OwnerLiveOpsPage() {
             <input
               className="zombie-input"
               value={store.targetUtc || ""}
-              onChange={(e) => setTarget(e.target.value)}
+              onChange={(e) => setStore((p) => ({ ...p, updatedUtc: nowUtc(), targetUtc: e.target.value }))}
               placeholder="2026-02-21 18:00"
               style={{ width: "100%", padding: "10px 12px" }}
             />
@@ -306,38 +388,14 @@ export default function OwnerLiveOpsPage() {
             ))}
             {(store.checklist || []).length === 0 ? <div style={{ opacity: 0.75 }}>No checklist items yet.</div> : null}
           </div>
-
-          <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
-            UI-only; later we can store this per-alliance and share with assistants.
-          </div>
         </div>
       </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
-        <div style={{ fontWeight: 900 }}>📣 Announcement Template (placeholders)</div>
-
-        <div style={{ marginTop: 10 }}>
-          <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>
-            Supports {"{{opLabel}}"} {"{{opUtc}}"} {"{{opLocal}}"} {"{{checklist}}"} and role/channel placeholders like {"{{Leadership}}"} and {"{{#announcements}}"}.
-          </div>
-          <textarea
-            className="zombie-input"
-            value={store.announcementTemplate}
-            onChange={(e) => setStore((p) => ({ ...p, updatedUtc: nowUtc(), announcementTemplate: e.target.value }))}
-            style={{ width: "100%", minHeight: 140, padding: "10px 12px" }}
-          />
-        </div>
-
-        <div style={{ marginTop: 12 }}>
-          <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Preview</div>
-          <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 12, padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-{generateAnnouncement()}
-          </pre>
-        </div>
-
-        <div style={{ marginTop: 10, opacity: 0.65, fontSize: 12 }}>
-          Use “Open in Broadcast” to resolve role/channel mentions via your Discord settings maps.
-        </div>
+        <div style={{ fontWeight: 900 }}>Preview</div>
+        <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 12, padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+{generateMessage()}
+        </pre>
       </div>
     </div>
   );

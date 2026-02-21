@@ -68,6 +68,7 @@ import State789DiscussionBoardPage from "../pages/state/State789DiscussionBoardP
 import OwnerBroadcastComposerPage from "../pages/owner/OwnerBroadcastComposerPage";
 import MyMailShellPage from "../pages/mail/MyMailShellPage";
 import OwnerLiveOpsPage from "../pages/owner/OwnerLiveOpsPage";
+import OwnerDiscordMentionsPage from "../pages/owner/OwnerDiscordMentionsPage";
 
 export default function AppRoutes() {
   return (
@@ -134,6 +135,7 @@ export default function AppRoutes() {
       <Route path="/state/789/discussion" element={<State789DiscussionBoardPage />} />
       <Route path="/owner/broadcast" element={<RequireAdmin><OwnerBroadcastComposerPage /></RequireAdmin>} />
       <Route path="/owner/live-ops" element={<RequireAdmin><OwnerLiveOpsPage /></RequireAdmin>} />
+      <Route path="/owner/discord-mentions" element={<RequireAdmin><OwnerDiscordMentionsPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
