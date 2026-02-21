@@ -1,231 +1,353 @@
 import React, { useEffect, useMemo, useState } from "react";
+import SupportBundleButton from "../../components/system/SupportBundleButton";
 
-type Draft = {
+type Message = {
   id: string;
-  to: string;
-  subject: string;
-  body: string;
   createdUtc: string;
-  updatedUtc: string;
+  fromLabel: string;
+  body: string;
 };
 
-const KEY = "sad_mail_drafts_v1";
+type Thread = {
+  id: string;
+  createdUtc: string;
+  updatedUtc: string;
+  title: string;
+  toLabel: string;        // free text for now
+  tags: string[];
+  pinned: boolean;
+  archived: boolean;
+  messages: Message[];
+};
 
-function uid() {
-  return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
-}
+type Store = {
+  version: 1;
+  updatedUtc: string;
+  threads: Thread[];
+};
 
-function nowUtc() {
-  return new Date().toISOString();
-}
+const KEY = "sad_my_mail_v1";
 
-function loadDrafts(): Draft[] {
+function uid() { return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
+function nowUtc() { return new Date().toISOString(); }
+
+function loadStore(): Store {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return [];
-    return arr as Draft[];
-  } catch {
-    return [];
-  }
+    if (raw) {
+      const p = JSON.parse(raw) as any;
+      if (p && p.version === 1 && Array.isArray(p.threads)) {
+        return {
+          version: 1,
+          updatedUtc: String(p.updatedUtc || nowUtc()),
+          threads: (p.threads as any[]).map((t) => ({
+            id: String(t?.id || uid()),
+            createdUtc: String(t?.createdUtc || nowUtc()),
+            updatedUtc: String(t?.updatedUtc || nowUtc()),
+            title: String(t?.title || "Untitled"),
+            toLabel: String(t?.toLabel || ""),
+            tags: Array.isArray(t?.tags) ? t.tags.map((x: any) => String(x)) : [],
+            pinned: !!t?.pinned,
+            archived: !!t?.archived,
+            messages: Array.isArray(t?.messages)
+              ? t.messages.map((m: any) => ({
+                  id: String(m?.id || uid()),
+                  createdUtc: String(m?.createdUtc || nowUtc()),
+                  fromLabel: String(m?.fromLabel || "Me"),
+                  body: String(m?.body || ""),
+                }))
+              : [],
+          })),
+        };
+      }
+    }
+  } catch {}
+  return { version: 1, updatedUtc: nowUtc(), threads: [] };
 }
 
-function saveDrafts(d: Draft[]) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(d));
-  } catch {}
+function saveStore(s: Store) {
+  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {}
 }
 
 export default function MyMailPage() {
-  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [store, setStore] = useState<Store>(() => loadStore());
+  useEffect(() => saveStore(store), [store]);
+
+  const [view, setView] = useState<"inbox" | "archived">("inbox");
+  const [search, setSearch] = useState("");
+
+  const threads = useMemo(() => {
+    const q = (search || "").trim().toLowerCase();
+    let arr = (store.threads || []).slice();
+
+    arr = arr.filter((t) => (view === "archived" ? t.archived : !t.archived));
+    if (q) {
+      arr = arr.filter((t) => {
+        const hay =
+          (t.title || "") + " " +
+          (t.toLabel || "") + " " +
+          (t.tags || []).join(" ") + " " +
+          (t.messages || []).map((m) => m.body).join(" ");
+        return hay.toLowerCase().includes(q);
+      });
+    }
+
+    // pinned first, then updated desc
+    arr.sort((a, b) => {
+      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+      return String(b.updatedUtc).localeCompare(String(a.updatedUtc));
+    });
+    return arr;
+  }, [store.threads, view, search]);
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = useMemo(() => (selectedId ? (store.threads || []).find((t) => t.id === selectedId) || null : null), [selectedId, store.threads]);
 
-  const selected = useMemo(
-    () => (selectedId ? drafts.find((d) => d.id === selectedId) || null : null),
-    [drafts, selectedId]
-  );
-
-  const [to, setTo] = useState("");
-  const [subject, setSubject] = useState("");
+  // Composer
+  const [toLabel, setToLabel] = useState("");
+  const [title, setTitle] = useState("");
+  const [tagsCsv, setTagsCsv] = useState("");
   const [body, setBody] = useState("");
 
   useEffect(() => {
-    const d = loadDrafts();
-    setDrafts(d);
-  }, []);
-
-  useEffect(() => {
-    saveDrafts(drafts);
-  }, [drafts]);
-
-  useEffect(() => {
-    if (!selected) {
-      setTo("");
-      setSubject("");
-      setBody("");
-    } else {
-      setTo(selected.to || "");
-      setSubject(selected.subject || "");
-      setBody(selected.body || "");
-    }
+    // when selecting, load metadata into composer header (not body)
+    if (!selected) return;
+    setToLabel(selected.toLabel || "");
+    setTitle(selected.title || "");
+    setTagsCsv((selected.tags || []).join(","));
+    setBody("");
   }, [selectedId]);
 
-  function newDraft() {
+  function resetComposer() {
     setSelectedId(null);
-    setTo("");
-    setSubject("");
+    setToLabel("");
+    setTitle("");
+    setTagsCsv("");
     setBody("");
   }
 
-  function save() {
+  function upsertThread(withMessage: boolean) {
     const now = nowUtc();
-    if (!to.trim() && !subject.trim() && !body.trim()) {
-      return window.alert("Draft is empty.");
-    }
+    const tTitle = (title || "").trim() || "Untitled";
+    const tTo = (toLabel || "").trim();
+    const tTags = (tagsCsv || "").split(",").map((x) => x.trim()).filter(Boolean);
 
-    if (!selectedId) {
-      const d: Draft = {
+    const msgBody = (body || "").trim();
+    const newMsg: Message | null = withMessage && msgBody
+      ? { id: uid(), createdUtc: now, fromLabel: "Me", body: msgBody }
+      : null;
+
+    setStore((p) => {
+      const next: Store = { version: 1, updatedUtc: now, threads: [...(p.threads || [])] };
+
+      if (selectedId) {
+        const idx = next.threads.findIndex((x) => x.id === selectedId);
+        if (idx >= 0) {
+          const cur = next.threads[idx];
+          const msgs = newMsg ? [newMsg, ...(cur.messages || [])] : (cur.messages || []);
+          next.threads[idx] = { ...cur, title: tTitle, toLabel: tTo, tags: tTags, messages: msgs, updatedUtc: now };
+          return next;
+        }
+      }
+
+      // create new
+      const thr: Thread = {
         id: uid(),
-        to: to.trim(),
-        subject: subject.trim(),
-        body,
         createdUtc: now,
         updatedUtc: now,
+        title: tTitle,
+        toLabel: tTo,
+        tags: tTags,
+        pinned: false,
+        archived: false,
+        messages: newMsg ? [newMsg] : [],
       };
-      setDrafts((p) => [d, ...(p || [])]);
-      setSelectedId(d.id);
-      return;
-    }
+      next.threads.unshift(thr);
+      return next;
+    });
 
-    setDrafts((p) =>
-      (p || []).map((x) =>
-        x.id === selectedId
-          ? { ...x, to: to.trim(), subject: subject.trim(), body, updatedUtc: now }
-          : x
-      )
-    );
+    setBody("");
   }
 
-  function del(id: string) {
-    if (!window.confirm("Delete this draft?")) return;
-    setDrafts((p) => (p || []).filter((x) => x.id !== id));
-    if (selectedId === id) newDraft();
+  function deleteThread(id: string) {
+    const thr = (store.threads || []).find((t) => t.id === id);
+    if (!thr) return;
+    if (!confirm(`Delete thread "${thr.title}"?`)) return;
+    setStore((p) => ({ version: 1, updatedUtc: nowUtc(), threads: (p.threads || []).filter((t) => t.id !== id) }));
+    if (selectedId === id) resetComposer();
   }
 
-  async function copySupportBundle() {
-    const payload = {
-      tsUtc: nowUtc(),
-      href: window.location.href,
-      path: window.location.pathname,
-      draftsCount: drafts.length,
-      selectedDraft: selectedId,
-      userAgent: navigator.userAgent,
-    };
-    const txt = JSON.stringify(payload, null, 2);
+  function togglePin(id: string) {
+    setStore((p) => ({
+      version: 1,
+      updatedUtc: nowUtc(),
+      threads: (p.threads || []).map((t) => (t.id === id ? { ...t, pinned: !t.pinned, updatedUtc: nowUtc() } : t)),
+    }));
+  }
+
+  function toggleArchive(id: string) {
+    setStore((p) => ({
+      version: 1,
+      updatedUtc: nowUtc(),
+      threads: (p.threads || []).map((t) => (t.id === id ? { ...t, archived: !t.archived, updatedUtc: nowUtc() } : t)),
+    }));
+  }
+
+  async function exportJson() {
+    const txt = JSON.stringify({ ...store, exportedUtc: nowUtc() }, null, 2);
+    try { await navigator.clipboard.writeText(txt); alert("Copied My Mail JSON."); }
+    catch { window.prompt("Copy:", txt); }
+  }
+
+  function importJson() {
+    const raw = window.prompt("Paste My Mail JSON:");
+    if (!raw) return;
     try {
-      await navigator.clipboard.writeText(txt);
-      window.alert("Copied support bundle.");
+      const p = JSON.parse(raw);
+      if (!p || p.version !== 1 || !Array.isArray(p.threads)) throw new Error("Invalid");
+      setStore({ version: 1, updatedUtc: nowUtc(), threads: p.threads });
+      resetComposer();
+      alert("Imported.");
     } catch {
-      window.prompt("Copy support bundle:", txt);
+      alert("Invalid JSON.");
     }
   }
 
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>✉️ My Mail (UI-only)</h2>
+        <h2 style={{ margin: 0 }}>📬 My Mail (UI shell)</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copySupportBundle}>
-            Copy Support Bundle
-          </button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={newDraft}>
-            + New Draft
-          </button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportJson}>Export</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importJson}>Import</button>
+          <SupportBundleButton />
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(260px, 1fr) minmax(300px, 1.2fr)", gap: 12 }}>
+      <div className="zombie-card" style={{ marginTop: 12 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <button className="zombie-btn" style={{ padding: "10px 12px", opacity: view === "inbox" ? 1 : 0.7 }} onClick={() => setView("inbox")}>Inbox</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px", opacity: view === "archived" ? 1 : 0.7 }} onClick={() => setView("archived")}>Archived</button>
+
+          <input
+            className="zombie-input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search…"
+            style={{ padding: "10px 12px", minWidth: 240, flex: 1 }}
+          />
+
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetComposer}>+ New</button>
+          <div style={{ opacity: 0.65, fontSize: 12, marginLeft: "auto" }}>
+            localStorage: {KEY}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(360px, 1.2fr)", gap: 12 }}>
         <div className="zombie-card">
-          <div style={{ fontWeight: 900 }}>Drafts ({drafts.length})</div>
-          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-            {drafts.map((d) => {
-              const sel = d.id === selectedId;
+          <div style={{ fontWeight: 900 }}>Threads ({threads.length})</div>
+
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            {threads.map((t) => {
+              const sel = t.id === selectedId;
+              const preview = (t.messages?.[0]?.body || "").slice(0, 90);
               return (
                 <div
-                  key={d.id}
-                  onClick={() => setSelectedId(d.id)}
+                  key={t.id}
+                  onClick={() => setSelectedId(t.id)}
                   style={{
                     cursor: "pointer",
                     padding: 10,
                     borderRadius: 12,
                     border: "1px solid rgba(255,255,255,0.10)",
-                    background: sel ? "rgba(120,255,120,0.10)" : "rgba(0,0,0,0.20)",
+                    background: sel ? "rgba(120,255,120,0.08)" : "rgba(0,0,0,0.20)",
                   }}
                 >
-                  <div style={{ fontWeight: 900, fontSize: 13 }}>{d.subject || "(no subject)"}</div>
-                  <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>To: {d.to || "(unspecified)"}</div>
-                  <div style={{ opacity: 0.6, fontSize: 11, marginTop: 6 }}>
-                    Updated: {d.updatedUtc ? new Date(d.updatedUtc).toLocaleString() : ""}
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ fontWeight: 900 }}>{t.pinned ? "📌 " : ""}{t.title}</div>
+                    <div style={{ marginLeft: "auto", opacity: 0.65, fontSize: 12 }}>{t.updatedUtc}</div>
                   </div>
-                  <button
-                    className="zombie-btn"
-                    style={{ padding: "6px 8px", fontSize: 12, marginTop: 8 }}
-                    onClick={(ev) => {
-                      ev.stopPropagation();
-                      del(d.id);
-                    }}
-                  >
-                    Delete
-                  </button>
+                  <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
+                    To: {t.toLabel || "(unknown)"}{t.tags?.length ? " • " + t.tags.map((x) => "#" + x).join(" ") : ""}
+                  </div>
+                  {preview ? <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>{preview}{preview.length >= 90 ? "…" : ""}</div> : null}
+
+                  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={(ev) => { ev.stopPropagation(); togglePin(t.id); }}>
+                      {t.pinned ? "Unpin" : "Pin"}
+                    </button>
+                    <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={(ev) => { ev.stopPropagation(); toggleArchive(t.id); }}>
+                      {t.archived ? "Unarchive" : "Archive"}
+                    </button>
+                    <button className="zombie-btn" style={{ padding: "6px 8px", fontSize: 12 }} onClick={(ev) => { ev.stopPropagation(); deleteThread(t.id); }}>
+                      Delete
+                    </button>
+                  </div>
                 </div>
               );
             })}
-            {drafts.length === 0 ? <div style={{ opacity: 0.75 }}>No drafts yet.</div> : null}
+            {threads.length === 0 ? <div style={{ opacity: 0.75 }}>No threads yet. Click “New”.</div> : null}
           </div>
         </div>
 
         <div className="zombie-card">
-          <div style={{ fontWeight: 900 }}>{selected ? "Edit Draft" : "New Draft"}</div>
+          <div style={{ fontWeight: 900 }}>{selected ? "Open Thread" : "New Thread"}</div>
 
-          <div style={{ marginTop: 10 }}>
-            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>To</div>
-            <input className="zombie-input" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: "100%", padding: "10px 12px" }} placeholder="Alliance / Player / Tag…" />
+          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+            <div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>To (free text for now)</div>
+              <input className="zombie-input" value={toLabel} onChange={(e) => setToLabel(e.target.value)} style={{ width: "100%", padding: "10px 12px" }} placeholder="Player / Alliance / Note" />
+            </div>
+
+            <div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Title</div>
+              <input className="zombie-input" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: "100%", padding: "10px 12px" }} placeholder="Subject" />
+            </div>
+
+            <div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Tags (comma)</div>
+              <input className="zombie-input" value={tagsCsv} onChange={(e) => setTagsCsv(e.target.value)} style={{ width: "100%", padding: "10px 12px" }} placeholder="trade,leadership,ops" />
+            </div>
+
+            <div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Message</div>
+              <textarea className="zombie-input" value={body} onChange={(e) => setBody(e.target.value)} style={{ width: "100%", minHeight: 140, padding: "10px 12px" }} placeholder="Type message…" />
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => upsertThread(false)}>
+                {selected ? "Save Meta" : "Create Thread"}
+              </button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => upsertThread(true)}>
+                Send Message
+              </button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetComposer}>
+                Clear
+              </button>
+            </div>
           </div>
 
-          <div style={{ marginTop: 10 }}>
-            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Subject</div>
-            <input className="zombie-input" value={subject} onChange={(e) => setSubject(e.target.value)} style={{ width: "100%", padding: "10px 12px" }} placeholder="Subject…" />
-          </div>
+          {selected ? (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Messages</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                {(selected.messages || []).map((m) => (
+                  <div key={m.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <div style={{ fontWeight: 900 }}>{m.fromLabel}</div>
+                      <div style={{ marginLeft: "auto", opacity: 0.65, fontSize: 12 }}>{m.createdUtc}</div>
+                    </div>
+                    <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{m.body}</div>
+                  </div>
+                ))}
+                {(selected.messages || []).length === 0 ? <div style={{ opacity: 0.75 }}>No messages yet.</div> : null}
+              </div>
+            </div>
+          ) : null}
 
-          <div style={{ marginTop: 10 }}>
-            <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Body</div>
-            <textarea className="zombie-input" value={body} onChange={(e) => setBody(e.target.value)} style={{ width: "100%", minHeight: 180, padding: "10px 12px" }} placeholder="Write message…" />
-          </div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={save}>
-              Save Draft
-            </button>
-            <button
-              className="zombie-btn"
-              style={{ padding: "10px 12px" }}
-              onClick={async () => {
-                const msg = `TO: ${to}\nSUBJECT: ${subject}\n\n${body}`;
-                try {
-                  await navigator.clipboard.writeText(msg);
-                  window.alert("Copied message text.");
-                } catch {
-                  window.prompt("Copy message:", msg);
-                }
-              }}
-            >
-              Copy Text
-            </button>
-          </div>
-
-          <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
-            UI-only (local drafts). Later we’ll wire to Supabase tables + RLS.
+          <div style={{ marginTop: 12, opacity: 0.65, fontSize: 12 }}>
+            Next step later: move this store to Supabase + RLS + realtime + per-user inbox.
           </div>
         </div>
       </div>
