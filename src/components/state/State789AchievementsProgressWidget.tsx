@@ -202,7 +202,9 @@ export function State789AchievementsProgressWidget() {
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ fontWeight: 900 }}>🏆 Achievements Progress</div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={load}>Refresh</button>
+          <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={() => window.location.assign("/state/789/achievements")}>Open Achievements</button>
+<button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={() => window.location.assign("/state/789/achievements-tracker")}>Open Tracker</button>
+<button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={load}>Refresh</button>
         </div>
       </div>
 
