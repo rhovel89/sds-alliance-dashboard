@@ -23,7 +23,6 @@ export default function AllianceDashboardIndexPage() {
         href: window.location.href,
         path: window.location.pathname,
         alliance: detectAllianceFromPath(window.location.pathname),
-        alliance,
         theme: document.documentElement.dataset.theme || null,
         userId,
         browserOnline: navigator.onLine,
