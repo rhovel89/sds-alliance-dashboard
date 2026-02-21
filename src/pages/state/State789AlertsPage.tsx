@@ -340,6 +340,22 @@ export default function State789AlertsPage() {
         }
       }
   }
+// Send to Discord (Bot) via Supabase Edge Function
+
+async function sendNowBot() {
+  try {
+    const a: any = (typeof alertToSend !== "undefined") ? (alertToSend as any) : null;
+    const channelId = String(a?.target?.channel?.id ?? a?.target?.channelId ?? a?.channelId ?? a?.channel?.id ?? "").trim();
+    const content = String(a?.messageResolved ?? a?.message_resolved ?? a?.message ?? a?.content ?? a?.body ?? "");
+    if (!a) { window.alert("No alert selected to send."); return; }
+    if (!channelId) { window.alert("Missing channel ID. Set it in Owner → Discord Mentions."); return; }
+    if (!content.trim()) { window.alert("Missing message content."); return; }
+    const r = await sendDiscordBot({ mode: "bot", channelId, content });
+    if (!r.ok) { window.alert("Send failed: " + r.error); return; }
+    window.alert("✅ Sent to Discord (bot).");
+  } catch (e: any) {
+    window.alert("Send failed: " + String(e?.message || e));
+  }
 }
 
 return (mentionRoleNames || "")
