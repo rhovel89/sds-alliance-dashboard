@@ -6,10 +6,10 @@ type Btn = { label: string; emoji: string; to: string };
 const OWNER_BUTTONS: Btn[] = [
   { emoji: "🧟", label: "Live Ops (timer + checklist)", to: "/owner/live-ops" },
   { emoji: "📣", label: "Broadcast Composer", to: "/owner/broadcast" },
-  { emoji: "🏆", label: "State Achievements", to: "/owner/state-achievements",
+  { emoji: "🏆", label: "State Achievements", to: "/owner/state-achievements" },
   { emoji: "🏆", label: "State Achievements Catalog", to: "/owner/state-achievement-catalog" },
-  { emoji: "📥", label: "Achievement Requests", to: "/owner/state-achievement-requests" } },
   { emoji: "📥", label: "Achievement Requests", to: "/owner/state-achievement-requests" },
+  
   { emoji: "📜", label: "Discord Send Log", to: "/owner/discord-send-log" },
   { emoji: "🗓️", label: "Scheduled Sends", to: "/owner/scheduled-sends" },
   { emoji: "🧪", label: "Discord Test Send", to: "/owner/discord-test-send" },
