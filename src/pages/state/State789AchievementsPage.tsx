@@ -22,30 +22,23 @@ type AchOption = {
 
 type RequestRow = {
   id: string;
-  state_code: string;
   player_name: string;
   alliance_name: string;
-  achievement_type_id: string;
-  option_id: string | null;
-  status: "submitted" | "in_progress" | "completed" | "denied";
+  status: string;
   current_count: number;
   required_count: number;
   completed_at: string | null;
-  notes: string | null;
   created_at: string;
-  updated_at: string;
 
   state_achievement_types?: { name: string; kind: string; required_count: number } | null;
   state_achievement_options?: { label: string } | null;
 };
 
-function nowUtc() { return new Date().toISOString(); }
-
 export default function State789AchievementsPage() {
   const STATE = "789";
 
-  const [uid, setUid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState<string | null>(null);
 
   const [types, setTypes] = useState<AchType[]>([]);
   const [options, setOptions] = useState<AchOption[]>([]);
@@ -59,12 +52,6 @@ export default function State789AchievementsPage() {
   const selectedType = useMemo(() => types.find((t) => t.id === typeId) || null, [types, typeId]);
 
   const [myReqs, setMyReqs] = useState<RequestRow[]>([]);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  async function loadUser() {
-    const u = (await supabase.auth.getUser()).data.user;
-    setUid(u?.id || null);
-  }
 
   async function loadTypes() {
     const r = await supabase
@@ -99,7 +86,7 @@ export default function State789AchievementsPage() {
     const r = await supabase
       .from("state_achievement_requests")
       .select(`
-        id,state_code,player_name,alliance_name,achievement_type_id,option_id,status,current_count,required_count,completed_at,notes,created_at,updated_at,
+        id,player_name,alliance_name,status,current_count,required_count,completed_at,created_at,
         state_achievement_types(name,kind,required_count),
         state_achievement_options(label)
       `)
@@ -116,7 +103,7 @@ export default function State789AchievementsPage() {
     (async () => {
       try {
         setLoading(true);
-        await loadUser();
+        setMsg(null);
         await loadTypes();
         if (!cancelled) await loadMyRequests();
       } catch (e: any) {
@@ -142,11 +129,13 @@ export default function State789AchievementsPage() {
   async function submit() {
     setMsg(null);
 
+    const u = (await supabase.auth.getUser()).data.user;
+    if (!u?.id) return setMsg("Please log in first.");
+
     if (!playerName.trim()) return setMsg("Name is required.");
     if (!allianceName.trim()) return setMsg("Alliance name is required.");
     if (!typeId) return setMsg("Achievement is required.");
-
-    if (selectedType?.requires_option && !optionId) return setMsg("Please select a weapon/option.");
+    if (selectedType?.requires_option && !optionId) return setMsg("Please select a weapon.");
 
     const payload: any = {
       state_code: STATE,
@@ -163,7 +152,7 @@ export default function State789AchievementsPage() {
     const r = await supabase.from("state_achievement_requests").insert(payload).select("id").maybeSingle();
     if (r.error) return setMsg("Submit failed: " + r.error.message);
 
-    setMsg("✅ Submitted. Owner/trackers can now review it.");
+    setMsg("✅ Submitted.");
     setNotes("");
     await loadMyRequests();
   }
@@ -171,7 +160,7 @@ export default function State789AchievementsPage() {
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🏆 State 789 — Achievements Requests</h2>
+        <h2 style={{ margin: 0 }}>🏆 State 789 — Achievements</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadMyRequests}>Refresh</button>
           <SupportBundleButton />
@@ -187,7 +176,7 @@ export default function State789AchievementsPage() {
 
       <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(320px, 1fr)", gap: 12 }}>
         <div className="zombie-card">
-          <div style={{ fontWeight: 900 }}>Submit Achievement Request</div>
+          <div style={{ fontWeight: 900 }}>Request / Track an Achievement</div>
 
           <div style={{ marginTop: 10 }}>
             <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Name</div>
@@ -213,12 +202,10 @@ export default function State789AchievementsPage() {
 
           {selectedType?.requires_option ? (
             <div style={{ marginTop: 10 }}>
-              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Which weapon do you want?</div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Weapon (SWP)</div>
               <select className="zombie-input" value={optionId} onChange={(e) => setOptionId(e.target.value)} style={{ width: "100%", padding: "10px 12px" }}>
                 <option value="">(select)</option>
-                {options.map((o) => (
-                  <option key={o.id} value={o.id}>{o.label}</option>
-                ))}
+                {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
               </select>
             </div>
           ) : null}
@@ -229,23 +216,18 @@ export default function State789AchievementsPage() {
           </div>
 
           <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={submit} disabled={!uid || loading}>
-              Submit
-            </button>
-          </div>
-
-          <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
-            This is tracked by Owner/assigned trackers in the Owner dashboard.
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={submit} disabled={loading}>Submit</button>
           </div>
         </div>
 
         <div className="zombie-card">
-          <div style={{ fontWeight: 900 }}>My Submitted Requests</div>
+          <div style={{ fontWeight: 900 }}>My Requests</div>
           <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
             {myReqs.map((r) => {
               const t = r.state_achievement_types?.name || "Achievement";
               const opt = r.state_achievement_options?.label ? (" — " + r.state_achievement_options.label) : "";
-              const prog = (r.required_count > 1) ? ` (${r.current_count}/${r.required_count})` : "";
+              const needsCount = (r.required_count || 1) > 1;
+              const prog = needsCount ? ` (${r.current_count}/${r.required_count})` : "";
               const done = r.status === "completed" ? " ✅" : "";
               return (
                 <div key={r.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
