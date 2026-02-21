@@ -6,7 +6,7 @@ import AllianceDashboardExtras from "../components/alliance/AllianceDashboardExt
 import { GuidesQuickLink } from "../components/guides/GuidesQuickLink";
 import CurrentAlliancePill from "../components/nav/CurrentAlliancePill";
 import AllianceThemePicker from "../components/theme/AllianceThemePicker";
-const LazyAllianceQuickLinksPanel = lazy(() => import("../components/alliance/AllianceQuickLinksPanel").then((m: any) => ({ default: m.AllianceQuickLinksPanel })));
+const AllianceQuickLinksPanel = React.lazy(() => import("../components/alliance/AllianceQuickLinksPanel").then((m: any) => ({ default: (m as any).AllianceQuickLinksPanel ?? (m as any).default })));
 
 export default function DashboardLayout() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
