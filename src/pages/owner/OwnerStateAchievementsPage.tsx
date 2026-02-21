@@ -20,6 +20,8 @@ type AchOption = {
   label: string;
   sort: number;
   active: boolean;
+  // decorated for export/import
+  achievement_type_name?: string;
 };
 
 type ReqRow = {
@@ -47,19 +49,17 @@ type AccessRow = {
 };
 
 function nowUtc() { return new Date().toISOString(); }
-
-function safeUpper(s: any) {
-  const t = String(s || "").trim();
-  return t ? t.toUpperCase() : "";
-}
+function safeUpper(s: any) { const t = String(s || "").trim(); return t ? t.toUpperCase() : ""; }
 
 async function copyText(txt: string) {
-  try {
-    await navigator.clipboard.writeText(txt);
-    window.alert("Copied to clipboard.");
-  } catch {
-    window.prompt("Copy:", txt);
-  }
+  try { await navigator.clipboard.writeText(txt); window.alert("Copied to clipboard."); }
+  catch { window.prompt("Copy:", txt); }
+}
+
+function parseJsonPrompt(promptText: string): any | null {
+  const raw = window.prompt(promptText);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { window.alert("Invalid JSON."); return null; }
 }
 
 export default function OwnerStateAchievementsPage() {
@@ -100,6 +100,7 @@ export default function OwnerStateAchievementsPage() {
   const [selectedTypeId, setSelectedTypeId] = useState<string>("");
   const selectedType = useMemo(() => types.find((t) => t.id === selectedTypeId) || null, [types, selectedTypeId]);
   const [options, setOptions] = useState<AchOption[]>([]);
+  const [allOptions, setAllOptions] = useState<AchOption[]>([]);
 
   const [newTypeName, setNewTypeName] = useState("");
   const [newTypeKind, setNewTypeKind] = useState<AchType["kind"]>("generic");
@@ -132,6 +133,28 @@ export default function OwnerStateAchievementsPage() {
 
     if (r.error) { setMsg("Load options failed: " + r.error.message); setOptions([]); return; }
     setOptions((r.data as any) || []);
+  }
+
+  async function loadAllOptionsForState() {
+    setMsg(null);
+    // pull all options + their type name via FK join
+    const r = await supabase
+      .from("state_achievement_options")
+      .select("id,achievement_type_id,label,sort,active,state_achievement_types!inner(name,state_code)")
+      .eq("state_achievement_types.state_code", STATE)
+      .order("label", { ascending: true });
+
+    if (r.error) { setMsg("Load all options failed: " + r.error.message); setAllOptions([]); return; }
+    const data = (r.data as any[]) || [];
+    const decorated = data.map((x) => ({
+      id: x.id,
+      achievement_type_id: x.achievement_type_id,
+      label: x.label,
+      sort: x.sort,
+      active: x.active,
+      achievement_type_name: x.state_achievement_types?.name || undefined,
+    })) as AchOption[];
+    setAllOptions(decorated);
   }
 
   async function createType() {
@@ -236,13 +259,8 @@ export default function OwnerStateAchievementsPage() {
     return map;
   }, [reqs]);
 
-  const swpRows = useMemo(() => {
-    return reqs.filter((r) => (r.state_achievement_types?.kind === "swp_weapon") || (safeUpper(r.state_achievement_types?.name) === "SWP WEAPON"));
-  }, [reqs]);
-
-  const govRows = useMemo(() => {
-    return reqs.filter((r) => (r.state_achievement_types?.kind === "governor_count") || (safeUpper(r.state_achievement_types?.name).includes("GOVERNOR")));
-  }, [reqs]);
+  const swpRows = useMemo(() => reqs.filter((r) => (r.state_achievement_types?.kind === "swp_weapon") || (safeUpper(r.state_achievement_types?.name) === "SWP WEAPON")), [reqs]);
+  const govRows = useMemo(() => reqs.filter((r) => (r.state_achievement_types?.kind === "governor_count") || safeUpper(r.state_achievement_types?.name).includes("GOVERNOR")), [reqs]);
 
   const summaryText = useMemo(() => {
     const header = `🏆 State ${STATE} — Achievements Update`;
@@ -275,9 +293,7 @@ export default function OwnerStateAchievementsPage() {
           .slice(0, 6);
         if (close.length) {
           lines.push("  Closest:");
-          for (const r of close) {
-            lines.push(`  - ${r.player_name} (${r.alliance_name}) — ${r.current_count || 0}/${r.required_count || 3}`);
-          }
+          for (const r of close) lines.push(`  - ${r.player_name} (${r.alliance_name}) — ${r.current_count || 0}/${r.required_count || 3}`);
         }
       }
 
@@ -299,9 +315,7 @@ export default function OwnerStateAchievementsPage() {
         const rows = byWeapon[w];
         const done = rows.filter((r) => r.status === "completed").length;
         lines.push(`\n• ${w}: ${rows.length} (✅ ${done})`);
-        for (const r of rows.slice(0, 25)) {
-          lines.push(`  - ${r.player_name} (${r.alliance_name}) — ${r.status}`);
-        }
+        for (const r of rows.slice(0, 25)) lines.push(`  - ${r.player_name} (${r.alliance_name}) — ${r.status}`);
       }
       if (!swpRows.length) lines.push("(none)");
       return lines.join("\n");
@@ -333,18 +347,211 @@ export default function OwnerStateAchievementsPage() {
     return lines.join("\n");
   }, [STATE, fmt, reqs, byType, swpRows, govRows]);
 
+  async function exportAllBundle() {
+    setMsg(null);
+    // ensure latest
+    await loadTypes();
+    await loadAccess();
+    await loadAllOptionsForState();
+    await loadRequests();
+
+    const bundle = {
+      version: 1,
+      exportedUtc: nowUtc(),
+      state: STATE,
+      types,
+      options: allOptions,
+      access,
+      requests: reqs,
+      note: "Use Import Types/Options/Access to restore lists + permissions. Requests import is intentionally not implemented yet.",
+    };
+    await copyText(JSON.stringify(bundle, null, 2));
+  }
+
   async function exportJson(kind: "requests" | "types" | "options" | "access") {
     setMsg(null);
     try {
-      let payload: any = { version: 1, exportedUtc: nowUtc(), state: STATE, kind };
+      if (kind === "options") await loadAllOptionsForState();
+      const payload: any = { version: 1, exportedUtc: nowUtc(), state: STATE, kind };
       if (kind === "requests") payload.data = reqs;
       if (kind === "types") payload.data = types;
-      if (kind === "options") payload.data = options;
+      if (kind === "options") payload.data = allOptions;
       if (kind === "access") payload.data = access;
       await copyText(JSON.stringify(payload, null, 2));
     } catch (e: any) {
       setMsg("Export failed: " + String(e?.message || e));
     }
+  }
+
+  async function importTypesFromJson() {
+    setMsg(null);
+    const p = parseJsonPrompt("Paste Types export JSON (kind=types) or ALL bundle JSON:");
+    if (!p) return;
+
+    const data: any[] =
+      (p.kind === "types" && Array.isArray(p.data)) ? p.data :
+      (Array.isArray(p.types)) ? p.types :
+      [];
+
+    if (!data.length) { setMsg("Import types: no data found in JSON."); return; }
+
+    // Upsert by (state_code,name)
+    let ok = 0, fail = 0;
+    for (const row of data) {
+      try {
+        const name = String(row.name || "").trim();
+        if (!name) { fail++; continue; }
+        const kind = (row.kind === "swp_weapon" || row.kind === "governor_count") ? row.kind : "generic";
+        const requires_option = !!row.requires_option;
+        const required_count = Math.max(1, Number(row.required_count || 1));
+        const active = (row.active !== false);
+
+        const existing = await supabase
+          .from("state_achievement_types")
+          .select("id")
+          .eq("state_code", STATE)
+          .eq("name", name)
+          .maybeSingle();
+
+        if (existing.error && existing.status !== 406) throw new Error(existing.error.message);
+
+        if (existing.data?.id) {
+          const up = await supabase.from("state_achievement_types").update({ kind, requires_option, required_count, active } as any).eq("id", existing.data.id);
+          if (up.error) throw new Error(up.error.message);
+        } else {
+          const ins = await supabase.from("state_achievement_types").insert({ state_code: STATE, name, kind, requires_option, required_count, active } as any);
+          if (ins.error) throw new Error(ins.error.message);
+        }
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+
+    await loadTypes();
+    setMsg(`Import types done. OK=${ok} FAIL=${fail}`);
+  }
+
+  async function importOptionsFromJson() {
+    setMsg(null);
+    const p = parseJsonPrompt("Paste Options export JSON (kind=options) or ALL bundle JSON:");
+    if (!p) return;
+
+    const data: any[] =
+      (p.kind === "options" && Array.isArray(p.data)) ? p.data :
+      (Array.isArray(p.options)) ? p.options :
+      [];
+
+    if (!data.length) { setMsg("Import options: no data found in JSON."); return; }
+
+    // ensure types loaded for mapping
+    await loadTypes();
+    const typeByName: Record<string, AchType> = {};
+    for (const t of types) typeByName[safeUpper(t.name)] = t;
+
+    let ok = 0, fail = 0, skippedMissingType = 0;
+
+    for (const row of data) {
+      try {
+        const label = String(row.label || "").trim();
+        if (!label) { fail++; continue; }
+
+        const typeName = String(row.achievement_type_name || row.type_name || "").trim();
+        const typeIdRaw = String(row.achievement_type_id || "").trim();
+
+        let typeId = "";
+        if (typeName) {
+          const t = typeByName[safeUpper(typeName)];
+          if (t?.id) typeId = t.id;
+        }
+        if (!typeId && typeIdRaw) {
+          // only trust if it exists in current DB types list
+          const exists = types.find((t) => t.id === typeIdRaw);
+          if (exists) typeId = typeIdRaw;
+        }
+        if (!typeId) { skippedMissingType++; continue; }
+
+        const sort = Math.max(0, Number(row.sort || 0));
+        const active = (row.active !== false);
+
+        // upsert-by-select (no unique constraint on options label)
+        const ex = await supabase
+          .from("state_achievement_options")
+          .select("id")
+          .eq("achievement_type_id", typeId)
+          .eq("label", label)
+          .maybeSingle();
+
+        if (ex.error && ex.status !== 406) throw new Error(ex.error.message);
+
+        if (ex.data?.id) {
+          const up = await supabase.from("state_achievement_options").update({ sort, active } as any).eq("id", ex.data.id);
+          if (up.error) throw new Error(up.error.message);
+        } else {
+          const ins = await supabase.from("state_achievement_options").insert({ achievement_type_id: typeId, label, sort, active } as any);
+          if (ins.error) throw new Error(ins.error.message);
+        }
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+
+    if (selectedTypeId) await loadOptions(selectedTypeId);
+    await loadAllOptionsForState();
+    setMsg(`Import options done. OK=${ok} FAIL=${fail} SKIP(no type)=${skippedMissingType}`);
+  }
+
+  async function importAccessFromJson() {
+    setMsg(null);
+    const p = parseJsonPrompt("Paste Access export JSON (kind=access) or ALL bundle JSON:");
+    if (!p) return;
+
+    const data: any[] =
+      (p.kind === "access" && Array.isArray(p.data)) ? p.data :
+      (Array.isArray(p.access)) ? p.access :
+      [];
+
+    if (!data.length) { setMsg("Import access: no data found in JSON."); return; }
+
+    let ok = 0, fail = 0;
+    for (const row of data) {
+      try {
+        const user_id = String(row.user_id || "").trim();
+        if (!user_id) { fail++; continue; }
+        const can_view = (row.can_view !== false);
+        const can_edit = !!row.can_edit;
+        const can_manage_types = !!row.can_manage_types;
+
+        const ex = await supabase
+          .from("state_achievement_access")
+          .select("id")
+          .eq("state_code", STATE)
+          .eq("user_id", user_id)
+          .maybeSingle();
+
+        if (ex.error && ex.status !== 406) throw new Error(ex.error.message);
+
+        if (ex.data?.id) {
+          const up = await supabase.from("state_achievement_access").update({ can_view, can_edit, can_manage_types } as any).eq("id", ex.data.id);
+          if (up.error) throw new Error(up.error.message);
+        } else {
+          const ins = await supabase.from("state_achievement_access").insert({ state_code: STATE, user_id, can_view, can_edit, can_manage_types } as any);
+          if (ins.error) throw new Error(ins.error.message);
+        }
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+
+    await loadAccess();
+    setMsg(`Import access done. OK=${ok} FAIL=${fail}`);
+  }
+
+  // Requests import intentionally NOT implemented yet (to avoid duplicating/rewriting player submissions)
+  async function importRequestsNotice() {
+    window.alert("Requests import is intentionally not enabled yet to avoid corrupting player submissions. If you need it, tell me and we’ll add a SAFE import mode.");
   }
 
   useEffect(() => {
@@ -353,8 +560,9 @@ export default function OwnerStateAchievementsPage() {
 
   useEffect(() => {
     if (tab === "requests") loadRequests();
-    if (tab === "dropdowns") { loadTypes(); if (selectedTypeId) loadOptions(selectedTypeId); }
+    if (tab === "dropdowns") { loadTypes(); loadAllOptionsForState(); if (selectedTypeId) loadOptions(selectedTypeId); }
     if (tab === "access") loadAccess();
+    if (tab === "summary") { loadRequests(); loadTypes(); loadAccess(); loadAllOptionsForState(); }
   }, [tab]);
 
   useEffect(() => {
@@ -388,7 +596,7 @@ export default function OwnerStateAchievementsPage() {
         <div style={{ marginTop: 12 }}>
           <div className="zombie-card">
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <div style={{ fontWeight: 900 }}>Discord-ready Summary</div>
+              <div style={{ fontWeight: 900 }}>Discord-ready Summary + Backup Bundle</div>
               <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadRequests}>Refresh</button>
                 <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => copyText(summaryText)}>Copy Summary</button>
@@ -404,10 +612,12 @@ export default function OwnerStateAchievementsPage() {
                 <option value="swp">SWP Weapons Only</option>
               </select>
 
-              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("requests")}>Export Requests JSON</button>
-              <div style={{ marginLeft: "auto", opacity: 0.7, fontSize: 12 }}>
-                Tip: paste summary into Discord; no bot required.
-              </div>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportAllBundle}>Export ALL Bundle JSON</button>
+
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importTypesFromJson}>Import Types</button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importOptionsFromJson}>Import Options</button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importAccessFromJson}>Import Access</button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importRequestsNotice}>Import Requests (disabled)</button>
             </div>
 
             <pre style={{ marginTop: 12, whiteSpace: "pre-wrap", fontSize: 12, padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
@@ -430,7 +640,7 @@ export default function OwnerStateAchievementsPage() {
                 <option value="denied">denied</option>
               </select>
 
-              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("requests")}>Export JSON</button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("requests")}>Export Requests JSON</button>
               <button className="zombie-btn" style={{ padding: "10px 12px", marginLeft: "auto" }} onClick={loadRequests}>Refresh</button>
             </div>
           </div>
@@ -514,7 +724,8 @@ export default function OwnerStateAchievementsPage() {
                 </label>
 
                 <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={createType}>Create</button>
-                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("types")}>Export Types JSON</button>
+                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("types")}>Export Types</button>
+                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importTypesFromJson}>Import Types</button>
               </div>
             </div>
 
@@ -552,7 +763,11 @@ export default function OwnerStateAchievementsPage() {
                   <input className="zombie-input" value={newOptLabel} onChange={(e) => setNewOptLabel(e.target.value)} placeholder="Weapon name" style={{ padding: "10px 12px", flex: 1, minWidth: 220 }} />
                   <input className="zombie-input" type="number" value={newOptSort} onChange={(e) => setNewOptSort(Number(e.target.value))} style={{ padding: "10px 12px", width: 120 }} />
                   <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={createOption}>Add</button>
-                  <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("options")}>Export Options JSON</button>
+                </div>
+
+                <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("options")}>Export Options</button>
+                  <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importOptionsFromJson}>Import Options</button>
                 </div>
 
                 <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
@@ -593,7 +808,11 @@ export default function OwnerStateAchievementsPage() {
                 <input type="checkbox" checked={canManageTypes} onChange={(e) => setCanManageTypes(e.target.checked)} /> can_manage_types
               </label>
               <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={addAccess}>Add</button>
-              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("access")}>Export Access JSON</button>
+            </div>
+
+            <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("access")}>Export Access</button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importAccessFromJson}>Import Access</button>
             </div>
 
             <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
