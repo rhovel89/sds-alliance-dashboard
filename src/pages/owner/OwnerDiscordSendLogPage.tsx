@@ -4,7 +4,7 @@ import SupportBundleButton from "../../components/system/SupportBundleButton";
 type LogItem = {
   id: string;
   tsUtc: string;
-  source: "broadcast" | "liveops";
+  source: string;
   allianceCode: string | null;
   channelName: string | null;
   channelId: string | null;
