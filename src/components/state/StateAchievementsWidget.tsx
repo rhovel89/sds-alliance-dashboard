@@ -150,6 +150,7 @@ export function StateAchievementsWidget({ stateCode }: { stateCode: string }) {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={() => window.location.assign("/state/789/achievements-form")}>Submit Form</button>
           <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={() => window.location.assign("/state/789/achievements-progress")}>Progress</button>
+          <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={() => window.location.assign("/state/789/achievements-tracker")}>Tracker</button>
           <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={loadAll}>Refresh</button>
         </div>
       </div>
