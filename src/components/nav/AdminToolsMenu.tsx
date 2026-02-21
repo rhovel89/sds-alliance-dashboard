@@ -6,6 +6,7 @@ type Btn = { label: string; emoji: string; to: string };
 const OWNER_BUTTONS: Btn[] = [
   { emoji: "🧟", label: "Live Ops (timer + checklist)", to: "/owner/live-ops" },
   { emoji: "📣", label: "Broadcast Composer", to: "/owner/broadcast" },
+  { emoji: "📜", label: "Discord Send Log", to: "/owner/discord-send-log" },
   { emoji: "🔧", label: "Discord Mentions (Roles/Channels)", to: "/owner/discord-mentions" },
   { emoji: "🗂️", label: "Alliance Directory Editor", to: "/owner/alliance-directory" },
   { emoji: "🧩", label: "Permissions Matrix (shell)", to: "/owner/permissions-matrix" },
