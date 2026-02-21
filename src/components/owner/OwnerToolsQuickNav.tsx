@@ -26,6 +26,7 @@ export default function OwnerToolsQuickNav() {
       </div>
 
       <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10 }}>
+        <Btn emoji="🧟" label="Live Ops (timer + checklist)" to="/owner/live-ops" />
         <Btn emoji="✅" label="One-click Approve + Provision" to="/owner/oneclick-provision" />
         <Btn emoji="🎯" label="Event Types Library (UI-only)" to="/owner/event-types-library" />
         <Btn emoji="📣" label="Broadcast Composer" to="/owner/broadcast" />
@@ -36,7 +37,7 @@ export default function OwnerToolsQuickNav() {
       </div>
 
       <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
-        This is UI-only navigation. Backend permissions are still enforced by RLS.
+        UI-only navigation. Backend permissions are still enforced by RLS.
       </div>
     </div>
   );
