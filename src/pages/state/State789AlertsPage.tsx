@@ -339,12 +339,12 @@ export default function State789AlertsPage() {
           window.alert("Send failed: " + String(e?.message || e));
         }
       }
-  }
 
-(mentionRoleNames || "")
+    return (mentionRoleNames || "")
       .split(",")
       .map((x) => x.trim())
       .filter(Boolean);
+  }
   }, [mentionRoleNames]);
 
   const mentionRoleIds = useMemo(() => {
