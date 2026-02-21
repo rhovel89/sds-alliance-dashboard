@@ -336,7 +336,7 @@ export default function State789AlertsPage() {
   }
 // Send to Discord (Bot) via Supabase Edge Function
 
-async function sendNowBotEdge() {
+async function sendNowBot() {
   try {
     const a: any = (typeof alertToSend !== "undefined") ? (alertToSend as any) : null;
     const channelId = String(a?.target?.channel?.id ?? a?.target?.channelId ?? a?.channelId ?? a?.channel?.id ?? "").trim();
@@ -571,7 +571,7 @@ return (mentionRoleNames || "")
             <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyPayloadJson} disabled={!alertToSend}>
                 Copy Payload JSON
-                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendNowBotEdge} disabled={!alertToSend}>Send Now (Bot)</button>
+                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendNowBot} disabled={!alertToSend}>Send Now (Bot)</button>
               </button>
               <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolvedMessage} disabled={!alertToSend}>
                 Copy Discord-ready Message
