@@ -11,7 +11,7 @@ language plpgsql
 stable
 security definer
 set search_path = public, auth
-as \$\$
+as $$
 declare
   uid uuid := auth.uid();
   r text := null;
@@ -105,10 +105,10 @@ begin
 
   return false;
 end
-\$\$;
+$$;
 
 -- Policies on alliance_events (only if table exists)
-do \$\$
+do $$
 begin
   if to_regclass('public.alliance_events') is null then
     raise notice 'Skipping policies: public.alliance_events table not found.';
@@ -147,6 +147,6 @@ begin
   end if;
 
 end
-\$\$;
+$$;
 
 commit;
