@@ -2,6 +2,7 @@ import AppRoutes from "./routes/AppRoutes";
 import TopNav from "./components/nav/TopNav";
 import AuthRedirector from "./components/auth/AuthRedirector";
 import AppErrorBoundary from "./components/system/AppErrorBoundary";
+import ThemeBootstrap from "./components/theme/ThemeBootstrap";
 
 export default function App() {
   return (
@@ -9,6 +10,7 @@ export default function App() {
       <AppErrorBoundary>
       <AuthRedirector />
       <TopNav />
+      <ThemeBootstrap />
       <AppRoutes />
       </AppErrorBoundary>
     </>

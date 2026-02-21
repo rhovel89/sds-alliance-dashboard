@@ -1,78 +1,93 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useMemo, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 
-type ThemeKey = "night" | "plague" | "blood" | "ash";
+const GLOBAL_KEY = "sad_theme_global_v1";
+const PREFIX = "sad_theme_alliance_v1_";
 
-const THEMES: { key: ThemeKey; label: string }[] = [
-  { key: "night", label: "Night" },
-  { key: "plague", label: "Plague" },
+const THEMES = [
+  { key: "night", label: "Night (default)" },
   { key: "blood", label: "Blood" },
-  { key: "ash", label: "Ash" },
+  { key: "toxic", label: "Toxic" },
+  { key: "graveyard", label: "Graveyard" },
+  { key: "neon", label: "Neon" },
+  { key: "classic", label: "Classic" },
 ];
 
-function k(alliance: string | null) {
-  return alliance ? "sad_theme_alliance_v1_" + alliance.toUpperCase() : "sad_theme_global_v1";
+function allianceFromPath(pathname: string): string | null {
+  const m = pathname.match(/^\/dashboard\/([^\/?#]+)/i);
+  if (!m) return null;
+  const code = String(m[1] || "").trim();
+  return code ? code.toUpperCase() : null;
 }
 
-function applyTheme(theme: string) {
+function readTheme(alliance: string | null): string {
   try {
-    document.documentElement.dataset.theme = theme;
-  } catch {}
+    if (alliance) {
+      const t = localStorage.getItem(PREFIX + alliance);
+      if (t) return t;
+    }
+    const g = localStorage.getItem(GLOBAL_KEY);
+    return g || "night";
+  } catch {
+    return "night";
+  }
+}
+
+function saveTheme(alliance: string | null, theme: string) {
   try {
-    // keep compatibility with any existing global theme usage
-    localStorage.setItem("theme", theme);
+    if (alliance) localStorage.setItem(PREFIX + alliance, theme);
+    localStorage.setItem(GLOBAL_KEY, theme); // keep a global fallback
   } catch {}
+  document.documentElement.dataset.theme = theme;
 }
 
 export function AllianceThemePicker() {
-  const { alliance_id } = useParams();
-  const alliance = useMemo(() => (alliance_id ? String(alliance_id).toUpperCase() : null), [alliance_id]);
+  const loc = useLocation();
+  const params = useParams();
 
-  const [theme, setTheme] = useState<ThemeKey>("night");
+  const alliance = useMemo(() => {
+    const p = (params as any)?.alliance_id;
+    if (p) return String(p).toUpperCase();
+    return allianceFromPath(loc.pathname);
+  }, [loc.pathname, params]);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(k(alliance));
-      const global = localStorage.getItem("sad_theme_global_v1") || localStorage.getItem("theme");
-      const t = (saved || global || "night") as ThemeKey;
-      setTheme(t);
-      applyTheme(t);
-    } catch {
-      setTheme("night");
-      applyTheme("night");
-    }
+  const [theme, setTheme] = useState<string>(() => readTheme(alliance));
+
+  // when alliance changes, reload saved theme
+  React.useEffect(() => {
+    setTheme(readTheme(alliance));
   }, [alliance]);
 
-  function setAndSave(next: ThemeKey) {
-    setTheme(next);
-    applyTheme(next);
-    try {
-      localStorage.setItem(k(alliance), next);
-      if (!alliance) localStorage.setItem("sad_theme_global_v1", next);
-    } catch {}
-  }
-
   return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-      <div style={{ fontSize: 12, opacity: 0.85, fontWeight: 800 }}>Theme</div>
+    <div
+      className="zombie-card"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "8px 10px",
+        borderRadius: 999,
+        whiteSpace: "nowrap",
+      }}
+      title={alliance ? ("Theme for " + alliance) : "Theme (global)"}
+    >
+      <div style={{ fontWeight: 900, fontSize: 12 }}>🎨 Theme</div>
       <select
-        value={theme}
-        onChange={(e) => setAndSave(e.target.value as ThemeKey)}
         className="zombie-input"
-        style={{
-          padding: "8px 10px",
-          borderRadius: 10,
-          background: "rgba(0,0,0,0.25)",
-          color: "inherit",
-          border: "1px solid rgba(255,255,255,0.12)",
+        value={theme}
+        onChange={(e) => {
+          const v = e.target.value;
+          setTheme(v);
+          saveTheme(alliance, v);
         }}
+        style={{ padding: "6px 8px", fontSize: 12 }}
       >
         {THEMES.map((t) => (
-          <option key={t.key} value={t.key}>
-            {t.label}
-          </option>
+          <option key={t.key} value={t.key}>{t.label}</option>
         ))}
       </select>
     </div>
   );
 }
+
+export default AllianceThemePicker;
