@@ -21,6 +21,7 @@ end $$;
 
 -- Ensure safe default + existing data
 alter table public.state_achievement_types alter column kind set default 'count';
+alter table public.state_achievement_types drop constraint if exists sat_kind_chk;
 update public.state_achievement_types
 set kind = 'count'
 where kind is null or btrim(kind) = '' or kind <> 'count';
