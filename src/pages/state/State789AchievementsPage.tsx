@@ -234,6 +234,24 @@ export default function State789AchievementsPage() {
 
   const progressMap = useMemo(() => {
     if (scope === "state") return (store.progress.states[scopeKey] || {});
+    // sendNowBot shim (prevents runtime crash; safe even if deps missing)
+    
+const sendNowBot = async () => {
+      try {
+        const ch = (typeof resolvedChannelId === "string") ? resolvedChannelId : "";
+        const msg = (typeof announceResolved === "string") ? announceResolved : "";
+        const canSend = (typeof sendDiscordBot === "function");
+        if (!ch) { window.alert("Set a channel WITH an ID first (Owner → Discord Mentions)."); return; }
+        if (!msg) { window.alert("No message to send."); return; }
+        if (!canSend) { window.alert("Discord send helper not available yet."); return; }
+        const r = await sendDiscordBot({ mode: "bot", channelId: ch, content: msg } as any);
+        if (!r || r.ok !== true) { window.alert("Send failed: " + String(r?.error || "unknown")); return; }
+        window.alert("✅ Sent to Discord (bot).");
+      } catch (e) {
+        window.alert("Send failed: " + String((e as any)?.message || e));
+      }
+    };
+
     return (store.progress.alliances[scopeKey] || {});
   }, [store.progress, scope, scopeKey]);
 
