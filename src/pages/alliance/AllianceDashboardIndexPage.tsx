@@ -8,6 +8,7 @@ import { RealtimeStatusBadge } from "../../components/system/RealtimeStatusBadge
 import { detectAllianceFromPath } from "../../utils/detectAllianceFromPath";
 import { getCurrentAlliance } from "../../utils/getCurrentAlliance";
 import { getCurrentTheme } from "../../utils/getCurrentTheme";
+import { DashboardHomeQuickLinks } from "../../components/nav/DashboardHomeQuickLinks";
 
 export default function AllianceDashboardIndexPage() {
   const { alliance_id } = useParams();
@@ -52,6 +53,7 @@ export default function AllianceDashboardIndexPage() {
             Current Alliance: {alliance || "—"}
           </div>
           <RealtimeStatusBadge allianceCode={alliance || null} />
+          <DashboardHomeQuickLinks />
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
@@ -64,7 +66,6 @@ export default function AllianceDashboardIndexPage() {
 
       {copied ? <div style={{ marginTop: 8, opacity: 0.85, fontSize: 12 }}>{copied}</div> : null}
 
-      <AllianceQuickLinksPanel />
 
       <div style={{ marginTop: 14 }}>
         <MyAlliance />

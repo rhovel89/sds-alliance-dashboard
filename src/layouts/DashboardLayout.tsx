@@ -6,7 +6,6 @@ import AllianceDashboardExtras from "../components/alliance/AllianceDashboardExt
 import { GuidesQuickLink } from "../components/guides/GuidesQuickLink";
 import CurrentAlliancePill from "../components/nav/CurrentAlliancePill";
 import AllianceThemePicker from "../components/theme/AllianceThemePicker";
-const AllianceQuickLinksPanel = lazy(() => import("../components/alliance/AllianceQuickLinksPanel").then((m: any) => ({ default: (m as any).AllianceQuickLinksPanel ?? (m as any).default })));
 
 export default function DashboardLayout() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
@@ -52,12 +51,3 @@ export default function DashboardLayout() {
       </aside>
 
       <main className="dashboard-main">
-        {showQuickLinks ? (<Suspense fallback={null}><AllianceQuickLinksPanel /></Suspense>) : null}
-
-        <Outlet />
-      <GuidesQuickLink />
-      </main>
-    </div>
-      </>
-  );
-}
