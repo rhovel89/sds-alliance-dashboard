@@ -7,6 +7,7 @@ const OWNER_BUTTONS: Btn[] = [
   { emoji: "🧟", label: "Live Ops (timer + checklist)", to: "/owner/live-ops" },
   { emoji: "📣", label: "Broadcast Composer", to: "/owner/broadcast" },
   { emoji: "📜", label: "Discord Send Log", to: "/owner/discord-send-log" },
+  { emoji: "🗓️", label: "Scheduled Sends", to: "/owner/scheduled-sends" },
   { emoji: "🧪", label: "Discord Test Send", to: "/owner/discord-test-send" },
   { emoji: "🔧", label: "Discord Mentions (Roles/Channels)", to: "/owner/discord-mentions" },
   { emoji: "⚙️", label: "Discord Defaults", to: "/owner/discord-defaults" },
