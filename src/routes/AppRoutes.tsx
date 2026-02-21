@@ -70,6 +70,7 @@ import MyMailShellPage from "../pages/mail/MyMailShellPage";
 import OwnerLiveOpsPage from "../pages/owner/OwnerLiveOpsPage";
 import OwnerDiscordMentionsPage from "../pages/owner/OwnerDiscordMentionsPage";
 import OwnerDiscordSendLogPage from "../pages/owner/OwnerDiscordSendLogPage";
+import OwnerDiscordTestSendPage from "../pages/owner/OwnerDiscordTestSendPage";
 
 export default function AppRoutes() {
   return (
@@ -138,6 +139,7 @@ export default function AppRoutes() {
       <Route path="/owner/live-ops" element={<RequireAdmin><OwnerLiveOpsPage /></RequireAdmin>} />
       <Route path="/owner/discord-mentions" element={<RequireAdmin><OwnerDiscordMentionsPage /></RequireAdmin>} />
       <Route path="/owner/discord-send-log" element={<RequireAdmin><OwnerDiscordSendLogPage /></RequireAdmin>} />
+      <Route path="/owner/discord-test-send" element={<RequireAdmin><OwnerDiscordTestSendPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
