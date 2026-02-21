@@ -24,6 +24,7 @@ const OWNER_BUTTONS: Btn[] = [
   { emoji: "🛠️", label: "Mentions Tools", to: "/owner/discord-mentions-tools" },
   { emoji: "📡", label: "Realtime History", to: "/owner/realtime-history" },
   { emoji: "⚡", label: "One-click Provision+", to: "/owner/oneclick-provision-plus" },
+  { emoji: "📥", label: "Achievement Inbox", to: "/owner/state-achievement-inbox" },
 ];
 
 async function safeRpcBool(name: string): Promise<boolean> {
