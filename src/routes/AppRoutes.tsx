@@ -66,6 +66,7 @@ import OwnerAllianceJumpPage from "../pages/owner/OwnerAllianceJumpPage";
 import State789AlertsPage from "../pages/state/State789AlertsPage";
 import State789DiscussionBoardPage from "../pages/state/State789DiscussionBoardPage";
 import OwnerBroadcastComposerPage from "../pages/owner/OwnerBroadcastComposerPage";
+import MyMailShellPage from "../pages/mail/MyMailShellPage";
 
 export default function AppRoutes() {
   return (
@@ -121,7 +122,7 @@ export default function AppRoutes() {
       {/* fallback */}
       <Route path="/state/789" element={<State789DashboardPage />} />
       <Route path="/alliances" element={<AllianceDirectoryPage />} />
-      <Route path="/mail" element={<MyMailPage />} />
+      <Route path="/mail" element={<MyMailShellPage />} />
       <Route path="/owner/alliance-directory" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
       <Route path="/owner/permissions-matrix" element={<RequireAdmin><OwnerPermissionsMatrixShellPage /></RequireAdmin>} />
       <Route path="/debug" element={<DebugPage />} />
