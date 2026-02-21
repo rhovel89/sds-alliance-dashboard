@@ -269,6 +269,21 @@ begin
   end if;
 end $$;
 
+-- Ensure requester_user_id exists BEFORE any policies reference it (idempotent)
+do $$
+begin
+  if to_regclass('public.state_achievement_requests') is not null then
+    if not exists (
+      select 1 from information_schema.columns
+      where table_schema='public'
+        and table_name='state_achievement_requests'
+        and column_name='requester_user_id'
+    ) then
+      alter table public.state_achievement_requests add column requester_user_id uuid;
+      alter table public.state_achievement_requests alter column requester_user_id set default auth.uid();
+    end if;
+  end if;
+end $$;
 -- REQUESTS policies
 do $$
 begin
