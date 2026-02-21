@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import SupportBundleButton from "../components/system/SupportBundleButton";
+import { detectAllianceFromPath } from "../utils/detectAllianceFromPath";
 
 export default function DebugPage() {
   const [data, setData] = useState<any>({ loading: true });
@@ -12,6 +13,7 @@ export default function DebugPage() {
         tsUtc: new Date().toISOString(),
         href: window.location.href,
         path: window.location.pathname,
+        alliance: detectAllianceFromPath(window.location.pathname),
         browserOnline: navigator.onLine,
         userAgent: navigator.userAgent,
       };
