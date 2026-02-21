@@ -41,6 +41,7 @@ const ROLE_MAP_KEY = "sad_discord_role_map_v1";
 const CHANNEL_MAP_KEY = "sad_discord_channel_map_v1";
 const DIR_KEY = "sad_alliance_directory_v1";
 const TPL_KEY = "sad_discord_broadcast_templates_v1";
+const PREFILL_KEY = "sad_broadcast_prefill_v1";
 
 function nowUtc() {
   return new Date().toISOString();
@@ -196,6 +197,29 @@ export default function OwnerBroadcastComposerPage() {
   const roleLut = useMemo(() => makeRoleLookup(roleStore, effectiveAlliance), [roleStore, effectiveAlliance]);
   const chanLut = useMemo(() => makeChannelLookup(chanStore, effectiveAlliance), [chanStore, effectiveAlliance]);
 
+    // One-time prefill from Live Ops (or other tools)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PREFILL_KEY);
+      if (!raw) return;
+      const p = JSON.parse(raw);
+      if (!p || p.version !== 1) return;
+
+      const sc = (p.scope === "global" ? "global" : "alliance");
+      const ac = String(p.allianceCode || "WOC").toUpperCase();
+      const nm = String(p.templateName || "Live Ops");
+      const body = String(p.body || "");
+
+      setScope(sc as any);
+      setAllianceCode(ac);
+      setTplName(nm);
+      setDraft(body);
+
+      localStorage.removeItem(PREFILL_KEY);
+    } catch {
+      try { localStorage.removeItem(PREFILL_KEY); } catch {}
+    }
+  }, []);
   const resolved = useMemo(() => resolveMentions(draft, roleLut, chanLut), [draft, roleLut, chanLut]);
 
   useEffect(() => {
