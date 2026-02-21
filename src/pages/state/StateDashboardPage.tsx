@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 import { RealtimeStatusBadge } from "../../components/system/RealtimeStatusBadge";
+import StateAchievementsMiniProgressCard from "../../components/state/StateAchievementsMiniProgressCard";
 
 function CardButton(props: { emoji: string; label: string; to: string; sub?: string }) {
   const nav = useNavigate();
