@@ -60,6 +60,10 @@ function clampInt(x: any, min: number, max: number) {
   return Math.max(min, Math.min(max, Math.floor(n)));
 }
 
+function norm(s: any) {
+  return String(s || "").trim().toLowerCase();
+}
+
 export default function OwnerStateAchievementsPage() {
   const [stateCode, setStateCode] = useState("789");
   const [tab, setTab] = useState<"requests" | "types" | "access">("requests");
@@ -82,6 +86,22 @@ export default function OwnerStateAchievementsPage() {
     return m;
   }, [options]);
 
+  const typeIds = useMemo(() => types.map((t) => t.id), [types]);
+
+  const governorTypeIds = useMemo(() => {
+    return types
+      .filter((t) => t.active !== false)
+      .filter((t) => t.kind === "governor_count" || norm(t.name).includes("governor"))
+      .map((t) => t.id);
+  }, [types]);
+
+  const swpTypeIds = useMemo(() => {
+    return types
+      .filter((t) => t.active !== false)
+      .filter((t) => t.kind === "swp_weapon" || norm(t.name).includes("swp"))
+      .map((t) => t.id);
+  }, [types]);
+
   async function loadAll() {
     setMsg(null);
 
@@ -95,12 +115,12 @@ export default function OwnerStateAchievementsPage() {
     const typesData = (t.data as any) || [];
     setTypes(typesData);
 
-    const typeIds = typesData.map((x: any) => x.id).filter(Boolean);
-    if (typeIds.length) {
+    const ids = typesData.map((x: any) => x.id).filter(Boolean);
+    if (ids.length) {
       const o = await supabase
         .from("state_achievement_options")
         .select("id,achievement_type_id,label,sort,active")
-        .in("achievement_type_id", typeIds)
+        .in("achievement_type_id", ids)
         .order("sort", { ascending: true })
         .order("label", { ascending: true });
 
@@ -133,18 +153,20 @@ export default function OwnerStateAchievementsPage() {
 
   // ---------------- REQUESTS ----------------
   const [q, setQ] = useState("");
+  const [includeCompletedInSummary, setIncludeCompletedInSummary] = useState(false);
+
   const filteredRequests = useMemo(() => {
-    const s = (q || "").trim().toLowerCase();
+    const s = norm(q);
     if (!s) return requests;
     return requests.filter((r) => {
       const t = typeById[r.achievement_type_id]?.name || "";
       const o = r.option_id ? (optionById[r.option_id]?.label || "") : "";
       return (
-        r.player_name.toLowerCase().includes(s) ||
-        r.alliance_name.toLowerCase().includes(s) ||
-        t.toLowerCase().includes(s) ||
-        o.toLowerCase().includes(s) ||
-        r.status.toLowerCase().includes(s)
+        norm(r.player_name).includes(s) ||
+        norm(r.alliance_name).includes(s) ||
+        norm(t).includes(s) ||
+        norm(o).includes(s) ||
+        norm(r.status).includes(s)
       );
     });
   }, [q, requests, typeById, optionById]);
@@ -175,6 +197,61 @@ export default function OwnerStateAchievementsPage() {
     const status: any = cur >= req ? "completed" : (r.status === "completed" ? "in_progress" : r.status);
     const next: ReqRow = { ...r, current_count: cur, status };
     await saveRequest(next);
+  }
+
+  // Discord-ready summaries (no sending here; just copy)
+  function buildGovernorSummary(): string {
+    const set = new Set(governorTypeIds);
+    const rows = requests
+      .filter((r) => set.has(r.achievement_type_id))
+      .filter((r) => r.status !== "denied")
+      .filter((r) => includeCompletedInSummary ? true : r.status !== "completed")
+      .sort((a, b) => (b.current_count || 0) - (a.current_count || 0));
+
+    const lines: string[] = [];
+    lines.push(`🧟 State ${stateCode} — Governor Progress (${new Date().toISOString()})`);
+    if (!rows.length) { lines.push("- (none)"); return lines.join("\n"); }
+
+    for (const r of rows) {
+      const req = r.required_count || 3;
+      const cur = r.current_count || 0;
+      const done = (r.status === "completed" || cur >= req) ? " ✅" : "";
+      lines.push(`- ${r.player_name} (${r.alliance_name}): ${cur}/${req}${done}`);
+    }
+    return lines.join("\n");
+  }
+
+  function buildSwpWishlistSummary(): string {
+    const set = new Set(swpTypeIds);
+    const rows = requests
+      .filter((r) => set.has(r.achievement_type_id))
+      .filter((r) => r.status !== "denied")
+      .filter((r) => includeCompletedInSummary ? true : r.status !== "completed");
+
+    const byPlayer: Record<string, { alliance: string; weapons: string[] }> = {};
+    for (const r of rows) {
+      const key = norm(r.player_name) + "|" + norm(r.alliance_name);
+      if (!byPlayer[key]) byPlayer[key] = { alliance: r.alliance_name, weapons: [] };
+      const w = r.option_id ? (optionById[r.option_id]?.label || "Unknown") : "Unknown";
+      if (!byPlayer[key].weapons.includes(w)) byPlayer[key].weapons.push(w);
+    }
+
+    const lines: string[] = [];
+    lines.push(`🧟 State ${stateCode} — SWP Weapon Wishlist (${new Date().toISOString()})`);
+    const keys = Object.keys(byPlayer).sort();
+    if (!keys.length) { lines.push("- (none)"); return lines.join("\n"); }
+
+    for (const k of keys) {
+      const player = k.split("|")[0];
+      const rec = byPlayer[k];
+      lines.push(`- ${player} (${rec.alliance}): ${rec.weapons.join(", ")}`);
+    }
+    return lines.join("\n");
+  }
+
+  async function copySummary(which: "governor" | "swp") {
+    const txt = which === "governor" ? buildGovernorSummary() : buildSwpWishlistSummary();
+    await copyText(txt);
   }
 
   // ---------------- TYPES ----------------
@@ -263,6 +340,52 @@ export default function OwnerStateAchievementsPage() {
     await loadAll();
   }
 
+  // Bulk add options (weapons) for a type
+  const [bulkTypeId, setBulkTypeId] = useState<string>("");
+  const [bulkText, setBulkText] = useState<string>("Rail Gun");
+
+  const bulkType = useMemo(() => (bulkTypeId ? typeById[bulkTypeId] : null), [bulkTypeId, typeById]);
+
+  async function bulkAddOptions() {
+    setMsg(null);
+    const tid = bulkTypeId;
+    if (!tid) return setMsg("Select a type for bulk add.");
+    const t = typeById[tid];
+    if (!t) return setMsg("Selected type not found.");
+    if (!t.requires_option) return setMsg("This type does not use options (requires_option = false).");
+
+    const lines = (bulkText || "")
+      .split(/\r?\n/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+    const uniq: string[] = [];
+    const seen = new Set<string>();
+    for (const l of lines) {
+      const k = norm(l);
+      if (!k) continue;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      uniq.push(l);
+    }
+
+    if (!uniq.length) return setMsg("No option labels found.");
+
+    const payload = uniq.map((label, idx) => ({
+      achievement_type_id: tid,
+      label,
+      sort: idx,
+      active: true
+    }));
+
+    // Use upsert so running twice does not error (unique constraint exists)
+    const r = await supabase.from("state_achievement_options").upsert(payload as any, { onConflict: "achievement_type_id,label" } as any);
+    if ((r as any).error) return setMsg("Bulk add failed: " + (r as any).error.message);
+
+    setMsg(`✅ Bulk added/updated ${payload.length} options for "${t.name}".`);
+    await loadAll();
+  }
+
   // ---------------- ACCESS ----------------
   const [accUserId, setAccUserId] = useState("");
   const [accView, setAccView] = useState(true);
@@ -310,12 +433,42 @@ export default function OwnerStateAchievementsPage() {
     await copyText(JSON.stringify(payload, null, 2));
   }
 
+  async function importAll() {
+    const raw = window.prompt("Paste exported JSON:");
+    if (!raw) return;
+    try {
+      const p = JSON.parse(raw);
+      if (!p || p.version !== 1) throw new Error("Invalid version");
+      // Import is optional and DB-backed; do small safe upserts.
+      if (Array.isArray(p.types)) {
+        const tPayload = p.types.map((x: any) => ({
+          state_code: stateCode,
+          name: String(x.name || "").trim(),
+          kind: String(x.kind || "generic"),
+          requires_option: !!x.requires_option,
+          required_count: clampInt(x.required_count, 1, 999),
+          active: x.active !== false
+        })).filter((x: any) => x.name);
+
+        if (tPayload.length) {
+          const r = await supabase.from("state_achievement_types").upsert(tPayload as any, { onConflict: "state_code,name" } as any);
+          if ((r as any).error) return setMsg("Import types failed: " + (r as any).error.message);
+        }
+      }
+      setMsg("✅ Imported (types upserted). Refreshing…");
+      await loadAll();
+    } catch {
+      setMsg("Import failed: invalid JSON.");
+    }
+  }
+
   return (
     <div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>🏆 Owner — State Achievements</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportAll}>Export</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importAll}>Import</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
           <SupportBundleButton />
         </div>
@@ -346,6 +499,20 @@ export default function OwnerStateAchievementsPage() {
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ fontWeight: 900 }}>Requests Tracker</div>
             <input className="zombie-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search (name, alliance, achievement, status…)" style={{ padding: "10px 12px", minWidth: 280 }} />
+          </div>
+
+          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input type="checkbox" checked={includeCompletedInSummary} onChange={(e) => setIncludeCompletedInSummary(e.target.checked)} />
+              <span style={{ opacity: 0.85 }}>Include completed in summaries</span>
+            </label>
+
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => copySummary("governor")}>
+              Copy Discord Summary — Governor
+            </button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => copySummary("swp")}>
+              Copy Discord Summary — SWP Wishlist
+            </button>
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
@@ -463,6 +630,30 @@ export default function OwnerStateAchievementsPage() {
               <input className="zombie-input" value={optLabel} onChange={(e) => setOptLabel(e.target.value)} placeholder="Option label (e.g. Rail Gun)" style={{ padding: "10px 12px" }} />
               <input className="zombie-input" value={String(optSort)} onChange={(e) => setOptSort(clampInt(e.target.value, -999, 999))} placeholder="Sort" style={{ padding: "10px 12px", width: 140 }} />
               <button className="zombie-btn" style={{ padding: "12px 14px", fontWeight: 900 }} onClick={addOption}>Add Option</button>
+            </div>
+          </div>
+
+          <div className="zombie-card" style={{ gridColumn: "1 / -1" }}>
+            <div style={{ fontWeight: 900 }}>Bulk Add Weapons/Options</div>
+            <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+              Paste one weapon per line (Owner can add more later). Uses UPSERT, so reruns are safe.
+            </div>
+
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <select className="zombie-input" value={bulkTypeId} onChange={(e) => setBulkTypeId(e.target.value)} style={{ padding: "10px 12px" }}>
+                <option value="">Select achievement type…</option>
+                {types.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}{t.requires_option ? "" : " (no options)"}
+                  </option>
+                ))}
+              </select>
+
+              <textarea className="zombie-input" value={bulkText} onChange={(e) => setBulkText(e.target.value)} style={{ padding: "10px 12px", minHeight: 120 }} />
+
+              <button className="zombie-btn" style={{ padding: "12px 14px", fontWeight: 900 }} onClick={bulkAddOptions}>
+                Bulk Add Options {bulkType ? `→ ${bulkType.name}` : ""}
+              </button>
             </div>
           </div>
 
