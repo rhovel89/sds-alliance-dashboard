@@ -341,7 +341,7 @@ export default function State789AlertsPage() {
       }
   }
 
-return (mentionRoleNames || "")
+(mentionRoleNames || "")
       .split(",")
       .map((x) => x.trim())
       .filter(Boolean);
