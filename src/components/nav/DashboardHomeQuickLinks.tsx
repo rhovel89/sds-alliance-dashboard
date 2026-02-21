@@ -5,6 +5,7 @@ import React from "react";
        <div style={{ marginTop: 12, fontWeight: 900 }}>🧟 State</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
         <QuickLink icon="🏴" label="State Dashboard" to="/state" />
+        <QuickLink icon="🏆" label="State 789 Achievements" to="/state/789/achievements" />
         <QuickLink icon="🧪" label="State 789" to="/state/789" />
         <QuickLink icon="💬" label="State 789 Discussion" to="/state/789/discussion" />
       </div>
