@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 
-type Tab = "requests" | "dropdowns" | "access";
+type Tab = "requests" | "dropdowns" | "access" | "summary";
+type SummaryFmt = "compact" | "detailed" | "governor" | "swp";
+
 type AchType = {
   id: string;
   name: string;
@@ -45,6 +47,20 @@ type AccessRow = {
 };
 
 function nowUtc() { return new Date().toISOString(); }
+
+function safeUpper(s: any) {
+  const t = String(s || "").trim();
+  return t ? t.toUpperCase() : "";
+}
+
+async function copyText(txt: string) {
+  try {
+    await navigator.clipboard.writeText(txt);
+    window.alert("Copied to clipboard.");
+  } catch {
+    window.prompt("Copy:", txt);
+  }
+}
 
 export default function OwnerStateAchievementsPage() {
   const STATE = "789";
@@ -207,8 +223,131 @@ export default function OwnerStateAchievementsPage() {
     await loadAccess();
   }
 
+  // Summary
+  const [fmt, setFmt] = useState<SummaryFmt>("compact");
+
+  const byType = useMemo(() => {
+    const map: Record<string, ReqRow[]> = {};
+    for (const r of reqs) {
+      const name = r.state_achievement_types?.name || "Unknown";
+      if (!map[name]) map[name] = [];
+      map[name].push(r);
+    }
+    return map;
+  }, [reqs]);
+
+  const swpRows = useMemo(() => {
+    return reqs.filter((r) => (r.state_achievement_types?.kind === "swp_weapon") || (safeUpper(r.state_achievement_types?.name) === "SWP WEAPON"));
+  }, [reqs]);
+
+  const govRows = useMemo(() => {
+    return reqs.filter((r) => (r.state_achievement_types?.kind === "governor_count") || (safeUpper(r.state_achievement_types?.name).includes("GOVERNOR")));
+  }, [reqs]);
+
+  const summaryText = useMemo(() => {
+    const header = `🏆 State ${STATE} — Achievements Update`;
+    const lines: string[] = [header, ""];
+
+    function addTypeBlock(title: string, rows: ReqRow[]) {
+      const total = rows.length;
+      const completed = rows.filter((r) => r.status === "completed").length;
+      const inprog = rows.filter((r) => r.status === "in_progress").length;
+      const submitted = rows.filter((r) => r.status === "submitted").length;
+      lines.push(`• ${title}: ${total} (✅ ${completed} | 🟡 ${inprog} | 📩 ${submitted})`);
+    }
+
+    if (fmt === "compact") {
+      if (swpRows.length) {
+        const byWeapon: Record<string, number> = {};
+        for (const r of swpRows) {
+          const w = r.state_achievement_options?.label || "Unknown Weapon";
+          byWeapon[w] = (byWeapon[w] || 0) + 1;
+        }
+        addTypeBlock("SWP Weapon", swpRows);
+        const top = Object.keys(byWeapon).sort((a,b) => (byWeapon[b]-byWeapon[a])).slice(0, 6);
+        if (top.length) lines.push(`  Weapons: ${top.map((w) => `${w}(${byWeapon[w]})`).join(", ")}`);
+      }
+      if (govRows.length) {
+        addTypeBlock("Governor (3x)", govRows);
+        const close = govRows
+          .filter((r) => r.status !== "completed")
+          .sort((a,b) => (b.current_count||0)-(a.current_count||0))
+          .slice(0, 6);
+        if (close.length) {
+          lines.push("  Closest:");
+          for (const r of close) {
+            lines.push(`  - ${r.player_name} (${r.alliance_name}) — ${r.current_count || 0}/${r.required_count || 3}`);
+          }
+        }
+      }
+
+      const otherNames = Object.keys(byType).filter((n) => safeUpper(n) !== "SWP WEAPON" && !safeUpper(n).includes("GOVERNOR"));
+      for (const n of otherNames.sort()) addTypeBlock(n, byType[n]);
+
+      return lines.join("\n");
+    }
+
+    if (fmt === "swp") {
+      lines.push("🧨 SWP Weapons");
+      const byWeapon: Record<string, ReqRow[]> = {};
+      for (const r of swpRows) {
+        const w = r.state_achievement_options?.label || "Unknown Weapon";
+        if (!byWeapon[w]) byWeapon[w] = [];
+        byWeapon[w].push(r);
+      }
+      for (const w of Object.keys(byWeapon).sort()) {
+        const rows = byWeapon[w];
+        const done = rows.filter((r) => r.status === "completed").length;
+        lines.push(`\n• ${w}: ${rows.length} (✅ ${done})`);
+        for (const r of rows.slice(0, 25)) {
+          lines.push(`  - ${r.player_name} (${r.alliance_name}) — ${r.status}`);
+        }
+      }
+      if (!swpRows.length) lines.push("(none)");
+      return lines.join("\n");
+    }
+
+    if (fmt === "governor") {
+      lines.push("👑 Governor (3x)");
+      if (!govRows.length) { lines.push("(none)"); return lines.join("\n"); }
+      const sorted = [...govRows].sort((a,b) => (b.current_count||0)-(a.current_count||0));
+      for (const r of sorted) {
+        const done = r.status === "completed" ? " ✅" : "";
+        lines.push(`- ${r.player_name} (${r.alliance_name}) — ${r.current_count || 0}/${r.required_count || 3} • ${r.status}${done}`);
+      }
+      return lines.join("\n");
+    }
+
+    // detailed
+    lines.push("📋 Detailed by Achievement");
+    const names = Object.keys(byType).sort();
+    for (const name of names) {
+      const rows = byType[name];
+      lines.push(`\n== ${name} ==`);
+      for (const r of rows.slice(0, 40)) {
+        const opt = r.state_achievement_options?.label ? ` — ${r.state_achievement_options.label}` : "";
+        const prog = (r.required_count || 1) > 1 ? ` (${r.current_count || 0}/${r.required_count})` : "";
+        lines.push(`- ${r.player_name} (${r.alliance_name})${opt}${prog} • ${r.status}`);
+      }
+    }
+    return lines.join("\n");
+  }, [STATE, fmt, reqs, byType, swpRows, govRows]);
+
+  async function exportJson(kind: "requests" | "types" | "options" | "access") {
+    setMsg(null);
+    try {
+      let payload: any = { version: 1, exportedUtc: nowUtc(), state: STATE, kind };
+      if (kind === "requests") payload.data = reqs;
+      if (kind === "types") payload.data = types;
+      if (kind === "options") payload.data = options;
+      if (kind === "access") payload.data = access;
+      await copyText(JSON.stringify(payload, null, 2));
+    } catch (e: any) {
+      setMsg("Export failed: " + String(e?.message || e));
+    }
+  }
+
   useEffect(() => {
-    // load data for default tab only (minimal network)
     loadRequests();
   }, []);
 
@@ -242,7 +381,41 @@ export default function OwnerStateAchievementsPage() {
         <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => setTab("requests")}>Requests</button>
         <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => setTab("dropdowns")}>Dropdowns</button>
         <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => setTab("access")}>Access</button>
+        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => setTab("summary")}>Summary</button>
       </div>
+
+      {tab === "summary" ? (
+        <div style={{ marginTop: 12 }}>
+          <div className="zombie-card">
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ fontWeight: 900 }}>Discord-ready Summary</div>
+              <div style={{ marginLeft: "auto", display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadRequests}>Refresh</button>
+                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => copyText(summaryText)}>Copy Summary</button>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ opacity: 0.75, fontSize: 12 }}>Format</div>
+              <select className="zombie-input" value={fmt} onChange={(e) => setFmt(e.target.value as any)} style={{ padding: "10px 12px" }}>
+                <option value="compact">Compact</option>
+                <option value="detailed">Detailed</option>
+                <option value="governor">Governor Only</option>
+                <option value="swp">SWP Weapons Only</option>
+              </select>
+
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("requests")}>Export Requests JSON</button>
+              <div style={{ marginLeft: "auto", opacity: 0.7, fontSize: 12 }}>
+                Tip: paste summary into Discord; no bot required.
+              </div>
+            </div>
+
+            <pre style={{ marginTop: 12, whiteSpace: "pre-wrap", fontSize: 12, padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+{summaryText}
+            </pre>
+          </div>
+        </div>
+      ) : null}
 
       {tab === "requests" ? (
         <div style={{ marginTop: 12 }}>
@@ -256,6 +429,8 @@ export default function OwnerStateAchievementsPage() {
                 <option value="completed">completed</option>
                 <option value="denied">denied</option>
               </select>
+
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("requests")}>Export JSON</button>
               <button className="zombie-btn" style={{ padding: "10px 12px", marginLeft: "auto" }} onClick={loadRequests}>Refresh</button>
             </div>
           </div>
@@ -339,6 +514,7 @@ export default function OwnerStateAchievementsPage() {
                 </label>
 
                 <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={createType}>Create</button>
+                <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("types")}>Export Types JSON</button>
               </div>
             </div>
 
@@ -372,14 +548,11 @@ export default function OwnerStateAchievementsPage() {
 
             {selectedTypeId ? (
               <>
-                <div style={{ marginTop: 10, opacity: 0.75, fontSize: 12 }}>
-                  Tip: Use this for SWP weapons list (Rail Gun, etc).
-                </div>
-
                 <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <input className="zombie-input" value={newOptLabel} onChange={(e) => setNewOptLabel(e.target.value)} placeholder="Weapon name" style={{ padding: "10px 12px", flex: 1, minWidth: 220 }} />
                   <input className="zombie-input" type="number" value={newOptSort} onChange={(e) => setNewOptSort(Number(e.target.value))} style={{ padding: "10px 12px", width: 120 }} />
                   <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={createOption}>Add</button>
+                  <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("options")}>Export Options JSON</button>
                 </div>
 
                 <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
@@ -420,6 +593,7 @@ export default function OwnerStateAchievementsPage() {
                 <input type="checkbox" checked={canManageTypes} onChange={(e) => setCanManageTypes(e.target.checked)} /> can_manage_types
               </label>
               <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={addAccess}>Add</button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => exportJson("access")}>Export Access JSON</button>
             </div>
 
             <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
