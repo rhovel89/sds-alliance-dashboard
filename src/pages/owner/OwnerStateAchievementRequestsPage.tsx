@@ -107,7 +107,7 @@ export default function OwnerStateAchievementRequestsPage() {
     reload();
   }
 
-  function setStatus(id: string, st: string) {
+  function setRequestStatus(id: string, st: string) {
     if (!canEdit) return alert("No edit permission.");
     updateRequest(id, { status: st as any });
     reload();
@@ -214,7 +214,7 @@ export default function OwnerStateAchievementRequestsPage() {
 
               <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 <div style={{ opacity: 0.7, fontSize: 12 }}>Status</div>
-                <select className="zombie-input" value={r.status} onChange={(e) => setStatus(r.id, e.target.value)} disabled={!canEdit} style={{ padding: "8px 10px" }}>
+                <select className="zombie-input" value={r.status} onChange={(e) => setRequestStatus(r.id, e.target.value)} disabled={!canEdit} style={{ padding: "8px 10px" }}>
                   <option value="pending">pending</option>
                   <option value="in_progress">in_progress</option>
                   <option value="completed">completed</option>
