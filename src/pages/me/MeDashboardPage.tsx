@@ -266,7 +266,7 @@ export default function MeDashboardPage() {
   }
 
   async function refreshMyAchievements() {
-    const res = await supabase.from("v_my_achievement_requests").select("*").order("created_at", { ascending: false }).limit(20);
+    const res = await supabase.from("v_my_achievement_cards").select("*").order("created_at", { ascending: false }).limit(20);
     if (!res.error) setMyAchievements((res.data ?? []) as any);
   }
 
@@ -767,4 +767,5 @@ export default function MeDashboardPage() {
     </div>
   );
 }
+
 
