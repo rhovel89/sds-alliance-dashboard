@@ -1,202 +1,614 @@
 import React, { useMemo, useState } from "react";
-import SupportBundleButton from "../../components/system/SupportBundleButton";
-import { loadAllianceDirectory } from "../../lib/allianceDirectoryStore";
-import {
-  exportPermissionsMatrix,
-  getMatrixForScope,
-  importPermissionsMatrix,
-  loadPermissionsMatrix,
-  savePermissionsMatrix,
-  setMatrixForScope,
-  type FeatureKey,
-  type Matrix,
-  type RoleKey,
-} from "../../lib/permissionsMatrixStore";
 
-function cloneMatrix(m: Matrix): Matrix {
-  return JSON.parse(JSON.stringify(m));
+const LS_MATRIX = "sad_permissions_matrix_v1";
+const LS_DIRECTORY = "sad_alliance_directory_v1";
+
+type Preset = {
+  id: string;
+  label: string;
+  perms: Record<string, boolean>;
+};
+
+type Matrix = {
+  version: 1;
+  updatedAt: string;
+  presets?: Preset[];
+  alliances: Record<
+    string,
+    {
+      label?: string;
+      people: Record<
+        string,
+        {
+          displayName: string;
+          perms: Record<string, boolean>;
+        }
+      >;
+    }
+  >;
+};
+
+const PERM_KEYS = [
+  "tab_my_alliance",
+  "tab_state_alliance",
+  "tab_my_mail",
+  "tab_event_calendar",
+  "tab_alliance_directory",
+  "tab_events",
+  "tab_permissions",
+  "tab_hq_layout",
+] as const;
+
+function safeJsonParse<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
 }
 
-export default function OwnerPermissionsMatrixPage() {
-  const [tick, setTick] = useState(0);
-  const [scope, setScope] = useState<"global" | "alliance">("global");
-  const [allianceCode, setAllianceCode] = useState<string>("WOC");
+function saveJson(key: string, obj: any) {
+  const raw = JSON.stringify(obj, null, 2);
+  localStorage.setItem(key, raw);
+  try {
+    // eslint-disable-next-line no-new
+    const ev = new StorageEvent("storage", { key, newValue: raw });
+    window.dispatchEvent(ev);
+  } catch {
+    window.dispatchEvent(new CustomEvent("sad:localstorage", { detail: { key, newValue: raw } }));
+  }
+}
 
-  const dir = useMemo(() => loadAllianceDirectory().items || [], [tick]);
+function downloadText(filename: string, text: string) {
+  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
-  const store = useMemo(() => loadPermissionsMatrix(), [tick]);
-  const roles = store.roles || [];
-  const features = store.features || [];
+function uid(prefix = "id") {
+  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+}
 
-  const activeAllianceCode = scope === "alliance" ? (allianceCode || (dir[0]?.code || "WOC")).toUpperCase() : null;
-
-  const matrix = useMemo(() => {
-    return getMatrixForScope(store, activeAllianceCode);
-  }, [store, activeAllianceCode]);
-
-  const grouped = useMemo(() => {
-    const map: Record<string, { key: FeatureKey; label: string; group: string }[]> = {};
-    for (const f of features) {
-      const g = String((f as any).group || "Other");
-      map[g] = map[g] || [];
-      map[g].push(f as any);
+function extractAllianceChoices(dir: any): Array<{ id: string; label: string }> {
+  if (Array.isArray(dir)) {
+    return dir
+      .map((x: any) => ({
+        id: String(x.alliance_id ?? x.id ?? x.code ?? x.tag ?? ""),
+        label: String(x.name ?? x.tag ?? x.code ?? x.alliance_id ?? "Alliance"),
+      }))
+      .filter((x) => x.id);
+  }
+  if (dir && typeof dir === "object") {
+    const list = Array.isArray(dir.alliances) ? dir.alliances : null;
+    if (list) {
+      return list
+        .map((x: any) => ({
+          id: String(x.alliance_id ?? x.id ?? x.code ?? x.tag ?? ""),
+          label: String(x.name ?? x.tag ?? x.code ?? x.alliance_id ?? "Alliance"),
+        }))
+        .filter((x) => x.id);
     }
-    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [features]);
+  }
+  return [];
+}
 
-  function setCell(role: RoleKey, feature: FeatureKey, val: boolean) {
-    const m2 = cloneMatrix(matrix);
-    m2[role][feature] = val;
-    const next = setMatrixForScope(store, activeAllianceCode, m2);
-    savePermissionsMatrix(next);
-    setTick((x) => x + 1);
+const emptyMatrix = (): Matrix => ({
+  version: 1,
+  updatedAt: new Date().toISOString(),
+  presets: [
+    {
+      id: "preset_member",
+      label: "Member (basic)",
+      perms: {
+        tab_my_alliance: true,
+        tab_state_alliance: true,
+        tab_my_mail: true,
+        tab_event_calendar: true,
+        tab_alliance_directory: true,
+        tab_events: false,
+        tab_permissions: false,
+        tab_hq_layout: false,
+      },
+    },
+    {
+      id: "preset_leadership",
+      label: "Leadership (full)",
+      perms: {
+        tab_my_alliance: true,
+        tab_state_alliance: true,
+        tab_my_mail: true,
+        tab_event_calendar: true,
+        tab_alliance_directory: true,
+        tab_events: true,
+        tab_permissions: true,
+        tab_hq_layout: true,
+      },
+    },
+  ],
+  alliances: {},
+});
+
+export default function OwnerPermissionsMatrixPage() {
+  const [matrix, setMatrix] = useState<Matrix>(() => safeJsonParse<Matrix>(localStorage.getItem(LS_MATRIX), emptyMatrix()));
+  const [selectedAlliance, setSelectedAlliance] = useState<string>("");
+
+  const [search, setSearch] = useState<string>("");
+  const [selectedPeople, setSelectedPeople] = useState<Record<string, boolean>>({});
+  const [bulkPerm, setBulkPerm] = useState<string>(PERM_KEYS[0]);
+  const [bulkMode, setBulkMode] = useState<"enable" | "disable" | "toggle">("toggle");
+
+  const [copyFrom, setCopyFrom] = useState<string>("");
+  const [presetPick, setPresetPick] = useState<string>("");
+
+  const dirRaw = localStorage.getItem(LS_DIRECTORY);
+  const dirObj = useMemo(() => safeJsonParse<any>(dirRaw, null), [dirRaw]);
+  const allianceChoices = useMemo(() => extractAllianceChoices(dirObj), [dirObj]);
+
+  const allianceBlock = selectedAlliance ? matrix.alliances[selectedAlliance] : undefined;
+  const peopleEntries = useMemo(() => Object.entries(allianceBlock?.people ?? {}), [allianceBlock]);
+
+  const filteredPeople = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return peopleEntries;
+    return peopleEntries.filter(([k, p]) => {
+      const hay = `${k} ${p.displayName}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [peopleEntries, search]);
+
+  const presets = matrix.presets ?? [];
+
+  function persist(next: Matrix) {
+    const withTs: Matrix = { ...next, updatedAt: new Date().toISOString() };
+    setMatrix(withTs);
+    saveJson(LS_MATRIX, withTs);
   }
 
-  function toggleCell(role: RoleKey, feature: FeatureKey) {
-    const cur = !!matrix?.[role]?.[feature];
-    setCell(role, feature, !cur);
+  function ensureAlliance(id: string, label?: string) {
+    if (!id) return;
+    if (matrix.alliances[id]) return;
+    persist({
+      ...matrix,
+      alliances: {
+        ...matrix.alliances,
+        [id]: { label: label ?? id, people: {} },
+      },
+    });
   }
 
-  function setRow(feature: FeatureKey, val: boolean) {
-    const m2 = cloneMatrix(matrix);
-    for (const r of roles) m2[r][feature] = val;
-    const next = setMatrixForScope(store, activeAllianceCode, m2);
-    savePermissionsMatrix(next);
-    setTick((x) => x + 1);
+  function addPerson(allianceId: string) {
+    const userKey = prompt("Enter a unique person key (Supabase user_id later, for now any unique string):")?.trim();
+    if (!userKey) return;
+
+    const displayName = prompt("Display name (in-game / Discord):")?.trim() || userKey;
+
+    const existing = matrix.alliances[allianceId]?.people?.[userKey];
+    if (existing) return alert("That person key already exists for this alliance.");
+
+    const perms: Record<string, boolean> = {};
+    for (const k of PERM_KEYS) perms[k] = false;
+
+    const next = {
+      ...matrix,
+      alliances: {
+        ...matrix.alliances,
+        [allianceId]: {
+          ...(matrix.alliances[allianceId] ?? { people: {} }),
+          people: {
+            ...(matrix.alliances[allianceId]?.people ?? {}),
+            [userKey]: { displayName, perms },
+          },
+        },
+      },
+    };
+
+    persist(next as Matrix);
   }
 
-  function setCol(role: RoleKey, val: boolean) {
-    const m2 = cloneMatrix(matrix);
-    for (const f of features) m2[role][(f as any).key] = val;
-    const next = setMatrixForScope(store, activeAllianceCode, m2);
-    savePermissionsMatrix(next);
-    setTick((x) => x + 1);
+  function toggleOne(allianceId: string, personKey: string, permKey: string) {
+    const cur = matrix.alliances[allianceId]?.people?.[personKey];
+    if (!cur) return;
+    const nextVal = !cur.perms[permKey];
+
+    const next = {
+      ...matrix,
+      alliances: {
+        ...matrix.alliances,
+        [allianceId]: {
+          ...(matrix.alliances[allianceId] ?? { people: {} }),
+          people: {
+            ...(matrix.alliances[allianceId]?.people ?? {}),
+            [personKey]: {
+              ...cur,
+              perms: { ...cur.perms, [permKey]: nextVal },
+            },
+          },
+        },
+      },
+    };
+
+    persist(next as Matrix);
   }
 
-  async function copyExport() {
-    const txt = exportPermissionsMatrix();
-    try { await navigator.clipboard.writeText(txt); alert("Copied matrix export JSON."); }
-    catch { window.prompt("Copy:", txt); }
+  function removePerson(allianceId: string, personKey: string) {
+    const people = { ...(matrix.alliances[allianceId]?.people ?? {}) };
+    delete people[personKey];
+    persist({
+      ...matrix,
+      alliances: {
+        ...matrix.alliances,
+        [allianceId]: { ...(matrix.alliances[allianceId] ?? { people: {} }), people },
+      },
+    });
+    setSelectedPeople((prev) => {
+      const n = { ...prev };
+      delete n[personKey];
+      return n;
+    });
   }
 
-  function doImport() {
-    const raw = window.prompt("Paste matrix export JSON:");
-    if (!raw) return;
-    const ok = importPermissionsMatrix(raw);
-    if (!ok) return alert("Invalid JSON.");
-    setTick((x) => x + 1);
-    alert("Imported.");
+  function selectAllVisible(on: boolean) {
+    const keys = filteredPeople.map(([k]) => k);
+    setSelectedPeople((prev) => {
+      const next = { ...prev };
+      keys.forEach((k) => (next[k] = on));
+      return next;
+    });
   }
 
-  function resetDefaults() {
-    if (!confirm("Reset matrix to defaults?")) return;
-    try { localStorage.removeItem("sad_permissions_matrix_v1"); } catch {}
-    setTick((x) => x + 1);
+  function getSelectedKeys(): string[] {
+    return Object.entries(selectedPeople)
+      .filter(([, v]) => !!v)
+      .map(([k]) => k);
+  }
+
+  function bulkApplyPerm() {
+    if (!selectedAlliance) return;
+    const keys = getSelectedKeys();
+    if (keys.length === 0) return alert("Select at least one person (checkboxes) first.");
+
+    const nextPeople = { ...(matrix.alliances[selectedAlliance]?.people ?? {}) };
+    keys.forEach((personKey) => {
+      const cur = nextPeople[personKey];
+      if (!cur) return;
+      const curVal = !!cur.perms[bulkPerm];
+      const nextVal = bulkMode === "toggle" ? !curVal : bulkMode === "enable";
+      nextPeople[personKey] = { ...cur, perms: { ...cur.perms, [bulkPerm]: nextVal } };
+    });
+
+    persist({
+      ...matrix,
+      alliances: {
+        ...matrix.alliances,
+        [selectedAlliance]: { ...(matrix.alliances[selectedAlliance] ?? { people: {} }), people: nextPeople },
+      },
+    });
+  }
+
+  function copyPermsFromSource() {
+    if (!selectedAlliance) return;
+    const keys = getSelectedKeys();
+    if (!copyFrom) return alert("Pick a 'Copy from' person.");
+    if (keys.length === 0) return alert("Select target people first.");
+    if (keys.includes(copyFrom) && keys.length === 1) return alert("Select at least one target different from source.");
+
+    const src = matrix.alliances[selectedAlliance]?.people?.[copyFrom];
+    if (!src) return alert("Source person not found.");
+
+    const nextPeople = { ...(matrix.alliances[selectedAlliance]?.people ?? {}) };
+    keys.forEach((k) => {
+      if (k === copyFrom) return;
+      const cur = nextPeople[k];
+      if (!cur) return;
+      nextPeople[k] = { ...cur, perms: { ...src.perms } };
+    });
+
+    persist({
+      ...matrix,
+      alliances: {
+        ...matrix.alliances,
+        [selectedAlliance]: { ...(matrix.alliances[selectedAlliance] ?? { people: {} }), people: nextPeople },
+      },
+    });
+  }
+
+  function applyPresetToSelected() {
+    if (!selectedAlliance) return;
+    const keys = getSelectedKeys();
+    if (!presetPick) return alert("Pick a preset first.");
+    if (keys.length === 0) return alert("Select target people first.");
+
+    const preset = presets.find((p) => p.id === presetPick);
+    if (!preset) return alert("Preset not found.");
+
+    const nextPeople = { ...(matrix.alliances[selectedAlliance]?.people ?? {}) };
+    keys.forEach((k) => {
+      const cur = nextPeople[k];
+      if (!cur) return;
+      nextPeople[k] = { ...cur, perms: { ...cur.perms, ...preset.perms } };
+    });
+
+    persist({
+      ...matrix,
+      alliances: {
+        ...matrix.alliances,
+        [selectedAlliance]: { ...(matrix.alliances[selectedAlliance] ?? { people: {} }), people: nextPeople },
+      },
+    });
+  }
+
+  function createPresetFromPerson() {
+    if (!selectedAlliance) return;
+    const keys = getSelectedKeys();
+    if (keys.length !== 1) return alert("Select exactly ONE person to create a preset from.");
+    const personKey = keys[0];
+    const person = matrix.alliances[selectedAlliance]?.people?.[personKey];
+    if (!person) return alert("Person not found.");
+
+    const label = prompt("Preset label:", `Preset from ${person.displayName}`)?.trim();
+    if (!label) return;
+
+    const newPreset: Preset = { id: uid("preset"), label, perms: { ...person.perms } };
+    persist({ ...matrix, presets: [...presets, newPreset] });
+    setPresetPick(newPreset.id);
+  }
+
+  function exportMatrix() {
+    const raw = JSON.stringify(matrix, null, 2);
+    downloadText(`permissions-matrix-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`, raw);
+  }
+
+  function importMatrix(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result ?? "");
+      try {
+        const obj = JSON.parse(text);
+        if (!obj || obj.version !== 1) throw new Error("Unexpected format (expected version: 1).");
+        persist(obj as Matrix);
+      } catch (e: any) {
+        alert(`Import failed: ${String(e?.message ?? e)}`);
+      }
+    };
+    reader.readAsText(file);
   }
 
   return (
-    <div style={{ padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🧩 Owner — Permissions Matrix (UI shell)</h2>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => setTick((x) => x + 1)}>Refresh</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyExport}>Export</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={doImport}>Import</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={resetDefaults}>Reset</button>
-          <SupportBundleButton />
-        </div>
+    <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
+      <h1 style={{ fontSize: 22, fontWeight: 700 }}>Permissions Matrix (UI shell)</h1>
+      <p style={{ opacity: 0.8, marginTop: 6 }}>
+        Stored in <code>{LS_MATRIX}</code>. Not enforced by backend yet — this is for workflow + export/import.
+      </p>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+        <button onClick={exportMatrix}>Export</button>
+        <label>
+          <input
+            type="file"
+            accept="application/json"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) importMatrix(f);
+              e.currentTarget.value = "";
+            }}
+          />
+          <span style={{ cursor: "pointer", padding: "6px 10px", border: "1px solid #666", borderRadius: 6 }}>
+            Import
+          </span>
+        </label>
       </div>
 
-      <div className="zombie-card" style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ opacity: 0.75, fontSize: 12 }}>Scope</div>
-          <select className="zombie-input" value={scope} onChange={(e) => setScope(e.target.value as any)} style={{ padding: "10px 12px" }}>
-            <option value="global">Global</option>
-            <option value="alliance">Per-Alliance Override</option>
+      <hr style={{ margin: "16px 0", opacity: 0.3 }} />
+
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Alliance</div>
+          <select
+            value={selectedAlliance}
+            onChange={(e) => {
+              const id = e.target.value;
+              setSelectedAlliance(id);
+              setSelectedPeople({});
+              setSearch("");
+              setCopyFrom("");
+              setPresetPick("");
+              if (id) {
+                const label = allianceChoices.find((x) => x.id === id)?.label;
+                ensureAlliance(id, label);
+              }
+            }}
+            style={{ minWidth: 320 }}
+          >
+            <option value="">Select an alliance…</option>
+            {allianceChoices.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label} ({a.id})
+              </option>
+            ))}
           </select>
 
-          {scope === "alliance" ? (
-            <>
-              <div style={{ opacity: 0.75, fontSize: 12 }}>Alliance</div>
-              <select className="zombie-input" value={activeAllianceCode || ""} onChange={(e) => setAllianceCode(e.target.value.toUpperCase())} style={{ padding: "10px 12px" }}>
-                {(dir.length ? dir : [{ code: "WOC", name: "WOC", state: "789" } as any]).map((d: any) => (
-                  <option key={d.code} value={d.code}>{d.code} — {d.name}</option>
-                ))}
-              </select>
-            </>
-          ) : null}
-
-          <div style={{ marginLeft: "auto", opacity: 0.65, fontSize: 12 }}>
-            UI-only visibility rules. Backend RLS still decides real access.
+          <div style={{ opacity: 0.7, marginTop: 8 }}>
+            If directory isn’t populated yet, type an alliance id and press Enter:
           </div>
+          <input
+            placeholder="Alliance id…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const id = (e.currentTarget.value || "").trim();
+                if (!id) return;
+                ensureAlliance(id, id);
+                setSelectedAlliance(id);
+                e.currentTarget.value = "";
+              }
+            }}
+            style={{ minWidth: 320, marginTop: 6 }}
+          />
         </div>
+
+        {selectedAlliance ? (
+          <div style={{ marginTop: 22 }}>
+            <button onClick={() => addPerson(selectedAlliance)}>+ Add Person</button>
+          </div>
+        ) : null}
+
+        {selectedAlliance ? (
+          <div style={{ marginTop: 22 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>Search</div>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="name or key…" />
+          </div>
+        ) : null}
       </div>
 
-      <div className="zombie-card" style={{ marginTop: 12, overflowX: "auto" }}>
-        <div style={{ minWidth: 980 }}>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ fontWeight: 900 }}>Bulk actions</div>
-            <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={() => { for (const r of roles) setCol(r as any, true); }}>
-              Allow all by role (one-by-one)
-            </button>
-            <div style={{ opacity: 0.6, fontSize: 12 }}>
-              Tip: click any cell to toggle. Use row/column buttons for mass changes.
+      {selectedAlliance && allianceBlock ? (
+        <>
+          <hr style={{ margin: "16px 0", opacity: 0.3 }} />
+
+          <div style={{ border: "1px solid #333", borderRadius: 12, padding: 12 }}>
+            <div style={{ fontWeight: 800 }}>Bulk Tools (selected people)</div>
+
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10, alignItems: "center" }}>
+              <button onClick={() => selectAllVisible(true)}>Select all visible</button>
+              <button onClick={() => selectAllVisible(false)}>Clear visible</button>
+              <div style={{ opacity: 0.75 }}>
+                Selected: <b>{getSelectedKeys().length}</b>
+              </div>
             </div>
-          </div>
 
-          {grouped.map(([group, feats]) => (
-            <div key={group} style={{ marginTop: 12 }}>
-              <div style={{ fontWeight: 900, marginBottom: 8 }}>{group}</div>
-
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid rgba(255,255,255,0.12)" }}>Feature</th>
-                    {roles.map((r) => (
-                      <th key={r} style={{ textAlign: "center", padding: 8, borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-                        <div style={{ fontWeight: 900 }}>{r}</div>
-                        <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 6 }}>
-                          <button className="zombie-btn" style={{ padding: "4px 6px", fontSize: 11 }} onClick={() => setCol(r as any, true)}>All</button>
-                          <button className="zombie-btn" style={{ padding: "4px 6px", fontSize: 11 }} onClick={() => setCol(r as any, false)}>None</button>
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {feats.map((f: any) => (
-                    <tr key={f.key}>
-                      <td style={{ padding: 8, borderBottom: "1px solid rgba(255,255,255,0.08)", opacity: 0.95 }}>
-                        <div style={{ fontWeight: 900 }}>{f.label}</div>
-                        <div style={{ opacity: 0.6, fontSize: 12 }}>{f.key}</div>
-                        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                          <button className="zombie-btn" style={{ padding: "4px 6px", fontSize: 11 }} onClick={() => setRow(f.key, true)}>Row all</button>
-                          <button className="zombie-btn" style={{ padding: "4px 6px", fontSize: 11 }} onClick={() => setRow(f.key, false)}>Row none</button>
-                        </div>
-                      </td>
-
-                      {roles.map((r) => {
-                        const v = !!matrix?.[r]?.[f.key];
-                        return (
-                          <td key={r + ":" + f.key} style={{ textAlign: "center", padding: 8, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                            <button
-                              className="zombie-btn"
-                              style={{ padding: "6px 8px", fontSize: 12, opacity: v ? 1 : 0.55 }}
-                              onClick={() => toggleCell(r as any, f.key)}
-                            >
-                              {v ? "✅" : "—"}
-                            </button>
-                          </td>
-                        );
-                      })}
-                    </tr>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Bulk permission</div>
+                <select value={bulkPerm} onChange={(e) => setBulkPerm(e.target.value)} style={{ minWidth: 260 }}>
+                  {PERM_KEYS.map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
                   ))}
-                </tbody>
-              </table>
+                </select>
+              </div>
+
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Mode</div>
+                <select value={bulkMode} onChange={(e) => setBulkMode(e.target.value as any)} style={{ minWidth: 140 }}>
+                  <option value="toggle">toggle</option>
+                  <option value="enable">enable</option>
+                  <option value="disable">disable</option>
+                </select>
+              </div>
+
+              <div style={{ marginTop: 22 }}>
+                <button onClick={bulkApplyPerm}>Apply bulk</button>
+              </div>
             </div>
-          ))}
+
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 14, alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Copy from</div>
+                <select value={copyFrom} onChange={(e) => setCopyFrom(e.target.value)} style={{ minWidth: 260 }}>
+                  <option value="">(choose source)</option>
+                  {peopleEntries.map(([k, p]) => (
+                    <option key={k} value={k}>
+                      {p.displayName} ({k})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginTop: 22 }}>
+                <button onClick={copyPermsFromSource}>Copy perms → selected</button>
+              </div>
+
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Preset</div>
+                <select value={presetPick} onChange={(e) => setPresetPick(e.target.value)} style={{ minWidth: 260 }}>
+                  <option value="">(choose preset)</option>
+                  {presets.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginTop: 22, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button onClick={applyPresetToSelected}>Apply preset → selected</button>
+                <button onClick={createPresetFromPerson}>Create preset from ONE selected</button>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16, overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #444" }}>Sel</th>
+                  <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #444" }}>Person</th>
+                  {PERM_KEYS.map((k) => (
+                    <th key={k} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #444" }}>
+                      {k}
+                    </th>
+                  ))}
+                  <th style={{ padding: 8, borderBottom: "1px solid #444" }} />
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPeople.map(([personKey, p]) => (
+                  <tr key={personKey}>
+                    <td style={{ padding: 8, borderBottom: "1px solid #333" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!selectedPeople[personKey]}
+                        onChange={(e) => setSelectedPeople((prev) => ({ ...prev, [personKey]: e.target.checked }))}
+                      />
+                    </td>
+
+                    <td style={{ padding: 8, borderBottom: "1px solid #333" }}>
+                      <div style={{ fontWeight: 700 }}>{p.displayName}</div>
+                      <div style={{ opacity: 0.7, fontSize: 12 }}>{personKey}</div>
+                    </td>
+
+                    {PERM_KEYS.map((permKey) => (
+                      <td key={permKey} style={{ padding: 8, borderBottom: "1px solid #333" }}>
+                        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            type="checkbox"
+                            checked={!!p.perms?.[permKey]}
+                            onChange={() => toggleOne(selectedAlliance, personKey, permKey)}
+                          />
+                          <span>{p.perms?.[permKey] ? "On" : "Off"}</span>
+                        </label>
+                      </td>
+                    ))}
+
+                    <td style={{ padding: 8, borderBottom: "1px solid #333" }}>
+                      <button onClick={() => removePerson(selectedAlliance, personKey)}>Remove</button>
+                    </td>
+                  </tr>
+                ))}
+
+                {filteredPeople.length === 0 ? (
+                  <tr>
+                    <td colSpan={PERM_KEYS.length + 3} style={{ padding: 10, opacity: 0.7 }}>
+                      No people match your search.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        <div style={{ marginTop: 16, padding: 12, border: "1px dashed #666", borderRadius: 8 }}>
+          Select an alliance to edit permissions.
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -57,7 +57,6 @@ import AllianceDirectoryPage from "../pages/alliance/AllianceDirectoryPage";
 import AllianceDashboardIndexPage from "../pages/alliance/AllianceDashboardIndexPage";
 import MyMailPage from "../pages/mail/MyMailPage";
 import OwnerAllianceDirectoryEditorPage from "../pages/owner/OwnerAllianceDirectoryEditorPage";
-import OwnerPermissionsMatrixShellPage from "../pages/owner/OwnerPermissionsMatrixShellPage";
 import DebugPage from "../pages/DebugPage";
 import PlayerDashboardSafePage from "../pages/PlayerDashboardSafePage";
 import OwnerOneClickProvisionPage from "../pages/owner/OwnerOneClickProvisionPage";
@@ -65,6 +64,7 @@ import OwnerEventTypesLibraryPage from "../pages/owner/OwnerEventTypesLibraryPag
 import OwnerAllianceJumpPage from "../pages/owner/OwnerAllianceJumpPage";
 import State789AlertsPage from "../pages/state/State789AlertsPage";
 import State789DiscussionBoardPage from "../pages/state/State789DiscussionBoardPage";
+import State789DiscussionBoardV2Page from "../pages/state/State789DiscussionBoardV2Page";
 import OwnerBroadcastComposerPage from "../pages/owner/OwnerBroadcastComposerPage";
 import MyMailShellPage from "../pages/mail/MyMailShellPage";
 import OwnerLiveOpsPage from "../pages/owner/OwnerLiveOpsPage";
@@ -154,13 +154,13 @@ export default function AppRoutes() {
       <Route path="/alliances" element={<AllianceDirectoryPage />} />
       <Route path="/mail" element={<MyMailPage />} />
       <Route path="/owner/alliance-directory" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
-      <Route path="/owner/permissions-matrix" element={<RequireAdmin><OwnerPermissionsMatrixShellPage /></RequireAdmin>} />
       <Route path="/debug" element={<DebugPage />} />
       <Route path="/owner/oneclick-provision" element={<RequireAdmin><OwnerOneClickProvisionPage /></RequireAdmin>} />
       <Route path="/owner/event-types-library" element={<RequireAdmin><OwnerEventTypesLibraryPage /></RequireAdmin>} />
       <Route path="/owner/jump" element={<RequireAdmin><OwnerAllianceJumpPage /></RequireAdmin>} />
       <Route path="/state/789/alerts" element={<State789AlertsPage />} />
       <Route path="/state/789/discussion" element={<State789DiscussionBoardPage />} />
+      <Route path="/state/789/discussion-v2" element={<State789DiscussionBoardV2Page />} />
       <Route path="/owner/broadcast" element={<RequireAdmin><OwnerBroadcastComposerPage /></RequireAdmin>} />
       <Route path="/owner/live-ops" element={<RequireAdmin><OwnerLiveOpsPage /></RequireAdmin>} />
       <Route path="/owner/discord-mentions" element={<RequireAdmin><OwnerDiscordMentionsPage /></RequireAdmin>} />
