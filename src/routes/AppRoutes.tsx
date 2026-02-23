@@ -100,10 +100,13 @@ import OwnerDiscordEdgeSendTestPage from "../pages/owner/OwnerDiscordEdgeSendTes
 import OwnerDataVaultPage from "../pages/owner/OwnerDataVaultPage";
 import State789OpsConsolePage from "../pages/state/State789OpsConsolePage";
 import State789AlertsCenterPage from "../pages/state/State789AlertsCenterPage";
+import MyMailInboxPage from "../pages/mail/MyMailInboxPage";
+import OwnerMailBroadcastPage from "../pages/owner/OwnerMailBroadcastPage";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/owner/mail-broadcast" element={<RequireAdmin><OwnerMailBroadcastPage /></RequireAdmin>} />
       <Route path="/owner/data-vault" element={<RequireAdmin><OwnerDataVaultPage /></RequireAdmin>} />
       <Route path="/status" element={<SystemStatusPage />} />
       {/* Public */}
@@ -157,6 +160,7 @@ export default function AppRoutes() {
       <Route path="/state/789" element={<State789DashboardPage />} />
       <Route path="/alliances" element={<AllianceDirectoryPage />} />
       <Route path="/mail" element={<MyMailPage />} />
+      <Route path="/mail-v2" element={<MyMailInboxPage />} />
       <Route path="/owner/alliance-directory" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
       <Route path="/debug" element={<DebugPage />} />
       <Route path="/owner/oneclick-provision" element={<RequireAdmin><OwnerOneClickProvisionPage /></RequireAdmin>} />
