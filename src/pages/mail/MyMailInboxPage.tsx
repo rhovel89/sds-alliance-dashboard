@@ -14,6 +14,17 @@ type MailItem = {
   created_by_user_id: string;
 };
 
+type Player = {
+  id: string;
+  name: string | null;
+  game_name: string | null;
+};
+
+type PlayerLink = {
+  player_id: string;
+  user_id: string;
+};
+
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -32,10 +43,17 @@ export default function MyMailInboxPage() {
   const [filterKind, setFilterKind] = useState<string>("");
   const [q, setQ] = useState("");
 
-  // direct compose (v1 uses recipient auth user_id)
+  // direct compose
   const [toUserId, setToUserId] = useState("");
+  const [toLabel, setToLabel] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+
+  // recipient search
+  const [playerQuery, setPlayerQuery] = useState("");
+  const [playerResults, setPlayerResults] = useState<Player[]>([]);
+  const [linkMap, setLinkMap] = useState<Record<string, string>>({}); // player_id -> user_id
+  const [searchingPlayers, setSearchingPlayers] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -64,7 +82,12 @@ export default function MyMailInboxPage() {
   async function refresh() {
     setLoading(true);
     setStatus("Loading…");
-    const res = await supabase.from("v_my_mail_inbox").select("*").order("created_at", { ascending: false }).limit(200);
+    const res = await supabase
+      .from("v_my_mail_inbox")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
     if (res.error) {
       setStatus(res.error.message);
       setLoading(false);
@@ -75,10 +98,65 @@ export default function MyMailInboxPage() {
     setLoading(false);
   }
 
+  async function searchPlayers() {
+    const qq = playerQuery.trim();
+    if (!qq) return;
+
+    setSearchingPlayers(true);
+    setStatus("Searching players…");
+
+    // 1) find players by name/game_name (prefix search)
+    const pRes = await supabase
+      .from("players")
+      .select("id,name,game_name")
+      .or(`name.ilike.%${qq}%,game_name.ilike.%${qq}%`)
+      .limit(20);
+
+    if (pRes.error) {
+      setStatus(pRes.error.message);
+      setSearchingPlayers(false);
+      return;
+    }
+
+    const players = (pRes.data ?? []) as any as Player[];
+    setPlayerResults(players);
+
+    // 2) load auth links for these players
+    const ids = players.map((p) => p.id);
+    if (ids.length) {
+      const lRes = await supabase
+        .from("player_auth_links")
+        .select("player_id,user_id")
+        .in("player_id", ids);
+
+      if (!lRes.error) {
+        const map: Record<string, string> = {};
+        (lRes.data ?? []).forEach((x: any) => {
+          map[String(x.player_id)] = String(x.user_id);
+        });
+        setLinkMap(map);
+      }
+    }
+
+    setStatus("");
+    setSearchingPlayers(false);
+  }
+
+  function pickRecipient(p: Player) {
+    const uid = linkMap[p.id];
+    if (!uid) {
+      alert("That player is not linked to an auth user yet (player_auth_links missing).");
+      return;
+    }
+    setToUserId(uid);
+    const label = `${p.name ?? "Player"}${p.game_name ? " • " + p.game_name : ""}`;
+    setToLabel(label);
+  }
+
   async function sendDirect() {
     const to = toUserId.trim();
     const b = body.trim();
-    if (!to || !b) return alert("Recipient user_id and body are required.");
+    if (!to || !b) return alert("Recipient and body are required.");
 
     setLoading(true);
     setStatus("Sending…");
@@ -100,7 +178,10 @@ export default function MyMailInboxPage() {
       return;
     }
 
-    const rec = await supabase.from("mail_direct_recipients").insert({ mail_id: ins.data.id, user_id: to });
+    const rec = await supabase
+      .from("mail_direct_recipients")
+      .insert({ mail_id: ins.data.id, user_id: to });
+
     if (rec.error) {
       setStatus("Sent, but failed adding recipient: " + rec.error.message);
       setLoading(false);
@@ -108,8 +189,13 @@ export default function MyMailInboxPage() {
     }
 
     setToUserId("");
+    setToLabel("");
     setSubject("");
     setBody("");
+
+    setPlayerQuery("");
+    setPlayerResults([]);
+    setLinkMap({});
 
     await refresh();
     setStatus("Sent ✅");
@@ -131,7 +217,9 @@ export default function MyMailInboxPage() {
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
       <h1 style={{ fontSize: 22, fontWeight: 900 }}>My Mail (Supabase)</h1>
       <div style={{ opacity: 0.8, marginTop: 6 }}>
-        {userId ? "Signed in ✅" : "Not signed in"}{loading ? " • Loading…" : ""}{status ? " • " + status : ""}
+        {userId ? "Signed in ✅" : "Not signed in"}
+        {loading ? " • Loading…" : ""}
+        {status ? " • " + status : ""}
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
@@ -149,16 +237,53 @@ export default function MyMailInboxPage() {
       <hr style={{ margin: "16px 0", opacity: 0.3 }} />
 
       <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden" }}>
-        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>Send Direct Message (v1)</div>
+        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>Send Direct Message</div>
         <div style={{ padding: 12, display: "grid", gap: 10 }}>
-          <div style={{ opacity: 0.75, fontSize: 12 }}>
-            Recipient is the target’s <b>auth user_id (uuid)</b> for now (we can improve this to “pick by player name” next).
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <div style={{ opacity: 0.75, fontSize: 12 }}>Find player</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input
+                  value={playerQuery}
+                  onChange={(e) => setPlayerQuery(e.target.value)}
+                  placeholder="Search player name…"
+                  style={{ flex: "1 1 240px" }}
+                />
+                <button disabled={!userId || searchingPlayers} onClick={searchPlayers}>Search</button>
+              </div>
+              {playerResults.length ? (
+                <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                  {playerResults.map((p) => (
+                    <div key={p.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 10, display: "flex", justifyContent: "space-between", gap: 10 }}>
+                      <div>
+                        <div style={{ fontWeight: 900 }}>{p.name ?? "Player"}</div>
+                        <div style={{ opacity: 0.75, fontSize: 12 }}>
+                          {p.game_name ?? ""} • {p.id.slice(0, 8)}… {linkMap[p.id] ? "• linked ✅" : "• not linked"}
+                        </div>
+                      </div>
+                      <button onClick={() => pickRecipient(p)} disabled={!linkMap[p.id]}>
+                        Choose
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div>
+              <div style={{ opacity: 0.75, fontSize: 12 }}>Recipient</div>
+              <input value={toLabel} onChange={(e) => setToLabel(e.target.value)} placeholder="Chosen player (auto)..." />
+              <div style={{ opacity: 0.6, fontSize: 12, marginTop: 6 }}>
+                Internal user_id: <code>{toUserId ? toUserId : "(none)"}</code>
+              </div>
+            </div>
           </div>
-          <input value={toUserId} onChange={(e) => setToUserId(e.target.value)} placeholder="Recipient user_id (uuid)..." />
+
           <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (optional)..." />
           <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder="Message body..." />
+
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button disabled={!userId || loading} onClick={sendDirect}>Send</button>
+            <button disabled={!userId || loading || !toUserId || !body.trim()} onClick={sendDirect}>Send</button>
           </div>
         </div>
       </div>
@@ -175,7 +300,8 @@ export default function MyMailInboxPage() {
                 </div>
                 <div style={{ opacity: 0.75, fontSize: 12 }}>
                   {new Date(m.created_at).toLocaleString()} • from {m.created_by_user_id.slice(0, 8)}…
-                  {m.alliance_code ? ` • alliance ${m.alliance_code}` : ""}{m.state_code ? ` • state ${m.state_code}` : ""}
+                  {m.alliance_code ? ` • alliance ${m.alliance_code}` : ""}
+                  {m.state_code ? ` • state ${m.state_code}` : ""}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
