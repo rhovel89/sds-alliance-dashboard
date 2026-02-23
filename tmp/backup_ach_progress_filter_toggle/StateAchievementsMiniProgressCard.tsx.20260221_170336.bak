@@ -1,0 +1,113 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { supabase } from "../../lib/supabaseClient";
+
+type Row = {
+  id?: string;
+  player_name?: string | null;
+  alliance_name?: string | null;
+  current_count?: number | null;
+  required_count?: number | null;
+  status?: string | null;
+  created_at?: string | null;
+  // join may or may not exist depending on schema / RLS
+  state_achievement_types?: { name?: string | null } | null;
+};
+
+export default function StateAchievementsMiniProgressCard(props: { stateCode: string; limit?: number }) {
+  const stateCode = props.stateCode;
+  const limit = props.limit ?? 6;
+
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setErr(null);
+    try {
+      // Keep select conservative + resilient. If join fails, Supabase returns error and we show it.
+      const q = supabase
+        .from("state_achievement_requests")
+        .select("id,player_name,alliance_name,status,current_count,required_count,created_at,state_achievement_types(name)")
+        .eq("state_code", stateCode)
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      const res = await q;
+      if (res.error) {
+        setRows([]);
+        setErr(res.error.message);
+      } else {
+        setRows((res.data as any) ?? []);
+      }
+    } catch (e: any) {
+      setRows([]);
+      setErr(String(e?.message || e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, [stateCode]);
+
+  const inProgress = useMemo(() => {
+    const safe = (rows || []).map((r) => {
+      const cur = Number(r.current_count ?? 0);
+      const req = Number(r.required_count ?? 0);
+      return { ...r, _cur: cur, _req: req, _ratio: req > 0 ? cur / req : 0 };
+    });
+
+    // “in progress” = has a required_count and not complete yet
+    const filtered = safe.filter((r) => r._req > 0 && r._cur < r._req);
+
+    // show most advanced first
+    filtered.sort((a, b) => b._ratio - a._ratio);
+
+    return filtered.slice(0, limit);
+  }, [rows, limit]);
+
+  return (
+    <div className="zombie-card" style={{ marginTop: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ fontWeight: 900 }}>🏆 Achievements — Top In-Progress</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={load} disabled={loading}>
+            {loading ? "Loading…" : "Refresh"}
+          </button>
+          <Link className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12, textDecoration: "none", display: "inline-block" }} to={`/state/${stateCode}/achievements`}>
+            Open Achievements
+          </Link>
+        </div>
+      </div>
+
+      {err ? (
+        <div style={{ marginTop: 10, color: "#ffb3b3", fontSize: 12 }}>
+          Could not load progress (RLS/schema): {err}
+        </div>
+      ) : null}
+
+      <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+        {inProgress.map((r) => {
+          const who = (r.player_name || "Unknown").toString();
+          const ally = (r.alliance_name || "").toString();
+          const title = (r.state_achievement_types?.name || "Achievement").toString();
+          const cur = Number(r.current_count ?? 0);
+          const req = Number(r.required_count ?? 0);
+          return (
+            <div key={r.id || who + title + cur} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 900 }}>{who}{ally ? ` (${ally})` : ""}</div>
+                <div style={{ fontWeight: 900 }}>{cur}/{req}</div>
+              </div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>{title}</div>
+            </div>
+          );
+        })}
+        {!err && !loading && inProgress.length === 0 ? (
+          <div style={{ opacity: 0.75, fontSize: 12 }}>No in-progress items found.</div>
+        ) : null}
+      </div>
+    </div>
+  );
+}

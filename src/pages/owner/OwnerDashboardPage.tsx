@@ -5,6 +5,7 @@ import styles from "./OwnerDashboardPage.module.css";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import OwnerToolsQuickNav from "../../components/owner/OwnerToolsQuickNav";
+import OwnerAdminQuickLinksCard from "../../components/owner/OwnerAdminQuickLinksCard";
 
 type LinkItem = { path: string; label: string; desc?: string };
 
@@ -92,6 +93,7 @@ export default function OwnerDashboardPage() {
 
   return (
     <div className={styles.page}>
+      <OwnerAdminQuickLinksCard />
       <h2 className={styles.title}>🧟 Owner Dashboard</h2>
       <OwnerToolsQuickNav />
       <div style={{ marginTop: 12 }}>

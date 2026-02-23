@@ -57,7 +57,6 @@ import AllianceDirectoryPage from "../pages/alliance/AllianceDirectoryPage";
 import AllianceDashboardIndexPage from "../pages/alliance/AllianceDashboardIndexPage";
 import MyMailPage from "../pages/mail/MyMailPage";
 import OwnerAllianceDirectoryEditorPage from "../pages/owner/OwnerAllianceDirectoryEditorPage";
-import OwnerPermissionsMatrixShellPage from "../pages/owner/OwnerPermissionsMatrixShellPage";
 import DebugPage from "../pages/DebugPage";
 import PlayerDashboardSafePage from "../pages/PlayerDashboardSafePage";
 import OwnerOneClickProvisionPage from "../pages/owner/OwnerOneClickProvisionPage";
@@ -154,7 +153,6 @@ export default function AppRoutes() {
       <Route path="/alliances" element={<AllianceDirectoryPage />} />
       <Route path="/mail" element={<MyMailPage />} />
       <Route path="/owner/alliance-directory" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
-      <Route path="/owner/permissions-matrix" element={<RequireAdmin><OwnerPermissionsMatrixShellPage /></RequireAdmin>} />
       <Route path="/debug" element={<DebugPage />} />
       <Route path="/owner/oneclick-provision" element={<RequireAdmin><OwnerOneClickProvisionPage /></RequireAdmin>} />
       <Route path="/owner/event-types-library" element={<RequireAdmin><OwnerEventTypesLibraryPage /></RequireAdmin>} />

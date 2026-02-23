@@ -1,0 +1,172 @@
+/// <reference lib="deno.ns" />
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function json(status: number, data: unknown) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function chunkText(input: string, maxLen = 1900): string[] {
+  const s = (input || "").trim();
+  if (!s) return [];
+  if (s.length <= maxLen) return [s];
+
+  const out: string[] = [];
+  let i = 0;
+  while (i < s.length) {
+    out.push(s.slice(i, i + maxLen));
+    i += maxLen;
+  }
+  return out;
+}
+
+async function safeRpcBool(sb: any, fn: string): Promise<boolean> {
+  try {
+    const r = await sb.rpc(fn as any, {} as any);
+    if (r?.error) return false;
+    return r?.data === true;
+  } catch {
+    return false;
+  }
+}
+
+async function sendViaBotToken(botToken: string, channelId: string, content: string, roleIds: string[]) {
+  const url = `https://discord.com/api/v10/channels/${channelId}/messages`;
+
+  const allowed_mentions: any = { parse: [] };
+  if (roleIds.length) allowed_mentions.roles = roleIds;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bot ${botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content, allowed_mentions }),
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`Discord API error ${res.status}: ${text}`);
+  }
+  return text ? JSON.parse(text) : null;
+}
+
+async function sendViaWebhook(webhookUrl: string, content: string, roleIds: string[]) {
+  const allowed_mentions: any = { parse: [] };
+  if (roleIds.length) allowed_mentions.roles = roleIds;
+
+  const res = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, allowed_mentions }),
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`Discord webhook error ${res.status}: ${text}`);
+  }
+  return text ? JSON.parse(text) : null;
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
+
+  const auth = req.headers.get("Authorization") || "";
+  if (!auth.startsWith("Bearer ")) return json(401, { ok: false, error: "Missing Authorization Bearer token" });
+
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return json(500, { ok: false, error: "Missing Supabase env" });
+
+  // Use the caller's JWT so RLS/RPC checks run as the user
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: auth } },
+    auth: { persistSession: false },
+  });
+
+  const u = await sb.auth.getUser();
+  const user = u?.data?.user ?? null;
+  if (!user) return json(401, { ok: false, error: "Invalid session" });
+
+  const isAppAdmin = await safeRpcBool(sb, "is_app_admin");
+  const isOwnerA = await safeRpcBool(sb, "is_dashboard_owner_current");
+  const isOwnerB = await safeRpcBool(sb, "is_dashboard_owner");
+  const allowed = !!(isAppAdmin || isOwnerA || isOwnerB);
+
+  if (!allowed) {
+    return json(403, { ok: false, error: "Forbidden (not admin/owner)" });
+  }
+
+  let payload: any = null;
+  try {
+    payload = await req.json();
+  } catch {
+    return json(400, { ok: false, error: "Invalid JSON body" });
+  }
+
+  const contentBase =
+    String(payload?.messageResolved || payload?.message || payload?.content || payload?.body || "").trim();
+
+  const roleIds: string[] = Array.isArray(payload?.mentionRoleIds)
+    ? payload.mentionRoleIds.map((x: any) => String(x || "").trim()).filter(Boolean)
+    : [];
+
+  // Optional: prefix pings (safe because allowed_mentions limits to these roles)
+  const mentionPrefix = roleIds.length ? roleIds.map((id) => `<@&${id}>`).join(" ") + "\n" : "";
+  const finalContent = (mentionPrefix + contentBase).trim();
+
+  if (!finalContent) return json(400, { ok: false, error: "Missing messageResolved/message/content" });
+
+  const webhookUrl = String(Deno.env.get("DISCORD_WEBHOOK_URL") || "").trim();
+  const botToken = String(Deno.env.get("DISCORD_BOT_TOKEN") || "").trim();
+
+  const targetChannelId =
+    String(payload?.targetChannelId || payload?.targetChannel?.id || "").trim();
+
+  const chunks = chunkText(finalContent, 1900);
+  if (!chunks.length) return json(400, { ok: false, error: "Empty message after processing" });
+
+  try {
+    const sent: any[] = [];
+    let mode: "bot" | "webhook" = "webhook";
+
+    if (botToken) {
+      mode = "bot";
+      if (!targetChannelId) {
+        return json(400, { ok: false, error: "Missing targetChannelId (required when using DISCORD_BOT_TOKEN)" });
+      }
+      for (const c of chunks) {
+        const r = await sendViaBotToken(botToken, targetChannelId, c, roleIds);
+        sent.push(r);
+      }
+      return json(200, { ok: true, mode, sentCount: sent.length });
+    }
+
+    if (webhookUrl) {
+      mode = "webhook";
+      for (const c of chunks) {
+        const r = await sendViaWebhook(webhookUrl, c, roleIds);
+        sent.push(r);
+      }
+      return json(200, { ok: true, mode, sentCount: sent.length, note: "Webhook posts to its configured channel" });
+    }
+
+    return json(500, {
+      ok: false,
+      error: "No Discord secret configured. Set DISCORD_BOT_TOKEN or DISCORD_WEBHOOK_URL via supabase secrets set.",
+    });
+  } catch (e) {
+    return json(500, { ok: false, error: String(e?.message || e) });
+  }
+});

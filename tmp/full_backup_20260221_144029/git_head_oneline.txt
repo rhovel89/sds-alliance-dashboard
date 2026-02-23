@@ -1,0 +1,1 @@
+5349fb0 DB: fix expand_sat_kind_chk migration (remove escaped --name-only)
