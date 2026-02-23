@@ -2,6 +2,78 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabaseBrowserClient";
 
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    alert("Copied");
+  } catch {
+    alert("Copy failed");
+  }
+}
+
+function pickStr(o: any, keys: string[], fallback = ""): string {
+  for (const k of keys) {
+    const v = o?.[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return fallback;
+}
+
+function pickNum(o: any, keys: string[], fallback = 0): number {
+  for (const k of keys) {
+    const v = o?.[k];
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return fallback;
+}
+
+function normalizeStatus(raw: string): string {
+  const s = (raw || "").toLowerCase().trim();
+  if (!s) return "pending";
+  if (["approved","complete","completed","done","fulfilled"].includes(s)) return "completed";
+  if (["rejected","denied","declined"].includes(s)) return "rejected";
+  if (["pending","submitted","open","new","queued","in_review","review"].includes(s)) return "pending";
+  return s;
+}
+
+function summarizeAchievement(req: any) {
+  const r = req ?? {};
+
+  const kind = pickStr(r, ["kind","sat_kind","type_kind","achievement_kind","achievementType","type"], "");
+  const typeName = pickStr(r, ["type_name","achievement_type_name","achievement","achievement_name","name","title","event_name"], kind || "Achievement");
+
+  const optionName = pickStr(r, ["option_name","weapon_name","weapon","swp_weapon","selection","choice"], "");
+  const statusRaw = pickStr(r, ["status","state","request_status","approval_status","decision"], "");
+  const status = normalizeStatus(statusRaw);
+
+  const required = pickNum(r, ["required_count","requiredCount","required","target_count","targetCount"], 0);
+  const current = pickNum(r, ["progress_count","progressCount","current_count","currentCount","count","times","times_completed"], 0);
+
+  const progressText = required > 0 ? `${Math.min(current, required)}/${required}` : (current > 0 ? String(current) : "");
+  const pct = required > 0 ? Math.round((Math.min(current, required) / required) * 100) : 0;
+
+  // Governor special hint if we can detect it
+  const isGovernor = (typeName + " " + kind).toLowerCase().includes("governor");
+
+  const title = optionName ? `${typeName} — ${optionName}` : typeName;
+
+  const completed = status === "completed" || (required > 0 && current >= required);
+
+  return {
+    title,
+    kind,
+    optionName,
+    status,
+    statusRaw: statusRaw || status,
+    required,
+    current,
+    progressText,
+    pct,
+    isGovernor,
+    completed,
+  };
+}
 const LS_STATE_ALERTS_V2 = "sad_state_789_alerts_v2";
 
 type TroopType = "Fighter" | "Shooter" | "Rider";
@@ -419,17 +491,71 @@ export default function MeDashboardPage() {
       <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden", marginTop: 16 }}>
         <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>My Achievements (from DB)</div>
         <div style={{ padding: 12 }}>
+          {/* Achievement filters */}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
+            <span style={{ opacity: 0.75 }}>Show:</span>
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input type="checkbox" checked={(window as any).__sad_me_show_active ?? true}
+                onChange={(e) => { (window as any).__sad_me_show_active = e.target.checked; window.dispatchEvent(new Event("sad:me_filters")); }} />
+              Active
+            </label>
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input type="checkbox" checked={(window as any).__sad_me_show_completed ?? true}
+                onChange={(e) => { (window as any).__sad_me_show_completed = e.target.checked; window.dispatchEvent(new Event("sad:me_filters")); }} />
+              Completed
+            </label>
+            <span style={{ opacity: 0.65, fontSize: 12 }}>
+              (temporary client filters; we can persist later)
+            </span>
+          </div>
           {myAchievements.length === 0 ? (
             <div style={{ opacity: 0.75 }}>No achievement requests found for your account.</div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
-              {myAchievements.slice(0, 10).map((a) => (
+              {myAchievements
+                .filter((a) => {
+                  const s = summarizeAchievement((a as any).request);
+                  const showActive = (window as any).__sad_me_show_active ?? true;
+                  const showCompleted = (window as any).__sad_me_show_completed ?? true;
+                  if (s.completed) return !!showCompleted;
+                  return !!showActive;
+                })
+                .slice(0, 10)
+                .map((a) => (
                 <div key={a.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 10 }}>
                   <div style={{ fontWeight: 900 }}>Request {a.id.slice(0, 8)}…</div>
                   <div style={{ opacity: 0.75, fontSize: 12 }}>{new Date(a.created_at).toLocaleString()}</div>
-                  <pre style={{ marginTop: 8, whiteSpace: "pre-wrap", fontSize: 12, opacity: 0.9 }}>
-{JSON.stringify(a.request, null, 2)}
-                  </pre>
+                                    <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                    {(() => {
+                      const s = summarizeAchievement(a.request);
+                      return (
+                        <>
+                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                            <span style={{ fontWeight: 900 }}>Status:</span>
+                            <span style={{ opacity: 0.85 }}>{s.statusRaw}</span>
+                            {s.progressText ? (
+                              <>
+                                <span style={{ opacity: 0.6 }}>•</span>
+                                <span style={{ fontWeight: 900 }}>Progress:</span>
+                                <span style={{ opacity: 0.85 }}>{s.progressText}</span>
+                              </>
+                            ) : null}
+                            {s.isGovernor ? <span style={{ opacity: 0.75 }}>• Governor tracker</span> : null}
+                          </div>
+
+                          {s.required > 0 ? (
+                            <div style={{ border: "1px solid #333", borderRadius: 999, overflow: "hidden", height: 10 }}>
+                              <div style={{ width: `${s.pct}%`, height: 10, background: "currentColor", opacity: 0.5 }} />
+                            </div>
+                          ) : null}
+
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button onClick={() => copyToClipboard(JSON.stringify(a.request, null, 2))}>Copy JSON</button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
               ))}
             </div>
@@ -641,3 +767,4 @@ export default function MeDashboardPage() {
     </div>
   );
 }
+
