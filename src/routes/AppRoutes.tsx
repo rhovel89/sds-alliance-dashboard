@@ -97,10 +97,12 @@ import OwnerRealtimeHistoryPage from "../pages/owner/OwnerRealtimeHistoryPage";
 import OwnerOneClickProvisionPlusPage from "../pages/owner/OwnerOneClickProvisionPlusPage";
 import OwnerStateAchievementInboxPage from "../pages/owner/OwnerStateAchievementInboxPage";
 import OwnerDiscordEdgeSendTestPage from "../pages/owner/OwnerDiscordEdgeSendTestPage";
+import OwnerDataVaultPage from "../pages/owner/OwnerDataVaultPage";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/owner/data-vault" element={<RequireAdmin><OwnerDataVaultPage /></RequireAdmin>} />
       <Route path="/status" element={<SystemStatusPage />} />
       {/* Public */}
       <Route path="/" element={<AuthLandingPage />} />
