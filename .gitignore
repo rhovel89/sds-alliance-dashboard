@@ -18,3 +18,7 @@ SAFE-SNAPSHOT-*
 # Script backups
 *.bak.*
 
+node_modules/
+dist/
+*.zip
+*.bak-*
