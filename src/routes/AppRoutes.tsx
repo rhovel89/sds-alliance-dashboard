@@ -98,6 +98,7 @@ import OwnerOneClickProvisionPlusPage from "../pages/owner/OwnerOneClickProvisio
 import OwnerStateAchievementInboxPage from "../pages/owner/OwnerStateAchievementInboxPage";
 import OwnerDiscordEdgeSendTestPage from "../pages/owner/OwnerDiscordEdgeSendTestPage";
 import OwnerDataVaultPage from "../pages/owner/OwnerDataVaultPage";
+import State789OpsConsolePage from "../pages/state/State789OpsConsolePage";
 
 export default function AppRoutes() {
   return (
@@ -163,6 +164,7 @@ export default function AppRoutes() {
       <Route path="/state/789/alerts" element={<State789AlertsPage />} />
       <Route path="/state/789/discussion" element={<State789DiscussionBoardPage />} />
       <Route path="/state/789/discussion-v2" element={<State789DiscussionBoardV2Page />} />
+      <Route path="/state/789/ops" element={<State789OpsConsolePage />} />
       <Route path="/owner/broadcast" element={<RequireAdmin><OwnerBroadcastComposerPage /></RequireAdmin>} />
       <Route path="/owner/live-ops" element={<RequireAdmin><OwnerLiveOpsPage /></RequireAdmin>} />
       <Route path="/owner/discord-mentions" element={<RequireAdmin><OwnerDiscordMentionsPage /></RequireAdmin>} />
