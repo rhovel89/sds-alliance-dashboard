@@ -14,6 +14,7 @@ function safeJsonParse<T>(raw: string | null, fallback: T): T {
 }
 
 function emitStorageUpdate(key: string, newValue: string) {
+  // Try to notify listeners in the SAME tab too.
   try {
     // eslint-disable-next-line no-new
     const ev = new StorageEvent("storage", { key, newValue });
@@ -68,16 +69,6 @@ function applyListBack(original: any, mode: string, items: DirectoryItem[]): any
   return original;
 }
 
-function normStr(v: any) {
-  return String(v ?? "").trim();
-}
-
-function countBy<T extends string>(arr: T[]) {
-  const m = new Map<string, number>();
-  arr.forEach((x) => m.set(x, (m.get(x) ?? 0) + 1));
-  return m;
-}
-
 export default function OwnerAllianceDirectoryEditorPage() {
   const [raw, setRaw] = useState<string>(() => localStorage.getItem(LS_KEY) ?? "");
   const [status, setStatus] = useState<string>("");
@@ -91,35 +82,6 @@ export default function OwnerAllianceDirectoryEditorPage() {
     setWorkingItems(items);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, raw]);
-
-  const validation = useMemo(() => {
-    const ids = workingItems.map((x) => normStr(x.alliance_id));
-    const tags = workingItems.map((x) => normStr(x.tag)).filter(Boolean);
-
-    const idCounts = countBy(ids.filter(Boolean));
-    const tagCounts = countBy(tags);
-
-    const dupIds = Array.from(idCounts.entries()).filter(([, c]) => c > 1).map(([k]) => k);
-    const dupTags = Array.from(tagCounts.entries()).filter(([, c]) => c > 1).map(([k]) => k);
-
-    const missing = workingItems
-      .map((x, idx) => ({
-        idx,
-        alliance_id: normStr(x.alliance_id),
-        tag: normStr(x.tag),
-        name: normStr(x.name),
-        state: normStr(x.state),
-      }))
-      .filter((r) => !r.alliance_id || !r.tag || !r.name);
-
-    const byState = new Map<string, number>();
-    workingItems.forEach((x) => {
-      const st = normStr(x.state) || "(none)";
-      byState.set(st, (byState.get(st) ?? 0) + 1);
-    });
-
-    return { dupIds, dupTags, missing, byState };
-  }, [workingItems]);
 
   function saveRaw(nextRaw: string) {
     localStorage.setItem(LS_KEY, nextRaw);
@@ -173,32 +135,11 @@ export default function OwnerAllianceDirectoryEditorPage() {
     reader.readAsText(file);
   }
 
-  function normalizeRows() {
-    setWorkingItems((prev) =>
-      prev.map((x) => ({
-        ...x,
-        alliance_id: normStr(x.alliance_id),
-        tag: normStr(x.tag),
-        name: normStr(x.name),
-        state: normStr(x.state) || "789",
-        notes: normStr(x.notes),
-      }))
-    );
-    setStatus("Normalized (trimmed) rows ✅");
-    setTimeout(() => setStatus(""), 1500);
-  }
-
-  function sortBy(field: "tag" | "name" | "alliance_id" | "state") {
-    setWorkingItems((prev) =>
-      [...prev].sort((a, b) => normStr(a[field]).localeCompare(normStr(b[field])))
-    );
-  }
-
   return (
     <div style={{ padding: 16, maxWidth: 1100, margin: "0 auto" }}>
       <h1 style={{ fontSize: 22, fontWeight: 700 }}>Alliance Directory Editor (UI-only)</h1>
       <p style={{ opacity: 0.8, marginTop: 6 }}>
-        Stored in localStorage key: <code>{LS_KEY}</code>. Export/import included. Improvements: validate + normalize + sort.
+        Stored in localStorage key: <code>{LS_KEY}</code>. This page won’t rename the key. Export/import included.
       </p>
 
       {status ? (
@@ -229,55 +170,15 @@ export default function OwnerAllianceDirectoryEditorPage() {
 
       <hr style={{ margin: "16px 0", opacity: 0.3 }} />
 
-      <h2 style={{ fontSize: 18, fontWeight: 700 }}>Health / Preview</h2>
-      <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-        <div style={{ padding: 12, border: "1px solid #333", borderRadius: 10 }}>
-          <div style={{ fontWeight: 800 }}>Detected structure: <code>{mode}</code></div>
-          <div style={{ opacity: 0.8, marginTop: 6 }}>Rows: <b>{workingItems.length}</b></div>
-          <div style={{ opacity: 0.8, marginTop: 6 }}>
-            By state:{" "}
-            {Array.from(validation.byState.entries())
-              .sort((a, b) => a[0].localeCompare(b[0]))
-              .map(([k, v]) => `${k}:${v}`)
-              .join("  |  ") || "(none)"}
-          </div>
-        </div>
-
-        <div style={{ padding: 12, border: "1px solid #333", borderRadius: 10 }}>
-          <div style={{ fontWeight: 800 }}>Validation</div>
-          <div style={{ marginTop: 8, opacity: 0.85 }}>
-            Duplicate alliance_id: {validation.dupIds.length ? validation.dupIds.join(", ") : "(none)"}
-          </div>
-          <div style={{ marginTop: 6, opacity: 0.85 }}>
-            Duplicate tag: {validation.dupTags.length ? validation.dupTags.join(", ") : "(none)"}
-          </div>
-          <div style={{ marginTop: 6, opacity: 0.85 }}>
-            Missing required fields (alliance_id/tag/name): {validation.missing.length ? validation.missing.length : 0}
-          </div>
-          {validation.missing.length ? (
-            <div style={{ marginTop: 8, opacity: 0.75, fontSize: 12 }}>
-              {validation.missing.slice(0, 10).map((m) => (
-                <div key={m.idx}>
-                  Row {m.idx + 1}: id="{m.alliance_id}" tag="{m.tag}" name="{m.name}"
-                </div>
-              ))}
-              {validation.missing.length > 10 ? <div>…and more</div> : null}
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      <hr style={{ margin: "16px 0", opacity: 0.3 }} />
-
       <h2 style={{ fontSize: 18, fontWeight: 700 }}>Table View (best-effort)</h2>
       <p style={{ opacity: 0.8, marginTop: 6 }}>
-        If detection is <code>unknown</code>, use Raw JSON below. Otherwise you can edit rows here and save.
+        Detected structure: <code>{mode}</code>. If detection is <code>unknown</code>, use Raw JSON below.
       </p>
 
       {mode === "unknown" ? (
         <div style={{ padding: 12, border: "1px dashed #666", borderRadius: 8, marginTop: 10 }}>
-          I couldn’t auto-detect a list structure. Use the Raw JSON editor below, or convert to an array /
-          <code>{`{ alliances: [...] }`}</code>.
+          I couldn’t auto-detect a list structure. Use the Raw JSON editor below (safe), or adapt the directory to an
+          array / <code>{`{ alliances: [...] }`}</code> shape.
         </div>
       ) : (
         <div style={{ marginTop: 10 }}>
@@ -286,20 +187,17 @@ export default function OwnerAllianceDirectoryEditorPage() {
               onClick={() =>
                 setWorkingItems((prev) => [
                   ...prev,
-                  { alliance_id: "", tag: "", name: "", state: "789", notes: "" },
+                  {
+                    alliance_id: "",
+                    tag: "",
+                    name: "",
+                    state: "789",
+                  },
                 ])
               }
             >
               + Add Alliance
             </button>
-
-            <button onClick={normalizeRows}>Normalize (trim)</button>
-
-            <button onClick={() => sortBy("tag")}>Sort by tag</button>
-            <button onClick={() => sortBy("name")}>Sort by name</button>
-            <button onClick={() => sortBy("alliance_id")}>Sort by id</button>
-            <button onClick={() => sortBy("state")}>Sort by state</button>
-
             <button onClick={onSaveTable}>Save Table to Directory</button>
           </div>
 
@@ -345,7 +243,7 @@ export default function OwnerAllianceDirectoryEditorPage() {
                 {workingItems.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ padding: 10, opacity: 0.7 }}>
-                      No items found. Add one, or use Raw JSON.
+                      No items found in detected list. Add one, or use Raw JSON.
                     </td>
                   </tr>
                 ) : null}
