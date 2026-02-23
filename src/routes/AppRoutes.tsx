@@ -99,6 +99,7 @@ import OwnerStateAchievementInboxPage from "../pages/owner/OwnerStateAchievement
 import OwnerDiscordEdgeSendTestPage from "../pages/owner/OwnerDiscordEdgeSendTestPage";
 import OwnerDataVaultPage from "../pages/owner/OwnerDataVaultPage";
 import State789OpsConsolePage from "../pages/state/State789OpsConsolePage";
+import State789AlertsCenterPage from "../pages/state/State789AlertsCenterPage";
 
 export default function AppRoutes() {
   return (
@@ -162,6 +163,7 @@ export default function AppRoutes() {
       <Route path="/owner/event-types-library" element={<RequireAdmin><OwnerEventTypesLibraryPage /></RequireAdmin>} />
       <Route path="/owner/jump" element={<RequireAdmin><OwnerAllianceJumpPage /></RequireAdmin>} />
       <Route path="/state/789/alerts" element={<State789AlertsPage />} />
+      <Route path="/state/789/alerts-v2" element={<State789AlertsCenterPage />} />
       <Route path="/state/789/discussion" element={<State789DiscussionBoardPage />} />
       <Route path="/state/789/discussion-v2" element={<State789DiscussionBoardV2Page />} />
       <Route path="/state/789/ops" element={<State789OpsConsolePage />} />
