@@ -113,10 +113,14 @@ import State789AchievementRequestV2Page from "../pages/state/State789Achievement
 import State789AchievementsAdminV2Page from "../pages/state/State789AchievementsAdminV2Page";
 import OwnerOnboardingQueuePage from "../pages/owner/OwnerOnboardingQueuePage";
 import MyMailThreadsPage from "../pages/mail/MyMailThreadsPage";
+import MyHqManagerPage from "../pages/me/MyHqManagerPage";
+import OwnerDiscordQueuePage from "../pages/owner/OwnerDiscordQueuePage";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/me/hq-manager" element={<MyHqManagerPage />} />
+      <Route path="/owner/discord-queue" element={<RequireAdmin><OwnerDiscordQueuePage /></RequireAdmin>} />
       <Route path="/mail-threads" element={<MyMailThreadsPage />} />
       <Route path="/owner/onboarding-queue" element={<RequireAdmin><OwnerOnboardingQueuePage /></RequireAdmin>} />
       <Route path="/state/789/achievements/request-v2" element={<State789AchievementRequestV2Page />} />
