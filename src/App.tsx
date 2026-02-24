@@ -5,9 +5,12 @@ import AppErrorBoundary from "./components/system/AppErrorBoundary";
 import ThemeBootstrap from "./components/theme/ThemeBootstrap";
 import GlobalStatusFab from "./components/system/GlobalStatusFab";
 import FloatingLanguageSwitcher from "./components/i18n/FloatingLanguageSwitcher";
+import { I18nextProvider } from "react-i18next";
+import i18n from "./i18n";
 
 export default function App() {
   return (
+    <I18nextProvider i18n={i18n}>
     <>
       <AppErrorBoundary>
       <AuthRedirector />
@@ -18,6 +21,7 @@ export default function App() {
       </AppErrorBoundary>
       <FloatingLanguageSwitcher />
     </>
+    </I18nextProvider>
   );
 }
 
