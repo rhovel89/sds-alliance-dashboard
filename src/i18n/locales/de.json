@@ -1,0 +1,74 @@
+{
+  "lang": {
+    "label": "Sprache",
+    "en": "Englisch",
+    "es": "Spanisch",
+    "fr": "Französisch",
+    "pt": "Portugiesisch",
+    "de": "Deutsch",
+    "ru": "Russisch",
+    "zh": "Chinesisch (Mandarin)",
+    "ko": "Koreanisch"
+  },
+  "common": {
+    "reload": "Neu laden",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "submit": "Senden",
+    "delete": "Löschen",
+    "copy": "Kopieren",
+    "export": "Exportieren",
+    "import": "Importieren",
+    "search": "Suchen",
+    "optional": "optional"
+  },
+  "nav": {
+    "me": "Mein Dashboard",
+    "mailThreads": "Mail (Threads)",
+    "mailInbox": "Posteingang",
+    "hqManager": "HQ-Manager",
+    "stateAlerts": "Staatliche Alarme",
+    "stateDiscussion": "Staatsdiskussion",
+    "achRequest": "Erfolg anfordern",
+    "achAdmin": "Erfolge (Admin)"
+  },
+  "me": {
+    "title": "Mein Dashboard",
+    "quickLinks": "Schnellzugriff",
+    "today": "Heute",
+    "todayNote": "Nutze vorerst den Allianz-Kalender. Später können wir „Heutige Events“ hinzufügen.",
+    "tips": "Profil-Tipps",
+    "tipsNote": "Füge deine HQs hinzu und setze ein primäres HQ für bessere Planung.",
+    "tip1": "Halte HQ-Level und Versteck-Fortschritt aktuell",
+    "tip2": "Markiere ein HQ als primär",
+    "tip3": "Nutze Mail-Threads für schnelle Direktnachrichten"
+  },
+  "onboarding": {
+    "title": "Zugang anfordern",
+    "signedIn": "Angemeldet",
+    "notSignedIn": "Nicht angemeldet",
+    "request": "Anfrage",
+    "state": "Staat",
+    "reloadDirectory": "Verzeichnis neu laden",
+    "allianceFromDirectory": "Allianz (aus Verzeichnis)",
+    "displayName": "Anzeigename",
+    "gameName": "Spielname",
+    "discordName": "Discord-Name (optional)",
+    "notes": "Notizen (optional)",
+    "submitRequest": "Anfrage senden",
+    "myRequests": "Meine Anfragen",
+    "noRequests": "Noch keine Anfragen."
+  },
+  "mailThreads": {
+    "title": "Mail (Threads)",
+    "threads": "Threads",
+    "newDm": "Neue DM (genehmigte Spieler)",
+    "selectPlayer": "(Spieler auswählen)",
+    "refreshRecipients": "Empfängerliste aktualisieren",
+    "selectThread": "Thread auswählen",
+    "newMessage": "Neue Nachricht",
+    "subjectOptional": "Betreff (optional)...",
+    "messagePlaceholder": "Nachricht…",
+    "send": "Senden"
+  }
+}
