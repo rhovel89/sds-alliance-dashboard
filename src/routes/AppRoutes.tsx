@@ -102,10 +102,14 @@ import State789OpsConsolePage from "../pages/state/State789OpsConsolePage";
 import State789AlertsCenterPage from "../pages/state/State789AlertsCenterPage";
 import MyMailInboxPage from "../pages/mail/MyMailInboxPage";
 import OwnerMailBroadcastPage from "../pages/owner/OwnerMailBroadcastPage";
+import AllianceDirectoryDbPage from "../pages/alliance/AllianceDirectoryDbPage";
+import OwnerDirectoryDbPage from "../pages/owner/OwnerDirectoryDbPage";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/alliances-v2" element={<AllianceDirectoryDbPage />} />
+      <Route path="/owner/directory-db" element={<RequireAdmin><OwnerDirectoryDbPage /></RequireAdmin>} />
       <Route path="/owner/mail-broadcast" element={<RequireAdmin><OwnerMailBroadcastPage /></RequireAdmin>} />
       <Route path="/owner/data-vault" element={<RequireAdmin><OwnerDataVaultPage /></RequireAdmin>} />
       <Route path="/status" element={<SystemStatusPage />} />
