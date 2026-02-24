@@ -7,7 +7,7 @@ type Req = {
   state_code: string;
   alliance_code: string;
   alliance_id: string | null;
-  requester_user_id: string;
+  requester_user_id: string | null;
   player_name: string;
   game_name: string;
   discord_name: string;
@@ -130,7 +130,7 @@ Open your dashboard:
                   {r.state_code} • {r.alliance_code} • {r.player_name || r.game_name || "Player"}
                 </div>
                 <div style={{ opacity: 0.75, fontSize: 12 }}>
-                  {new Date(r.created_at).toLocaleString()} • requester {r.requester_user_id.slice(0, 8)}…
+                  {new Date(r.created_at).toLocaleString()} • requester {(r.requester_user_id ? r.requester_user_id.slice(0, 8) : "unknown")}…
                   {r.discord_name ? ` • discord ${r.discord_name}` : ""}
                 </div>
                 {r.note ? <div style={{ marginTop: 8, opacity: 0.9, whiteSpace: "pre-wrap" }}>{r.note}</div> : null}
@@ -153,4 +153,5 @@ Open your dashboard:
     </div>
   );
 }
+
 
