@@ -4,24 +4,38 @@ import RequireAlliance from "../components/RequireAlliance";
 import RequireAllianceAccess from "../components/auth/RequireAllianceAccess";
 import RequireAdmin from "../components/auth/RequireAdmin";
 import SystemStatusPage from "../pages/SystemStatusPage";
+import StateAlertsDbPage from "../pages/state/StateAlertsDbPage";
+import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
 
 import AuthLandingPage from "../pages/AuthLandingPage";
 import AuthCallback from "../pages/AuthCallback";
+import StateAlertsDbPage from "../pages/state/StateAlertsDbPage";
+import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
 
 import RequestAccessPage from "../pages/onboarding/RequestAccessPage";
 import MyDashboardsPage from "../pages/dashboard/MyDashboardsPage";
+import StateAlertsDbPage from "../pages/state/StateAlertsDbPage";
+import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
 
 import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
+import StateAlertsDbPage from "../pages/state/StateAlertsDbPage";
+import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
 
 import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 import PermissionsPage from "../pages/dashboard/Permissions";
 import AllianceCalendarPage from "../pages/calendar/AllianceCalendarPage";
+import StateAlertsDbPage from "../pages/state/StateAlertsDbPage";
+import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
 
 import AllianceAnnouncementsPage from "../pages/alliance/AllianceAnnouncementsPage";
 import AllianceGuidesPage from "../pages/alliance/AllianceGuidesPage";
+import StateAlertsDbPage from "../pages/state/StateAlertsDbPage";
+import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
 
 import PlayerDashboardPage from "../pages/PlayerDashboardPage";
+import StateAlertsDbPage from "../pages/state/StateAlertsDbPage";
+import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
 
 import OwnerDashboardPage from "../pages/owner/OwnerDashboardPage";
 import OwnerDashboardSelect from "../pages/OwnerDashboardSelect";
@@ -35,10 +49,14 @@ import OwnerPlayersLinkPage from "../pages/owner/OwnerPlayersLinkPage";
 import OwnerStateManagerPage from "../pages/owner/OwnerStateManagerPage";
 import OwnerRolesPermissionsV2Page from "../pages/owner/OwnerRolesPermissionsV2Page";
 import OwnerAccessControlPage from "../pages/owner/OwnerAccessControlPage";
+import StateAlertsDbPage from "../pages/state/StateAlertsDbPage";
+import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
 
 import StateDashboardPage from "../pages/state/StateDashboardPage";
 import StateLeadersPage from "../pages/state/StateLeadersPage";
 import OwnerDiscordSettingsPage from "../pages/owner/OwnerDiscordSettingsPage";
+import StateAlertsDbPage from "../pages/state/StateAlertsDbPage";
+import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
 
 function DashboardEntry() {
   const [sp] = useSearchParams();
@@ -117,6 +135,8 @@ import MyHqManagerPage from "../pages/me/MyHqManagerPage";
 import OwnerDiscordQueuePage from "../pages/owner/OwnerDiscordQueuePage";
 import OwnerPermissionsMatrixV2Page from "../pages/owner/OwnerPermissionsMatrixV2Page";
 import OwnerAllianceDirectorySyncPage from "../pages/owner/OwnerAllianceDirectorySyncPage";
+import StateAlertsDbPage from "../pages/state/StateAlertsDbPage";
+import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
 
 export default function AppRoutes() {
   return (
@@ -232,7 +252,9 @@ export default function AppRoutes() {
       <Route path="/state/789/achievement-request" element={<State789AchievementRequestPage />} />
       <Route path="/owner/state-achievement-inbox" element={<RequireAdmin><OwnerStateAchievementInboxPage /></RequireAdmin>} />
       <Route path="/owner/discord-edge-test" element={<RequireAdmin><OwnerDiscordEdgeSendTestPage /></RequireAdmin>} />
-      <Route path="*" element={<Navigate to="/me" replace />} />
+            <Route path="/state/:state_code/alerts-db" element={<StateAlertsDbPage />} />
+      <Route path="/state/:state_code/discussion-db" element={<StateDiscussionDbPage />} />
+<Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
 }
