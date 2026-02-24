@@ -1,0 +1,70 @@
+{
+  "lang": {
+    "label": "Langue",
+    "en": "Anglais",
+    "es": "Espagnol",
+    "pt": "Portugais",
+    "fr": "Français"
+  },
+  "common": {
+    "reload": "Recharger",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "submit": "Envoyer",
+    "delete": "Supprimer",
+    "copy": "Copier",
+    "export": "Exporter",
+    "import": "Importer",
+    "search": "Rechercher",
+    "optional": "optionnel"
+  },
+  "nav": {
+    "me": "Mon tableau de bord",
+    "mailThreads": "Messages (fils)",
+    "mailInbox": "Boîte de réception",
+    "hqManager": "Gestion HQ",
+    "stateAlerts": "Alertes de l’État",
+    "stateDiscussion": "Discussion de l’État",
+    "achRequest": "Demander un succès",
+    "achAdmin": "Admin des succès"
+  },
+  "me": {
+    "title": "Mon tableau de bord",
+    "quickLinks": "Raccourcis",
+    "today": "Aujourd’hui",
+    "todayNote": "Utilisez le calendrier de votre alliance pour l’instant. Nous pourrons ajouter “Événements du jour” plus tard.",
+    "tips": "Conseils de profil",
+    "tipsNote": "Ajoutez vos HQ et définissez une HQ principale pour mieux planifier.",
+    "tip1": "Mettez à jour votre niveau de HQ et la progression du repaire",
+    "tip2": "Marquez une HQ comme principale",
+    "tip3": "Utilisez Messages (fils) pour les DM rapides"
+  },
+  "onboarding": {
+    "title": "Demander l’accès",
+    "signedIn": "Connecté",
+    "notSignedIn": "Non connecté",
+    "request": "Demande",
+    "state": "État",
+    "reloadDirectory": "Recharger l’annuaire",
+    "allianceFromDirectory": "Alliance (annuaire)",
+    "displayName": "Nom affiché",
+    "gameName": "Nom en jeu",
+    "discordName": "Nom Discord (optionnel)",
+    "notes": "Notes (optionnel)",
+    "submitRequest": "Envoyer la demande",
+    "myRequests": "Mes demandes",
+    "noRequests": "Aucune demande pour le moment."
+  },
+  "mailThreads": {
+    "title": "Messages (fils)",
+    "threads": "Fils",
+    "newDm": "Nouveau DM (joueurs approuvés)",
+    "selectPlayer": "(sélectionner un joueur)",
+    "refreshRecipients": "Actualiser la liste",
+    "selectThread": "Sélectionnez un fil",
+    "newMessage": "Nouveau message",
+    "subjectOptional": "Sujet (optionnel)...",
+    "messagePlaceholder": "Message…",
+    "send": "Envoyer"
+  }
+}

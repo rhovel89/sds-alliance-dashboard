@@ -1,0 +1,70 @@
+{
+  "lang": {
+    "label": "Idioma",
+    "en": "Inglês",
+    "es": "Espanhol",
+    "pt": "Português",
+    "fr": "Francês"
+  },
+  "common": {
+    "reload": "Recarregar",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "submit": "Enviar",
+    "delete": "Excluir",
+    "copy": "Copiar",
+    "export": "Exportar",
+    "import": "Importar",
+    "search": "Pesquisar",
+    "optional": "opcional"
+  },
+  "nav": {
+    "me": "Meu Painel",
+    "mailThreads": "Mensagens (threads)",
+    "mailInbox": "Caixa de entrada",
+    "hqManager": "Gerenciar HQ",
+    "stateAlerts": "Alertas do Estado",
+    "stateDiscussion": "Discussão do Estado",
+    "achRequest": "Solicitar Conquista",
+    "achAdmin": "Admin de Conquistas"
+  },
+  "me": {
+    "title": "Meu Painel",
+    "quickLinks": "Links rápidos",
+    "today": "Hoje",
+    "todayNote": "Use o calendário da sua aliança por enquanto. Depois podemos adicionar “Eventos de hoje”.",
+    "tips": "Dicas do perfil",
+    "tipsNote": "Adicione suas HQs e defina uma HQ principal para facilitar o planejamento.",
+    "tip1": "Mantenha nível da HQ e progresso do Covil atualizados",
+    "tip2": "Marque uma HQ como principal",
+    "tip3": "Use Mensagens (threads) para DMs rápidas"
+  },
+  "onboarding": {
+    "title": "Solicitar acesso",
+    "signedIn": "Conectado",
+    "notSignedIn": "Não conectado",
+    "request": "Solicitação",
+    "state": "Estado",
+    "reloadDirectory": "Recarregar diretório",
+    "allianceFromDirectory": "Aliança (do diretório)",
+    "displayName": "Nome exibido",
+    "gameName": "Nome no jogo",
+    "discordName": "Nome no Discord (opcional)",
+    "notes": "Notas (opcional)",
+    "submitRequest": "Enviar solicitação",
+    "myRequests": "Minhas solicitações",
+    "noRequests": "Nenhuma solicitação ainda."
+  },
+  "mailThreads": {
+    "title": "Mensagens (threads)",
+    "threads": "Threads",
+    "newDm": "Novo DM (jogadores aprovados)",
+    "selectPlayer": "(selecionar jogador)",
+    "refreshRecipients": "Atualizar lista",
+    "selectThread": "Selecione uma thread",
+    "newMessage": "Nova mensagem",
+    "subjectOptional": "Assunto (opcional)...",
+    "messagePlaceholder": "Mensagem…",
+    "send": "Enviar"
+  }
+}
