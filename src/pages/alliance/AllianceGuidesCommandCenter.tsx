@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useGuidesEditAccess } from "../../hooks/useGuidesEditAccess";
 import { GuideEntriesPanel } from "../../components/guides/GuideEntriesPanel";
+import GuideEntryAttachmentsPanel from "../../components/guides/GuideEntryAttachmentsPanel";
 
 type SectionRow = Record<string, any>;
 type EntryRow = Record<string, any>;
@@ -481,6 +482,12 @@ export function AllianceGuidesCommandCenter() {
                           </div>
                         </>
                       )}
+                      <GuideEntryAttachmentsPanel
+                        allianceCode={allianceCode}
+                        sectionId={selectedSectionId}
+                        entryId={String(en.id)}
+                        canEdit={canEdit}
+                      />
                     </div>
                   );
                 })}
@@ -497,3 +504,4 @@ export function AllianceGuidesCommandCenter() {
     </div>
   );
 }
+
