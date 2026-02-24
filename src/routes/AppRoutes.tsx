@@ -143,7 +143,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/owner/directory-sync" element={<RequireAdmin><OwnerAllianceDirectorySyncPage /></RequireAdmin>} />
-      <Route path="/owner/permissions-matrix-v2" element={<Navigate to="/owner/permissions-matrix-v3" replace />} />
+      <Route path="/owner/permissions-matrix-v3-v2" element={<Navigate to="/owner/permissions-matrix-v3-v3" replace />} />
       <Route path="/me/hq-manager" element={<MyHqManagerPage />} />
       <Route path="/owner/discord-queue" element={<RequireAdmin><OwnerDiscordQueuePage /></RequireAdmin>} />
       <Route path="/mail-threads" element={<MyMailThreadsPage />} />
@@ -153,7 +153,7 @@ export default function AppRoutes() {
       <Route path="/state/789/alerts-db" element={<State789AlertsDbPage />} />
       <Route path="/state/789/discussion-db" element={<State789DiscussionDbPage />} />
       <Route path="/owner/live-ops-db" element={<RequireAdmin><OwnerLiveOpsDbPage /></RequireAdmin>} />
-      <Route path="/owner/permissions-db" element={<Navigate to="/owner/permissions-matrix-v3" replace />} />
+      <Route path="/owner/permissions-db" element={<Navigate to="/owner/permissions-matrix-v3-v3" replace />} />
       <Route path="/alliances-v2" element={<AllianceDirectoryDbPage />} />
       <Route path="/owner/directory-db" element={<RequireAdmin><OwnerDirectoryDbPage /></RequireAdmin>} />
       <Route path="/owner/mail-broadcast" element={<RequireAdmin><OwnerMailBroadcastPage /></RequireAdmin>} />
@@ -255,11 +255,14 @@ export default function AppRoutes() {
       <Route path="/owner/discord-edge-test" element={<RequireAdmin><OwnerDiscordEdgeSendTestPage /></RequireAdmin>} />
             <Route path="/state/:state_code/alerts-db" element={<StateAlertsDbPage />} />
       <Route path="/state/:state_code/discussion-db" element={<StateDiscussionDbPage />} />
-      <Route path="/owner/permissions-matrix-v3" element={<RequireAdmin><OwnerPermissionsMatrixV3Page /></RequireAdmin>} />
+      <Route path="/owner/permissions-matrix-v3-v3" element={<RequireAdmin><OwnerPermissionsMatrixV3Page /></RequireAdmin>} />
+            <Route path="/owner/permissions-matrix-v3" element={<Navigate to="/owner/permissions-matrix-v3-v3" replace />} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
 }
+
+
 
 
 
