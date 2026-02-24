@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 function Card(props: { title: string; children: React.ReactNode; note?: string }) {
   return (
@@ -11,31 +12,32 @@ function Card(props: { title: string; children: React.ReactNode; note?: string }
 }
 
 export default function MeQuickPanels() {
+  const { t } = useTranslation();
+
   return (
     <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
-      <Card title="Quick Links" note="These are safe navigation links (no DB coupling).">
+      <Card title={t("me.quickLinks")} note=" ">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <a href="/mail-threads">Mail Threads</a>
-          <a href="/mail-v2">Mail Inbox</a>
-          <a href="/me/hq-manager">HQ Manager</a>
-          <a href="/state/789/achievements/request-v2">Request Achievement</a>
-          <a href="/state/789/achievements/admin-v2">Achievements Admin</a>
-          <a href="/state/789/alerts-db">State Alerts</a>
-          <a href="/state/789/discussion-db">State Discussion</a>
+          <a href="/me">{t("nav.me")}</a>
+          <a href="/mail-threads">{t("nav.mailThreads")}</a>
+          <a href="/mail-v2">{t("nav.mailInbox")}</a>
+          <a href="/me/hq-manager">{t("nav.hqManager")}</a>
+          <a href="/state/789/achievements/request-v2">{t("nav.achRequest")}</a>
+          <a href="/state/789/achievements/admin-v2">{t("nav.achAdmin")}</a>
+          <a href="/state/789/alerts-db">{t("nav.stateAlerts")}</a>
+          <a href="/state/789/discussion-db">{t("nav.stateDiscussion")}</a>
         </div>
       </Card>
 
-      <Card title="Today" note="(Next: we can wire actual 'events today' into /me once you confirm which calendar view to use.)">
-        <div style={{ opacity: 0.8 }}>
-          Use the alliance calendar tab in your alliance dashboard for now. We can add a dedicated “Today’s Events” feed later.
-        </div>
+      <Card title={t("me.today")} note={t("me.todayNote")}>
+        <div style={{ opacity: 0.85 }}>{t("me.todayNote")}</div>
       </Card>
 
-      <Card title="Profile Tips" note="(Optional) Add your HQs + primary HQ to make alliance planning easier.">
-        <ul style={{ margin: 0, paddingLeft: 18, opacity: 0.85 }}>
-          <li>Keep your HQ levels + lair progress updated</li>
-          <li>Mark one HQ as Primary for quick reference</li>
-          <li>Use Mail Threads for fast DM coordination</li>
+      <Card title={t("me.tips")} note={t("me.tipsNote")}>
+        <ul style={{ margin: 0, paddingLeft: 18, opacity: 0.9 }}>
+          <li>{t("me.tip1")}</li>
+          <li>{t("me.tip2")}</li>
+          <li>{t("me.tip3")}</li>
         </ul>
       </Card>
     </div>

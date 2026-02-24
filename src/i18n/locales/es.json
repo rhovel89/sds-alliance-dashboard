@@ -1,0 +1,70 @@
+{
+  "lang": {
+    "label": "Idioma",
+    "en": "Inglés",
+    "es": "Español",
+    "pt": "Portugués",
+    "fr": "Francés"
+  },
+  "common": {
+    "reload": "Recargar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "submit": "Enviar",
+    "delete": "Eliminar",
+    "copy": "Copiar",
+    "export": "Exportar",
+    "import": "Importar",
+    "search": "Buscar",
+    "optional": "opcional"
+  },
+  "nav": {
+    "me": "Mi Panel",
+    "mailThreads": "Mensajes (hilos)",
+    "mailInbox": "Bandeja de entrada",
+    "hqManager": "Gestor de HQ",
+    "stateAlerts": "Alertas del Estado",
+    "stateDiscussion": "Discusión del Estado",
+    "achRequest": "Solicitar Logro",
+    "achAdmin": "Admin de Logros"
+  },
+  "me": {
+    "title": "Mi Panel",
+    "quickLinks": "Enlaces rápidos",
+    "today": "Hoy",
+    "todayNote": "Por ahora usa el calendario de tu alianza. Más adelante podemos añadir “Eventos de hoy”.",
+    "tips": "Consejos de perfil",
+    "tipsNote": "Agrega tus HQ y marca un HQ principal para planificar mejor.",
+    "tip1": "Mantén actualizado el nivel de HQ y progreso de la guarida",
+    "tip2": "Marca un HQ como principal (Primary)",
+    "tip3": "Usa Mensajes (hilos) para coordinar por DM"
+  },
+  "onboarding": {
+    "title": "Solicitar acceso",
+    "signedIn": "Sesión iniciada",
+    "notSignedIn": "Sin sesión",
+    "request": "Solicitud",
+    "state": "Estado",
+    "reloadDirectory": "Recargar directorio",
+    "allianceFromDirectory": "Alianza (del directorio)",
+    "displayName": "Nombre visible",
+    "gameName": "Nombre en el juego",
+    "discordName": "Nombre en Discord (opcional)",
+    "notes": "Notas (opcional)",
+    "submitRequest": "Enviar solicitud",
+    "myRequests": "Mis solicitudes",
+    "noRequests": "Todavía no hay solicitudes."
+  },
+  "mailThreads": {
+    "title": "Mensajes (hilos)",
+    "threads": "Hilos",
+    "newDm": "Nuevo DM (jugadores aprobados)",
+    "selectPlayer": "(seleccionar jugador)",
+    "refreshRecipients": "Actualizar lista",
+    "selectThread": "Selecciona un hilo",
+    "newMessage": "Nuevo mensaje",
+    "subjectOptional": "Asunto (opcional)...",
+    "messagePlaceholder": "Mensaje…",
+    "send": "Enviar"
+  }
+}

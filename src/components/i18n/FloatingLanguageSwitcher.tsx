@@ -1,0 +1,44 @@
+import React from "react";
+import { useTranslation } from "react-i18next";
+
+const LANGS = [
+  { code: "en", labelKey: "lang.en" },
+  { code: "es", labelKey: "lang.es" },
+  { code: "pt", labelKey: "lang.pt" },
+  { code: "fr", labelKey: "lang.fr" },
+] as const;
+
+export default function FloatingLanguageSwitcher() {
+  const { i18n, t } = useTranslation();
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        right: 12,
+        bottom: 12,
+        zIndex: 9999,
+        border: "1px solid #333",
+        borderRadius: 12,
+        padding: 10,
+        background: "rgba(10, 10, 10, 0.85)",
+        backdropFilter: "blur(6px)",
+        maxWidth: 260,
+      }}
+    >
+      <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>{t("lang.label")}</div>
+      <select
+        value={i18n.language?.split("-")[0] ?? "en"}
+        onChange={(e) => i18n.changeLanguage(e.target.value)}
+        style={{ width: "100%" }}
+        aria-label={t("lang.label")}
+      >
+        {LANGS.map((x) => (
+          <option key={x.code} value={x.code}>
+            {t(x.labelKey)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}

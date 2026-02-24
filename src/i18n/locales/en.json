@@ -1,0 +1,70 @@
+{
+  "lang": {
+    "label": "Language",
+    "en": "English",
+    "es": "Spanish",
+    "pt": "Portuguese",
+    "fr": "French"
+  },
+  "common": {
+    "reload": "Reload",
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "delete": "Delete",
+    "copy": "Copy",
+    "export": "Export",
+    "import": "Import",
+    "search": "Search",
+    "optional": "optional"
+  },
+  "nav": {
+    "me": "My Dashboard",
+    "mailThreads": "Mail Threads",
+    "mailInbox": "Mail Inbox",
+    "hqManager": "HQ Manager",
+    "stateAlerts": "State Alerts",
+    "stateDiscussion": "State Discussion",
+    "achRequest": "Request Achievement",
+    "achAdmin": "Achievements Admin"
+  },
+  "me": {
+    "title": "My Dashboard",
+    "quickLinks": "Quick Links",
+    "today": "Today",
+    "todayNote": "Use your alliance calendar for now. We can add a dedicated “Today’s Events” feed later.",
+    "tips": "Profile Tips",
+    "tipsNote": "Add your HQs + primary HQ to make alliance planning easier.",
+    "tip1": "Keep your HQ levels + lair progress updated",
+    "tip2": "Mark one HQ as Primary for quick reference",
+    "tip3": "Use Mail Threads for fast DM coordination"
+  },
+  "onboarding": {
+    "title": "Request Access",
+    "signedIn": "Signed in",
+    "notSignedIn": "Not signed in",
+    "request": "Request",
+    "state": "State",
+    "reloadDirectory": "Reload Directory",
+    "allianceFromDirectory": "Alliance (from Directory)",
+    "displayName": "Display Name",
+    "gameName": "Game Name",
+    "discordName": "Discord Name (optional)",
+    "notes": "Notes (optional)",
+    "submitRequest": "Submit Request",
+    "myRequests": "My Requests",
+    "noRequests": "No requests yet."
+  },
+  "mailThreads": {
+    "title": "My Mail Threads",
+    "threads": "Threads",
+    "newDm": "New DM (approved players)",
+    "selectPlayer": "(select player)",
+    "refreshRecipients": "Refresh recipient list",
+    "selectThread": "Select a thread",
+    "newMessage": "New message",
+    "subjectOptional": "Subject (optional)...",
+    "messagePlaceholder": "Message…",
+    "send": "Send"
+  }
+}
