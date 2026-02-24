@@ -106,10 +106,16 @@ import AllianceDirectoryDbPage from "../pages/alliance/AllianceDirectoryDbPage";
 import OwnerDirectoryDbPage from "../pages/owner/OwnerDirectoryDbPage";
 import OwnerPermissionsDbPage from "../pages/owner/OwnerPermissionsDbPage";
 import AllianceAlertsPage from "../pages/alliance/AllianceAlertsPage";
+import State789AlertsDbPage from "../pages/state/State789AlertsDbPage";
+import State789DiscussionDbPage from "../pages/state/State789DiscussionDbPage";
+import OwnerLiveOpsDbPage from "../pages/owner/OwnerLiveOpsDbPage";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/state/789/alerts-db" element={<State789AlertsDbPage />} />
+      <Route path="/state/789/discussion-db" element={<State789DiscussionDbPage />} />
+      <Route path="/owner/live-ops-db" element={<RequireAdmin><OwnerLiveOpsDbPage /></RequireAdmin>} />
       <Route path="/owner/permissions-db" element={<RequireAdmin><OwnerPermissionsDbPage /></RequireAdmin>} />
       <Route path="/alliances-v2" element={<AllianceDirectoryDbPage />} />
       <Route path="/owner/directory-db" element={<RequireAdmin><OwnerDirectoryDbPage /></RequireAdmin>} />
