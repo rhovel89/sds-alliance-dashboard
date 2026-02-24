@@ -137,7 +137,7 @@ Open your dashboard:
               </div>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={() => approveAndProvision(r)}>Approve + Provision</button>
+                <button onClick={() => approveAndProvision(r)} disabled={!r.alliance_code || !r.alliance_code.trim()}>Approve + Provision</button>
                 <button onClick={() => reject(r)}>Reject</button>
               </div>
             </div>
@@ -153,5 +153,6 @@ Open your dashboard:
     </div>
   );
 }
+
 
 
