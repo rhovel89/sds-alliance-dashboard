@@ -399,13 +399,13 @@ export default function OwnerPermissionsMatrixV2Page() {
 
   return (
     <div style={{ padding: 16, maxWidth: 1300, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900 }}>Permissions Matrix (V2)</h1>
-      <div style={{ opacity: 0.8, marginTop: 6 }}>{status ? status : "DB-backed grants. Owner/admin only."}</div>
+      <h1 style={{ fontSize: 22, fontWeight: 900 }}>{t("permissionsV2.title")}</h1>
+      <div style={{ opacity: 0.8, marginTop: 6 }}>{status ? status : t("permissionsV2.subtitle")}</div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
-        <button onClick={() => setTab("state")} disabled={tab === "state"}>State</button>
-        <button onClick={() => setTab("alliance")} disabled={tab === "alliance"}>Alliance</button>
-        <button onClick={() => setTab("export")} disabled={tab === "export"}>Export/Import</button>
+        <button onClick={() => setTab("state")} disabled={tab === "state"}>{t("permissionsV2.tabState")}</button>
+        <button onClick={() => setTab("alliance")} disabled={tab === "alliance"}>{t("permissionsV2.tabAlliance")}</button>
+        <button onClick={() => setTab("export")} disabled={tab === "export"}>{t("permissionsV2.tabExport")}</button>
 
         <span style={{ opacity: 0.7 }}>• State</span>
         <input value={stateCode} onChange={(e) => setStateCode(e.target.value)} style={{ width: 90 }} />
@@ -422,9 +422,9 @@ export default function OwnerPermissionsMatrixV2Page() {
               {stateUsers.map((u) => <option key={u.user_id} value={u.user_id}>{u.display_name} • {u.user_id.slice(0, 8)}…</option>)}
             </select>
             <button onClick={() => { if (addStateUserId) { upsertLocalStateGrant(addStateUserId, { can_view: true }); setAddStateUserId(""); } }}>
-              + Add
+              {t("permissionsV2.addUser")}
             </button>
-            <button onClick={saveStateGrants}>Save</button>
+            <button onClick={saveStateGrants}>{t("permissionsV2.save")}</button>
           </div>
 
           {stateGrants
@@ -435,7 +435,7 @@ export default function OwnerPermissionsMatrixV2Page() {
                   <div style={{ fontWeight: 900 }}>
                     {displayUser(g.user_id)} <span style={{ opacity: 0.7, fontSize: 12 }}>({g.user_id.slice(0, 8)}…)</span>
                   </div>
-                  <button onClick={() => deleteStateGrant(g.user_id)}>Delete</button>
+                  <button onClick={() => deleteStateGrant(g.user_id)}>{t("permissionsV2.delete")}</button>
                 </div>
 
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10 }}>
@@ -480,9 +480,9 @@ export default function OwnerPermissionsMatrixV2Page() {
             </select>
 
             <button onClick={() => { if (allianceId && addAllianceUserId) { upsertLocalAllianceGrant(addAllianceUserId, { can_view_alerts: true }); setAddAllianceUserId(""); } }} disabled={!allianceId}>
-              + Add
+              {t("permissionsV2.addUser")}
             </button>
-            <button onClick={saveAllianceGrants} disabled={!allianceId}>Save</button>
+            <button onClick={saveAllianceGrants} disabled={!allianceId}>{t("permissionsV2.save")}</button>
           </div>
 
           <div style={{ opacity: 0.75 }}>Alliance: <b>{allianceLabel || "(none)"}</b></div>
@@ -495,7 +495,7 @@ export default function OwnerPermissionsMatrixV2Page() {
                   <div style={{ fontWeight: 900 }}>
                     {displayUser(g.user_id)} <span style={{ opacity: 0.7, fontSize: 12 }}>({g.user_id.slice(0, 8)}…)</span>
                   </div>
-                  <button onClick={() => deleteAllianceGrant(g.user_id)}>Delete</button>
+                  <button onClick={() => deleteAllianceGrant(g.user_id)}>{t("permissionsV2.delete")}</button>
                 </div>
 
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10 }}>
@@ -528,7 +528,7 @@ export default function OwnerPermissionsMatrixV2Page() {
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
-            <button onClick={exportJson}>Export JSON</button>
+            <button onClick={exportJson}>{t("permissionsV2.exportJson")}</button>
 
             <label style={{ cursor: "pointer" }}>
               <input
@@ -541,7 +541,7 @@ export default function OwnerPermissionsMatrixV2Page() {
                   e.currentTarget.value = "";
                 }}
               />
-              <span style={{ padding: "6px 10px", border: "1px solid #666", borderRadius: 8 }}>Import JSON</span>
+              <span style={{ padding: "6px 10px", border: "1px solid #666", borderRadius: 8 }}>{t("permissionsV2.importJson")}</span>
             </label>
           </div>
         </div>
@@ -549,3 +549,5 @@ export default function OwnerPermissionsMatrixV2Page() {
     </div>
   );
 }
+
+
