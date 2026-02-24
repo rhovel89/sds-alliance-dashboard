@@ -109,10 +109,14 @@ import AllianceAlertsPage from "../pages/alliance/AllianceAlertsPage";
 import State789AlertsDbPage from "../pages/state/State789AlertsDbPage";
 import State789DiscussionDbPage from "../pages/state/State789DiscussionDbPage";
 import OwnerLiveOpsDbPage from "../pages/owner/OwnerLiveOpsDbPage";
+import State789AchievementRequestV2Page from "../pages/state/State789AchievementRequestV2Page";
+import State789AchievementsAdminV2Page from "../pages/state/State789AchievementsAdminV2Page";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/state/789/achievements/request-v2" element={<State789AchievementRequestV2Page />} />
+      <Route path="/state/789/achievements/admin-v2" element={<State789AchievementsAdminV2Page />} />
       <Route path="/state/789/alerts-db" element={<State789AlertsDbPage />} />
       <Route path="/state/789/discussion-db" element={<State789DiscussionDbPage />} />
       <Route path="/owner/live-ops-db" element={<RequireAdmin><OwnerLiveOpsDbPage /></RequireAdmin>} />
