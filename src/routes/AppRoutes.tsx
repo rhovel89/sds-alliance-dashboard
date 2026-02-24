@@ -137,6 +137,7 @@ import OwnerPermissionsMatrixV2Page from "../pages/owner/OwnerPermissionsMatrixV
 import OwnerAllianceDirectorySyncPage from "../pages/owner/OwnerAllianceDirectorySyncPage";
 import StateAlertsDbPage from "../pages/state/StateAlertsDbPage";
 import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
+import OwnerPermissionsMatrixV3Page from "../pages/owner/OwnerPermissionsMatrixV3Page";
 
 export default function AppRoutes() {
   return (
@@ -254,9 +255,12 @@ export default function AppRoutes() {
       <Route path="/owner/discord-edge-test" element={<RequireAdmin><OwnerDiscordEdgeSendTestPage /></RequireAdmin>} />
             <Route path="/state/:state_code/alerts-db" element={<StateAlertsDbPage />} />
       <Route path="/state/:state_code/discussion-db" element={<StateDiscussionDbPage />} />
-<Route path="*" element={<Navigate to="/me" replace />} />
+      <Route path="/owner/permissions-matrix-v3" element={<RequireAdmin><OwnerPermissionsMatrixV3Page /></RequireAdmin>} />
+      <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
 }
+
+
 
 
