@@ -182,7 +182,7 @@ export default function GuideEntryAttachmentsPanel(props: {
 
         {canEdit ? (
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => inputRef.current?.click()}>Add files</button>
+            <button onClick={() => inputRef.current?.click()}>Attach</button>
             <input ref={inputRef} type="file" multiple style={{ display: "none" }} onChange={onPick} />
             <button onClick={() => void load()}>Refresh</button>
           </div>
@@ -235,3 +235,4 @@ export default function GuideEntryAttachmentsPanel(props: {
     </div>
   );
 }
+
