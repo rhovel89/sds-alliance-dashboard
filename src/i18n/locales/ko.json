@@ -20,7 +20,12 @@
     "export": "내보내기",
     "import": "가져오기",
     "search": "검색",
-    "optional": "선택"
+    "optional": "선택",
+    "sent": "전송 완료 ✅",
+    "sending": "전송 중…",
+    "copyFailed": "복사 실패",
+    "loading": "불러오는 중…",
+    "copied": "복사됨"
   },
   "nav": {
     "me": "내 대시보드",
@@ -70,5 +75,22 @@
     "subjectOptional": "제목(선택)…",
     "messagePlaceholder": "메시지…",
     "send": "보내기"
+  },
+  "mailInbox": {
+    "showing": "{{count}}개 표시",
+    "subjectOptional": "제목(선택)…",
+    "noMailYet": "아직 메일이 없습니다.",
+    "searchPlaceholder": "검색…",
+    "filterDirect": "쪽지",
+    "sendDirectTitle": "쪽지 보내기",
+    "toLabel": "받는 사람",
+    "bodyPlaceholder": "메시지 내용…",
+    "recipientApprovedLabel": "수신자(승인된 플레이어)",
+    "title": "내 메일(받은편지함)",
+    "filterStateBroadcast": "주 방송",
+    "filterAll": "(전체)",
+    "refreshRecipients": "수신자 새로고침",
+    "filterAllianceBroadcast": "동맹 방송",
+    "fromLabel": "보낸 사람"
   }
 }

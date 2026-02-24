@@ -20,7 +20,12 @@
     "export": "Экспорт",
     "import": "Импорт",
     "search": "Поиск",
-    "optional": "необязательно"
+    "optional": "необязательно",
+    "sent": "Отправлено ✅",
+    "sending": "Отправка…",
+    "copyFailed": "Не удалось скопировать",
+    "loading": "Загрузка…",
+    "copied": "Скопировано"
   },
   "nav": {
     "me": "Моя панель",
@@ -70,5 +75,22 @@
     "subjectOptional": "Тема (необязательно)...",
     "messagePlaceholder": "Сообщение…",
     "send": "Отправить"
+  },
+  "mailInbox": {
+    "showing": "Показано {{count}}",
+    "subjectOptional": "Тема (необязательно)...",
+    "noMailYet": "Сообщений пока нет.",
+    "searchPlaceholder": "поиск…",
+    "filterDirect": "личные",
+    "sendDirectTitle": "Отправить личное сообщение",
+    "toLabel": "Кому",
+    "bodyPlaceholder": "Текст сообщения...",
+    "recipientApprovedLabel": "Получатель (одобренные игроки)",
+    "title": "Моя почта (Входящие)",
+    "filterStateBroadcast": "рассылка штата",
+    "filterAll": "(все)",
+    "refreshRecipients": "Обновить получателей",
+    "filterAllianceBroadcast": "рассылка альянса",
+    "fromLabel": "От"
   }
 }

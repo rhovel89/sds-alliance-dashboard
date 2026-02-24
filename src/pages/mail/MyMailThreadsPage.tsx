@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
+import { useTranslation } from "react-i18next";
 
 type Recipient = { user_id: string; display_name: string };
 
@@ -21,6 +22,7 @@ type Msg = {
 };
 
 export default function MyMailThreadsPage() {
+  const { t } = useTranslation();
   const [userId, setUserId] = useState("");
   const [status, setStatus] = useState("");
 
@@ -47,7 +49,7 @@ export default function MyMailThreadsPage() {
   }, []);
 
   async function loadRecipients() {
-    setStatus("Loading recipients…");
+    setStatus(t("common.loading"));
     const res = await supabase.rpc("list_dm_recipients");
     if (res.error) { setStatus(res.error.message); return; }
     setRecipients((res.data ?? []) as any);
@@ -55,7 +57,7 @@ export default function MyMailThreadsPage() {
   }
 
   async function loadThreads() {
-    setStatus("Loading threads…");
+    setStatus(t("common.loading"));
     const res = await supabase.from("v_my_mail_threads").select("*").order("last_message_at", { ascending: false }).limit(200);
     if (res.error) { setStatus(res.error.message); return; }
     const list = (res.data ?? []) as any as ThreadRow[];
@@ -66,7 +68,7 @@ export default function MyMailThreadsPage() {
 
   async function loadMessages(threadId: string) {
     if (!threadId) { setMessages([]); return; }
-    setStatus("Loading messages…");
+    setStatus(t("common.loading"));
     const res = await supabase
       .from("v_my_mail_inbox")
       .select("id,created_at,created_by_user_id,sender_display_name,body")
@@ -95,7 +97,7 @@ export default function MyMailThreadsPage() {
     const b = body.trim();
     if (!to || !b) return alert("Recipient and message are required.");
 
-    setStatus("Sending…");
+    setStatus(t("common.sending"));
     const res = await supabase.rpc("send_direct_message", {
       p_to_user_id: to,
       p_subject: subject.trim(),
@@ -109,7 +111,6 @@ export default function MyMailThreadsPage() {
 
     await loadThreads();
 
-    // jump to the thread with that peer if found
     const refreshed = await supabase.from("v_my_mail_threads").select("*").limit(200);
     if (!refreshed.error) {
       const list = (refreshed.data ?? []) as any as ThreadRow[];
@@ -117,59 +118,59 @@ export default function MyMailThreadsPage() {
       if (match) setSelectedThreadId(match.thread_id);
     }
 
-    setStatus("Sent ✅");
+    setStatus(t("common.sent"));
     window.setTimeout(() => setStatus(""), 1000);
   }
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900 }}>My Mail Threads</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 900 }}>{t("mailThreads.title")}</h1>
       <div style={{ opacity: 0.8, marginTop: 6 }}>
-        {userId ? "Signed in ✅" : "Not signed in"} {status ? " • " + status : ""}
+        {userId ? "✅" : ""} {status ? " • " + status : ""}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16, marginTop: 12 }}>
         <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden" }}>
           <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900, display: "flex", justifyContent: "space-between" }}>
-            <span>Threads</span>
-            <button onClick={loadThreads}>Reload</button>
+            <span>{t("mailThreads.threads")}</span>
+            <button onClick={loadThreads}>{t("common.reload")}</button>
           </div>
 
           <div style={{ padding: 12, display: "grid", gap: 10 }}>
-            <div style={{ fontWeight: 900 }}>New DM (approved players)</div>
+            <div style={{ fontWeight: 900 }}>{t("mailThreads.newDm")}</div>
             <select value={toUserId} onChange={(e) => { setToUserId(e.target.value); setSelectedThreadId(""); }}>
-              <option value="">(select player)</option>
+              <option value="">{t("mailThreads.selectPlayer")}</option>
               {recipients.map((r) => (
                 <option key={r.user_id} value={r.user_id}>{r.display_name}</option>
               ))}
             </select>
-            <button onClick={loadRecipients}>Refresh recipient list</button>
+            <button onClick={loadRecipients}>{t("mailThreads.refreshRecipients")}</button>
 
             <hr style={{ opacity: 0.3 }} />
 
             <div style={{ display: "grid", gap: 8 }}>
-              {threads.map((t) => (
+              {threads.map((trow) => (
                 <button
-                  key={t.thread_id}
-                  onClick={() => setSelectedThreadId(t.thread_id)}
+                  key={trow.thread_id}
+                  onClick={() => setSelectedThreadId(trow.thread_id)}
                   style={{ textAlign: "left", padding: 10, borderRadius: 10, border: "1px solid #222" }}
                 >
                   <div style={{ fontWeight: 900 }}>
-                    {t.unread_count ? `(${t.unread_count}) ` : ""}{t.peer_display_name ?? "Direct"}
+                    {trow.unread_count ? `(${trow.unread_count}) ` : ""}{trow.peer_display_name ?? "Direct"}
                   </div>
                   <div style={{ opacity: 0.75, fontSize: 12 }}>
-                    {new Date(t.last_message_at).toLocaleString()} • {t.last_preview}
+                    {new Date(trow.last_message_at).toLocaleString()} • {trow.last_preview}
                   </div>
                 </button>
               ))}
-              {threads.length === 0 ? <div style={{ opacity: 0.75 }}>No threads yet.</div> : null}
+              {threads.length === 0 ? <div style={{ opacity: 0.75 }}>—</div> : null}
             </div>
           </div>
         </div>
 
         <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden" }}>
           <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>
-            {selectedThread ? `Chat with ${selectedThread.peer_display_name ?? "player"}` : (toUserId ? "New message" : "Select a thread")}
+            {selectedThread ? `${t("mailThreads.selectThread")}: ${selectedThread.peer_display_name ?? ""}` : (toUserId ? t("mailThreads.newMessage") : t("mailThreads.selectThread"))}
           </div>
 
           <div style={{ padding: 12 }}>
@@ -188,16 +189,15 @@ export default function MyMailThreadsPage() {
                     );
                   })}
                 </div>
-
                 <hr style={{ margin: "16px 0", opacity: 0.3 }} />
               </>
             ) : null}
 
             <div style={{ display: "grid", gap: 8 }}>
-              <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (optional)..." />
-              <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder="Message…" />
+              <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t("mailThreads.subjectOptional")} />
+              <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder={t("mailThreads.messagePlaceholder")} />
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button onClick={send} disabled={!userId || (!selectedThreadId && !toUserId)}>Send</button>
+                <button onClick={send} disabled={!userId || (!selectedThreadId && !toUserId)}>{t("mailThreads.send")}</button>
               </div>
             </div>
           </div>

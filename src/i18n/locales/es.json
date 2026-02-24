@@ -4,7 +4,11 @@
     "en": "Inglés",
     "es": "Español",
     "pt": "Portugués",
-    "fr": "Francés"
+    "fr": "Francés",
+    "de": "Alemán",
+    "ko": "Coreano",
+    "ru": "Ruso",
+    "zh": "Chino (mandarín)"
   },
   "common": {
     "reload": "Recargar",
@@ -16,7 +20,12 @@
     "export": "Exportar",
     "import": "Importar",
     "search": "Buscar",
-    "optional": "opcional"
+    "optional": "opcional",
+    "sent": "Enviado ✅",
+    "sending": "Enviando…",
+    "copyFailed": "Error al copiar",
+    "loading": "Cargando…",
+    "copied": "Copiado"
   },
   "nav": {
     "me": "Mi Panel",
@@ -66,5 +75,22 @@
     "subjectOptional": "Asunto (opcional)...",
     "messagePlaceholder": "Mensaje…",
     "send": "Enviar"
+  },
+  "mailInbox": {
+    "showing": "Mostrando {{count}}",
+    "subjectOptional": "Asunto (opcional)...",
+    "noMailYet": "Todavía no hay correo.",
+    "searchPlaceholder": "buscar…",
+    "filterDirect": "directo",
+    "sendDirectTitle": "Enviar mensaje directo",
+    "toLabel": "Para",
+    "bodyPlaceholder": "Cuerpo del mensaje...",
+    "recipientApprovedLabel": "Destinatario (jugadores aprobados)",
+    "title": "Mi correo (Bandeja)",
+    "filterStateBroadcast": "difusión del estado",
+    "filterAll": "(todo)",
+    "refreshRecipients": "Actualizar destinatarios",
+    "filterAllianceBroadcast": "difusión de alianza",
+    "fromLabel": "De"
   }
 }

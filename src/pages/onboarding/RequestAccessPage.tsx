@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
+import { useTranslation } from "react-i18next";
 
 type DirEntry = {
   id: string;
@@ -26,6 +27,7 @@ type Req = {
 };
 
 export default function RequestAccessPage() {
+  const { t } = useTranslation();
   const [userId, setUserId] = useState("");
   const [status, setStatus] = useState("");
 
@@ -49,7 +51,7 @@ export default function RequestAccessPage() {
   }, []);
 
   async function loadDirectory() {
-    setStatus("Loading directory…");
+    setStatus(t("common.loading"));
     const res = await supabase
       .from("alliance_directory_entries")
       .select("*")
@@ -64,13 +66,21 @@ export default function RequestAccessPage() {
   }
 
   async function loadMyRequests() {
-    const res = await supabase.from("v_my_onboarding_requests").select("*").order("created_at", { ascending: false }).limit(25);
+    const res = await supabase
+      .from("v_my_onboarding_requests")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(25);
+
     if (!res.error) setMyReqs((res.data ?? []) as any);
   }
 
   useEffect(() => { void loadDirectory(); void loadMyRequests(); }, [stateCode]);
 
-  const selectedDir = useMemo(() => directory.find((d) => d.alliance_code === allianceCode) ?? null, [directory, allianceCode]);
+  const selectedDir = useMemo(
+    () => directory.find((d) => d.alliance_code === allianceCode) ?? null,
+    [directory, allianceCode]
+  );
 
   useEffect(() => {
     if (selectedDir) setAllianceId(selectedDir.alliance_id);
@@ -83,7 +93,7 @@ export default function RequestAccessPage() {
     if (!code) return alert("Select an alliance.");
     if (!playerName.trim() && !gameName.trim()) return alert("Enter at least a display name or game name.");
 
-    setStatus("Submitting…");
+    setStatus(t("common.sending"));
 
     const ins = await supabase.from("onboarding_requests").insert({
       state_code: stateCode,
@@ -99,7 +109,7 @@ export default function RequestAccessPage() {
 
     if (ins.error) { setStatus(ins.error.message); return; }
 
-    setStatus("Submitted ✅");
+    setStatus(t("common.sent"));
     setAllianceCode("");
     setAllianceId(null);
     setNote("");
@@ -109,22 +119,23 @@ export default function RequestAccessPage() {
 
   return (
     <div style={{ padding: 16, maxWidth: 1000, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900 }}>Request Access</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 900 }}>{t("onboarding.title")}</h1>
       <div style={{ opacity: 0.8, marginTop: 6 }}>
-        {userId ? "Signed in ✅" : "Not signed in"} {status ? " • " + status : ""}
+        {userId ? `${t("onboarding.signedIn")} ✅` : t("onboarding.notSignedIn")}
+        {status ? " • " + status : ""}
       </div>
 
       <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden", marginTop: 12 }}>
-        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>Request</div>
+        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>{t("onboarding.request")}</div>
         <div style={{ padding: 12, display: "grid", gap: 10 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <label style={{ opacity: 0.75 }}>State</label>
+            <label style={{ opacity: 0.75 }}>{t("onboarding.state")}</label>
             <input value={stateCode} onChange={(e) => setStateCode(e.target.value)} style={{ width: 90 }} />
-            <button onClick={loadDirectory}>Reload Directory</button>
+            <button onClick={loadDirectory}>{t("onboarding.reloadDirectory")}</button>
           </div>
 
           <div>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>Alliance (from Directory)</div>
+            <div style={{ opacity: 0.75, fontSize: 12 }}>{t("onboarding.allianceFromDirectory")}</div>
             <select value={allianceCode} onChange={(e) => setAllianceCode(e.target.value)}>
               <option value="">(select)</option>
               {directory.map((d) => (
@@ -140,46 +151,42 @@ export default function RequestAccessPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <div style={{ opacity: 0.75, fontSize: 12 }}>Display Name</div>
-              <input value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="What we call you in the app…" />
+              <div style={{ opacity: 0.75, fontSize: 12 }}>{t("onboarding.displayName")}</div>
+              <input value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="…" />
             </div>
             <div>
-              <div style={{ opacity: 0.75, fontSize: 12 }}>Game Name</div>
-              <input value={gameName} onChange={(e) => setGameName(e.target.value)} placeholder="In-game name…" />
+              <div style={{ opacity: 0.75, fontSize: 12 }}>{t("onboarding.gameName")}</div>
+              <input value={gameName} onChange={(e) => setGameName(e.target.value)} placeholder="…" />
             </div>
           </div>
 
           <div>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>Discord Name (optional)</div>
-            <input value={discordName} onChange={(e) => setDiscordName(e.target.value)} placeholder="Discord handle…" />
+            <div style={{ opacity: 0.75, fontSize: 12 }}>{t("onboarding.discordName")}</div>
+            <input value={discordName} onChange={(e) => setDiscordName(e.target.value)} placeholder="…" />
           </div>
 
           <div>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>Notes (optional)</div>
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Any context for the owner/admin…" />
+            <div style={{ opacity: 0.75, fontSize: 12 }}>{t("onboarding.notes")}</div>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="…" />
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button disabled={!userId} onClick={submit}>Submit Request</button>
-          </div>
-
-          <div style={{ opacity: 0.65, fontSize: 12 }}>
-            Your request is not auto-approved. Owner/admin provisions membership manually (RLS enforced).
+            <button disabled={!userId} onClick={submit}>{t("onboarding.submitRequest")}</button>
           </div>
         </div>
       </div>
 
       <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden", marginTop: 16 }}>
-        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>My Requests</div>
+        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>{t("onboarding.myRequests")}</div>
         <div style={{ padding: 12 }}>
           {myReqs.length === 0 ? (
-            <div style={{ opacity: 0.75 }}>No requests yet.</div>
+            <div style={{ opacity: 0.75 }}>{t("onboarding.noRequests")}</div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
               {myReqs.map((r) => (
                 <div key={r.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 10 }}>
                   <div style={{ fontWeight: 900 }}>
-                    {r.state_code} • {r.alliance_code} • <span style={{ opacity: 0.9 }}>{r.status}</span> {r.provisioned ? "• ✅ provisioned" : ""}
+                    {r.state_code} • {r.alliance_code} • <span style={{ opacity: 0.9 }}>{r.status}</span> {r.provisioned ? "• ✅" : ""}
                   </div>
                   <div style={{ opacity: 0.75, fontSize: 12 }}>{new Date(r.created_at).toLocaleString()}</div>
                 </div>
@@ -187,7 +194,7 @@ export default function RequestAccessPage() {
             </div>
           )}
           <div style={{ marginTop: 10 }}>
-            <button onClick={loadMyRequests}>Refresh My Requests</button>
+            <button onClick={loadMyRequests}>{t("common.reload")}</button>
           </div>
         </div>
       </div>
