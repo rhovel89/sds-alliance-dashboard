@@ -116,10 +116,12 @@ import MyMailThreadsPage from "../pages/mail/MyMailThreadsPage";
 import MyHqManagerPage from "../pages/me/MyHqManagerPage";
 import OwnerDiscordQueuePage from "../pages/owner/OwnerDiscordQueuePage";
 import OwnerPermissionsMatrixV2Page from "../pages/owner/OwnerPermissionsMatrixV2Page";
+import OwnerAllianceDirectorySyncPage from "../pages/owner/OwnerAllianceDirectorySyncPage";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/owner/directory-sync" element={<RequireAdmin><OwnerAllianceDirectorySyncPage /></RequireAdmin>} />
       <Route path="/owner/permissions-matrix-v2" element={<RequireAdmin><OwnerPermissionsMatrixV2Page /></RequireAdmin>} />
       <Route path="/me/hq-manager" element={<MyHqManagerPage />} />
       <Route path="/owner/discord-queue" element={<RequireAdmin><OwnerDiscordQueuePage /></RequireAdmin>} />
