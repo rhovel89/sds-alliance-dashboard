@@ -12,18 +12,17 @@ type MailItem = {
   tags: string[];
   pinned: boolean;
   created_by_user_id: string;
+
+  sender_display_name?: string | null;
+
+  direction?: "in" | "out" | null;
+  peer_user_id?: string | null;
+  peer_display_name?: string | null;
+
+  direct_to_user_ids?: string[] | null;
 };
 
-type Player = {
-  id: string;
-  name: string | null;
-  game_name: string | null;
-};
-
-type PlayerLink = {
-  player_id: string;
-  user_id: string;
-};
+type Player = { id: string; name: string | null; game_name: string | null };
 
 async function copyToClipboard(text: string) {
   try {
@@ -57,6 +56,7 @@ export default function MyMailInboxPage() {
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       const { data } = await supabase.auth.getUser();
       const uid = data.user?.id ?? "";
@@ -82,12 +82,7 @@ export default function MyMailInboxPage() {
   async function refresh() {
     setLoading(true);
     setStatus("Loading…");
-    const res = await supabase
-      .from("v_my_mail_inbox")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200);
-
+    const res = await supabase.from("v_my_mail_inbox").select("*").order("created_at", { ascending: false }).limit(200);
     if (res.error) {
       setStatus(res.error.message);
       setLoading(false);
@@ -105,7 +100,6 @@ export default function MyMailInboxPage() {
     setSearchingPlayers(true);
     setStatus("Searching players…");
 
-    // 1) find players by name/game_name (prefix search)
     const pRes = await supabase
       .from("players")
       .select("id,name,game_name")
@@ -121,19 +115,12 @@ export default function MyMailInboxPage() {
     const players = (pRes.data ?? []) as any as Player[];
     setPlayerResults(players);
 
-    // 2) load auth links for these players
     const ids = players.map((p) => p.id);
     if (ids.length) {
-      const lRes = await supabase
-        .from("player_auth_links")
-        .select("player_id,user_id")
-        .in("player_id", ids);
-
+      const lRes = await supabase.from("player_auth_links").select("player_id,user_id").in("player_id", ids);
       if (!lRes.error) {
         const map: Record<string, string> = {};
-        (lRes.data ?? []).forEach((x: any) => {
-          map[String(x.player_id)] = String(x.user_id);
-        });
+        (lRes.data ?? []).forEach((x: any) => (map[String(x.player_id)] = String(x.user_id)));
         setLinkMap(map);
       }
     }
@@ -149,8 +136,7 @@ export default function MyMailInboxPage() {
       return;
     }
     setToUserId(uid);
-    const label = `${p.name ?? "Player"}${p.game_name ? " • " + p.game_name : ""}`;
-    setToLabel(label);
+    setToLabel(`${p.name ?? "Player"}${p.game_name ? " • " + p.game_name : ""}`);
   }
 
   async function sendDirect() {
@@ -178,10 +164,7 @@ export default function MyMailInboxPage() {
       return;
     }
 
-    const rec = await supabase
-      .from("mail_direct_recipients")
-      .insert({ mail_id: ins.data.id, user_id: to });
-
+    const rec = await supabase.from("mail_direct_recipients").insert({ mail_id: ins.data.id, user_id: to });
     if (rec.error) {
       setStatus("Sent, but failed adding recipient: " + rec.error.message);
       setLoading(false);
@@ -192,7 +175,6 @@ export default function MyMailInboxPage() {
     setToLabel("");
     setSubject("");
     setBody("");
-
     setPlayerQuery("");
     setPlayerResults([]);
     setLinkMap({});
@@ -208,10 +190,17 @@ export default function MyMailInboxPage() {
     return items.filter((m) => {
       if (filterKind && m.kind !== filterKind) return false;
       if (!qq) return true;
-      const hay = `${m.subject} ${m.body} ${m.kind} ${m.state_code ?? ""} ${m.alliance_code ?? ""}`.toLowerCase();
+      const hay = `${m.subject} ${m.body} ${m.kind} ${m.sender_display_name ?? ""} ${m.peer_display_name ?? ""}`.toLowerCase();
       return hay.includes(qq);
     });
   }, [items, filterKind, q]);
+
+  function lineWho(m: MailItem) {
+    const sender = m.sender_display_name || m.created_by_user_id.slice(0, 8) + "…";
+    if (m.kind !== "direct") return `From: ${sender}`;
+    if (m.direction === "out") return `To: ${m.peer_display_name || (m.peer_user_id ? m.peer_user_id.slice(0, 8) + "…" : "(unknown)")}`;
+    return `From: ${sender}`;
+  }
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
@@ -251,10 +240,21 @@ export default function MyMailInboxPage() {
                 />
                 <button disabled={!userId || searchingPlayers} onClick={searchPlayers}>Search</button>
               </div>
+
               {playerResults.length ? (
                 <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
                   {playerResults.map((p) => (
-                    <div key={p.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 10, display: "flex", justifyContent: "space-between", gap: 10 }}>
+                    <div
+                      key={p.id}
+                      style={{
+                        border: "1px solid #222",
+                        borderRadius: 10,
+                        padding: 10,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 10,
+                      }}
+                    >
                       <div>
                         <div style={{ fontWeight: 900 }}>{p.name ?? "Player"}</div>
                         <div style={{ opacity: 0.75, fontSize: 12 }}>
@@ -293,13 +293,22 @@ export default function MyMailInboxPage() {
       <div style={{ display: "grid", gap: 12 }}>
         {filtered.map((m) => (
           <div key={m.id} style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ padding: 12, borderBottom: "1px solid #333", display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <div
+              style={{
+                padding: 12,
+                borderBottom: "1px solid #333",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
               <div>
                 <div style={{ fontWeight: 900 }}>
                   {m.pinned ? "📌 " : ""}[{m.kind}] {m.subject || "(no subject)"}
                 </div>
                 <div style={{ opacity: 0.75, fontSize: 12 }}>
-                  {new Date(m.created_at).toLocaleString()} • from {m.created_by_user_id.slice(0, 8)}…
+                  {new Date(m.created_at).toLocaleString()} • {lineWho(m)}
                   {m.alliance_code ? ` • alliance ${m.alliance_code}` : ""}
                   {m.state_code ? ` • state ${m.state_code}` : ""}
                 </div>
@@ -309,9 +318,11 @@ export default function MyMailInboxPage() {
                 <button onClick={() => copyToClipboard(JSON.stringify(m, null, 2))}>Copy JSON</button>
               </div>
             </div>
+
             <div style={{ padding: 12, whiteSpace: "pre-wrap" }}>{m.body}</div>
           </div>
         ))}
+
         {filtered.length === 0 ? <div style={{ opacity: 0.7 }}>No mail yet.</div> : null}
       </div>
     </div>
