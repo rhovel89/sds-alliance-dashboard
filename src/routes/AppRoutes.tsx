@@ -112,10 +112,12 @@ import OwnerLiveOpsDbPage from "../pages/owner/OwnerLiveOpsDbPage";
 import State789AchievementRequestV2Page from "../pages/state/State789AchievementRequestV2Page";
 import State789AchievementsAdminV2Page from "../pages/state/State789AchievementsAdminV2Page";
 import OwnerOnboardingQueuePage from "../pages/owner/OwnerOnboardingQueuePage";
+import MyMailThreadsPage from "../pages/mail/MyMailThreadsPage";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/mail-threads" element={<MyMailThreadsPage />} />
       <Route path="/owner/onboarding-queue" element={<RequireAdmin><OwnerOnboardingQueuePage /></RequireAdmin>} />
       <Route path="/state/789/achievements/request-v2" element={<State789AchievementRequestV2Page />} />
       <Route path="/state/789/achievements/admin-v2" element={<State789AchievementsAdminV2Page />} />
