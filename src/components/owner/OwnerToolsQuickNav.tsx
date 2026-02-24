@@ -31,7 +31,7 @@ export default function OwnerToolsQuickNav() {
         <Btn emoji="🎯" label="Event Types Library (UI-only)" to="/owner/event-types-library" />
         <Btn emoji="📣" label="Broadcast Composer" to="/owner/broadcast" />
         <Btn emoji="🗂️" label="Alliance Directory Editor" to="/owner/alliance-directory" />
-        <Btn emoji="🧩" label="Permissions Matrix (UI shell)" to="/owner/permissions-matrix" />
+        <Btn emoji="🧩" label="Permissions Matrix (UI shell)" to="/owner/permissions-matrix-v3" />
         <Btn emoji="🧭" label="Jump Into Alliance" to="/owner/jump" />
         <Btn emoji="🔧" label="Discord Settings" to="/owner/discord" />
       </div>
