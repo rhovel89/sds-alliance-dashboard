@@ -23,15 +23,13 @@ type AllianceGrant = {
   can_manage_alerts: boolean;
 };
 
-type DirEntry = {
-  id: string;
-  state_code: string;
-  alliance_code: string;
-  alliance_id: string | null;
-  tag: string | null;
-  name: string | null;
-  active: boolean;
-  sort_order: number;
+type AllianceOpt = {
+  alliance_id: string;
+  alliance_code?: string;
+  tag?: string;
+  name?: string;
+  label: string;
+  source: "directory" | "alliances" | "grants";
 };
 
 function downloadText(filename: string, text: string) {
@@ -46,13 +44,21 @@ function downloadText(filename: string, text: string) {
   URL.revokeObjectURL(url);
 }
 
+function isUuid(x: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x);
+}
+
+function safeStr(x: any) {
+  return typeof x === "string" ? x : (x == null ? "" : String(x));
+}
+
 export default function OwnerPermissionsMatrixV2Page() {
   const [tab, setTab] = useState<"state" | "alliance" | "export">("state");
   const [status, setStatus] = useState("");
 
   const [stateCode, setStateCode] = useState("789");
 
-  const [directory, setDirectory] = useState<DirEntry[]>([]);
+  const [alliances, setAlliances] = useState<AllianceOpt[]>([]);
   const [allianceId, setAllianceId] = useState<string>("");
 
   const [stateUsers, setStateUsers] = useState<UserOpt[]>([]);
@@ -64,20 +70,20 @@ export default function OwnerPermissionsMatrixV2Page() {
   const [addStateUserId, setAddStateUserId] = useState("");
   const [addAllianceUserId, setAddAllianceUserId] = useState("");
 
-  async function loadDirectory() {
-    const res = await supabase
-      .from("alliance_directory_entries")
-      .select("id,state_code,alliance_code,alliance_id,tag,name,active,sort_order")
-      .eq("state_code", stateCode)
-      .order("sort_order", { ascending: true })
-      .order("alliance_code", { ascending: true });
+  const stateUserMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    stateUsers.forEach((u) => (m[u.user_id] = u.display_name));
+    return m;
+  }, [stateUsers]);
 
-    if (!res.error) {
-      const list = (res.data ?? []) as any as DirEntry[];
-      setDirectory(list.filter((d) => d.active !== false));
-      const first = list.find((d) => d.alliance_id)?.alliance_id ?? "";
-      if (!allianceId && first) setAllianceId(first);
-    }
+  const allianceUserMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    allianceUsers.forEach((u) => (m[u.user_id] = u.display_name));
+    return m;
+  }, [allianceUsers]);
+
+  function displayUser(user_id: string) {
+    return stateUserMap[user_id] || allianceUserMap[user_id] || `${user_id.slice(0, 8)}…`;
   }
 
   async function loadStateUsers() {
@@ -88,6 +94,7 @@ export default function OwnerPermissionsMatrixV2Page() {
 
   async function loadAllianceUsers(aid: string) {
     if (!aid) { setAllianceUsers([]); return; }
+    if (!isUuid(aid)) { setAllianceUsers([]); setStatus("Selected alliance_id is not a UUID; cannot list alliance users."); return; }
     const res = await supabase.rpc("list_alliance_users", { p_alliance_id: aid });
     if (res.error) { setStatus(res.error.message); return; }
     setAllianceUsers((res.data ?? []) as any);
@@ -95,7 +102,12 @@ export default function OwnerPermissionsMatrixV2Page() {
 
   async function loadStateGrants() {
     setStatus("Loading state grants…");
-    const res = await supabase.from("state_access_grants").select("*").eq("state_code", stateCode).order("updated_at", { ascending: false });
+    const res = await supabase
+      .from("state_access_grants")
+      .select("*")
+      .eq("state_code", stateCode)
+      .order("updated_at", { ascending: false });
+
     if (res.error) { setStatus(res.error.message); return; }
     setStateGrants((res.data ?? []) as any);
     setStatus("");
@@ -103,15 +115,133 @@ export default function OwnerPermissionsMatrixV2Page() {
 
   async function loadAllianceGrants() {
     if (!allianceId) { setAllianceGrants([]); return; }
+    if (!isUuid(allianceId)) { setAllianceGrants([]); setStatus("Selected alliance_id is not a UUID; cannot load alliance grants."); return; }
+
     setStatus("Loading alliance grants…");
-    const res = await supabase.from("alliance_access_grants").select("*").eq("alliance_id", allianceId).order("updated_at", { ascending: false });
+    const res = await supabase
+      .from("alliance_access_grants")
+      .select("*")
+      .eq("alliance_id", allianceId)
+      .order("updated_at", { ascending: false });
+
     if (res.error) { setStatus(res.error.message); return; }
     setAllianceGrants((res.data ?? []) as any);
     setStatus("");
   }
 
+  function mapAllianceLabel(code: string, tag: string, name: string, aid: string, source: AllianceOpt["source"]) {
+    const parts = [code || "", tag ? `[${tag}]` : "", name ? `— ${name}` : ""].filter(Boolean);
+    const base = parts.length ? parts.join(" ") : `${aid.slice(0, 8)}…`;
+    return `${base} (${source})`;
+  }
+
+  async function loadAlliances() {
+    setStatus("Loading alliances…");
+
+    let opts: AllianceOpt[] = [];
+
+    // 1) Try alliance_directory_entries with state_code filter
+    const tryDirectory = async (filterCol?: "state_code" | "state") => {
+      let q = supabase.from("alliance_directory_entries").select("*").order("sort_order", { ascending: true });
+      if (filterCol) q = q.eq(filterCol, stateCode);
+      return await q.limit(500);
+    };
+
+    let dRes = await tryDirectory("state_code");
+    if (dRes.error) {
+      // If state_code doesn't exist, try "state"
+      dRes = await tryDirectory("state");
+      // If that also errors, try no filter
+      if (dRes.error) dRes = await tryDirectory(undefined);
+    }
+
+    if (!dRes.error) {
+      const rows = (dRes.data ?? []) as any[];
+      opts = rows
+        .map((r) => {
+          const aid = safeStr(r.alliance_id || r.alliance_uuid || r.allianceId);
+          const code = safeStr(r.alliance_code || r.code || r.allianceCode);
+          const tag = safeStr(r.tag || r.short_tag || r.abbrev);
+          const name = safeStr(r.name || r.display_name || r.title);
+          if (!aid) return null;
+          return {
+            alliance_id: aid,
+            alliance_code: code,
+            tag,
+            name,
+            label: mapAllianceLabel(code, tag, name, aid, "directory"),
+            source: "directory" as const,
+          };
+        })
+        .filter(Boolean) as AllianceOpt[];
+
+      // keep only valid UUID ids
+      opts = opts.filter((o) => isUuid(o.alliance_id));
+    }
+
+    // 2) Fallback: try "alliances" table
+    if (opts.length === 0) {
+      const aRes = await supabase.from("alliances").select("*").limit(500);
+      if (!aRes.error) {
+        const rows = (aRes.data ?? []) as any[];
+        opts = rows
+          .map((r) => {
+            const aid = safeStr(r.id || r.alliance_id);
+            const code = safeStr(r.code || r.alliance_code);
+            const name = safeStr(r.name || r.display_name);
+            const tag = safeStr(r.tag || r.short_tag);
+            if (!aid) return null;
+            return {
+              alliance_id: aid,
+              alliance_code: code,
+              tag,
+              name,
+              label: mapAllianceLabel(code, tag, name, aid, "alliances"),
+              source: "alliances" as const,
+            };
+          })
+          .filter(Boolean) as AllianceOpt[];
+
+        opts = opts.filter((o) => isUuid(o.alliance_id));
+      }
+    }
+
+    // 3) Fallback: derive from alliance_access_grants distinct alliance_id
+    if (opts.length === 0) {
+      const gRes = await supabase.from("alliance_access_grants").select("alliance_id").limit(500);
+      if (!gRes.error) {
+        const set = new Set<string>();
+        (gRes.data ?? []).forEach((x: any) => {
+          const aid = safeStr(x.alliance_id);
+          if (isUuid(aid)) set.add(aid);
+        });
+        opts = Array.from(set).map((aid) => ({
+          alliance_id: aid,
+          label: `${aid.slice(0, 8)}… (grants)`,
+          source: "grants" as const,
+        }));
+      }
+    }
+
+    // Deduplicate by alliance_id
+    const seen = new Set<string>();
+    opts = opts.filter((o) => {
+      if (seen.has(o.alliance_id)) return false;
+      seen.add(o.alliance_id);
+      return true;
+    });
+
+    setAlliances(opts);
+
+    if (!allianceId && opts[0]?.alliance_id) {
+      setAllianceId(opts[0].alliance_id);
+    }
+
+    setStatus(opts.length ? "" : "No alliances found. Directory/alliances/grants all empty.");
+  }
+
   useEffect(() => {
-    void loadDirectory();
+    void loadAlliances();
     void loadStateUsers();
     void loadStateGrants();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,6 +300,7 @@ export default function OwnerPermissionsMatrixV2Page() {
     const payload = stateGrants
       .filter((g) => g.state_code === stateCode && g.user_id)
       .map((g) => ({ ...g, state_code: g.state_code.trim(), user_id: g.user_id.trim() }));
+
     const res = await supabase.from("state_access_grants").upsert(payload, { onConflict: "state_code,user_id" });
     if (res.error) { setStatus(res.error.message); return; }
     await loadStateGrants();
@@ -184,6 +315,7 @@ export default function OwnerPermissionsMatrixV2Page() {
     const payload = allianceGrants
       .filter((g) => g.alliance_id === allianceId && g.user_id)
       .map((g) => ({ ...g, alliance_id: g.alliance_id.trim(), user_id: g.user_id.trim() }));
+
     const res = await supabase.from("alliance_access_grants").upsert(payload, { onConflict: "alliance_id,user_id" });
     if (res.error) { setStatus(res.error.message); return; }
     await loadAllianceGrants();
@@ -209,14 +341,13 @@ export default function OwnerPermissionsMatrixV2Page() {
   }
 
   const allianceLabel = useMemo(() => {
-    const d = directory.find((x) => x.alliance_id === allianceId);
-    if (!d) return allianceId ? allianceId.slice(0, 8) + "…" : "";
-    return `${d.alliance_code}${d.tag ? ` [${d.tag}]` : ""}${d.name ? ` — ${d.name}` : ""}`;
-  }, [directory, allianceId]);
+    const a = alliances.find((x) => x.alliance_id === allianceId);
+    return a?.label ?? (allianceId ? allianceId.slice(0, 8) + "…" : "");
+  }, [alliances, allianceId]);
 
   function exportJson() {
     const payload = {
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       state_code: stateCode,
       state_access_grants: stateGrants.filter((g) => g.state_code === stateCode),
@@ -237,13 +368,17 @@ export default function OwnerPermissionsMatrixV2Page() {
         setStatus("Importing…");
 
         if (sg.length) {
-          const payload = sg.map((g: any) => ({ ...g, state_code: String(g.state_code ?? stateCode), user_id: String(g.user_id ?? "") })).filter((g: any) => g.user_id);
+          const payload = sg
+            .map((g: any) => ({ ...g, state_code: String(g.state_code ?? stateCode), user_id: String(g.user_id ?? "") }))
+            .filter((g: any) => g.user_id);
           const res = await supabase.from("state_access_grants").upsert(payload, { onConflict: "state_code,user_id" });
           if (res.error) throw res.error;
         }
 
         if (ag.length) {
-          const payload = ag.map((g: any) => ({ ...g, alliance_id: String(g.alliance_id ?? allianceId), user_id: String(g.user_id ?? "") })).filter((g: any) => g.user_id && g.alliance_id);
+          const payload = ag
+            .map((g: any) => ({ ...g, alliance_id: String(g.alliance_id ?? allianceId), user_id: String(g.user_id ?? "") }))
+            .filter((g: any) => g.user_id && g.alliance_id);
           const res = await supabase.from("alliance_access_grants").upsert(payload, { onConflict: "alliance_id,user_id" });
           if (res.error) throw res.error;
         }
@@ -274,7 +409,7 @@ export default function OwnerPermissionsMatrixV2Page() {
 
         <span style={{ opacity: 0.7 }}>• State</span>
         <input value={stateCode} onChange={(e) => setStateCode(e.target.value)} style={{ width: 90 }} />
-        <button onClick={() => { void loadStateUsers(); void loadStateGrants(); void loadDirectory(); }}>Reload</button>
+        <button onClick={() => { void loadAlliances(); void loadStateUsers(); void loadStateGrants(); }}>Reload</button>
       </div>
 
       <hr style={{ margin: "16px 0", opacity: 0.3 }} />
@@ -282,7 +417,7 @@ export default function OwnerPermissionsMatrixV2Page() {
       {tab === "state" ? (
         <div style={{ display: "grid", gap: 10 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <select value={addStateUserId} onChange={(e) => setAddStateUserId(e.target.value)} style={{ minWidth: 320 }}>
+            <select value={addStateUserId} onChange={(e) => setAddStateUserId(e.target.value)} style={{ minWidth: 360 }}>
               <option value="">(add user from state roster)</option>
               {stateUsers.map((u) => <option key={u.user_id} value={u.user_id}>{u.display_name} • {u.user_id.slice(0, 8)}…</option>)}
             </select>
@@ -298,7 +433,7 @@ export default function OwnerPermissionsMatrixV2Page() {
               <div key={g.user_id} style={{ border: "1px solid #333", borderRadius: 12, padding: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                   <div style={{ fontWeight: 900 }}>
-                    {g.user_id.slice(0, 8)}…
+                    {displayUser(g.user_id)} <span style={{ opacity: 0.7, fontSize: 12 }}>({g.user_id.slice(0, 8)}…)</span>
                   </div>
                   <button onClick={() => deleteStateGrant(g.user_id)}>Delete</button>
                 </div>
@@ -332,16 +467,14 @@ export default function OwnerPermissionsMatrixV2Page() {
       {tab === "alliance" ? (
         <div style={{ display: "grid", gap: 10 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <select value={allianceId} onChange={(e) => setAllianceId(e.target.value)} style={{ minWidth: 420 }}>
+            <select value={allianceId} onChange={(e) => setAllianceId(e.target.value)} style={{ minWidth: 520 }}>
               <option value="">(select alliance)</option>
-              {directory.filter((d) => !!d.alliance_id).map((d) => (
-                <option key={d.id} value={d.alliance_id!}>
-                  {d.alliance_code}{d.tag ? ` [${d.tag}]` : ""}{d.name ? ` — ${d.name}` : ""}
-                </option>
+              {alliances.map((a) => (
+                <option key={a.alliance_id} value={a.alliance_id}>{a.label}</option>
               ))}
             </select>
 
-            <select value={addAllianceUserId} onChange={(e) => setAddAllianceUserId(e.target.value)} style={{ minWidth: 320 }} disabled={!allianceId}>
+            <select value={addAllianceUserId} onChange={(e) => setAddAllianceUserId(e.target.value)} style={{ minWidth: 360 }} disabled={!allianceId}>
               <option value="">(add user from alliance roster)</option>
               {allianceUsers.map((u) => <option key={u.user_id} value={u.user_id}>{u.display_name} • {u.user_id.slice(0, 8)}…</option>)}
             </select>
@@ -360,7 +493,7 @@ export default function OwnerPermissionsMatrixV2Page() {
               <div key={g.user_id} style={{ border: "1px solid #333", borderRadius: 12, padding: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                   <div style={{ fontWeight: 900 }}>
-                    {g.user_id.slice(0, 8)}…
+                    {displayUser(g.user_id)} <span style={{ opacity: 0.7, fontSize: 12 }}>({g.user_id.slice(0, 8)}…)</span>
                   </div>
                   <button onClick={() => deleteAllianceGrant(g.user_id)}>Delete</button>
                 </div>
@@ -391,7 +524,7 @@ export default function OwnerPermissionsMatrixV2Page() {
         <div style={{ border: "1px solid #333", borderRadius: 12, padding: 12 }}>
           <div style={{ fontWeight: 900 }}>Export / Import</div>
           <div style={{ opacity: 0.75, marginTop: 6 }}>
-            Exports state grants for <b>{stateCode}</b> and alliance grants for the currently selected alliance.
+            Exports state grants for <b>{stateCode}</b> and alliance grants for the selected alliance.
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
