@@ -19,7 +19,7 @@ export default function FloatingLanguageSwitcher() {
     <div
       style={{
         position: "fixed",
-        right: 12,
+        left: 12,
         bottom: 12,
         zIndex: 9999,
         border: "1px solid #333",
@@ -46,3 +46,4 @@ export default function FloatingLanguageSwitcher() {
     </div>
   );
 }
+
