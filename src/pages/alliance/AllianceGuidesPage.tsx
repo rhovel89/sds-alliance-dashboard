@@ -7,6 +7,10 @@ export default function AllianceGuidesPage() {
   const { alliance_id } = useParams();
   const allianceCode = String(alliance_id ?? "");
 
-  return <AllianceGuidesCommandCenter />;
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <GuideMediaUploader allianceCode={allianceCode} />
+      <AllianceGuidesCommandCenter />
+    </div>
+  );
 }
-
