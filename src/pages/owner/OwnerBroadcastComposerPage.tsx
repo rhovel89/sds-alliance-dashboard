@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { supabase } from "../../lib/supabaseBrowserClient";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabaseBrowserClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
+import { supabase } from "../../lib/supabaseBrowserClient";
 import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "../../lib/supabaseBrowserClient";
 import { sendDiscordBot } from "../../lib/discordEdgeSend";
+import { supabase } from "../../lib/supabaseBrowserClient";
 
 type RoleMapStore = {
   version: 1;
@@ -170,6 +175,27 @@ function resolveMentions(input: string, roleLut: Record<string, string>, chanLut
 }
 
 export default function OwnerBroadcastComposerPage() {
+  async function queueDiscordOutbox(payload: any, messageText: string, channelId?: string | null) {
+    const u = await supabase.auth.getUser();
+    const uid = u.data.user?.id ?? "";
+    if (!uid) { alert("Not signed in."); return; }
+
+    const ins = await supabase.from("discord_outbox").insert({
+      created_by_user_id: uid,
+      state_code: "789",
+      channel_id: channelId ?? null,
+      message: messageText ?? "",
+      payload: payload ?? {},
+      status: "pending",
+    });
+
+    if (ins.error) {
+      alert("Queue failed: " + ins.error.message);
+      return;
+    }
+    alert("Queued ✅ (see /owner/discord-queue)");
+  }
+
   const nav = useNavigate();
 
   const dir = useMemo(() => loadDir(), []);
@@ -528,6 +554,24 @@ return (
 
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={insertTargets}>Insert into Draft</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolvedPayload}>Copy Payload JSON</button>
+      <button
+        type="button"
+        onClick={() => {
+          try {
+            // Expect existing payload object exists in your page already (the same one used for Copy Payload JSON)
+            // Fallback: use whatever variable you already stringify for payload copy.
+            const payload = (typeof discordPayload !== "undefined") ? (discordPayload as any) : (typeof payloadJson !== "undefined" ? (payloadJson as any) : {});
+            const msg = (typeof discordReadyMessage !== "undefined") ? String(discordReadyMessage) : "";
+            const ch = (typeof selectedChannelId !== "undefined") ? String(selectedChannelId) : null;
+            void queueDiscordOutbox(payload, msg, ch);
+          } catch (e: any) {
+            alert("Queue button couldn't find payload variables. Tell ChatGPT your payload variable names.");
+          }
+        }}
+        title="Queues payload to Supabase discord_outbox (no real sending yet)"
+      >
+        Queue for Bot
+      </button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendNowBot}>Send Now (Bot)</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => applyDiscordDefaults(true)}>Use Defaults</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendToDiscord} disabled={sending}>
@@ -617,3 +661,4 @@ return (
     </div>
   );
 }
+
