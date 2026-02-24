@@ -175,6 +175,23 @@ function resolveMentions(input: string, roleLut: Record<string, string>, chanLut
 }
 
 export default function OwnerBroadcastComposerPage() {
+  async function queueDiscordOutboxPayload(payload: any) {
+    const u = await supabase.auth.getUser();
+    const uid = u.data.user?.id ?? "";
+    if (!uid) { alert("Not signed in."); return; }
+
+    const ins = await supabase.from("discord_outbox").insert({
+      created_by_user_id: uid,
+      state_code: "789",
+      message: "",
+      payload: payload ?? {},
+      status: "pending",
+    });
+
+    if (ins.error) { alert("Queue failed: " + ins.error.message); return; }
+    alert("Queued ✅ (see /owner/discord-queue)");
+  }
+
   async function queueDiscordOutbox(payload: any, messageText: string, channelId?: string | null) {
     const u = await supabase.auth.getUser();
     const uid = u.data.user?.id ?? "";
@@ -661,4 +678,5 @@ return (
     </div>
   );
 }
+
 
