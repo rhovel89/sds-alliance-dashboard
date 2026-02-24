@@ -114,7 +114,7 @@ Open your dashboard:
           <input value={subjectTpl} onChange={(e) => setSubjectTpl(e.target.value)} />
           <textarea value={bodyTpl} onChange={(e) => setBodyTpl(e.target.value)} rows={6} />
           <div style={{ opacity: 0.65, fontSize: 12 }}>
-            Placeholders: <code>{{"{{player_name}}"}}</code> <code>{{"{{game_name}}"}}</code> <code>{{"{{alliance_code}}"}}</code> <code>{{"{{state_code}}"}}</code>
+            Placeholders: <code>{"{{player_name}}"}</code> <code>{"{{game_name}}"}</code> <code>{"{{alliance_code}}"}</code> <code>{"{{state_code}}"}</code>
           </div>
         </div>
       </div>
@@ -153,3 +153,4 @@ Open your dashboard:
     </div>
   );
 }
+
