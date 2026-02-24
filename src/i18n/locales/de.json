@@ -20,7 +20,12 @@
     "export": "Exportieren",
     "import": "Importieren",
     "search": "Suchen",
-    "optional": "optional"
+    "optional": "optional",
+    "sent": "Gesendet ✅",
+    "sending": "Senden…",
+    "copyFailed": "Kopieren fehlgeschlagen",
+    "loading": "Laden…",
+    "copied": "Kopiert"
   },
   "nav": {
     "me": "Mein Dashboard",
@@ -70,5 +75,22 @@
     "subjectOptional": "Betreff (optional)...",
     "messagePlaceholder": "Nachricht…",
     "send": "Senden"
+  },
+  "mailInbox": {
+    "showing": "Anzeige {{count}}",
+    "subjectOptional": "Betreff (optional)...",
+    "noMailYet": "Noch keine Nachrichten.",
+    "searchPlaceholder": "suchen…",
+    "filterDirect": "direkt",
+    "sendDirectTitle": "Direktnachricht senden",
+    "toLabel": "An",
+    "bodyPlaceholder": "Nachrichtentext...",
+    "recipientApprovedLabel": "Empfänger (genehmigte Spieler)",
+    "title": "Meine Mail (Posteingang)",
+    "filterStateBroadcast": "Staat-Broadcast",
+    "filterAll": "(alle)",
+    "refreshRecipients": "Empfänger aktualisieren",
+    "filterAllianceBroadcast": "Allianz-Broadcast",
+    "fromLabel": "Von"
   }
 }

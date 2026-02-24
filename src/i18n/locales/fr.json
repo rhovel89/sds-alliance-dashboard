@@ -4,7 +4,11 @@
     "en": "Anglais",
     "es": "Espagnol",
     "pt": "Portugais",
-    "fr": "Français"
+    "fr": "Français",
+    "de": "Allemand",
+    "ko": "Coréen",
+    "ru": "Russe",
+    "zh": "Chinois (mandarin)"
   },
   "common": {
     "reload": "Recharger",
@@ -16,7 +20,12 @@
     "export": "Exporter",
     "import": "Importer",
     "search": "Rechercher",
-    "optional": "optionnel"
+    "optional": "optionnel",
+    "sent": "Envoyé ✅",
+    "sending": "Envoi…",
+    "copyFailed": "Échec de la copie",
+    "loading": "Chargement…",
+    "copied": "Copié"
   },
   "nav": {
     "me": "Mon tableau de bord",
@@ -66,5 +75,22 @@
     "subjectOptional": "Sujet (optionnel)...",
     "messagePlaceholder": "Message…",
     "send": "Envoyer"
+  },
+  "mailInbox": {
+    "showing": "Affichage {{count}}",
+    "subjectOptional": "Sujet (optionnel)...",
+    "noMailYet": "Aucun courrier pour le moment.",
+    "searchPlaceholder": "rechercher…",
+    "filterDirect": "direct",
+    "sendDirectTitle": "Envoyer un message direct",
+    "toLabel": "À",
+    "bodyPlaceholder": "Contenu du message...",
+    "recipientApprovedLabel": "Destinataire (joueurs approuvés)",
+    "title": "Mon courrier (Boîte)",
+    "filterStateBroadcast": "diffusion d’État",
+    "filterAll": "(tous)",
+    "refreshRecipients": "Actualiser les destinataires",
+    "filterAllianceBroadcast": "diffusion d’alliance",
+    "fromLabel": "De"
   }
 }

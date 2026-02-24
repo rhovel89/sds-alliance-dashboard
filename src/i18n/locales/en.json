@@ -20,7 +20,12 @@
     "export": "Export",
     "import": "Import",
     "search": "Search",
-    "optional": "optional"
+    "optional": "optional",
+    "sent": "Sent ✅",
+    "sending": "Sending…",
+    "copyFailed": "Copy failed",
+    "loading": "Loading…",
+    "copied": "Copied"
   },
   "nav": {
     "me": "My Dashboard",
@@ -70,5 +75,22 @@
     "subjectOptional": "Subject (optional)...",
     "messagePlaceholder": "Message…",
     "send": "Send"
+  },
+  "mailInbox": {
+    "showing": "Showing {{count}}",
+    "subjectOptional": "Subject (optional)...",
+    "noMailYet": "No mail yet.",
+    "searchPlaceholder": "search…",
+    "filterDirect": "direct",
+    "sendDirectTitle": "Send Direct Message",
+    "toLabel": "To",
+    "bodyPlaceholder": "Message body...",
+    "recipientApprovedLabel": "Recipient (approved players)",
+    "title": "My Mail (Inbox)",
+    "filterStateBroadcast": "state broadcast",
+    "filterAll": "(all)",
+    "refreshRecipients": "Refresh recipients",
+    "filterAllianceBroadcast": "alliance broadcast",
+    "fromLabel": "From"
   }
 }

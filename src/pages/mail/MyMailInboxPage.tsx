@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
+import { useTranslation } from "react-i18next";
 
 type Recipient = { user_id: string; display_name: string };
 
@@ -19,12 +20,13 @@ type MailItem = {
   thread_id?: string | null;
 };
 
-async function copyToClipboard(text: string) {
-  try { await navigator.clipboard.writeText(text); alert("Copied"); }
-  catch { alert("Copy failed"); }
+async function copyToClipboard(text: string): Promise<boolean> {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch { return false; }
 }
 
 export default function MyMailInboxPage() {
+  const { t } = useTranslation();
   const [userId, setUserId] = useState<string>("");
   const [items, setItems] = useState<MailItem[]>([]);
   const [status, setStatus] = useState("");
@@ -52,7 +54,6 @@ export default function MyMailInboxPage() {
     })();
 
     return () => { mounted = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadRecipients() {
@@ -62,7 +63,7 @@ export default function MyMailInboxPage() {
 
   async function refresh() {
     setLoading(true);
-    setStatus("Loading…");
+    setStatus(t("common.loading"));
     const res = await supabase.from("v_my_mail_inbox").select("*").order("created_at", { ascending: false }).limit(200);
     if (res.error) { setStatus(res.error.message); setLoading(false); return; }
     setItems((res.data ?? []) as any);
@@ -76,7 +77,7 @@ export default function MyMailInboxPage() {
     if (!to || !b) return alert("Recipient and body required.");
 
     setLoading(true);
-    setStatus("Sending…");
+    setStatus(t("common.sending"));
 
     const res = await supabase.rpc("send_direct_message", {
       p_to_user_id: to,
@@ -91,7 +92,7 @@ export default function MyMailInboxPage() {
     setBody("");
 
     await refresh();
-    setStatus("Sent ✅");
+    setStatus(t("common.sent"));
     window.setTimeout(() => setStatus(""), 1200);
     setLoading(false);
   }
@@ -108,48 +109,51 @@ export default function MyMailInboxPage() {
 
   function whoLine(m: MailItem) {
     const sender = m.sender_display_name || "Unknown";
-    if (m.kind !== "direct") return `From: ${sender}`;
-    if (m.direction === "out") return `To: ${m.peer_display_name ?? "Unknown"}`;
-    return `From: ${sender}`;
+    if (m.kind !== "direct") return `${t("mailInbox.fromLabel")}: ${sender}`;
+    if (m.direction === "out") return `${t("mailInbox.toLabel")}: ${m.peer_display_name ?? "Unknown"}`;
+    return `${t("mailInbox.fromLabel")}: ${sender}`;
   }
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900 }}>My Mail (Supabase)</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 900 }}>{t("mailInbox.title")}</h1>
       <div style={{ opacity: 0.8, marginTop: 6 }}>
-        {userId ? "Signed in ✅" : "Not signed in"}{loading ? " • Loading…" : ""}{status ? " • " + status : ""}
+        {userId ? "✅" : ""}{loading ? " • " + t("common.loading") : ""}{status ? " • " + status : ""}
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
-        <button disabled={!userId || loading} onClick={refresh}>Refresh</button>
-        <button disabled={!userId || loading} onClick={loadRecipients}>Refresh recipients</button>
+        <button disabled={!userId || loading} onClick={refresh}>{t("common.reload")}</button>
+        <button disabled={!userId || loading} onClick={loadRecipients}>{t("mailInbox.refreshRecipients")}</button>
+
         <select value={filterKind} onChange={(e) => setFilterKind(e.target.value)}>
-          <option value="">(all)</option>
-          <option value="direct">direct</option>
-          <option value="alliance_broadcast">alliance broadcast</option>
-          <option value="state_broadcast">state broadcast</option>
+          <option value="">{t("mailInbox.filterAll")}</option>
+          <option value="direct">{t("mailInbox.filterDirect")}</option>
+          <option value="alliance_broadcast">{t("mailInbox.filterAllianceBroadcast")}</option>
+          <option value="state_broadcast">{t("mailInbox.filterStateBroadcast")}</option>
         </select>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="search…" />
-        <div style={{ opacity: 0.75 }}>Showing {filtered.length}</div>
+
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("mailInbox.searchPlaceholder")} />
+        <div style={{ opacity: 0.75 }}>{t("mailInbox.showing", { count: filtered.length })}</div>
       </div>
 
       <hr style={{ margin: "16px 0", opacity: 0.3 }} />
 
       <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden" }}>
-        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>Send Direct Message</div>
+        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>{t("mailInbox.sendDirectTitle")}</div>
         <div style={{ padding: 12, display: "grid", gap: 10 }}>
           <div>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>Recipient (approved players)</div>
+            <div style={{ opacity: 0.75, fontSize: 12 }}>{t("mailInbox.recipientApprovedLabel")}</div>
             <select value={toUserId} onChange={(e) => setToUserId(e.target.value)}>
-              <option value="">(select)</option>
+              <option value="">{t("mailThreads.selectPlayer")}</option>
               {recipients.map((r) => <option key={r.user_id} value={r.user_id}>{r.display_name}</option>)}
             </select>
           </div>
 
-          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (optional)..." />
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder="Message body..." />
+          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t("mailInbox.subjectOptional")} />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder={t("mailInbox.bodyPlaceholder")} />
+
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button disabled={!userId || loading || !toUserId || !body.trim()} onClick={sendDirect}>Send</button>
+            <button disabled={!userId || loading || !toUserId || !body.trim()} onClick={sendDirect}>{t("mailThreads.send")}</button>
           </div>
         </div>
       </div>
@@ -167,14 +171,14 @@ export default function MyMailInboxPage() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => copyToClipboard(m.body)}>Copy</button>
-                <button onClick={() => copyToClipboard(JSON.stringify(m, null, 2))}>Copy JSON</button>
+                <button onClick={async () => alert((await copyToClipboard(m.body)) ? t("common.copied") : t("common.copyFailed"))}>{t("common.copy")}</button>
+                <button onClick={async () => alert((await copyToClipboard(JSON.stringify(m, null, 2))) ? t("common.copied") : t("common.copyFailed"))}>JSON</button>
               </div>
             </div>
             <div style={{ padding: 12, whiteSpace: "pre-wrap" }}>{m.body}</div>
           </div>
         ))}
-        {filtered.length === 0 ? <div style={{ opacity: 0.7 }}>No mail yet.</div> : null}
+        {filtered.length === 0 ? <div style={{ opacity: 0.7 }}>{t("mailInbox.noMailYet")}</div> : null}
       </div>
     </div>
   );

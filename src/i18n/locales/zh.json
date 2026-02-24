@@ -20,7 +20,12 @@
     "export": "导出",
     "import": "导入",
     "search": "搜索",
-    "optional": "可选"
+    "optional": "可选",
+    "sent": "已发送 ✅",
+    "sending": "发送中…",
+    "copyFailed": "复制失败",
+    "loading": "加载中…",
+    "copied": "已复制"
   },
   "nav": {
     "me": "我的面板",
@@ -70,5 +75,22 @@
     "subjectOptional": "主题（可选）…",
     "messagePlaceholder": "输入消息…",
     "send": "发送"
+  },
+  "mailInbox": {
+    "showing": "显示 {{count}}",
+    "subjectOptional": "主题（可选）…",
+    "noMailYet": "暂无邮件。",
+    "searchPlaceholder": "搜索…",
+    "filterDirect": "私信",
+    "sendDirectTitle": "发送私信",
+    "toLabel": "发送给",
+    "bodyPlaceholder": "消息内容…",
+    "recipientApprovedLabel": "收件人（已批准玩家）",
+    "title": "我的邮件（收件箱）",
+    "filterStateBroadcast": "州/区广播",
+    "filterAll": "（全部）",
+    "refreshRecipients": "刷新收件人",
+    "filterAllianceBroadcast": "联盟广播",
+    "fromLabel": "来自"
   }
 }
