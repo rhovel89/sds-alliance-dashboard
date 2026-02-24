@@ -1,79 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabaseBrowserClient";
+import MeTodayEventsPanel from "../../components/me/MeTodayEventsPanel";
+import MeAllianceAlertsPanel from "../../components/me/MeAllianceAlertsPanel";
 
-async function copyToClipboard(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    alert("Copied");
-  } catch {
-    alert("Copy failed");
-  }
-}
-
-function pickStr(o: any, keys: string[], fallback = ""): string {
-  for (const k of keys) {
-    const v = o?.[k];
-    if (typeof v === "string" && v.trim()) return v.trim();
-  }
-  return fallback;
-}
-
-function pickNum(o: any, keys: string[], fallback = 0): number {
-  for (const k of keys) {
-    const v = o?.[k];
-    const n = Number(v);
-    if (Number.isFinite(n)) return n;
-  }
-  return fallback;
-}
-
-function normalizeStatus(raw: string): string {
-  const s = (raw || "").toLowerCase().trim();
-  if (!s) return "pending";
-  if (["approved","complete","completed","done","fulfilled"].includes(s)) return "completed";
-  if (["rejected","denied","declined"].includes(s)) return "rejected";
-  if (["pending","submitted","open","new","queued","in_review","review"].includes(s)) return "pending";
-  return s;
-}
-
-function summarizeAchievement(req: any) {
-  const r = req ?? {};
-
-  const kind = pickStr(r, ["kind","sat_kind","type_kind","achievement_kind","achievementType","type"], "");
-  const typeName = pickStr(r, ["type_name","achievement_type_name","achievement","achievement_name","name","title","event_name"], kind || "Achievement");
-
-  const optionName = pickStr(r, ["option_name","weapon_name","weapon","swp_weapon","selection","choice"], "");
-  const statusRaw = pickStr(r, ["status","state","request_status","approval_status","decision"], "");
-  const status = normalizeStatus(statusRaw);
-
-  const required = pickNum(r, ["required_count","requiredCount","required","target_count","targetCount"], 0);
-  const current = pickNum(r, ["progress_count","progressCount","current_count","currentCount","count","times","times_completed"], 0);
-
-  const progressText = required > 0 ? `${Math.min(current, required)}/${required}` : (current > 0 ? String(current) : "");
-  const pct = required > 0 ? Math.round((Math.min(current, required) / required) * 100) : 0;
-
-  // Governor special hint if we can detect it
-  const isGovernor = (typeName + " " + kind).toLowerCase().includes("governor");
-
-  const title = optionName ? `${typeName} — ${optionName}` : typeName;
-
-  const completed = status === "completed" || (required > 0 && current >= required);
-
-  return {
-    title,
-    kind,
-    optionName,
-    status,
-    statusRaw: statusRaw || status,
-    required,
-    current,
-    progressText,
-    pct,
-    isGovernor,
-    completed,
-  };
-}
 const LS_STATE_ALERTS_V2 = "sad_state_789_alerts_v2";
 
 type TroopType = "Fighter" | "Shooter" | "Rider";
@@ -429,6 +359,7 @@ export default function MeDashboardPage() {
 
   const calendarLink = selectedAllianceProfile?.alliance_id ? `/dashboard/${selectedAllianceProfile.alliance_id}/calendar` : "";
   const announcementsLink = selectedAllianceProfile?.alliance_id ? `/dashboard/${selectedAllianceProfile.alliance_id}/announcements` : "";
+  const alertsLink = selectedAllianceProfile?.alliance_id ? `/dashboard/${selectedAllianceProfile.alliance_id}/alerts` : "";
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
@@ -447,26 +378,7 @@ export default function MeDashboardPage() {
       <hr style={{ margin: "16px 0", opacity: 0.3 }} />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>Today’s Events</div>
-          <div style={{ padding: 12 }}>
-            {eventsToday.length === 0 ? (
-              <div style={{ opacity: 0.75 }}>No events found today for your alliances.</div>
-            ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                {eventsToday.map((e) => (
-                  <div key={e.event_id} style={{ border: "1px solid #222", borderRadius: 10, padding: 10 }}>
-                    <div style={{ fontWeight: 900 }}>{e.title}</div>
-                    <div style={{ opacity: 0.75, fontSize: 12 }}>
-                      {new Date(e.starts_at).toLocaleString()} •{" "}
-                      <Link to={`/dashboard/${e.alliance_id}/calendar`}>Open calendar</Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <MeTodayEventsPanel events={eventsToday} alliances={alliances} />
 
         <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden" }}>
           <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>My Mail (latest)</div>
@@ -488,81 +400,36 @@ export default function MeDashboardPage() {
         </div>
       </div>
 
+      <MeAllianceAlertsPanel
+        allianceId={selectedAllianceProfile?.alliance_id ?? null}
+        allianceCode={selectedAllianceProfile?.alliance_code ?? null}
+      />
+
       <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden", marginTop: 16 }}>
-        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>My Achievements (from DB)</div>
+        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>My Achievements</div>
         <div style={{ padding: 12 }}>
-          {/* Achievement filters */}
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
-            <span style={{ opacity: 0.75 }}>Show:</span>
-            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <input type="checkbox" checked={(window as any).__sad_me_show_active ?? true}
-                onChange={(e) => { (window as any).__sad_me_show_active = e.target.checked; window.dispatchEvent(new Event("sad:me_filters")); }} />
-              Active
-            </label>
-            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <input type="checkbox" checked={(window as any).__sad_me_show_completed ?? true}
-                onChange={(e) => { (window as any).__sad_me_show_completed = e.target.checked; window.dispatchEvent(new Event("sad:me_filters")); }} />
-              Completed
-            </label>
-            <span style={{ opacity: 0.65, fontSize: 12 }}>
-              (temporary client filters; we can persist later)
-            </span>
-          </div>
           {myAchievements.length === 0 ? (
             <div style={{ opacity: 0.75 }}>No achievement requests found for your account.</div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
-              {myAchievements
-                .filter((a) => {
-                  const s = summarizeAchievement((a as any).request);
-                  const showActive = (window as any).__sad_me_show_active ?? true;
-                  const showCompleted = (window as any).__sad_me_show_completed ?? true;
-                  if (s.completed) return !!showCompleted;
-                  return !!showActive;
-                })
-                .slice(0, 10)
-                .map((a) => (
+              {myAchievements.slice(0, 10).map((a) => (
                 <div key={a.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 10 }}>
-                  <div style={{ fontWeight: 900 }}>Request {a.id.slice(0, 8)}…</div>
-                  <div style={{ opacity: 0.75, fontSize: 12 }}>{new Date(a.created_at).toLocaleString()}</div>
-                                    <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                    {(() => {
-                      const s = summarizeAchievement(a.request);
-                      return (
-                        <>
-                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                            <span style={{ fontWeight: 900 }}>Status:</span>
-                            <span style={{ opacity: 0.85 }}>{s.statusRaw}</span>
-                            {s.progressText ? (
-                              <>
-                                <span style={{ opacity: 0.6 }}>•</span>
-                                <span style={{ fontWeight: 900 }}>Progress:</span>
-                                <span style={{ opacity: 0.85 }}>{s.progressText}</span>
-                              </>
-                            ) : null}
-                            {s.isGovernor ? <span style={{ opacity: 0.75 }}>• Governor tracker</span> : null}
-                          </div>
-
-                          {s.required > 0 ? (
-                            <div style={{ border: "1px solid #333", borderRadius: 999, overflow: "hidden", height: 10 }}>
-                              <div style={{ width: `${s.pct}%`, height: 10, background: "currentColor", opacity: 0.5 }} />
-                            </div>
-                          ) : null}
-
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <button onClick={() => copyToClipboard(JSON.stringify(a.request, null, 2))}>Copy JSON</button>
-                          </div>
-                        </>
-                      );
-                    })()}
+                  <div style={{ fontWeight: 900 }}>{a.request?.title ?? "Achievement"}</div>
+                  <div style={{ opacity: 0.75, fontSize: 12 }}>
+                    {new Date(a.created_at).toLocaleString()} • Status: <b>{a.request?.status ?? "pending"}</b>
+                    {a.request?.progress_text ? <> • Progress: <b>{a.request.progress_text}</b></> : null}
+                    {a.request?.completed ? <> • ✅ Completed</> : null}
                   </div>
+                  <details style={{ marginTop: 8 }}>
+                    <summary style={{ cursor: "pointer" }}>Raw</summary>
+                    <pre style={{ marginTop: 8, whiteSpace: "pre-wrap", fontSize: 12, opacity: 0.9 }}>
+{JSON.stringify(a.request, null, 2)}
+                    </pre>
+                  </details>
                 </div>
               ))}
             </div>
           )}
-          <div style={{ opacity: 0.7, fontSize: 12, marginTop: 10 }}>
-            Next: once achievements schema is finalized, we’ll render clean fields instead of raw JSON.
-          </div>
         </div>
       </div>
 
@@ -653,8 +520,9 @@ export default function MeDashboardPage() {
                 <>
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", opacity: 0.85 }}>
                     <div>Alliance: <b>{selectedAllianceProfile.alliance_code}</b></div>
-                    {announcementsLink ? <Link to={announcementsLink}>Alliance Announcements</Link> : <span style={{ opacity: 0.7 }}>No alliance_id mapped for announcements link</span>}
-                    {calendarLink ? <Link to={calendarLink}>Alliance Calendar</Link> : <span style={{ opacity: 0.7 }}>No alliance_id mapped for calendar link</span>}
+                    {announcementsLink ? <Link to={announcementsLink}>Announcements</Link> : null}
+                    {calendarLink ? <Link to={calendarLink}>Calendar</Link> : null}
+                    {alertsLink ? <Link to={alertsLink}>Alerts</Link> : null}
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -762,10 +630,8 @@ export default function MeDashboardPage() {
       </div>
 
       <div style={{ opacity: 0.6, marginTop: 12, fontSize: 12 }}>
-        Tip: if Today’s Events is empty but you expect events, make sure your memberships have an alliance_id mapped (UUID stored as text in events).
+        Tip: delegated posting for Alliance Alerts is controlled by <code>alliance_access_grants.can_post_alerts</code>.
       </div>
     </div>
   );
 }
-
-

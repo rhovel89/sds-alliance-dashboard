@@ -104,10 +104,13 @@ import MyMailInboxPage from "../pages/mail/MyMailInboxPage";
 import OwnerMailBroadcastPage from "../pages/owner/OwnerMailBroadcastPage";
 import AllianceDirectoryDbPage from "../pages/alliance/AllianceDirectoryDbPage";
 import OwnerDirectoryDbPage from "../pages/owner/OwnerDirectoryDbPage";
+import OwnerPermissionsDbPage from "../pages/owner/OwnerPermissionsDbPage";
+import AllianceAlertsPage from "../pages/alliance/AllianceAlertsPage";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/owner/permissions-db" element={<RequireAdmin><OwnerPermissionsDbPage /></RequireAdmin>} />
       <Route path="/alliances-v2" element={<AllianceDirectoryDbPage />} />
       <Route path="/owner/directory-db" element={<RequireAdmin><OwnerDirectoryDbPage /></RequireAdmin>} />
       <Route path="/owner/mail-broadcast" element={<RequireAdmin><OwnerMailBroadcastPage /></RequireAdmin>} />
@@ -151,6 +154,8 @@ export default function AppRoutes() {
         <Route index element={<AllianceDashboardIndexPage />} />
 
         <Route path="announcements" element={<AllianceAnnouncementsPage />} />
+
+        <Route path="alerts" element={<AllianceAlertsPage />} />
         <Route path="guides" element={<AllianceGuidesPage />} />
 
         <Route path="hq-map" element={<AllianceHQMap />} />
