@@ -100,7 +100,7 @@ Open your dashboard:
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
         <label style={{ opacity: 0.75 }}>State</label>
         <input value={stateCode} onChange={(e) => setStateCode(e.target.value)} style={{ width: 90 }} />
-        <button onClick={load}>Reload</button>
+        <button onClick={load}>{t("ownerOnboardingQueue.reload")}</button>
         <div style={{ opacity: 0.75 }}>Pending: {pending.length} • Total: {rows.length}</div>
       </div>
 
@@ -137,7 +137,7 @@ Open your dashboard:
               </div>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={() => approveAndProvision(r)} disabled={!r.alliance_code || !r.alliance_code.trim()}>Approve + Provision</button>
+                <button onClick={() => approveAndProvision(r)} disabled={!r.alliance_code || !r.alliance_code.trim()}>{t("ownerOnboardingQueue.provision")}</button>
                 <button onClick={() => reject(r)}>Reject</button>
               </div>
             </div>
@@ -153,6 +153,7 @@ Open your dashboard:
     </div>
   );
 }
+
 
 
 
