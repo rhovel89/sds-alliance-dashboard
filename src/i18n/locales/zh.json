@@ -1,0 +1,74 @@
+{
+  "lang": {
+    "label": "语言",
+    "en": "英语",
+    "es": "西班牙语",
+    "fr": "法语",
+    "pt": "葡萄牙语",
+    "de": "德语",
+    "ru": "俄语",
+    "zh": "中文（普通话）",
+    "ko": "韩语"
+  },
+  "common": {
+    "reload": "刷新",
+    "save": "保存",
+    "cancel": "取消",
+    "submit": "提交",
+    "delete": "删除",
+    "copy": "复制",
+    "export": "导出",
+    "import": "导入",
+    "search": "搜索",
+    "optional": "可选"
+  },
+  "nav": {
+    "me": "我的面板",
+    "mailThreads": "邮件（会话）",
+    "mailInbox": "收件箱",
+    "hqManager": "HQ 管理",
+    "stateAlerts": "州/区警报",
+    "stateDiscussion": "州/区讨论",
+    "achRequest": "申请成就",
+    "achAdmin": "成就管理"
+  },
+  "me": {
+    "title": "我的面板",
+    "quickLinks": "快捷入口",
+    "today": "今天",
+    "todayNote": "目前请使用联盟日历。之后可以添加“今日活动”。",
+    "tips": "资料提示",
+    "tipsNote": "添加你的 HQ 并设置一个主 HQ，方便联盟规划。",
+    "tip1": "保持 HQ 等级与巢穴进度更新",
+    "tip2": "将一个 HQ 标记为主 HQ",
+    "tip3": "使用邮件会话进行快速私信沟通"
+  },
+  "onboarding": {
+    "title": "申请访问权限",
+    "signedIn": "已登录",
+    "notSignedIn": "未登录",
+    "request": "申请",
+    "state": "州/区",
+    "reloadDirectory": "刷新联盟列表",
+    "allianceFromDirectory": "联盟（从列表选择）",
+    "displayName": "显示名称",
+    "gameName": "游戏名称",
+    "discordName": "Discord 名称（可选）",
+    "notes": "备注（可选）",
+    "submitRequest": "提交申请",
+    "myRequests": "我的申请",
+    "noRequests": "暂无申请。"
+  },
+  "mailThreads": {
+    "title": "邮件（会话）",
+    "threads": "会话",
+    "newDm": "新私信（已批准玩家）",
+    "selectPlayer": "（选择玩家）",
+    "refreshRecipients": "刷新列表",
+    "selectThread": "选择会话",
+    "newMessage": "新消息",
+    "subjectOptional": "主题（可选）…",
+    "messagePlaceholder": "输入消息…",
+    "send": "发送"
+  }
+}

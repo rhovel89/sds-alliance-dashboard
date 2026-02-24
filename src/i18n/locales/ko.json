@@ -1,0 +1,74 @@
+{
+  "lang": {
+    "label": "언어",
+    "en": "영어",
+    "es": "스페인어",
+    "fr": "프랑스어",
+    "pt": "포르투갈어",
+    "de": "독일어",
+    "ru": "러시아어",
+    "zh": "중국어(표준어)",
+    "ko": "한국어"
+  },
+  "common": {
+    "reload": "새로고침",
+    "save": "저장",
+    "cancel": "취소",
+    "submit": "제출",
+    "delete": "삭제",
+    "copy": "복사",
+    "export": "내보내기",
+    "import": "가져오기",
+    "search": "검색",
+    "optional": "선택"
+  },
+  "nav": {
+    "me": "내 대시보드",
+    "mailThreads": "메일(대화)",
+    "mailInbox": "받은편지함",
+    "hqManager": "HQ 관리",
+    "stateAlerts": "주 알림",
+    "stateDiscussion": "주 토론",
+    "achRequest": "업적 요청",
+    "achAdmin": "업적 관리"
+  },
+  "me": {
+    "title": "내 대시보드",
+    "quickLinks": "빠른 링크",
+    "today": "오늘",
+    "todayNote": "지금은 동맹 캘린더를 사용하세요. 이후 “오늘의 이벤트”를 추가할 수 있습니다.",
+    "tips": "프로필 팁",
+    "tipsNote": "HQ를 추가하고 기본 HQ를 설정하면 계획에 도움이 됩니다.",
+    "tip1": "HQ 레벨과 둥지 진행도를 최신으로 유지",
+    "tip2": "하나의 HQ를 기본(Primary)으로 표시",
+    "tip3": "메일 대화로 빠르게 DM 소통"
+  },
+  "onboarding": {
+    "title": "접근 권한 요청",
+    "signedIn": "로그인됨",
+    "notSignedIn": "로그인 안됨",
+    "request": "요청",
+    "state": "주",
+    "reloadDirectory": "목록 새로고침",
+    "allianceFromDirectory": "동맹(목록에서 선택)",
+    "displayName": "표시 이름",
+    "gameName": "게임 이름",
+    "discordName": "디스코드 이름(선택)",
+    "notes": "메모(선택)",
+    "submitRequest": "요청 제출",
+    "myRequests": "내 요청",
+    "noRequests": "아직 요청이 없습니다."
+  },
+  "mailThreads": {
+    "title": "메일(대화)",
+    "threads": "대화",
+    "newDm": "새 DM(승인된 플레이어)",
+    "selectPlayer": "(플레이어 선택)",
+    "refreshRecipients": "목록 새로고침",
+    "selectThread": "대화 선택",
+    "newMessage": "새 메시지",
+    "subjectOptional": "제목(선택)…",
+    "messagePlaceholder": "메시지…",
+    "send": "보내기"
+  }
+}

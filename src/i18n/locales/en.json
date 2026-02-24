@@ -3,8 +3,12 @@
     "label": "Language",
     "en": "English",
     "es": "Spanish",
+    "fr": "French",
     "pt": "Portuguese",
-    "fr": "French"
+    "de": "German",
+    "ru": "Russian",
+    "zh": "Chinese (Mandarin)",
+    "ko": "Korean"
   },
   "common": {
     "reload": "Reload",
