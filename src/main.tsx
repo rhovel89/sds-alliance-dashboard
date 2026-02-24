@@ -1,3 +1,4 @@
+import "./i18n";
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -45,4 +46,5 @@ import './styles/dashboard-zombie.css';
 
 import './styles/hq-map.css';
 // deploy ping Tue Feb 10 08:51:12 CST 2026
+
 
