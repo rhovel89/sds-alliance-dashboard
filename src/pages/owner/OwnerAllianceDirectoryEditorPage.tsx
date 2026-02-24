@@ -292,6 +292,13 @@ export default function OwnerAllianceDirectoryEditorPage() {
             >
               + Add Alliance
             </button>
+      <button
+        type="button"
+        onClick={() => (window.location.href = "/owner/directory-sync")}
+        title="Sync shared directory to/from Supabase"
+      >
+        DB Sync
+      </button>
 
             <button onClick={normalizeRows}>Normalize (trim)</button>
 
@@ -368,3 +375,4 @@ export default function OwnerAllianceDirectoryEditorPage() {
     </div>
   );
 }
+
