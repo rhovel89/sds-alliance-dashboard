@@ -15,7 +15,25 @@ export function AllianceGuidesCommandCenter() {
   const allianceCode = useMemo(() => (alliance_id || "").toString(), [alliance_id]);
 
   const roleState = useGuidesEditAccess(allianceCode);
-  const canEdit = !!roleState.canEditGuides;
+
+  const [ownerFlags, setOwnerFlags] = useState<{ is_app_admin: boolean; is_dashboard_owner: boolean }>({
+    is_app_admin: false,
+    is_dashboard_owner: false,
+  });
+
+  useEffect(() => {
+    (async () => {
+      const res = await supabase.rpc("my_owner_flags");
+      if (!res.error && res.data && res.data[0]) {
+        setOwnerFlags({
+          is_app_admin: !!res.data[0].is_app_admin,
+          is_dashboard_owner: !!res.data[0].is_dashboard_owner,
+        });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const canEdit = !!roleState.canEditGuides || ownerFlags.is_app_admin || ownerFlags.is_dashboard_owner;
 
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
@@ -503,6 +521,7 @@ export function AllianceGuidesCommandCenter() {
     </div>
   );
 }
+
 
 
 
