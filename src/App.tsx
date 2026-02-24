@@ -16,8 +16,10 @@ export default function App() {
       <AppRoutes />
       <GlobalStatusFab />
       </AppErrorBoundary>
+      <FloatingLanguageSwitcher />
     </>
   );
 }
+
 
 
