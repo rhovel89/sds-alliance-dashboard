@@ -21,6 +21,7 @@ type Msg = {
   body: string;
   subject: string;
   direction?: "in" | "out" | null;
+  thread_id?: string | null;
 };
 
 type Player = { id: string; name: string | null; game_name: string | null };
@@ -54,39 +55,57 @@ export default function MyMailThreadsPage() {
 
   async function loadThreads() {
     setStatus("Loading threads…");
-    const res = await supabase.from("v_my_mail_threads").select("*").order("last_message_at", { ascending: false }).limit(200);
-    if (res.error) { setStatus(res.error.message); return; }
+    const res = await supabase
+      .from("v_my_mail_threads")
+      .select("*")
+      .order("last_message_at", { ascending: false })
+      .limit(200);
+
+    if (res.error) {
+      setStatus(res.error.message);
+      return;
+    }
     const list = (res.data ?? []) as any as ThreadRow[];
     setThreads(list);
     setStatus("");
 
-    if (!selectedThreadId && list[0]?.thread_id) {
-      setSelectedThreadId(list[0].thread_id);
-    }
+    if (!selectedThreadId && list[0]?.thread_id) setSelectedThreadId(list[0].thread_id);
   }
 
   async function loadMessages(threadId: string) {
-    if (!threadId) { setMessages([]); return; }
+    if (!threadId) {
+      setMessages([]);
+      return;
+    }
     setStatus("Loading messages…");
     const res = await supabase
       .from("v_my_mail_inbox")
-      .select("id,created_at,created_by_user_id,sender_display_name,body,subject,direction")
+      .select("id,created_at,created_by_user_id,sender_display_name,body,subject,direction,thread_id")
       .eq("thread_id", threadId)
       .order("created_at", { ascending: true })
       .limit(500);
 
-    if (res.error) { setStatus(res.error.message); return; }
+    if (res.error) {
+      setStatus(res.error.message);
+      return;
+    }
     setMessages((res.data ?? []) as any);
     setStatus("");
 
-    // mark read
+    // mark read + refresh unread counts
     await supabase.rpc("mark_thread_read", { p_thread_id: threadId });
     await loadThreads();
   }
 
-  useEffect(() => { void loadMessages(selectedThreadId); }, [selectedThreadId]);
+  useEffect(() => {
+    void loadMessages(selectedThreadId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedThreadId]);
 
-  const selectedThread = useMemo(() => threads.find((t) => t.thread_id === selectedThreadId) ?? null, [threads, selectedThreadId]);
+  const selectedThread = useMemo(
+    () => threads.find((t) => t.thread_id === selectedThreadId) ?? null,
+    [threads, selectedThreadId]
+  );
 
   async function searchPlayers() {
     const qq = playerQuery.trim();
@@ -100,7 +119,10 @@ export default function MyMailThreadsPage() {
       .or(`name.ilike.%${qq}%,game_name.ilike.%${qq}%`)
       .limit(20);
 
-    if (pRes.error) { setStatus(pRes.error.message); return; }
+    if (pRes.error) {
+      setStatus(pRes.error.message);
+      return;
+    }
 
     const players = (pRes.data ?? []) as any as Player[];
     setPlayerResults(players);
@@ -124,11 +146,13 @@ export default function MyMailThreadsPage() {
     setToUserId(uid);
     setPlayerResults([]);
     setPlayerQuery("");
+    setSelectedThreadId(""); // show compose area without selecting a thread
   }
 
   async function send() {
     if (!userId) return alert("Sign in first.");
-    const to = (selectedThread?.peer_user_id ?? toUserId).trim();
+
+    const to = (selectedThread?.peer_user_id ?? toUserId ?? "").trim();
     const b = body.trim();
     if (!to || !b) return alert("Recipient and body are required.");
 
@@ -139,14 +163,18 @@ export default function MyMailThreadsPage() {
       p_body: b,
     });
 
-    if (res.error) { setStatus(res.error.message); return; }
+    if (res.error) {
+      setStatus(res.error.message);
+      return;
+    }
 
     setBody("");
     setSubject("");
+    setToUserId("");
 
     await loadThreads();
 
-    // select thread that matches peer (best effort)
+    // Select the thread that matches peer_user_id (best effort)
     const refreshed = await supabase.from("v_my_mail_threads").select("*").limit(200);
     if (!refreshed.error) {
       const list = (refreshed.data ?? []) as any as ThreadRow[];
@@ -179,6 +207,7 @@ export default function MyMailThreadsPage() {
               <input value={playerQuery} onChange={(e) => setPlayerQuery(e.target.value)} placeholder="Search player…" style={{ flex: "1 1 200px" }} />
               <button onClick={searchPlayers} disabled={!userId}>Search</button>
             </div>
+
             {playerResults.length ? (
               <div style={{ display: "grid", gap: 8 }}>
                 {playerResults.map((p) => (
@@ -229,7 +258,7 @@ export default function MyMailThreadsPage() {
         {/* Right: messages + compose */}
         <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden" }}>
           <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>
-            {selectedThread ? `Chat with ${selectedThread.peer_display_name ?? "player"}` : "Select a thread"}
+            {selectedThread ? `Chat with ${selectedThread.peer_display_name ?? "player"}` : (toUserId ? "New message" : "Select a thread")}
           </div>
 
           <div style={{ padding: 12 }}>
@@ -261,7 +290,18 @@ export default function MyMailThreadsPage() {
                 </div>
               </>
             ) : (
-              <div style={{ opacity: 0.75 }}>Pick a thread on the left, or start a new DM.</div>
+              <>
+                <div style={{ opacity: 0.8, marginBottom: 10 }}>
+                  {toUserId ? "Compose your first message, then Send." : "Pick a thread on the left, or start a new DM."}
+                </div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (optional)..." />
+                  <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder="Message…" />
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <button onClick={send} disabled={!userId || !toUserId}>Send</button>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>
