@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 import StateAchievementsProgressPanel from "../../components/state/StateAchievementsProgressPanel";
+import StateBulletinBoardPanel from "../../components/state/StateBulletinBoardPanel";
 
 function CardButton(props: { emoji: string; label: string; to: string; sub?: string }) {
   const nav = useNavigate();
@@ -59,5 +60,6 @@ export default function StateDashboardPage() {
     </div>
   );
 }
+
 
 
