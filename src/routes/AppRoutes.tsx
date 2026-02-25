@@ -190,7 +190,7 @@ export default function AppRoutes() {
       <Route path="/owner/access-control" element={<RequireAdmin><OwnerAccessControlPage /></RequireAdmin>} />
 
       {/* State */}
-      <Route path="/state" element={<StateDashboardPage />} />
+      <Route path="/state" element={<Navigate to="/state/789" replace />} />
 
       {/* Alliance dashboards (IMPORTANT: announcements/guides are NESTED so alliance context exists) */}
       <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
@@ -261,6 +261,7 @@ export default function AppRoutes() {
 </Routes>
   );
 }
+
 
 
 
