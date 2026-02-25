@@ -104,7 +104,7 @@ export default function Onboarding() {
     const redirectTo = window.location.origin + "/onboarding";
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo },
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     });
     if (error) setErr(error.message);
   };
@@ -165,5 +165,7 @@ export default function Onboarding() {
     </div>
   );
 }
+
+
 
 
