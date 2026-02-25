@@ -4,9 +4,7 @@ export default function Login() {
   const login = async (provider: "discord" | "google") => {
     await supabase.auth.signInWithOAuth({
       provider,
-      options: {
-        redirectTo: window.location.origin + "/auth/callback"
-      }
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     });
   };
 
@@ -26,4 +24,6 @@ export default function Login() {
     </div>
   );
 }
+
+
 

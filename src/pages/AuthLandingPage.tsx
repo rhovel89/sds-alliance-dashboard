@@ -34,7 +34,7 @@ export default function AuthLandingPage() {
     const redirectTo = `${window.location.origin}/onboarding`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo },
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     });
 
     // On success, Supabase redirects away.
@@ -128,5 +128,7 @@ export default function AuthLandingPage() {
     </div>
   );
 }
+
+
 
 
