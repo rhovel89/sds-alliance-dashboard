@@ -65,3 +65,77 @@ input, select, textarea { font-size: 16px; }
     padding: 12px !important;
   }
 }
+
+/* =========================================================
+   Phase 2: Mobile Sidebar Drawer (Alliance dashboards)
+   Requires DashboardLayout sidebar/main to have:
+   - data-sad-sidebar="1"
+   - data-sad-main="1"
+   And html class toggle: "sad-nav-open"
+   ========================================================= */
+
+.sad-mobile-nav-toggle {
+  display: none; /* desktop hidden */
+}
+
+.sad-mobile-scrim {
+  display: none; /* desktop hidden */
+}
+
+@media (max-width: 860px) {
+  /* Hamburger button */
+  .sad-mobile-nav-toggle {
+    display: flex;
+    position: fixed;
+    top: calc(12px + var(--safe-top));
+    left: calc(12px + var(--safe-left));
+    z-index: 2147483647;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.55);
+    color: inherit;
+    font-size: 18px;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+  }
+
+  /* Scrim overlay */
+  .sad-mobile-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 2147483646;
+    background: rgba(0,0,0,0.55);
+  }
+
+  /* Sidebar becomes a drawer */
+  [data-sad-sidebar="1"] {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: min(320px, 86vw) !important;
+    transform: translateX(-110%);
+    transition: transform 180ms ease;
+    z-index: 2147483647;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-top: calc(12px + var(--safe-top));
+    padding-bottom: calc(12px + var(--safe-bottom));
+  }
+
+  /* Main content should not be pushed by sidebar */
+  [data-sad-main="1"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Open drawer when html has class */
+  html.sad-nav-open [data-sad-sidebar="1"] {
+    transform: translateX(0);
+  }
+}

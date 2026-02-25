@@ -7,6 +7,7 @@ import GlobalStatusFab from "./components/system/GlobalStatusFab";
 import FloatingLanguageSwitcher from "./components/i18n/FloatingLanguageSwitcher";
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
+import MobileSidebarToggle from "./components/nav/MobileSidebarToggle";
 
 export default function App() {
   return (
@@ -20,10 +21,12 @@ export default function App() {
       <GlobalStatusFab />
       </AppErrorBoundary>
       <FloatingLanguageSwitcher />
+      <MobileSidebarToggle />
     </>
     </I18nextProvider>
   );
 }
+
 
 
 
