@@ -139,3 +139,76 @@ input, select, textarea { font-size: 16px; }
     transform: translateX(0);
   }
 }
+
+/* =========================================================
+   Phase 3: Mobile UX Utilities (SAFE, additive)
+   Use these classes in pages/components without refactors.
+   ========================================================= */
+
+/* Generic flex helpers */
+.sad-row { display: flex; gap: 12px; align-items: center; }
+.sad-col { display: flex; flex-direction: column; gap: 10px; }
+.sad-wrap { flex-wrap: wrap; }
+.sad-grow { flex: 1; min-width: 0; }
+
+/* Card grids (opt-in) */
+.sad-card-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sad-card-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+/* Scroll containers (opt-in) */
+.sad-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.sad-scroll-y {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Better text wrapping for long content */
+.sad-break {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Form spacing (opt-in) */
+.sad-form {
+  display: grid;
+  gap: 10px;
+}
+.sad-form input,
+.sad-form select,
+.sad-form textarea {
+  width: 100%;
+}
+
+/* Button row (opt-in) */
+.sad-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Mobile-only visibility helpers (opt-in) */
+.sad-hide-mobile { display: inherit; }
+.sad-show-mobile { display: none; }
+
+@media (max-width: 860px) {
+  /* Stack common horizontal rows */
+  .sad-row { flex-direction: column; align-items: stretch; }
+
+  /* Make multi-column grids stack */
+  .sad-card-grid-2, .sad-card-grid-3 { grid-template-columns: 1fr; }
+
+  /* Mobile visibility helpers */
+  .sad-hide-mobile { display: none !important; }
+  .sad-show-mobile { display: block !important; }
+
+  /* Bigger/touch-friendly controls (opt-in works globally too) */
+  .sad-actions > button { min-height: 44px; }
+}
+
+/* Extra-small phones */
+@media (max-width: 520px) {
+  .sad-actions { gap: 6px; }
+}
