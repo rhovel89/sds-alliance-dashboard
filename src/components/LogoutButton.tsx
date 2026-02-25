@@ -8,7 +8,7 @@ export default function LogoutButton() {
   };
 
   return (
-    <button onClick={handleLogout}>
+    <button onClick={handleLogout} data-sad-topbar="1">
       Log Out
     </button>
   );

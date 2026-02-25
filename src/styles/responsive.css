@@ -252,3 +252,68 @@ input, select, textarea { font-size: 16px; }
     margin: 0 !important;
   }
 }
+
+/* =========================================================
+   Phase X2: Force Compact Topbar + Visible Hamburger (mobile)
+   - data-sad-topbar="1" -> forces 1-line scrollable topbar
+   - sad-mobile-nav-toggle -> bottom-left so it can't get covered
+   ========================================================= */
+@media (max-width: 860px) {
+  /* Put hamburger bottom-left above language switcher area */
+  .sad-mobile-nav-toggle {
+    display: flex !important;
+    position: fixed !important;
+    top: auto !important;
+    bottom: calc(12px + var(--safe-bottom) + 56px) !important;
+    left: calc(12px + var(--safe-left)) !important;
+    z-index: 2147483647 !important;
+    width: 44px !important;
+    height: 44px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255,255,255,0.22) !important;
+    background: rgba(0,0,0,0.60) !important;
+    font-size: 18px !important;
+  }
+
+  .sad-mobile-scrim {
+    z-index: 2147483646 !important;
+  }
+
+  /* FORCE the topbar to a single compact scrolling row */
+  [data-sad-topbar="1"] {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 4px 6px !important;
+    max-height: 56px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  [data-sad-topbar="1"] * {
+    flex-wrap: nowrap !important;
+  }
+  [data-sad-topbar="1"] > * {
+    flex: 0 0 auto !important;
+  }
+
+  /* Make controls smaller (still tappable enough) */
+  [data-sad-topbar="1"] button,
+  [data-sad-topbar="1"] select,
+  [data-sad-topbar="1"] a,
+  [data-sad-topbar="1"] input {
+    min-height: 32px !important;
+    height: 32px !important;
+    font-size: 12px !important;
+    padding: 4px 8px !important;
+  }
+
+  /* Hide big labels if they exist (keeps controls visible) */
+  [data-sad-topbar="1"] .sad-topbar-label {
+    display: none !important;
+  }
+}

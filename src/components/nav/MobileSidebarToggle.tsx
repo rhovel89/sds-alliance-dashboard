@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 function setOpen(open: boolean) {
@@ -10,11 +10,19 @@ function setOpen(open: boolean) {
 export default function MobileSidebarToggle() {
   const location = useLocation();
   const [open, setOpenState] = useState(false);
+  const [enabled, setEnabled] = useState(false);
 
-  const enabled = useMemo(() => {
-    // Show toggle only where sidebar layout exists (alliance dashboards).
-    // You can add "/owner" later if you want.
-    return location.pathname.startsWith("/dashboard/");
+  // Enable only when a sidebar exists on the page (prevents showing on pages without sidebar)
+  useEffect(() => {
+    const hasSidebar = !!document.querySelector('[data-sad-sidebar="1"]');
+    setEnabled(hasSidebar);
+
+    // If we navigated to a page without a sidebar, ensure closed
+    if (!hasSidebar) {
+      setOpenState(false);
+      setOpen(false);
+      document.body.style.overflow = "";
+    }
   }, [location.pathname]);
 
   // Close the drawer on route change
