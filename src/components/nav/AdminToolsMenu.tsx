@@ -57,7 +57,7 @@ export function AdminToolsMenu() {
   if (!canShow) return null;
 
   return (
-    <div style={{ position: "relative", display: "inline-block" }}>
+    <div style={{ position: "relative", display: "inline-block" }} data-sad-topbar="1">
       <button
         className="zombie-btn"
         style={{ padding: "10px 12px" }}
