@@ -106,7 +106,7 @@ export function OwnerAllianceJump() {
   if (!show) return null;
 
   return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }} className="sad-topbar">
       <span style={{ opacity: 0.85, fontSize: 12 }}>Admin Jump:</span>
       <select
         defaultValue=""
