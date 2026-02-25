@@ -49,8 +49,15 @@ export default function StateDashboardPage() {
       </div>
 
       <div style={{ marginTop: 12 }}>
+        <StateBulletinBoardPanel stateCode="789" />
+      </div>
+
+
+      <div style={{ marginTop: 12 }}>
         <StateAchievementsProgressPanel stateCode="789" />
       </div>
     </div>
   );
 }
+
+
