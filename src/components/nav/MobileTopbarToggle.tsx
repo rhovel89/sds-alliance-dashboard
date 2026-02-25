@@ -7,17 +7,63 @@ function setOpen(open: boolean) {
   else root.classList.remove("sad-topbar-open");
 }
 
+function findTopbarContainer(): HTMLElement | null {
+  const needles = [
+    "Admin Jump",
+    "Realtime",
+    "Theme",
+    "Support Bundle",
+    "Broadcast",
+    "Admin Tools",
+    "Log Out",
+    "Alliance"
+  ];
+
+  // First: try to find a node containing any needle
+  const all = Array.from(document.querySelectorAll("body *")) as HTMLElement[];
+
+  for (const el of all) {
+    const txt = (el.textContent || "").trim();
+    if (!txt) continue;
+
+    // Keep it cheap: only consider relatively short label-ish nodes
+    if (txt.length > 120) continue;
+
+    if (needles.some((n) => txt.includes(n))) {
+      // Walk up to find a parent with multiple controls (buttons/selects)
+      let cur: HTMLElement | null = el;
+      for (let steps = 0; steps < 10 && cur; steps++) {
+        const controls = cur.querySelectorAll("button, select, a, input").length;
+        if (controls >= 4) return cur;
+        cur = cur.parentElement;
+      }
+    }
+  }
+
+  return null;
+}
+
+function ensureTopbarTagged(): HTMLElement | null {
+  const el = findTopbarContainer();
+  if (!el) return null;
+
+  // Tag it once
+  el.setAttribute("data-sad-topbar", "1");
+  el.classList.add("sad-topbar-root");
+  return el;
+}
+
 export default function MobileTopbarToggle() {
   const location = useLocation();
   const [open, setOpenState] = useState(false);
   const [enabled, setEnabled] = useState(false);
 
-  // Enable only when a topbar exists on the page
+  // Enable if topbar found; tag it
   useEffect(() => {
-    const hasTopbar = !!document.querySelector('[data-sad-topbar="1"]');
-    setEnabled(hasTopbar);
+    const el = ensureTopbarTagged();
+    setEnabled(!!el);
 
-    if (!hasTopbar) {
+    if (!el) {
       setOpenState(false);
       setOpen(false);
       document.body.style.overflow = "";
@@ -31,18 +77,18 @@ export default function MobileTopbarToggle() {
     setOpen(false);
   }, [location.pathname, enabled]);
 
-  // Sync html class + (optional) body scroll lock when open
+  // Sync open + scroll lock when expanded
   useEffect(() => {
     if (!enabled) return;
 
     setOpen(open);
-    const prevOverflow = document.body.style.overflow;
+    const prev = document.body.style.overflow;
 
     if (open) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = prevOverflow || "";
+    else document.body.style.overflow = prev || "";
 
     return () => {
-      document.body.style.overflow = prevOverflow || "";
+      document.body.style.overflow = prev || "";
       setOpen(false);
     };
   }, [open, enabled]);

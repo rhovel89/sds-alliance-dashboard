@@ -393,3 +393,65 @@ input, select, textarea { font-size: 16px; }
     padding: 4px 8px !important;
   }
 }
+
+/* =========================================================
+   Phase X4: Runtime-tagged Collapsible Topbar (mobile)
+   The JS toggle tags the real topbar container with:
+   - class .sad-topbar-root
+   - attribute [data-sad-topbar="1"]
+   ========================================================= */
+@media (max-width: 860px) {
+  /* Controls toggle button */
+  .sad-mobile-topbar-toggle {
+    display: flex !important;
+    position: fixed !important;
+    top: calc(12px + var(--safe-top)) !important;
+    right: calc(12px + var(--safe-right)) !important;
+    z-index: 2147483647 !important;
+    width: 44px !important;
+    height: 44px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255,255,255,0.22) !important;
+    background: rgba(0,0,0,0.60) !important;
+    font-size: 18px !important;
+  }
+
+  .sad-mobile-topbar-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483646;
+    background: rgba(0,0,0,0.45);
+  }
+
+  /* COLLAPSE the actual topbar container */
+  .sad-topbar-root,
+  [data-sad-topbar="1"] {
+    max-height: 56px !important;
+    overflow: hidden !important;
+  }
+
+  /* EXPAND when user taps ⚙︎ */
+  html.sad-topbar-open .sad-topbar-root,
+  html.sad-topbar-open [data-sad-topbar="1"] {
+    max-height: 70vh !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Shrink controls inside topbar */
+  .sad-topbar-root button,
+  .sad-topbar-root select,
+  .sad-topbar-root a,
+  .sad-topbar-root input,
+  [data-sad-topbar="1"] button,
+  [data-sad-topbar="1"] select,
+  [data-sad-topbar="1"] a,
+  [data-sad-topbar="1"] input {
+    min-height: 30px !important;
+    height: 30px !important;
+    font-size: 12px !important;
+    padding: 4px 8px !important;
+  }
+}
