@@ -8,6 +8,7 @@ import FloatingLanguageSwitcher from "./components/i18n/FloatingLanguageSwitcher
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
 import MobileSidebarToggle from "./components/nav/MobileSidebarToggle";
+import MobileTopbarToggle from "./components/nav/MobileTopbarToggle";
 
 export default function App() {
   return (
@@ -22,10 +23,12 @@ export default function App() {
       </AppErrorBoundary>
       <FloatingLanguageSwitcher />
       <MobileSidebarToggle />
+      <MobileTopbarToggle />
     </>
     </I18nextProvider>
   );
 }
+
 
 
 

@@ -2,7 +2,7 @@ import AllianceAnnouncementsPanel from "../announcements/AllianceAnnouncementsPa
 export default function AllianceDashboardExtras() {
   return (
     <>
-      <AllianceAnnouncementsPanel />
+      <AllianceAnnouncementsPanel / data-sad-topbar="1">
       </>
   );
 }
