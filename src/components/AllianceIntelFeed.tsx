@@ -17,7 +17,7 @@ export default function AllianceIntelFeed({ alliance_id }: { alliance_id: string
   }, [alliance_id]);
 
   return (
-    <div className="command-card">
+    <div className="command-card" data-sad-topbar="1">
       <h3>🧠 Alliance Intel</h3>
       <ul style={{ fontSize: "0.85rem", paddingLeft: "1rem" }}>
         {items.map((i, idx) => (

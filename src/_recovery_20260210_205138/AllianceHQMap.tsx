@@ -8,7 +8,7 @@ export default function AllianceHQMap() {
   }
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: 24 }} data-sad-topbar="1">
       <h2>🧟 HQ MAP LOADED FOR ALLIANCE: {alliance_id.toUpperCase()}</h2>
       <p>HQ slots will render here.</p>
     </div>
