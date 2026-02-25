@@ -212,3 +212,43 @@ input, select, textarea { font-size: 16px; }
 @media (max-width: 520px) {
   .sad-actions { gap: 6px; }
 }
+
+/* =========================================================
+   Phase X: Compact Topbar (mobile)
+   Goal: top command bar stays 1-line and scrolls horizontally
+   ========================================================= */
+@media (max-width: 860px) {
+  .sad-topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  /* Keep children from wrapping and shrinking weirdly */
+  .sad-topbar > * {
+    flex: 0 0 auto;
+  }
+
+  /* Compact controls, still tappable */
+  .sad-topbar button,
+  .sad-topbar select,
+  .sad-topbar a,
+  .sad-topbar input {
+    min-height: 36px !important;
+    height: 36px !important;
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+  }
+
+  /* If the bar uses big headings/labels, keep them small */
+  .sad-topbar h1, .sad-topbar h2, .sad-topbar h3 {
+    font-size: 14px !important;
+    margin: 0 !important;
+  }
+}
