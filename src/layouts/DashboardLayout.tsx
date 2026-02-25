@@ -18,18 +18,18 @@ export default function DashboardLayout() {
 
       {isAllianceArea ? (
         <div style={{ display: "flex", gap: 18, alignItems: "stretch" }}>
-          <aside style={{ width: 240, minWidth: 240 }}>
+          <aside data-sad-sidebar="1" style={{ width: 240, minWidth: 240 }}>
             <div className="zombie-card" style={{ padding: 12 }}>
               <AllianceSidebarTabs allianceCode={String(alliance_id || "")} />
             </div>
           </aside>
 
-          <main className="dashboard-main" style={{ flex: 1 }}>
+          <main data-sad-main="1" className="dashboard-main" style={{ flex: 1 }}>
             <Outlet />
           </main>
         </div>
       ) : (
-        <main className="dashboard-main">
+        <main data-sad-main="1" className="dashboard-main">
           <Outlet />
         </main>
       )}
