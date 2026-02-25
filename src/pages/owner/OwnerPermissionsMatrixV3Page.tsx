@@ -48,7 +48,11 @@ const STATE_GROUPS: { title: string; fields: Field[] }[] = [
     { key: "state_directory_reorder", label: "Directory: Reorder" },
     { key: "state_directory_sync", label: "Directory: Sync DB" },
   ]},
-  { title: "Mail / Comms", fields: [
+    { title: "Bulletin Board", fields: [
+    { key: "state_bulletin_post", label: "Bulletin: Post" },
+    { key: "state_bulletin_manage", label: "Bulletin: Manage (pin/delete)" }
+  ]},
+{ title: "Mail / Comms", fields: [
     { key: "state_mail_view", label: "Mail: View broadcasts" },
     { key: "state_mail_send_broadcast", label: "Mail: Send state broadcast" },
     { key: "state_mail_manage_templates", label: "Mail: Manage templates" },
@@ -437,3 +441,4 @@ export default function OwnerPermissionsMatrixV3Page() {
     </div>
   );
 }
+
