@@ -1,0 +1,67 @@
+:root {
+  /* Helps with safe areas on iPhone notch devices */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+/* Global sanity */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { width: 100%; }
+body { overflow-x: hidden; }
+
+/* Media should never overflow */
+img, video, canvas, svg { max-width: 100%; height: auto; }
+
+/* Default touch targets */
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* Make sure input font-size prevents iOS zoom */
+input, select, textarea { font-size: 16px; }
+
+/* Common utility: safe padding container (optional use later) */
+.sad-safe-pad {
+  padding-left: calc(12px + var(--safe-left));
+  padding-right: calc(12px + var(--safe-right));
+  padding-top: calc(12px + var(--safe-top));
+  padding-bottom: calc(12px + var(--safe-bottom));
+}
+
+/* --- Mobile tweaks (additive, desktop unaffected) --- */
+@media (max-width: 860px) {
+  /* Slightly smaller default paddings */
+  body { font-size: 15px; }
+
+  /* Buttons & inputs: bigger tap targets */
+  button, input, select, textarea {
+    min-height: 44px;
+  }
+
+  /* Prevent cramped card layouts */
+  .zombie-card {
+    width: 100% !important;
+  }
+
+  /* Any grids that are true CSS grids should stack */
+  .sad-grid-2, .sad-grid-3, .sad-grid-4 {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Horizontal scrolling helper for wide content (tables/lists) */
+  .sad-scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 520px) {
+  /* Even tighter spacing for small phones */
+  .zombie-card {
+    padding: 12px !important;
+  }
+}

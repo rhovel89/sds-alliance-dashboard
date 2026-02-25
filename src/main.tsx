@@ -46,7 +46,9 @@ import './styles/dashboard-zombie.css';
 
 import './styles/hq-map.css';
 import FloatingLanguageSwitcher from "./components/i18n/FloatingLanguageSwitcher";
+import "./styles/responsive.css";
 // deploy ping Tue Feb 10 08:51:12 CST 2026
+
 
 
 
