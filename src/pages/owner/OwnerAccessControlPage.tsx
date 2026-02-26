@@ -153,10 +153,10 @@ export default function OwnerAccessControlPage() {
 
     let rows: any[] | null = null;
     rows = await trySelect<any[]>(() =>
-      supabase.from("alliance_role_permissions").select("permission_key").eq("alliance_code", upper(code)).eq("role_key", rk)
+      supabase.from("alliance_role_permissions").select("*").eq("alliance_code", upper(code)).eq("role_key", rk)
     );
     if (!rows) rows = await trySelect<any[]>(() =>
-      supabase.from("alliance_role_permissions").select("key").eq("alliance_code", upper(code)).eq("role_key", rk)
+      supabase.from("alliance_role_permissions").select("*").eq("alliance_code", upper(code)).eq("role_key", rk)
     );
     if (!rows) rows = await trySelect<any[]>(() =>
       supabase.from("alliance_role_permissions").select("*").eq("alliance_code", upper(code)).eq("role_key", rk).limit(500)
