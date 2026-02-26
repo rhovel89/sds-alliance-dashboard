@@ -29,8 +29,7 @@ export default function StateLeadersPage() {
       setErrorMsg(null);
       const { data, error } = await supabase
         .from("state_leaders")
-        .select("id,user_id,title,created_at")
-        .order("created_at", { ascending: false });
+        .select("*")
 
       if (error) {
         setErrorMsg(error.message);
@@ -191,4 +190,5 @@ export default function StateLeadersPage() {
     </div>
   );
 }
+
 
