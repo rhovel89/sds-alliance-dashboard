@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
+import PlayerLookupPanel from "../../components/players/PlayerLookupPanel";
 
 type UserOpt = { user_id: string; display_name: string };
 type DirEntry = { id: string; state_code: string; alliance_code: string; alliance_id: string | null; name: string | null; tag: string | null; active: boolean; sort_order: number | null };
@@ -182,6 +183,7 @@ function computeLegacyAllianceFlags(g: AllianceGrant): Partial<AllianceGrant> {
 function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <label style={{ display: "flex", gap: 8, alignItems: "center", marginRight: 14, marginBottom: 8 }}>
+      <div style={{ marginTop: 12 }}>         <PlayerLookupPanel />       </div>
       <input type="checkbox" checked={!!checked} onChange={(e) => onChange(e.target.checked)} />
       <span>{label}</span>
     </label>
@@ -441,4 +443,5 @@ export default function OwnerPermissionsMatrixV3Page() {
     </div>
   );
 }
+
 
