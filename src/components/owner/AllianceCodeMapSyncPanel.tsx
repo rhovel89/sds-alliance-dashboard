@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
-type MapRow = { alliance_code: string; alliance_id: string };
+type MapRow = { alliance_code: string; alliance_id: string; created_at?: string; updated_at?: string };
 
 function isUuid(s: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s || "").trim());
@@ -22,13 +22,24 @@ export default function AllianceCodeMapSyncPanel() {
 
   async function loadMap() {
     setStatus("Loading map…");
-    const res = await supabase.from("alliance_code_map").select("*").order("alliance_code", { ascending: true });
-    if (res.error) { setStatus(res.error.message); setRows([]); return; }
+    const res = await supabase
+      .from("alliance_code_map")
+      .select("*")
+      .order("alliance_code", { ascending: true });
+
+    if (res.error) {
+      setStatus(res.error.message);
+      setRows([]);
+      return;
+    }
+
     setRows((res.data ?? []) as any);
     setStatus("");
   }
 
-  useEffect(() => { void loadMap(); }, []);
+  useEffect(() => {
+    void loadMap();
+  }, []);
 
   async function upsertOne(c: string, id: string) {
     const alliance_code = normCode(c);
@@ -38,13 +49,18 @@ export default function AllianceCodeMapSyncPanel() {
     if (!isUuid(alliance_id)) return alert("Alliance ID must be a UUID.");
 
     setStatus("Saving…");
-    const res = await supabase.from("alliance_code_map").upsert(
-      [{ alliance_code, alliance_id }],
-      { onConflict: "alliance_code" }
-    );
+    const res = await supabase
+      .from("alliance_code_map")
+      .upsert([{ alliance_code, alliance_id }], { onConflict: "alliance_code" });
 
-    if (res.error) { setStatus(res.error.message); return; }
+    if (res.error) {
+      setStatus(res.error.message);
+      return;
+    }
+
     setStatus("Saved ✅");
+    setCode("");
+    setAid("");
     await loadMap();
     window.setTimeout(() => setStatus(""), 900);
   }
@@ -52,17 +68,21 @@ export default function AllianceCodeMapSyncPanel() {
   async function removeOne(c: string) {
     const ok = confirm("Remove this mapping?");
     if (!ok) return;
+
     setStatus("Removing…");
     const res = await supabase.from("alliance_code_map").delete().eq("alliance_code", c);
-    if (res.error) { setStatus(res.error.message); return; }
+
+    if (res.error) {
+      setStatus(res.error.message);
+      return;
+    }
+
     setStatus("Removed ✅");
     await loadMap();
     window.setTimeout(() => setStatus(""), 900);
   }
 
   async function importBulk() {
-    // Accept:
-    // CODE,UUID per line OR JSON array [{alliance_code, alliance_id}]
     const raw = bulk.trim();
     if (!raw) return;
 
@@ -73,7 +93,10 @@ export default function AllianceCodeMapSyncPanel() {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           items = parsed
-            .map((x: any) => ({ alliance_code: normCode(x.alliance_code || x.code), alliance_id: String(x.alliance_id || x.id || "").trim() }))
+            .map((x: any) => ({
+              alliance_code: normCode(x.alliance_code || x.code),
+              alliance_id: String(x.alliance_id || x.id || "").trim(),
+            }))
             .filter((x) => x.alliance_code && isUuid(x.alliance_id));
         }
       } else {
@@ -94,8 +117,13 @@ export default function AllianceCodeMapSyncPanel() {
     if (!items.length) return alert("No valid rows found.");
 
     setStatus("Importing…");
-    const res = await supabase.from("alliance_code_map").upsert(items, { onConflict: "alliance_code" });
-    if (res.error) { setStatus(res.error.message); return; }
+    const res = await supabase.from("alliance_code_map").upsert(items as any, { onConflict: "alliance_code" });
+
+    if (res.error) {
+      setStatus(res.error.message);
+      return;
+    }
+
     setStatus("Imported ✅");
     setBulk("");
     await loadMap();
@@ -110,7 +138,7 @@ export default function AllianceCodeMapSyncPanel() {
         <div>
           <div style={{ fontWeight: 950, fontSize: 16 }}>Alliance Code Map (DB)</div>
           <div style={{ opacity: 0.8, fontSize: 12 }}>
-            This drives Access Control seeding. Add new alliances here once and you never touch SQL again. {status ? " • " + status : ""}
+            Add new alliances here once. This powers Access Control and anything that needs code⇄uuid. {status ? " • " + status : ""}
           </div>
         </div>
         <button type="button" onClick={() => void loadMap()}>Refresh</button>
