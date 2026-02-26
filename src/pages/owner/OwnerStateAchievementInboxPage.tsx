@@ -2,6 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 
+function detectStatusKey(row: any): string {
+  const cands = ["status", "request_status", "workflow_status", "review_status", "state_status"];
+  for (const k of cands) {
+    if (row && Object.prototype.hasOwnProperty.call(row, k)) return k;
+  }
+  return "status";
+}
+
 type Req = {
   id: string;
   state_code: string;
@@ -32,6 +40,32 @@ function nowUtc(){ return new Date().toISOString(); }
 
 export default function OwnerStateAchievementInboxPage() {
   const [rows, setRows] = useState<Req[]>([]);
+  const statusKey = detectStatusKey((rows as any)?.[0]);
+  const hasUpdatedAt = !!((rows as any)?.[0] && Object.prototype.hasOwnProperty.call((rows as any)[0], "updated_at"));
+
+  async function updateReqStatus(id: string, next: string) {
+    try {
+      const patch: any = { [statusKey || "status"]: next };
+      if (hasUpdatedAt) patch.updated_at = new Date().toISOString();
+
+      const res = await supabase
+        .from("state_achievement_requests")
+        .update(patch)
+        .eq("id", id);
+
+      if (res.error) {
+        alert("Status update failed: " + res.error.message);
+        return;
+      }
+
+      // Optimistic UI update
+      setRows((prev: any[]) =>
+        (prev || []).map((r: any) => (String(r.id) === String(id) ? { ...r, [statusKey || "status"]: next } : r))
+      );
+    } catch (e: any) {
+      alert("Status update error: " + (e?.message || String(e)));
+    }
+  }
   const [types, setTypes] = useState<Record<string, AchType>>({});
   const [opts, setOpts] = useState<Record<string, AchOption>>({});
   const [err, setErr] = useState<string|null>(null);
@@ -252,3 +286,4 @@ export default function OwnerStateAchievementInboxPage() {
     </div>
   );
 }
+
