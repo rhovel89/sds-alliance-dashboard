@@ -1,194 +1,163 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
+import SupportBundleButton from "../../components/system/SupportBundleButton";
 
-type LeaderRow = {
-  id: string;
-  user_id: string | null;
-  title?: string | null;
-  created_at?: string | null;
+type Row = {
+  user_id: string;
+  created_by: string | null;
+  created_at: string | null;
 };
 
+function fmt(dt?: string | null) {
+  if (!dt) return "—";
+  try { return new Date(dt).toLocaleString(); } catch { return dt; }
+}
+
 export default function StateLeadersPage() {
-  const { isAdmin, loading } = useIsAppAdmin();
+  const title = useMemo(() => "State Leaders", []);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<string>("");
 
-  const [rows, setRows] = useState<LeaderRow[]>([]);
-  const leaders = rows; // alias to prevent ReferenceError
-  const [nameByUserId, setNameByUserId] = useState<Record<string, string>>({});
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [newUserId, setNewUserId] = useState("");
 
-  const userIds = useMemo(() => {
-    return Array.from(
-      new Set((rows || []).map((r) => (r.user_id || "").trim()).filter(Boolean))
-    );
-  }, [rows]);
+  async function load() {
+    setLoading(true);
+    setStatus("");
+
+    const res = await supabase
+      .from("state_leaders")
+      .select("user_id,created_by,created_at")
+      .order("created_at", { ascending: false });
+
+    setLoading(false);
+
+    if (res.error) {
+      setStatus(res.error.message);
+      setRows([]);
+      return;
+    }
+
+    setRows((res.data ?? []) as any);
+  }
 
   useEffect(() => {
-    const load = async () => {
-      setErrorMsg(null);
-      const { data, error } = await supabase
-        .from("state_leaders")
-        .select("*")
-
-      if (error) {
-        setErrorMsg(error.message);
-        setRows([]);
-        return;
-      }
-
-      setRows((data as any[]) || []);
-    };
-
-    load();
+    void load();
   }, []);
 
-  useEffect(() => {
-    const loadNames = async () => {
-      if (!userIds || userIds.length === 0) {
-        setNameByUserId({});
-        return;
-      }
+  async function addLeader() {
+    const uid = newUserId.trim();
+    if (!uid) return;
 
-      // Primary: players.auth_user_id -> game_name (your schema uses auth_user_id, NOT user_id)
-      {
-        const { data, error } = await supabase
-          .from("players")
-          .select("auth_user_id, game_name")
-          .in("auth_user_id", userIds);
+    const { data: u } = await supabase.auth.getUser();
+    const me = u.user?.id ?? "";
+    if (!me) return alert("Please sign in again.");
 
-        if (!error && data) {
-          const map: Record<string, string> = {};
-          for (const r of data as any[]) {
-            if (r.auth_user_id && r.game_name) map[r.auth_user_id] = r.game_name;
-          }
-          if (Object.keys(map).length > 0) {
-            setNameByUserId(map);
-            return;
-          }
-        }
-      }
+    setStatus("Adding…");
 
-      // Fallback: player_auth_links(user_id -> player_id) + players(id -> game_name)
-      {
-        const { data: links, error: linkErr } = await supabase
-          .from("player_auth_links")
-          .select("user_id, player_id")
-          .in("user_id", userIds);
+    const ins = await supabase.from("state_leaders").insert({
+      user_id: uid,
+      created_by: me,
+    });
 
-        if (!linkErr && links && (links as any[]).length > 0) {
-          const userToPlayer: Record<string, string> = {};
-          const playerIds: string[] = [];
+    if (ins.error) {
+      setStatus(ins.error.message);
+      return;
+    }
 
-          for (const l of links as any[]) {
-            if (l.user_id && l.player_id) {
-              userToPlayer[l.user_id] = l.player_id;
-              playerIds.push(l.player_id);
-            }
-          }
+    setNewUserId("");
+    setStatus("Added ✅");
+    await load();
+    window.setTimeout(() => setStatus(""), 900);
+  }
 
-          const uniq = Array.from(new Set(playerIds));
-          if (uniq.length > 0) {
-            const { data: players, error: pErr } = await supabase
-              .from("players")
-              .select("id, game_name")
-              .in("id", uniq);
+  async function removeLeader(r: Row) {
+    const ok = confirm("Remove this leader entry?");
+    if (!ok) return;
 
-            if (!pErr && players) {
-              const pidToName: Record<string, string> = {};
-              for (const p of players as any[]) {
-                if (p.id && p.game_name) pidToName[p.id] = p.game_name;
-              }
+    setStatus("Removing…");
 
-              const map: Record<string, string> = {};
-              for (const uid of Object.keys(userToPlayer)) {
-                const pid = userToPlayer[uid];
-                const nm = pidToName[pid];
-                if (nm) map[uid] = nm;
-              }
+    // Best effort delete: use both keys if possible
+    let del = await supabase
+      .from("state_leaders")
+      .delete()
+      .eq("user_id", r.user_id);
 
-              if (Object.keys(map).length > 0) {
-                setNameByUserId(map);
-                return;
-              }
-            }
-          }
-        }
-      }
+    // If created_at exists, scope delete tighter (prevents deleting multiple rows)
+    if (r.created_at) {
+      del = await supabase
+        .from("state_leaders")
+        .delete()
+        .eq("user_id", r.user_id)
+        .eq("created_at", r.created_at);
+    }
 
-      setNameByUserId({});
-    };
+    if (del.error) {
+      setStatus(del.error.message);
+      return;
+    }
 
-    loadNames();
-  }, [userIds]);
-
-  const leaderLabel = (uid?: string | null) => {
-    const id = (uid || "").trim();
-    if (!id) return "";
-    return nameByUserId[id] ?? id;
-  };
-
-  if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
-
-  // If you want everyone to see this page later, remove this block.
-  if (!isAdmin) {
-    return (
-      <div style={{ padding: 24 }}>
-        <h2>State Leaders</h2>
-        <p>Admins only.</p>
-        <p><Link to="/dashboard">Back to Dashboard</Link></p>
-      </div>
-    );
+    setStatus("Removed ✅");
+    await load();
+    window.setTimeout(() => setStatus(""), 900);
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2>👑 State Leaders</h2>
-        <div>
-          <Link to="/owner/state" style={{ marginRight: 12 }}>Owner State</Link>
-          <Link to="/state">State</Link>
+    <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <h2 style={{ margin: 0 }}>{title}</h2>
+        <SupportBundleButton />
+      </div>
+
+      <div style={{ marginTop: 8, opacity: 0.85, fontSize: 13 }}>
+        Note: This table currently stores only <b>user_id</b> entries. No “title/role” column exists yet.
+        Use <code>/owner/permissions-matrix-v3</code> for role-style permissions.
+      </div>
+
+      <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <input
+          value={newUserId}
+          onChange={(e) => setNewUserId(e.target.value)}
+          placeholder="Add leader by user_id (uuid)"
+          style={{ minWidth: 320, width: "min(520px, 100%)" }}
+        />
+        <button onClick={addLeader} type="button" disabled={!newUserId.trim()}>
+          Add
+        </button>
+        <button onClick={() => void load()} type="button">
+          Refresh
+        </button>
+
+        <div style={{ marginLeft: "auto", opacity: 0.8, fontSize: 12 }}>
+          {loading ? "Loading…" : status ? status : `${rows.length} rows`}
         </div>
       </div>
 
-      {errorMsg ? (
-        <div style={{ marginTop: 12, padding: 12, border: "1px solid rgba(255,255,255,0.15)" }}>
-          <b>Error:</b> {errorMsg}
-        </div>
-      ) : null}
+      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+        {rows.map((r) => (
+          <div key={`${r.user_id}-${r.created_at ?? ""}`} className="zombie-card" style={{ padding: 12, borderRadius: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 900 }}>Leader user_id</div>
+              <button type="button" onClick={() => void removeLeader(r)}>
+                Remove
+              </button>
+            </div>
 
-      <div style={{ marginTop: 16 }}>
-        {(rows || []).length === 0 ? (
-          <p>No state leaders yet.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid rgba(255,255,255,0.15)" }}>Player</th>
-                <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid rgba(255,255,255,0.15)" }}>Title</th>
-                <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid rgba(255,255,255,0.15)" }}>User UUID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td style={{ padding: 8, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                    {leaderLabel(r.user_id)}
-                  </td>
-                  <td style={{ padding: 8, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                    {r.title || ""}
-                  </td>
-                  <td style={{ padding: 8, borderBottom: "1px solid rgba(255,255,255,0.08)", fontFamily: "monospace", fontSize: 12 }}>
-                    {r.user_id || ""}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+            <div style={{ marginTop: 8, fontFamily: "monospace", fontSize: 13, opacity: 0.95 }}>
+              {r.user_id}
+            </div>
+
+            <div style={{ marginTop: 8, display: "flex", gap: 12, flexWrap: "wrap", opacity: 0.85, fontSize: 12 }}>
+              <div><b>Created:</b> {fmt(r.created_at)}</div>
+              <div><b>Created by:</b> {r.created_by ?? "—"}</div>
+            </div>
+          </div>
+        ))}
+
+        {rows.length === 0 && !loading ? (
+          <div style={{ opacity: 0.8 }}>No leaders yet.</div>
+        ) : null}
       </div>
     </div>
   );
 }
-
-
