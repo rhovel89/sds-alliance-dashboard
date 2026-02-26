@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
+import { useTranslation } from "react-i18next";
 
 type Req = {
   id: string;
@@ -25,6 +26,8 @@ function tpl(str: string, r: Req) {
 }
 
 export default function OwnerOnboardingQueuePage() {
+  const { t } = useTranslation();
+  const tt = (k: string) => (typeof t === "function" ? tt(k) : k);
   const [stateCode, setStateCode] = useState("789");
   const [rows, setRows] = useState<Req[]>([]);
   const [status, setStatus] = useState("");
@@ -100,7 +103,7 @@ Open your dashboard:
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
         <label style={{ opacity: 0.75 }}>State</label>
         <input value={stateCode} onChange={(e) => setStateCode(e.target.value)} style={{ width: 90 }} />
-        <button onClick={load}>{t("ownerOnboardingQueue.reload")}</button>
+        <button onClick={load}>{tt("ownerOnboardingQueue.reload")}</button>
         <div style={{ opacity: 0.75 }}>Pending: {pending.length} • Total: {rows.length}</div>
       </div>
 
@@ -137,7 +140,7 @@ Open your dashboard:
               </div>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={() => approveAndProvision(r)} disabled={!r.alliance_code || !r.alliance_code.trim()}>{t("ownerOnboardingQueue.provision")}</button>
+                <button onClick={() => approveAndProvision(r)} disabled={!r.alliance_code || !r.alliance_code.trim()}>{tt("ownerOnboardingQueue.provision")}</button>
                 <button onClick={() => reject(r)}>Reject</button>
               </div>
             </div>
