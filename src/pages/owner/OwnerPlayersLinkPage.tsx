@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import PlayerLookupPanel from "../../components/players/PlayerLookupPanel";
 
 type PlayerRow = {
   id: string;
@@ -101,6 +102,7 @@ export default function OwnerPlayersLinkPage() {
 
   return (
     <div style={{ padding: 24 }}>
+      <div style={{ marginTop: 12 }}>         <PlayerLookupPanel />       </div>
       <h2>🧟 Owner — Players (Link / Unlink)</h2>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -152,3 +154,4 @@ export default function OwnerPlayersLinkPage() {
     </div>
   );
 }
+
