@@ -27,7 +27,7 @@ function tpl(str: string, r: Req) {
 
 export default function OwnerOnboardingQueuePage() {
   const { t } = useTranslation();
-  const tt = (k: string) => (typeof t === "function" ? tt(k) : k);
+  const tt = (k: string) => (typeof t === "function" ? t(k) : k);
   const [stateCode, setStateCode] = useState("789");
   const [rows, setRows] = useState<Req[]>([]);
   const [status, setStatus] = useState("");
