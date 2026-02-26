@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
+import AllianceCodeMapSyncPanel from "../../components/owner/AllianceCodeMapSyncPanel";
 
 const LS_KEY = "sad_alliance_directory_v1";
 
@@ -181,6 +182,7 @@ export default function OwnerAllianceDirectorySyncPage() {
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ marginTop: 12 }}>         <AllianceCodeMapSyncPanel />       </div>
       <h1 style={{ fontSize: 22, fontWeight: 900 }}>Alliance Directory Sync (DB ↔ localStorage)</h1>
       <div style={{ opacity: 0.8, marginTop: 6 }}>
         Use this to sync the shared DB directory into your UI-only editor and push your edits back to DB.
@@ -231,3 +233,4 @@ export default function OwnerAllianceDirectorySyncPage() {
     </div>
   );
 }
+
