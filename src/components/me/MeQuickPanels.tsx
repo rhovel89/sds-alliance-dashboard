@@ -1,10 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import DailyBriefingPanel from "./DailyBriefingPanel";
+import MeAllianceSwitcherPanel from "./MeAllianceSwitcherPanel";
 
 function Card(props: { title: string; children: React.ReactNode; note?: string }) {
   return (
     <div style={{ border: "1px solid #333", borderRadius: 12, padding: 12 }}>
+      <div style={{ marginTop: 12 }}>         <MeAllianceSwitcherPanel />       </div>
       <div style={{ marginTop: 12 }}>         <DailyBriefingPanel />       </div>
       <div style={{ fontWeight: 900 }}>{props.title}</div>
       <div style={{ marginTop: 10 }}>{props.children}</div>
@@ -45,6 +47,7 @@ export default function MeQuickPanels() {
     </div>
   );
 }
+
 
 
 
