@@ -26,6 +26,7 @@ function isImage(r: Row) {
 
 export default function StateBulletinAttachmentsPanel(props: { stateCode: string; bulletinId: string; canManage: boolean }) {
   const { stateCode, bulletinId, canManage } = props;
+
   const [rows, setRows] = useState<Row[]>([]);
   const [status, setStatus] = useState("");
   const [preview, setPreview] = useState<Record<string, string>>({});

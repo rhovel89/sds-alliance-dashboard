@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import StateBulletinAttachmentsPanel from "./StateBulletinAttachmentsPanel";
 
 type Row = {
   id: string;
