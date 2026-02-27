@@ -10,9 +10,9 @@ export default function DailyBriefingPanel() {
   const [status, setStatus] = useState<string>("");
 
   async function load() {
-    setStatus("");
+    setStatus("Loading…");
 
-    // Mail unread
+    // Mail unread (best-effort)
     try {
       const t = await supabase.from("v_my_mail_threads").select("unread_count");
       if (!t.error) {
@@ -21,17 +21,19 @@ export default function DailyBriefingPanel() {
       }
     } catch {}
 
-    // Events today (best-effort; view may exist already)
+    // Events today (best-effort; if view doesn't exist, keep 0)
     try {
       const e = await supabase.from("v_my_events_today").select("event_id");
       if (!e.error) setEventsToday((e.data ?? []).length);
     } catch {}
 
-    // Bulletins (State 789)
+    // State bulletins count (best-effort)
     try {
       const b = await supabase.from("state_bulletins").select("id").eq("state_code", "789");
       if (!b.error) setBulletins((b.data ?? []).length);
     } catch {}
+
+    setStatus("");
   }
 
   useEffect(() => { void load(); }, []);
