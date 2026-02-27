@@ -6,7 +6,7 @@ type MapRow = { alliance_code: string; alliance_id: string };
 
 export default function OwnerMailBroadcastV2Page() {
   const [alliances, setAlliances] = useState<MapRow[]>([]);
-  const [allianceCode, setAllianceCode] = useState("SDS");
+  const [allianceCode, setAllianceCode] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [status, setStatus] = useState("");
@@ -16,7 +16,7 @@ export default function OwnerMailBroadcastV2Page() {
       const r = await supabase.from("alliance_code_map").select("alliance_code,alliance_id").order("alliance_code", { ascending: true });
       if (!r.error) {
         setAlliances((r.data ?? []) as any);
-        if ((r.data ?? []).length && !allianceCode) setAllianceCode(String((r.data as any)[0].alliance_code));
+        if (!allianceCode && (r.data ?? []).length) setAllianceCode(String((r.data as any)[0].alliance_code));
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -34,7 +34,7 @@ export default function OwnerMailBroadcastV2Page() {
     });
 
     if (r.error) { setStatus(r.error.message); return; }
-    setStatus("Queued ✅ (shows in members' mail)");
+    setStatus("Broadcast sent ✅");
     setSubject("");
     setBody("");
     window.setTimeout(() => setStatus(""), 1200);
