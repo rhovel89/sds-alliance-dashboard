@@ -1,0 +1,5 @@
+{
+  "nav": { "me": "My Dashboard", "state": "State Hub", "mail": "My Mail", "search": "Search" },
+  "owner": { "commandCenter": "Owner Command Center", "accessControl": "Access Control", "activity": "Activity Feed" },
+  "common": { "refresh": "Refresh", "save": "Save", "cancel": "Cancel" }
+}
