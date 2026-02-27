@@ -29,6 +29,102 @@ function fmt(dt?: string | null) {
   try { return new Date(dt).toLocaleString(); } catch { return dt; }
 }
 
+function isDmThread(threadKey: string) {
+  return String(threadKey || "").startsWith("dm:");
+}
+
+function ReplyBox(props: { threadKey: string; onSent: () => void }) {
+  const [me, setMe] = useState<string>("");
+  const [peer, setPeer] = useState<{ id: string; name: string } | null>(null);
+  const [body, setBody] = useState<string>("");
+  const [status, setStatus] = useState<string>("");
+
+  useEffect(() => {
+    (async () => {
+      const u = await supabase.auth.getUser();
+      setMe(u.data?.user?.id || "");
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      setPeer(null);
+      if (!props.threadKey || !isDmThread(props.threadKey) || !me) return;
+
+      const r = await supabase
+        .from("v_my_mail_messages")
+        .select("from_user_id_norm,to_user_id_norm,from_name,to_name,thread_key,created_at_norm")
+        .eq("thread_key", props.threadKey)
+        .order("created_at_norm", { ascending: false })
+        .limit(50);
+
+      if (r.error || !r.data?.length) return;
+
+      let pid = "";
+      let pname = "";
+
+      for (const m of (r.data as any[])) {
+        const f = String(m.from_user_id_norm || "");
+        const t = String(m.to_user_id_norm || "");
+        if (f && f !== me) { pid = f; pname = String(m.from_name || ""); break; }
+        if (t && t !== me) { pid = t; pname = String(m.to_name || ""); break; }
+      }
+
+      if (!pid) return;
+      setPeer({ id: pid, name: pname || pid });
+    })();
+  }, [props.threadKey, me]);
+
+  async function send() {
+    if (!peer?.id) return;
+    if (!body.trim()) return alert("Reply body required.");
+
+    setStatus("Sending…");
+    const r = await supabase.rpc("mail_send_message", {
+      p_to_user_id: peer.id,
+      p_subject: null,
+      p_body: body,
+      p_alliance_code: null,
+    });
+
+    if (r.error) { setStatus(r.error.message); return; }
+    setBody("");
+    setStatus("Sent ✅");
+    props.onSent();
+    window.setTimeout(() => setStatus(""), 900);
+  }
+
+  const disabledReason = !props.threadKey
+    ? "No thread selected."
+    : !isDmThread(props.threadKey)
+    ? "Reply disabled for broadcast threads."
+    : !peer
+    ? "Finding peer…"
+    : "";
+
+  return (
+    <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ fontWeight: 950 }}>Reply</div>
+        <div style={{ opacity: 0.8, fontSize: 12 }}>{status || (peer ? `To: ${peer.name}` : disabledReason)}</div>
+      </div>
+
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        rows={3}
+        placeholder={peer ? "Write a reply…" : "Reply not available."}
+        style={{ width: "100%", marginTop: 8 }}
+        disabled={!peer}
+      />
+
+      <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
+        <button type="button" onClick={() => void send()} disabled={!peer}>Send Reply</button>
+      </div>
+    </div>
+  );
+}
+
 export default function MyMailThreadsPage() {
   const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -50,12 +146,10 @@ export default function MyMailThreadsPage() {
   }
 
   async function loadThreads() {
-    setStatus("Loading threads…");
     const res = await supabase.from("v_my_mail_threads").select("*");
     if (res.error) { setStatus(res.error.message); setThreads([]); return; }
     const rows = (res.data ?? []) as any as ThreadRow[];
     setThreads(rows);
-    setStatus("");
     if (!selected && rows.length) setSelected(rows[0].thread_key);
   }
 
@@ -92,7 +186,7 @@ export default function MyMailThreadsPage() {
     [threads, selected]
   );
 
-  async function send() {
+  async function sendNew() {
     if (!toUserId) return alert("Pick a player.");
     if (!body.trim()) return alert("Message body required.");
 
@@ -139,7 +233,7 @@ export default function MyMailThreadsPage() {
           <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (optional)" />
           <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder="Write your message…" />
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button type="button" onClick={() => void send()}>Send</button>
+            <button type="button" onClick={() => void sendNew()}>Send</button>
           </div>
         </div>
       </div>
@@ -193,86 +287,14 @@ export default function MyMailThreadsPage() {
                 <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{String(m.body ?? "")}</div>
               </div>
             ))}
-            {!msgs.length ? <div style={{ opacity: 0.8 }}>No messages in this thread.
-          {/* Reply in thread */}
-          <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 12 }}>
-            <div style={{ fontWeight: 900 }}>Reply in thread</div>
-            <ReplyBox threadKey={selected || ""} />
-          </div></div> : null}
+            {!msgs.length ? <div style={{ opacity: 0.8 }}>No messages in this thread.</div> : null}
           </div>
+
+          <ReplyBox
+            threadKey={selected || ""}
+            onSent={() => { if (selected) void loadMsgs(selected); }}
+          />
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ReplyBox(props: { threadKey: string }) {
-  const [me, setMe] = useState<string>("");
-  const [peer, setPeer] = useState<{ id: string; name: string } | null>(null);
-  const [body2, setBody2] = useState<string>("");
-  const [st, setSt] = useState<string>("");
-
-  useEffect(() => {
-    (async () => {
-      const u = await supabase.auth.getUser();
-      setMe(u.data?.user?.id || "");
-    })();
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      if (!props.threadKey) return;
-      const r = await supabase
-        .from("v_my_mail_messages")
-        .select("from_user_id_norm,to_user_id_norm,from_name,to_name,thread_key")
-        .eq("thread_key", props.threadKey)
-        .order("created_at_norm", { ascending: false })
-        .limit(20);
-
-      if (r.error || !r.data?.length) { setPeer(null); return; }
-
-      // Find the "other" user in a DM thread
-      const rows: any[] = r.data as any[];
-      let pid = "";
-      let pname = "";
-      for (const m of rows) {
-        const f = String(m.from_user_id_norm || "");
-        const t = String(m.to_user_id_norm || "");
-        if (f && f !== me) { pid = f; pname = String(m.from_name || ""); break; }
-        if (t && t !== me) { pid = t; pname = String(m.to_name || ""); break; }
-      }
-      if (!pid) { setPeer(null); return; }
-      setPeer({ id: pid, name: pname || pid });
-    })();
-  }, [props.threadKey, me]);
-
-  async function sendReply() {
-    if (!peer?.id) return alert("This thread is not a DM thread (or peer unknown).");
-    if (!body2.trim()) return alert("Reply body required.");
-    setSt("Sending…");
-
-    const r = await supabase.rpc("mail_send_message", {
-      p_to_user_id: peer.id,
-      p_subject: null,
-      p_body: body2,
-      p_alliance_code: null
-    });
-
-    if (r.error) { setSt(r.error.message); return; }
-    setBody2("");
-    setSt("Sent ✅");
-    window.setTimeout(() => setSt(""), 900);
-  }
-
-  return (
-    <div style={{ marginTop: 8 }}>
-      <div style={{ opacity: 0.8, fontSize: 12 }}>
-        {peer ? <>Replying to <b>{peer.name}</b></> : <>Reply disabled for this thread.</>}
-        {st ? " • " + st : ""}
-      </div>
-      <textarea value={body2} onChange={(e) => setBody2(e.target.value)} rows={3} placeholder="Write a reply…" style={{ width: "100%", marginTop: 8 }} />
-      <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
-        <button type="button" onClick={() => void sendReply()} disabled={!peer}>Send Reply</button>
       </div>
     </div>
   );
