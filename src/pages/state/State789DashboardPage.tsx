@@ -5,6 +5,7 @@ import SupportBundleButton from "../../components/system/SupportBundleButton";
 import { State789AchievementsProgressWidget } from "../../components/state/State789AchievementsProgressWidget";
 import { StateAchievementsWidget } from "../../components/state/StateAchievementsWidget";
 import StateBulletinBoardPanel from "../../components/state/StateBulletinBoardPanel";
+import StateBulletinBoardDbPanel from "../../components/state/StateBulletinBoardDbPanel";
 
 type DirItem = { id: string; code: string; name: string; state: string };
 
@@ -414,6 +415,7 @@ export default function State789DiscussionPage() {
 
   return (
     <div style={{ padding: 14 }}>
+      <div style={{ marginTop: 12 }}>         <StateBulletinBoardDbPanel stateCode="789" />       </div>
       <div style={{ marginTop: 12 }}><StateBulletinBoardPanel stateCode="789" /></div>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>💬 State 789 — Discussion</h2>
@@ -559,4 +561,5 @@ export default function State789DiscussionPage() {
     </div>
   );
 }
+
 
