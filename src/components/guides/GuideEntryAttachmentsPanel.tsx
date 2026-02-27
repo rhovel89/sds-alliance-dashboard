@@ -80,6 +80,10 @@ export default function GuideEntryAttachmentsPanel(props: {
       const safeName = safeKeyPart(file.name);
       const key = `${String(allianceCode || "").toUpperCase()}/${entryId}/${Date.now()}-${safeName}`;
 
+            const userRes = await supabase.auth.getUser();
+      const uid = userRes.data?.user?.id || null;
+      if (!uid) { setStatus("You must be logged in to upload."); return; }
+
       setStatus(`Uploading ${i + 1}/${files.length}…`);
       const up = await supabase.storage.from(GUIDE_MEDIA_BUCKET).upload(key, file, { upsert: false });
       if (up.error) { setStatus(up.error.message); return; }
@@ -185,4 +189,5 @@ export default function GuideEntryAttachmentsPanel(props: {
     </div>
   );
 }
+
 
