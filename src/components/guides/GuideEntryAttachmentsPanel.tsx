@@ -61,7 +61,7 @@ export default function GuideEntryAttachmentsPanel(props: {
       const key = `${String(allianceCode || "").toUpperCase()}/${entryId}/${Date.now()}-${safeName}`;
 
       setStatus(`Uploading ${i + 1}/${files.length}…`);
-      const up = await supabase.storage.from("guide-media").upload(key, file, { upsert: false });
+      const up = await supabase.storage.from("guide_media").upload(key, file, { upsert: false });
       if (up.error) { setStatus(up.error.message); return; }
 
       const ins = await supabase.from("guide_entry_attachments").insert({
@@ -82,7 +82,7 @@ export default function GuideEntryAttachmentsPanel(props: {
   }
 
   async function openFile(r: Row) {
-    const signed = await supabase.storage.from("guide-media").createSignedUrl(r.file_path, 60);
+    const signed = await supabase.storage.from("guide_media").createSignedUrl(r.file_path, 60);
     if (signed.error || !signed.data?.signedUrl) return alert(signed.error?.message || "Could not open file.");
     window.open(signed.data.signedUrl, "_blank");
   }
@@ -93,7 +93,7 @@ export default function GuideEntryAttachmentsPanel(props: {
     if (!ok) return;
 
     setStatus("Deleting…");
-    const delObj = await supabase.storage.from("guide-media").remove([r.file_path]);
+    const delObj = await supabase.storage.from("guide_media").remove([r.file_path]);
     if (delObj.error) { setStatus(delObj.error.message); return; }
 
     const delRow = await supabase.from("guide_entry_attachments").delete().eq("id", r.id);
@@ -131,3 +131,4 @@ export default function GuideEntryAttachmentsPanel(props: {
     </div>
   );
 }
+
