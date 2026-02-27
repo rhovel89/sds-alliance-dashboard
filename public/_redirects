@@ -1,4 +1,4 @@
 # Cloudflare Pages SPA fallback
-# IMPORTANT: keep /assets/* as static so module scripts don't get index.html
+# Keep /assets/* as static files so JS modules don't get index.html
 /assets/*  /assets/:splat 200
 /*         /index.html 200
