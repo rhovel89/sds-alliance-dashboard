@@ -193,9 +193,86 @@ export default function MyMailThreadsPage() {
                 <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{String(m.body ?? "")}</div>
               </div>
             ))}
-            {!msgs.length ? <div style={{ opacity: 0.8 }}>No messages in this thread.</div> : null}
+            {!msgs.length ? <div style={{ opacity: 0.8 }}>No messages in this thread.
+          {/* Reply in thread */}
+          <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 12 }}>
+            <div style={{ fontWeight: 900 }}>Reply in thread</div>
+            <ReplyBox threadKey={selected || ""} />
+          </div></div> : null}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ReplyBox(props: { threadKey: string }) {
+  const [me, setMe] = useState<string>("");
+  const [peer, setPeer] = useState<{ id: string; name: string } | null>(null);
+  const [body2, setBody2] = useState<string>("");
+  const [st, setSt] = useState<string>("");
+
+  useEffect(() => {
+    (async () => {
+      const u = await supabase.auth.getUser();
+      setMe(u.data?.user?.id || "");
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      if (!props.threadKey) return;
+      const r = await supabase
+        .from("v_my_mail_messages")
+        .select("from_user_id_norm,to_user_id_norm,from_name,to_name,thread_key")
+        .eq("thread_key", props.threadKey)
+        .order("created_at_norm", { ascending: false })
+        .limit(20);
+
+      if (r.error || !r.data?.length) { setPeer(null); return; }
+
+      // Find the "other" user in a DM thread
+      const rows: any[] = r.data as any[];
+      let pid = "";
+      let pname = "";
+      for (const m of rows) {
+        const f = String(m.from_user_id_norm || "");
+        const t = String(m.to_user_id_norm || "");
+        if (f && f !== me) { pid = f; pname = String(m.from_name || ""); break; }
+        if (t && t !== me) { pid = t; pname = String(m.to_name || ""); break; }
+      }
+      if (!pid) { setPeer(null); return; }
+      setPeer({ id: pid, name: pname || pid });
+    })();
+  }, [props.threadKey, me]);
+
+  async function sendReply() {
+    if (!peer?.id) return alert("This thread is not a DM thread (or peer unknown).");
+    if (!body2.trim()) return alert("Reply body required.");
+    setSt("Sending…");
+
+    const r = await supabase.rpc("mail_send_message", {
+      p_to_user_id: peer.id,
+      p_subject: null,
+      p_body: body2,
+      p_alliance_code: null
+    });
+
+    if (r.error) { setSt(r.error.message); return; }
+    setBody2("");
+    setSt("Sent ✅");
+    window.setTimeout(() => setSt(""), 900);
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ opacity: 0.8, fontSize: 12 }}>
+        {peer ? <>Replying to <b>{peer.name}</b></> : <>Reply disabled for this thread.</>}
+        {st ? " • " + st : ""}
+      </div>
+      <textarea value={body2} onChange={(e) => setBody2(e.target.value)} rows={3} placeholder="Write a reply…" style={{ width: "100%", marginTop: 8 }} />
+      <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
+        <button type="button" onClick={() => void sendReply()} disabled={!peer}>Send Reply</button>
       </div>
     </div>
   );
