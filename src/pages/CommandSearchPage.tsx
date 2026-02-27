@@ -15,21 +15,30 @@ export default function CommandSearchPage() {
     setStatus("Searching…");
     setMail([]); setBulletins([]); setGuides([]);
 
-    // Mail (your own scope via v_my_mail_messages)
     try {
-      const m = await supabase.from("v_my_mail_messages").select("thread_key,from_name,to_name,subject_norm,body,created_at_norm").ilike("body", `%${term}%`).limit(25);
+      const m = await supabase
+        .from("v_my_mail_messages")
+        .select("thread_key,from_name,to_name,subject_norm,body,created_at_norm")
+        .or(`subject_norm.ilike.%${term}%,body.ilike.%${term}%`)
+        .limit(25);
       if (!m.error) setMail(m.data ?? []);
     } catch {}
 
-    // State bulletins (state 789 best-effort)
     try {
-      const b = await supabase.from("state_bulletins").select("id,state_code,title,body,created_at").ilike("body", `%${term}%`).limit(25);
+      const b = await supabase
+        .from("state_bulletins")
+        .select("id,state_code,title,body,created_at")
+        .or(`title.ilike.%${term}%,body.ilike.%${term}%`)
+        .limit(25);
       if (!b.error) setBulletins(b.data ?? []);
     } catch {}
 
-    // Guides (best-effort: entries table)
     try {
-      const g = await supabase.from("guide_section_entries").select("id,alliance_code,section_id,title,body,created_at").or(`title.ilike.%${term}%,body.ilike.%${term}%`).limit(25);
+      const g = await supabase
+        .from("guide_section_entries")
+        .select("id,alliance_code,section_id,title,body,created_at")
+        .or(`title.ilike.%${term}%,body.ilike.%${term}%`)
+        .limit(25);
       if (!g.error) setGuides(g.data ?? []);
     } catch {}
 
