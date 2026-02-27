@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import UserIdDisplay from "../../components/common/UserIdDisplay";
 
 type Alliance = { code?: string; tag?: string; name?: string };
 type MemberRow = { player_id: string; role?: string; game_name?: string; name?: string };
@@ -421,3 +422,4 @@ export default function OwnerAccessControlPage() {
     </div>
   );
 }
+
