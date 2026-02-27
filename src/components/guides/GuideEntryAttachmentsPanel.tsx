@@ -17,6 +17,10 @@ function prettySize(n?: number | null) {
   return `${(kb / 1024).toFixed(1)} MB`;
 }
 
+function safeKeyPart(s: string) {
+  return String(s || "").replace(/[^\w.\-]+/g, "_");
+}
+
 export default function GuideEntryAttachmentsPanel(props: {
   allianceCode: string;
   entryId: string;
@@ -28,42 +32,49 @@ export default function GuideEntryAttachmentsPanel(props: {
   const [status, setStatus] = useState<string>("");
 
   async function load() {
+    if (!entryId) return;
     const res = await supabase
       .from("guide_entry_attachments")
       .select("*")
       .eq("entry_id", entryId)
       .order("created_at", { ascending: false });
 
-    if (res.error) { setStatus(res.error.message); setRows([]); return; }
+    if (res.error) {
+      setStatus(res.error.message);
+      setRows([]);
+      return;
+    }
+
     setRows((res.data ?? []) as any);
     setStatus("");
   }
 
-  useEffect(() => { if (entryId) void load(); }, [entryId]);
+  useEffect(() => { void load(); }, [entryId]);
 
   async function upload(files: FileList | null) {
     if (!canEdit) return;
     if (!files || !files.length) return;
 
-    const file = files[0];
-    const safeName = file.name.replace(/[^\w.\-]+/g, "_");
-    const key = `${allianceCode}/${entryId}/${Date.now()}-${safeName}`;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const safeName = safeKeyPart(file.name);
+      const key = `${String(allianceCode || "").toUpperCase()}/${entryId}/${Date.now()}-${safeName}`;
 
-    setStatus("Uploading…");
-    const up = await supabase.storage.from("guide-media").upload(key, file, { upsert: false });
+      setStatus(`Uploading ${i + 1}/${files.length}…`);
+      const up = await supabase.storage.from("guide-media").upload(key, file, { upsert: false });
+      if (up.error) { setStatus(up.error.message); return; }
 
-    if (up.error) { setStatus(up.error.message); return; }
+      const ins = await supabase.from("guide_entry_attachments").insert({
+        alliance_code: String(allianceCode || "").toUpperCase(),
+        entry_id: entryId,
+        file_path: key,
+        file_name: file.name,
+        mime_type: file.type || null,
+        size_bytes: file.size || null,
+      });
 
-    const ins = await supabase.from("guide_entry_attachments").insert({
-      alliance_code: allianceCode,
-      entry_id: entryId,
-      file_path: key,
-      file_name: file.name,
-      mime_type: file.type || null,
-      size_bytes: file.size || null,
-    });
-
-    if (ins.error) { setStatus(ins.error.message); return; }
+      if (ins.error) { setStatus(ins.error.message); return; }
+    }
 
     setStatus("Uploaded ✅");
     await load();
@@ -102,7 +113,7 @@ export default function GuideEntryAttachmentsPanel(props: {
 
       {canEdit ? (
         <div style={{ marginTop: 8 }}>
-          <input type="file" onChange={(e) => void upload(e.target.files)} />
+          <input type="file" multiple onChange={(e) => void upload(e.target.files)} />
         </div>
       ) : null}
 
