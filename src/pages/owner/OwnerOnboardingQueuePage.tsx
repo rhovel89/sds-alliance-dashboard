@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
 import { useTranslation } from "react-i18next";
+import UserIdDisplay from "../../components/common/UserIdDisplay";
 
 type Req = {
   id: string;
@@ -156,6 +157,7 @@ Open your dashboard:
     </div>
   );
 }
+
 
 
 
