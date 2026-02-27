@@ -29,24 +29,22 @@ function isImage(r: Row) {
   return n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".gif") || n.endsWith(".webp");
 }
 
-export default function GuideEntryAttachmentsPanel(props: {
+export default function GuideSectionAttachmentsPanel(props: {
   allianceCode: string;
-  entryId: string;
+  sectionId: string;
   canEdit: boolean;
 }) {
-  const { allianceCode, entryId, canEdit } = props;
+  const { allianceCode, sectionId, canEdit } = props;
 
   const [rows, setRows] = useState<Row[]>([]);
   const [status, setStatus] = useState<string>("");
-
-  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({}); // id -> signed url
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
 
   async function load() {
-    if (!entryId) return;
     const res = await supabase
-      .from("guide_entry_attachments")
+      .from("guide_section_attachments")
       .select("*")
-      .eq("entry_id", entryId)
+      .eq("section_id", sectionId)
       .order("created_at", { ascending: false });
 
     if (res.error) {
@@ -59,8 +57,7 @@ export default function GuideEntryAttachmentsPanel(props: {
     setRows(list);
     setStatus("");
 
-    // Build inline previews for image files (best-effort)
-    const img = list.filter(isImage).slice(0, 12);
+    const img = list.filter(isImage).slice(0, 8);
     const next: Record<string, string> = {};
     for (const r of img) {
       const signed = await supabase.storage.from(GUIDE_MEDIA_BUCKET).createSignedUrl(r.file_path, 60 * 30);
@@ -69,7 +66,7 @@ export default function GuideEntryAttachmentsPanel(props: {
     setPreviewUrls(next);
   }
 
-  useEffect(() => { void load(); }, [entryId]);
+  useEffect(() => { if (sectionId) void load(); }, [sectionId]);
 
   async function upload(files: FileList | null) {
     if (!canEdit) return;
@@ -78,15 +75,15 @@ export default function GuideEntryAttachmentsPanel(props: {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const safeName = safeKeyPart(file.name);
-      const key = `${String(allianceCode || "").toUpperCase()}/${entryId}/${Date.now()}-${safeName}`;
+      const key = `${String(allianceCode || "").toUpperCase()}/sections/${sectionId}/${Date.now()}-${safeName}`;
 
       setStatus(`Uploading ${i + 1}/${files.length}…`);
       const up = await supabase.storage.from(GUIDE_MEDIA_BUCKET).upload(key, file, { upsert: false });
       if (up.error) { setStatus(up.error.message); return; }
 
-      const ins = await supabase.from("guide_entry_attachments").insert({
+      const ins = await supabase.from("guide_section_attachments").insert({
         alliance_code: String(allianceCode || "").toUpperCase(),
-        entry_id: entryId,
+        section_id: sectionId,
         file_path: key,
         file_name: file.name,
         mime_type: file.type || null,
@@ -109,14 +106,14 @@ export default function GuideEntryAttachmentsPanel(props: {
 
   async function remove(r: Row) {
     if (!canEdit) return;
-    const ok = confirm("Delete this attachment?");
+    const ok = confirm("Delete this section attachment?");
     if (!ok) return;
 
     setStatus("Deleting…");
     const delObj = await supabase.storage.from(GUIDE_MEDIA_BUCKET).remove([r.file_path]);
     if (delObj.error) { setStatus(delObj.error.message); return; }
 
-    const delRow = await supabase.from("guide_entry_attachments").delete().eq("id", r.id);
+    const delRow = await supabase.from("guide_section_attachments").delete().eq("id", r.id);
     if (delRow.error) { setStatus(delRow.error.message); return; }
 
     setStatus("Deleted ✅");
@@ -127,9 +124,9 @@ export default function GuideEntryAttachmentsPanel(props: {
   const imgs = useMemo(() => rows.filter(isImage), [rows]);
 
   return (
-    <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 10 }}>
+    <div className="zombie-card" style={{ padding: 12, borderRadius: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ fontWeight: 900, opacity: 0.95 }}>Attachments</div>
+        <div style={{ fontWeight: 950 }}>Section Attachments</div>
         <div style={{ opacity: 0.75, fontSize: 12 }}>{status}</div>
       </div>
 
@@ -142,23 +139,18 @@ export default function GuideEntryAttachmentsPanel(props: {
         </div>
       ) : null}
 
-      {/* Inline image previews */}
       {imgs.length ? (
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {imgs.slice(0, 12).map((r) => (
+          {imgs.slice(0, 8).map((r) => (
             <div key={r.id} style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 8 }}>
               {previewUrls[r.id] ? (
-                <img
-                  src={previewUrls[r.id]}
-                  alt={r.file_name}
-                  style={{ width: 180, height: "auto", borderRadius: 10, display: "block" }}
-                />
+                <img src={previewUrls[r.id]} alt={r.file_name} style={{ width: 160, height: "auto", borderRadius: 10, display: "block" }} />
               ) : (
-                <div style={{ width: 180, height: 120, opacity: 0.75, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 160, height: 100, opacity: 0.75, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   (preview loading…)
                 </div>
               )}
-              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.9, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.9, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {r.file_name}
               </div>
               <div style={{ marginTop: 6, display: "flex", gap: 8 }}>
@@ -170,7 +162,6 @@ export default function GuideEntryAttachmentsPanel(props: {
         </div>
       ) : null}
 
-      {/* All attachments list */}
       <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
         {rows.map((r) => (
           <div key={r.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -180,7 +171,7 @@ export default function GuideEntryAttachmentsPanel(props: {
             {canEdit ? <button type="button" onClick={() => void remove(r)}>Delete</button> : null}
           </div>
         ))}
-        {!rows.length ? <div style={{ opacity: 0.75, fontSize: 12 }}>No attachments.</div> : null}
+        {!rows.length ? <div style={{ opacity: 0.75, fontSize: 12 }}>No section attachments.</div> : null}
       </div>
     </div>
   );

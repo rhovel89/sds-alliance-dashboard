@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useGuidesEditAccess } from "../../hooks/useGuidesEditAccess";
 import { GuideEntriesPanel } from "../../components/guides/GuideEntriesPanel";
 import GuideEntryAttachmentsPanel from "../../components/guides/GuideEntryAttachmentsPanel";
+import GuideSectionAttachmentsPanel from "../../components/guides/GuideSectionAttachmentsPanel";
 
 type SectionRow = Record<string, any>;
 type EntryRow = Record<string, any>;
@@ -414,6 +415,7 @@ export function AllianceGuidesCommandCenter() {
         <div style={{ flex: 1, border: "1px solid rgba(255,255,255,0.15)", padding: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <b>Entries</b>
+            <div style={{ marginTop: 10 }}>               {selectedSectionId ? <GuideSectionAttachmentsPanel allianceCode={allianceCode} sectionId={String(selectedSectionId)} canEdit={canEdit} /> : null}             </div>
             {loadingEntries ? <span style={{ opacity: 0.8 }}>Loading…</span> : null}
           </div>
 
