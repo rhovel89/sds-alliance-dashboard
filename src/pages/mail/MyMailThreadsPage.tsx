@@ -40,6 +40,15 @@ export default function MyMailThreadsPage() {
   const [subject, setSubject] = useState<string>("");
   const [body, setBody] = useState<string>("");
 
+  async function loadPlayers() {
+    const res = await supabase
+      .from("v_approved_players")
+      .select("user_id,display_name,player_id")
+      .order("display_name", { ascending: true });
+
+    if (!res.error) setPlayers((res.data ?? []) as any);
+  }
+
   async function loadThreads() {
     setStatus("Loading threads…");
     const res = await supabase.from("v_my_mail_threads").select("*");
@@ -62,32 +71,38 @@ export default function MyMailThreadsPage() {
     setMsgs((res.data ?? []) as any);
     setStatus("");
 
-    // mark read
     await supabase.rpc("mail_mark_thread_read", { p_thread_key: threadKey });
     await loadThreads();
   }
 
-  async function loadPlayers() {
-    const res = await supabase.from("v_approved_players").select("user_id,display_name,player_id").order("display_name", { ascending: true });
-    if (res.error) return;
-    setPlayers((res.data ?? []) as any);
-  }
+  useEffect(() => {
+    void loadPlayers();
+    void loadThreads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  useEffect(() => { void loadPlayers(); void loadThreads(); }, []);
-  useEffect(() => { if (selected) void loadMsgs(selected); }, [selected]);
+  useEffect(() => {
+    if (selected) void loadMsgs(selected);
+    else setMsgs([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
-  const selectedThread = useMemo(() => threads.find(t => t.thread_key === selected) ?? null, [threads, selected]);
+  const selectedThread = useMemo(
+    () => threads.find((t) => t.thread_key === selected) ?? null,
+    [threads, selected]
+  );
 
   async function send() {
     if (!toUserId) return alert("Pick a player.");
     if (!body.trim()) return alert("Message body required.");
 
     setStatus("Sending…");
+
     const r = await supabase.rpc("mail_send_message", {
       p_to_user_id: toUserId,
       p_subject: subject || null,
       p_body: body,
-      p_alliance_code: null
+      p_alliance_code: null,
     });
 
     if (r.error) { setStatus(r.error.message); return; }
@@ -117,7 +132,7 @@ export default function MyMailThreadsPage() {
         <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
           <select value={toUserId} onChange={(e) => setToUserId(e.target.value)}>
             <option value="">Select player…</option>
-            {players.map(p => (
+            {players.map((p) => (
               <option key={p.user_id} value={p.user_id}>{p.display_name}</option>
             ))}
           </select>
@@ -134,7 +149,7 @@ export default function MyMailThreadsPage() {
         <div className="zombie-card" style={{ padding: 12, borderRadius: 16 }}>
           <div style={{ fontWeight: 950 }}>Threads</div>
           <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-            {threads.map(t => (
+            {threads.map((t) => (
               <button
                 key={t.thread_key}
                 type="button"
@@ -144,7 +159,7 @@ export default function MyMailThreadsPage() {
                   padding: 10,
                   borderRadius: 14,
                   textAlign: "left",
-                  border: t.thread_key === selected ? "1px solid rgba(120,255,120,0.55)" : "1px solid rgba(255,255,255,0.12)"
+                  border: t.thread_key === selected ? "1px solid rgba(120,255,120,0.55)" : "1px solid rgba(255,255,255,0.12)",
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
@@ -157,12 +172,8 @@ export default function MyMailThreadsPage() {
                     </span>
                   ) : null}
                 </div>
-                <div style={{ marginTop: 6, opacity: 0.85, fontSize: 12 }}>
-                  {t.preview || ""}
-                </div>
-                <div style={{ marginTop: 6, opacity: 0.7, fontSize: 11 }}>
-                  {fmt(t.last_message_at)}
-                </div>
+                <div style={{ marginTop: 6, opacity: 0.85, fontSize: 12 }}>{t.preview || ""}</div>
+                <div style={{ marginTop: 6, opacity: 0.7, fontSize: 11 }}>{fmt(t.last_message_at)}</div>
               </button>
             ))}
             {!threads.length ? <div style={{ opacity: 0.8 }}>No threads yet.</div> : null}
@@ -170,9 +181,7 @@ export default function MyMailThreadsPage() {
         </div>
 
         <div className="zombie-card" style={{ padding: 12, borderRadius: 16 }}>
-          <div style={{ fontWeight: 950 }}>
-            {selectedThread ? (selectedThread.subject || "(no subject)") : "Messages"}
-          </div>
+          <div style={{ fontWeight: 950 }}>{selectedThread ? (selectedThread.subject || "(no subject)") : "Messages"}</div>
 
           <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
             {msgs.map((m, idx) => (
