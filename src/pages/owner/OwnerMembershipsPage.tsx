@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import UserIdDisplay from "../../components/common/UserIdDisplay";
 
 type MembershipRow = {
   id: string;
@@ -132,7 +133,7 @@ export default function OwnerMembershipsPage() {
   }
 
   async function remove(row: MembershipRow) {
-    const ok = confirm(`Remove ${row.user_id} from ${row.alliance_id}?`);
+    const ok = confirm(`Remove $<UserIdDisplay userId={row.user_id} /> from ${row.alliance_id}?`);
     if (!ok) return;
 
     setError(null);
@@ -279,3 +280,4 @@ export default function OwnerMembershipsPage() {
     </div>
   );
 }
+
