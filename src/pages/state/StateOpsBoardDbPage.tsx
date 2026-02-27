@@ -29,12 +29,20 @@ export default function StateOpsBoardDbPage() {
       if (!rpc.error) setCanManage(!!rpc.data);
     } catch {}
 
-    const p = await supabase.from("v_approved_players").select("user_id,display_name,player_id").order("display_name", { ascending: true });
+    const p = await supabase
+      .from("v_approved_players")
+      .select("user_id,display_name,player_id")
+      .order("display_name", { ascending: true });
+
     if (!p.error) setPlayers((p.data ?? []) as any);
 
-    const r = await supabase.from("state_ops_items").select("*").eq("state_code", stateCode).order("created_at", { ascending: false });
-    if (r.error) { setStatus(r.error.message); setRows([]); return; }
+    const r = await supabase
+      .from("state_ops_items")
+      .select("*")
+      .eq("state_code", stateCode)
+      .order("created_at", { ascending: false });
 
+    if (r.error) { setStatus(r.error.message); setRows([]); return; }
     setRows(r.data ?? []);
     setStatus("");
   }
@@ -42,7 +50,7 @@ export default function StateOpsBoardDbPage() {
   useEffect(() => { void load(); }, [stateCode]);
 
   async function add() {
-    if (!canManage) return alert("No permission.");
+    if (!canManage) return alert("No permission to manage ops.");
     if (!title.trim()) return;
 
     const ins = await supabase.from("state_ops_items").insert({
@@ -53,6 +61,7 @@ export default function StateOpsBoardDbPage() {
       due_at: due ? new Date(due).toISOString() : null,
       notes: notes || null
     });
+
     if (ins.error) return alert(ins.error.message);
 
     setTitle(""); setAssigned(""); setDue(""); setNotes("");
@@ -74,11 +83,15 @@ export default function StateOpsBoardDbPage() {
         <h2 style={{ margin: 0 }}>{header}</h2>
         <SupportBundleButton />
       </div>
-      <div style={{ marginTop: 8, opacity: 0.8, fontSize: 12 }}>{status || (canManage ? "Manager mode" : "View mode")}</div>
+
+      <div style={{ marginTop: 8, opacity: 0.85, fontSize: 12 }}>
+        {status || (canManage ? "Manager mode (you can add/edit)" : "View mode")}
+      </div>
 
       {canManage ? (
         <div className="zombie-card" style={{ marginTop: 12, padding: 12, borderRadius: 16 }}>
-          <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ fontWeight: 950 }}>Create Ops Item</div>
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New ops item title" />
             <select value={assigned} onChange={(e) => setAssigned(e.target.value)}>
               <option value="">Assign to… (optional)</option>
@@ -96,7 +109,7 @@ export default function StateOpsBoardDbPage() {
       <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
         {rows.map((r: any) => (
           <div key={r.id} className="zombie-card" style={{ padding: 12, borderRadius: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
               <div style={{ fontWeight: 950 }}>{r.title}</div>
               {canManage ? (
                 <select value={r.status} onChange={(e) => void setItem(r.id, { status: e.target.value })}>
@@ -104,17 +117,28 @@ export default function StateOpsBoardDbPage() {
                   <option value="doing">doing</option>
                   <option value="done">done</option>
                 </select>
-              ) : <div style={{ opacity: 0.8 }}>{r.status}</div>}
+              ) : (
+                <div style={{ opacity: 0.8 }}>{r.status}</div>
+              )}
             </div>
 
             <div style={{ marginTop: 8, opacity: 0.85, fontSize: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <div><b>Assigned:</b> {r.assigned_user_id ? <UserIdDisplay userId={r.assigned_user_id} /> : "—"}</div>
               <div><b>Due:</b> {r.due_at ? new Date(r.due_at).toLocaleString() : "—"}</div>
+              <div><b>Created:</b> {r.created_by ? <UserIdDisplay userId={r.created_by} /> : "—"}</div>
             </div>
 
             {r.notes ? <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{String(r.notes)}</div> : null}
+
+            {canManage ? (
+              <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button type="button" onClick={() => void setItem(r.id, { assigned_user_id: null })}>Unassign</button>
+                <button type="button" onClick={() => void setItem(r.id, { due_at: null })}>Clear Due</button>
+              </div>
+            ) : null}
           </div>
         ))}
+        {!rows.length && !status ? <div style={{ opacity: 0.8 }}>No ops items yet.</div> : null}
       </div>
     </div>
   );
