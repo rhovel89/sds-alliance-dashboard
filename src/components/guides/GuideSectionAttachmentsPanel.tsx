@@ -4,7 +4,7 @@ import { GUIDE_MEDIA_BUCKET } from "../../lib/storageBuckets";
 
 type Row = {
   id: string;
-  file_path: string;
+  storage_path: string;
   file_name: string;
   mime_type: string | null;
   size_bytes: number | null;
@@ -42,7 +42,7 @@ export default function GuideSectionAttachmentsPanel(props: {
 
   async function load() {
     const res = await supabase
-      .from("guide_section_attachments")
+      .from("v_guide_section_attachments")
       .select("*")
       .eq("section_id", sectionId)
       .order("created_at", { ascending: false });
@@ -60,7 +60,7 @@ export default function GuideSectionAttachmentsPanel(props: {
     const img = list.filter(isImage).slice(0, 8);
     const next: Record<string, string> = {};
     for (const r of img) {
-      const signed = await supabase.storage.from(GUIDE_MEDIA_BUCKET).createSignedUrl(r.file_path, 60 * 30);
+      const signed = await supabase.storage.from(GUIDE_MEDIA_BUCKET).createSignedUrl(r.storage_path, 60 * 30);
       if (!signed.error && signed.data?.signedUrl) next[r.id] = signed.data.signedUrl;
     }
     setPreviewUrls(next);
@@ -81,10 +81,11 @@ export default function GuideSectionAttachmentsPanel(props: {
       const up = await supabase.storage.from(GUIDE_MEDIA_BUCKET).upload(key, file, { upsert: false });
       if (up.error) { setStatus(up.error.message); return; }
 
-      const ins = await supabase.from("guide_section_attachments").insert({
+      const ins = await supabase.from("v_guide_section_attachments").insert({
         alliance_code: String(allianceCode || "").toUpperCase(),
         section_id: sectionId,
-        file_path: key,
+        entry_id: "",
+        storage_path: key,
         file_name: file.name,
         mime_type: file.type || null,
         size_bytes: file.size || null,
@@ -99,7 +100,7 @@ export default function GuideSectionAttachmentsPanel(props: {
   }
 
   async function openFile(r: Row) {
-    const signed = await supabase.storage.from(GUIDE_MEDIA_BUCKET).createSignedUrl(r.file_path, 60 * 30);
+    const signed = await supabase.storage.from(GUIDE_MEDIA_BUCKET).createSignedUrl(r.storage_path, 60 * 30);
     if (signed.error || !signed.data?.signedUrl) return alert(signed.error?.message || "Could not open file.");
     window.open(signed.data.signedUrl, "_blank");
   }
@@ -110,10 +111,10 @@ export default function GuideSectionAttachmentsPanel(props: {
     if (!ok) return;
 
     setStatus("Deleting…");
-    const delObj = await supabase.storage.from(GUIDE_MEDIA_BUCKET).remove([r.file_path]);
+    const delObj = await supabase.storage.from(GUIDE_MEDIA_BUCKET).remove([r.storage_path]);
     if (delObj.error) { setStatus(delObj.error.message); return; }
 
-    const delRow = await supabase.from("guide_section_attachments").delete().eq("id", r.id);
+    const delRow = await supabase.from("v_guide_section_attachments").delete().eq("id", r.id);
     if (delRow.error) { setStatus(delRow.error.message); return; }
 
     setStatus("Deleted ✅");
@@ -176,3 +177,4 @@ export default function GuideSectionAttachmentsPanel(props: {
     </div>
   );
 }
+
