@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import PlayerProfileAndHqsPanel from "../../components/player/PlayerProfileAndHqsPanel";
+import DiscordChannelSelect from "../../components/discord/DiscordChannelSelect";
 
 type Announcement = {
   id: string;
@@ -162,8 +163,25 @@ export default function AllianceAnnouncementsPage() {
             <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
             Pin to top
           </label>
-          <button disabled={saving || !title.trim()} onClick={create} style={{ padding: "10px 12px", borderRadius: 10 }}>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9 }}>Discord channel</div>
+            <DiscordChannelSelect
+              scope="alliance"
+              kind="announcements"
+              stateCode="789"
+              allianceCode={allianceCode}
+              value={discordChannelId}
+              onChange={setDiscordChannelId}
+            />
+          </div><button disabled={saving || !title.trim()} onClick={create} style={{ padding: "10px 12px", borderRadius: 10 }}>
             {saving ? "Posting…" : "Post"}
+          </button>
+          <button
+            disabled={saving || !title.trim()}
+            onClick={createAndSend}
+            style={{ padding: "10px 12px", borderRadius: 10, marginLeft: 8 }}
+          >
+            {saving ? "Posting+Sending…" : "Post + Send to Discord"}
           </button>
         </div>
       ) : null}
@@ -200,3 +218,4 @@ export default function AllianceAnnouncementsPage() {
     </div>
   );
 }
+
