@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
 
 type Row = {
   id: string;
@@ -24,6 +25,17 @@ function inferStateCode(): string {
 
 export default function StateBulletinBoardPanel(props: { stateCode?: string }) {
   const stateCode = (props.stateCode || inferStateCode() || "789").toString();
+  useRealtimeRefresh({
+    channel: `rt_bulletin_${stateCode}`,
+    enabled: !!stateCode,
+    changes: [
+      { table: "state_bulletins", filter: `state_code=eq.${stateCode}` },
+      { table: "state_bulletin_items", filter: `state_code=eq.${stateCode}` },
+      { table: "state_bulletin_posts", filter: `state_code=eq.${stateCode}` },
+    ],
+    onChange: () => { try { void load(); } catch {} },
+    debounceMs: 350,
+  });
 
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);

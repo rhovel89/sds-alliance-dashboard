@@ -5,6 +5,7 @@ import { useGuidesEditAccess } from "../../hooks/useGuidesEditAccess";
 import { GuideEntriesPanel } from "../../components/guides/GuideEntriesPanel";
 import GuideEntryAttachmentsPanel from "../../components/guides/GuideEntryAttachmentsPanel";
 import GuideSectionAttachmentsPanel from "../../components/guides/GuideSectionAttachmentsPanel";
+import { useRealtimeRefresh } from "../../hooks/useRealtimeRefresh";
 
 type SectionRow = Record<string, any>;
 type EntryRow = Record<string, any>;
@@ -14,6 +15,20 @@ const SECTION_NAME_COL = "title";
 export function AllianceGuidesCommandCenter() {
   const { alliance_id } = useParams();
   const allianceCode = useMemo(() => (alliance_id || "").toString(), [alliance_id]);
+  useRealtimeRefresh({
+    channel: `rt_guides_${allianceCode}`,
+    enabled: !!allianceCode,
+    changes: [
+      { table: "guide_sections", filter: `alliance_code=eq.${allianceCode}` },
+      { table: "guide_section_entries", filter: `alliance_code=eq.${allianceCode}` },
+      { table: "guide_entry_attachments", filter: `alliance_code=eq.${allianceCode}` },
+    ],
+    onChange: () => {
+      try { void loadSections(); } catch {}
+      try { if (selectedSectionId) void loadEntries(selectedSectionId); } catch {}
+    },
+    debounceMs: 300,
+  });
 
   const roleState = useGuidesEditAccess(allianceCode);
 
