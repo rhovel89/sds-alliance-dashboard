@@ -41,7 +41,6 @@ i18n
   .use(initReactI18next)
   .init({
   resources: buildResources(),
-    resources,
     fallbackLng: "en",
     // Support base langs; i18next will fall back from zh-CN -> zh automatically
     supportedLngs: ["en", "es", "pt", "fr", "de", "ru", "zh", "ko"],

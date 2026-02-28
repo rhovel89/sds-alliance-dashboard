@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { useRealtimeRefresh } from "../hooks/useRealtimeRefresh";
+import { useRealtimeRefresh } from "../../hooks/useRealtimeRefresh";
 
 type Row = {
   id: string;
@@ -218,3 +218,4 @@ export default function StateBulletinBoardPanel(props: { stateCode?: string }) {
     </div>
   );
 }
+
