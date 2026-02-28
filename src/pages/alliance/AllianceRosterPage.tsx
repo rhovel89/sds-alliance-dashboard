@@ -163,7 +163,7 @@ export default function AllianceRosterPage() {
       .from("player_alliances")
       .update({
         role_key: rk,
-        role: roleTextForKey(rk),
+        role: rk,
         updated_at: new Date().toISOString(),
       })
       .eq("id", membershipId);
@@ -310,3 +310,4 @@ export default function AllianceRosterPage() {
     </div>
   );
 }
+
