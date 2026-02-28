@@ -36,6 +36,7 @@ export default function MeAllianceSwitcherPanel() {
 
     const a = await supabase.from("player_alliances").select("*").eq("player_id", prow.id).order("alliance_code", { ascending: true });
     if (a.error) { setStatus(a.error.message); setAlliances([]); return; }
+
     const list = (a.data ?? []) as any as AllianceRow[];
     setAlliances(list);
     if (!selected && list.length) setSelected(String(list[0].alliance_code || ""));
@@ -47,7 +48,7 @@ export default function MeAllianceSwitcherPanel() {
   return (
     <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
       <div style={{ fontWeight: 950 }}>🪪 My Alliance Profile</div>
-      <div style={{ marginTop: 6, opacity: 0.8, fontSize: 12 }}>
+      <div style={{ marginTop: 6, opacity: 0.85, fontSize: 12 }}>
         {status || (player ? `Player: ${(player.name || player.game_name || "Unknown")}` : "—")}
       </div>
 
@@ -59,9 +60,14 @@ export default function MeAllianceSwitcherPanel() {
             </option>
           ))}
         </select>
-        <button type="button" onClick={() => selected ? nav(`/dashboard/${selected}/guides`) : null}>Open Guides</button>
-        <button type="button" onClick={() => selected ? nav(`/dashboard/${selected}/announcements`) : null}>Announcements</button>
-        <button type="button" onClick={() => selected ? nav(`/dashboard/${selected}/calendar`) : null}>Calendar</button>
+
+        <button type="button" onClick={() => selected ? nav(`/dashboard/${selected}/guides`) : null}>📘 Guides</button>
+        <button type="button" onClick={() => selected ? nav(`/dashboard/${selected}/announcements`) : null}>📢 Announcements</button>
+        <button type="button" onClick={() => selected ? nav(`/dashboard/${selected}/calendar`) : null}>📅 Calendar</button>
+      </div>
+
+      <div style={{ marginTop: 10, opacity: 0.75, fontSize: 12 }}>
+        Tip: if you belong to multiple alliances, switch here to jump directly into that alliance’s tools.
       </div>
     </div>
   );
