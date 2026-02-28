@@ -14,6 +14,7 @@ import AllianceRosterLaunchCard from "../../components/alliance/AllianceRosterLa
 import AllianceBannerPanel from "../../components/alliance/AllianceBannerPanel";
 import AllianceDefaultReminderChannelPanel from "../../components/alliance/AllianceDefaultReminderChannelPanel";
 import AllianceDiscordChannelsSettingsPanel from "../../components/alliance/AllianceDiscordChannelsSettingsPanel";
+import AllianceDiscordChannelsManagerPanel from "../../components/alliance/AllianceDiscordChannelsManagerPanel";
 
 export default function AllianceDashboardIndexPage() {
   const { alliance_id } = useParams();
@@ -82,6 +83,7 @@ export default function AllianceDashboardIndexPage() {
     </div>
   );
 }
+
 
 
 
