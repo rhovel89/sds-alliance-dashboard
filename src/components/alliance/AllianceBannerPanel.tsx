@@ -31,14 +31,27 @@ export default function AllianceBannerPanel() {
       .eq("alliance_code", allianceCode)
       .maybeSingle();
 
-    if (r.error) { setStatus(r.error.message); setBannerPath(null); setBannerUrl(null); return; }
+    if (r.error) {
+      setStatus(r.error.message);
+      setBannerPath(null);
+      setBannerUrl(null);
+      return;
+    }
+
     const p = r.data?.banner_path ? String(r.data.banner_path) : null;
     setBannerPath(p);
 
-    if (!p) { setBannerUrl(null); return; }
+    if (!p) {
+      setBannerUrl(null);
+      return;
+    }
 
     const s = await supabase.storage.from(ALLIANCE_BANNERS_BUCKET).createSignedUrl(p, 60 * 60);
-    if (s.error || !s.data?.signedUrl) { setStatus(s.error?.message || "Could not load banner."); setBannerUrl(null); return; }
+    if (s.error || !s.data?.signedUrl) {
+      setStatus(s.error?.message || "Could not load banner.");
+      setBannerUrl(null);
+      return;
+    }
     setBannerUrl(s.data.signedUrl);
   }
 
@@ -58,14 +71,13 @@ export default function AllianceBannerPanel() {
     const up = await supabase.storage.from(ALLIANCE_BANNERS_BUCKET).upload(path, f, { upsert: false });
     if (up.error) { setStatus(up.error.message); alert(up.error.message); return; }
 
-    // Save settings row (upsert)
     const save = await supabase
       .from("alliance_theme_settings")
       .upsert({ alliance_code: allianceCode, banner_path: path, banner_mime: f.type || null });
 
     if (save.error) { setStatus(save.error.message); alert(save.error.message); return; }
 
-    // Try to delete old banner file (best-effort)
+    // Best-effort delete old banner file
     if (bannerPath && bannerPath !== path) {
       try { await supabase.storage.from(ALLIANCE_BANNERS_BUCKET).remove([bannerPath]); } catch {}
     }
@@ -81,11 +93,9 @@ export default function AllianceBannerPanel() {
     if (!ok) return;
 
     setStatus("Removing…");
-    // Remove settings row first
     const delRow = await supabase.from("alliance_theme_settings").delete().eq("alliance_code", allianceCode);
     if (delRow.error) { setStatus(delRow.error.message); alert(delRow.error.message); return; }
 
-    // Remove file best-effort
     try { await supabase.storage.from(ALLIANCE_BANNERS_BUCKET).remove([bannerPath]); } catch {}
 
     setStatus("Removed ✅");
@@ -130,7 +140,7 @@ export default function AllianceBannerPanel() {
           </label>
           {bannerPath ? <button type="button" onClick={() => void removeBanner()}>Remove</button> : null}
           <div style={{ opacity: 0.7, fontSize: 12 }}>
-            Stored in bucket <code>{ALLIANCE_BANNERS_BUCKET}</code>
+            Bucket: <code>{ALLIANCE_BANNERS_BUCKET}</code>
           </div>
         </div>
       ) : (
