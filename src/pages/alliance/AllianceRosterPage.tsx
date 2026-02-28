@@ -12,6 +12,14 @@ type Row = {
   role: string;
   hq_count: number;
   max_hq_level: number | null;
+
+  primary_hq_name: string | null;
+  primary_hq_level: number | null;
+  troop_type: string | null;
+  tier_level: string | null;
+  march_size: number | null;
+  troop_size: number | null;
+
   hqs: any[] | null;
 };
 
@@ -52,6 +60,14 @@ function RoleBadge(props: { roleKey: string; roleText: string }) {
   return <span style={{ ...style, background: "rgba(120,255,120,0.12)" }}>🧟 {label}</span>;
 }
 
+function fmtNum(n: any) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  if (x >= 1_000_000) return (x / 1_000_000).toFixed(2).replace(/\.00$/,"") + "M";
+  if (x >= 1_000) return (x / 1_000).toFixed(1).replace(/\.0$/,"") + "K";
+  return String(x);
+}
+
 async function resolveMyPlayerId(): Promise<string | null> {
   const u = await supabase.auth.getUser();
   const uid = u.data?.user?.id || null;
@@ -64,14 +80,6 @@ async function resolveMyPlayerId(): Promise<string | null> {
   if (!link.error && link.data?.[0]?.player_id) return String(link.data[0].player_id);
 
   return null;
-}
-
-function roleTextForKey(k: string) {
-  const x = String(k || "").toLowerCase();
-  if (x === "owner") return "Owner";
-  if (x === "r5") return "R5";
-  if (x === "r4") return "R4";
-  return "Member";
 }
 
 export default function AllianceRosterPage() {
@@ -103,7 +111,7 @@ export default function AllianceRosterPage() {
       setMyPlayerId(pid);
     } catch {}
 
-    const r = await supabase.rpc("get_alliance_roster", { p_alliance_code: allianceCode });
+    const r = await supabase.rpc("get_alliance_roster_v2", { p_alliance_code: allianceCode });
     if (r.error) { setStatus(r.error.message); setRows([]); return; }
     setRows((r.data ?? []) as any);
     setStatus("");
@@ -127,21 +135,30 @@ export default function AllianceRosterPage() {
   }
 
   function downloadCsv() {
-    const header = ["player_name","role_key","role","hq_count","max_hq_level","hqs"];
+    const header = ["player_name","role_key","hq_count","max_hq_level","primary_hq","troop_type","tier_level","march_size","troop_size","hqs"];
     const lines = [header.join(",")];
+
     for (const r of filtered) {
       const hqs = Array.isArray(r.hqs)
         ? r.hqs.map((h:any) => `${h.hq_name || "HQ"}(L${h.hq_level ?? "?"})`).join(" | ")
         : "";
+
+      const primary = r.primary_hq_name ? `${r.primary_hq_name}(L${r.primary_hq_level ?? "?"})` : "";
+
       lines.push([
         csvEscape(r.player_name),
         csvEscape(r.role_key),
-        csvEscape(r.role),
         csvEscape(r.hq_count),
         csvEscape(r.max_hq_level ?? ""),
-        csvEscape(hqs)
+        csvEscape(primary),
+        csvEscape(r.troop_type ?? ""),
+        csvEscape(r.tier_level ?? ""),
+        csvEscape(r.march_size ?? ""),
+        csvEscape(r.troop_size ?? ""),
+        csvEscape(hqs),
       ].join(","));
     }
+
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -151,59 +168,26 @@ export default function AllianceRosterPage() {
     URL.revokeObjectURL(url);
   }
 
-  async function setRole(membershipId: string, roleKey: string) {
-    const rk = String(roleKey || "").toLowerCase();
-    const ok = confirm(`Change role to ${rk.toUpperCase()}?`);
-    if (!ok) return;
+  async function copyDiscordRoster() {
+    const lines: string[] = [];
+    lines.push(`📌 **${allianceCode} Roster** (${filtered.length})`);
+    lines.push("");
 
-    setStatus("Saving role…");
-
-    // 1) Try direct update (preferred)
-    const upd = await supabase
-      .from("player_alliances")
-      .update({
-        role_key: rk,
-        role: rk,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", membershipId);
-
-    if (upd.error) {
-      // 2) Fallback to RPC (if your DB uses RPC-only path)
-      const rpc = await supabase.rpc("alliance_set_member_role", { p_membership_id: membershipId, p_role_key: rk });
-      if (rpc.error) {
-        setStatus(rpc.error.message);
-        alert("Role change failed:\n" + rpc.error.message);
-        return;
-      }
+    for (const r of filtered) {
+      const role = roleLabel(r.role_key, r.role);
+      const hq = r.primary_hq_level ? `HQ L${r.primary_hq_level}` : `HQ —`;
+      const tt = r.troop_type ? r.troop_type : "—";
+      const tier = r.tier_level ? r.tier_level : "—";
+      const march = r.march_size != null ? fmtNum(r.march_size) : "—";
+      lines.push(`• **${r.player_name}** — ${role} — ${hq} — ${tier} ${tt} — March ${march}`);
     }
 
-    setStatus("Saved ✅");
-    await load();
-    window.setTimeout(() => setStatus(""), 800);
-  }
-
-  async function kick(membershipId: string, playerName: string) {
-    const ok = confirm(`Remove ${playerName} from alliance ${allianceCode}?`);
-    if (!ok) return;
-
-    setStatus("Removing…");
-
-    // 1) Try direct delete
-    const del = await supabase.from("player_alliances").delete().eq("id", membershipId);
-    if (del.error) {
-      // 2) Fallback RPC
-      const rpc = await supabase.rpc("alliance_remove_member", { p_membership_id: membershipId });
-      if (rpc.error) {
-        setStatus(rpc.error.message);
-        alert("Remove failed:\n" + rpc.error.message);
-        return;
-      }
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      alert("Copied Discord roster ✅");
+    } catch {
+      alert("Copy failed.");
     }
-
-    setStatus("Removed ✅");
-    await load();
-    window.setTimeout(() => setStatus(""), 800);
   }
 
   if (!allianceCode) return <div style={{ padding: 16 }}>Missing alliance code in URL.</div>;
@@ -232,6 +216,10 @@ export default function AllianceRosterPage() {
           <button type="button" onClick={() => void load()}>Refresh</button>
           <button type="button" onClick={() => void copyJson()}>Copy JSON</button>
           <button type="button" onClick={downloadCsv}>Download CSV</button>
+          <button type="button" onClick={() => void copyDiscordRoster()}>Copy Discord Roster</button>
+        </div>
+        <div style={{ marginTop: 8, opacity: 0.75, fontSize: 12 }}>
+          Troop/Tier/March shown from the player’s highest HQ (primary). Players edit these in /me → HQ Manager.
         </div>
       </div>
 
@@ -239,6 +227,14 @@ export default function AllianceRosterPage() {
         {filtered.map((r) => {
           const isSelf = !!myPlayerId && String(r.player_id) === String(myPlayerId);
           const chips = Array.isArray(r.hqs) ? (showAllHqs ? r.hqs : r.hqs.slice(0, 6)) : [];
+
+          const primaryLine = [
+            r.primary_hq_name ? `${r.primary_hq_name} (L${r.primary_hq_level ?? "?"})` : "Primary HQ: —",
+            r.tier_level || "—",
+            r.troop_type || "—",
+            r.march_size != null ? `March ${fmtNum(r.march_size)}` : "March —",
+            r.troop_size != null ? `Troops ${fmtNum(r.troop_size)}` : ""
+          ].filter(Boolean).join(" • ");
 
           return (
             <div key={r.membership_id} className="zombie-card" style={{ padding: 12, borderRadius: 16 }}>
@@ -249,29 +245,16 @@ export default function AllianceRosterPage() {
                   {isSelf ? <span style={{ opacity: 0.8, fontSize: 12 }}>• (you)</span> : null}
                 </div>
 
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                  {isSelf ? (
-                    <>
-                      <button type="button" onClick={() => nav("/me")}>My Dashboard</button>
-                      <button type="button" onClick={() => nav("/me/hq-manager")}>HQ Manager</button>
-                    </>
-                  ) : null}
+                {isSelf ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button type="button" onClick={() => nav("/me")}>My Dashboard</button>
+                    <button type="button" onClick={() => nav("/me/hq-manager")}>HQ Manager</button>
+                  </div>
+                ) : null}
+              </div>
 
-                  {isOwnerAdmin ? (
-                    <>
-                      <select
-                        value={(r.role_key || "member").toLowerCase()}
-                        onChange={(e) => void setRole(r.membership_id, e.target.value)}
-                      >
-                        <option value="owner">owner</option>
-                        <option value="r5">r5</option>
-                        <option value="r4">r4</option>
-                        <option value="member">member</option>
-                      </select>
-                      <button type="button" onClick={() => void kick(r.membership_id, r.player_name)}>Remove</button>
-                    </>
-                  ) : null}
-                </div>
+              <div style={{ marginTop: 8, opacity: 0.9, fontSize: 12 }}>
+                {primaryLine}
               </div>
 
               <div style={{ marginTop: 8, opacity: 0.85, fontSize: 12 }}>
@@ -283,13 +266,12 @@ export default function AllianceRosterPage() {
                   {chips.map((h: any) => (
                     <span
                       key={h.id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: 999,
-                        padding: "4px 10px",
-                        fontSize: 12,
-                        opacity: 0.95
-                      }}
+                      style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: "4px 10px", fontSize: 12, opacity: 0.95 }}
+                      title={[
+                        h.tier_level ? `Tier ${h.tier_level}` : "",
+                        h.troop_type ? `Type ${h.troop_type}` : "",
+                        h.march_size != null ? `March ${fmtNum(h.march_size)}` : ""
+                      ].filter(Boolean).join(" • ")}
                     >
                       {String(h.hq_name || "HQ")} (L{String(h.hq_level ?? "?")})
                     </span>
@@ -310,4 +292,3 @@ export default function AllianceRosterPage() {
     </div>
   );
 }
-
