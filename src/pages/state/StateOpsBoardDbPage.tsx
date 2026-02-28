@@ -40,13 +40,11 @@ export default function StateOpsBoardDbPage() {
   async function load() {
     setStatus("Loading…");
 
-    // Permissions (Owner/Admin should return true automatically)
     try {
       const rpc = await supabase.rpc("can_manage_state_ops", { p_state_code: stateCode });
       if (!rpc.error) setCanManage(!!rpc.data);
     } catch {}
 
-    // Player list for assign dropdown
     const p = await supabase
       .from("v_approved_players")
       .select("user_id,display_name,player_id")
@@ -54,7 +52,6 @@ export default function StateOpsBoardDbPage() {
 
     if (!p.error) setPlayers((p.data ?? []) as any);
 
-    // Load ops items
     const r = await supabase
       .from("state_ops_items")
       .select("*")
@@ -80,9 +77,7 @@ export default function StateOpsBoardDbPage() {
     lines.push("");
 
     const top = [...doing, ...todo].slice(0, 12);
-    for (const x of top) {
-      lines.push(`• [${x.status}] ${String(x.title || "").trim()}`);
-    }
+    for (const x of top) lines.push(`• [${x.status}] ${String(x.title || "").trim()}`);
     return lines.join("\n");
   }
 
@@ -153,13 +148,11 @@ export default function StateOpsBoardDbPage() {
         <div>
           <h2 style={{ margin: 0 }}>{header}</h2>
           <div style={{ marginTop: 6, opacity: 0.85, fontSize: 12 }}>
-            {status || (canManage ? "Manager mode (you can add/edit + queue summary)" : "View mode")}
+            {status || (canManage ? "Manager mode (add/edit + queue summary)" : "View mode")}
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
-            {canManage ? (
-              <button type="button" onClick={() => void queueSummary()}>📥 Queue Summary to Discord</button>
-            ) : null}
+            {canManage ? <button type="button" onClick={() => void queueSummary()}>📥 Queue Summary to Discord</button> : null}
             <a href="/owner/discord-queue-db" style={{ opacity: 0.9, fontSize: 12 }}>View Queue</a>
           </div>
         </div>
@@ -196,9 +189,7 @@ export default function StateOpsBoardDbPage() {
                   <option value="doing">doing</option>
                   <option value="done">done</option>
                 </select>
-              ) : (
-                <div style={{ opacity: 0.8 }}>{r.status}</div>
-              )}
+              ) : <div style={{ opacity: 0.8 }}>{r.status}</div>}
             </div>
 
             <div style={{ marginTop: 8, opacity: 0.85, fontSize: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>
