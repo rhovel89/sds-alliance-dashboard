@@ -140,6 +140,7 @@ import StateDiscussionDbPage from "../pages/state/StateDiscussionDbPage";
 import OwnerPermissionsMatrixV3Page from "../pages/owner/OwnerPermissionsMatrixV3Page";
 import OwnerActivityFeedPage from "../pages/owner/OwnerActivityFeedPage";
 import OwnerCommandCenterV2Page from "../pages/owner/OwnerCommandCenterV2Page";
+import StateOpsBoardDbPage from "../pages/state/StateOpsBoardDbPage";
 
 export default function AppRoutes() {
   return (
@@ -261,10 +262,14 @@ export default function AppRoutes() {
             <Route path="/owner/permissions-matrix-v3" element={<Navigate to="/owner/permissions-matrix-v3-v3" replace />} />
       <Route path="/owner/activity-feed" element={<RequireAdmin><OwnerActivityFeedPage /></RequireAdmin>} />
       <Route path="/owner/command-center" element={<RequireAdmin><OwnerCommandCenterV2Page /></RequireAdmin>} />
+      <Route path="/state/:state_code/ops-db" element={<StateOpsBoardDbPage />} />
+      <Route path="/state/789/ops-db" element={<StateOpsBoardDbPage />} />
+      <Route path="/state/789/ops" element={<Navigate to="/state/789/ops-db" replace />} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
 }
+
 
 
 
