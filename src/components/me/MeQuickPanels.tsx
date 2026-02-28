@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import DailyBriefingPanel from "./DailyBriefingPanel";
 import MeAllianceSwitcherPanel from "./MeAllianceSwitcherPanel";
+import MyAchievementsSummaryPanel from "./MyAchievementsSummaryPanel";
 
 function Card(props: { title: string; children: React.ReactNode; note?: string }) {
   return (
@@ -47,6 +48,7 @@ export default function MeQuickPanels() {
     </div>
   );
 }
+
 
 
 
