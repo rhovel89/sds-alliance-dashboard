@@ -187,7 +187,7 @@ export default function AppRoutes() {
       <Route path="/owner/requests-provision" element={<RequireAdmin><OwnerRequestsProvisionPage /></RequireAdmin>} />
       <Route path="/owner/players-link" element={<RequireAdmin><OwnerPlayersLinkPage /></RequireAdmin>} />
       <Route path="/owner/state" element={<RequireAdmin><OwnerStateManagerPage /></RequireAdmin>} />
-      <Route path="/owner/state-leaders" element={<RequireAdmin><StateLeadersPage /></RequireAdmin>} />
+      <Route path="/owner/state-leaders" element={<RequireAdmin><OwnerStateLeadersAdminPage /></RequireAdmin>} />
       <Route path="/owner/roles" element={<RequireAdmin><OwnerRolesPermissionsV2Page /></RequireAdmin>} />
       <Route path="/owner/event-types" element={<RequireAdmin><OwnerEventTypesPage /></RequireAdmin>} />
       <Route path="/owner/access-control" element={<RequireAdmin><OwnerAccessControlPage /></RequireAdmin>} />
@@ -269,6 +269,7 @@ export default function AppRoutes() {
 </Routes>
   );
 }
+
 
 
 
