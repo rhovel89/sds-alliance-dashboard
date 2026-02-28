@@ -284,7 +284,7 @@ export default function MyMailThreadsPage() {
                   <div style={{ fontWeight: 900 }}>{m.from_name}</div>
                   <div style={{ opacity: 0.7, fontSize: 12 }}>{fmt(m.created_at_norm)}</div>
                 </div>
-                <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{String(m.body ?? "")}</div>
+                <div style={{ marginTop: 8 }}><MailMessageBody body={String(m.body ?? "")} /></div>
               </div>
             ))}
             {!msgs.length ? <div style={{ opacity: 0.8 }}>No messages in this thread.</div> : null}
@@ -299,3 +299,4 @@ export default function MyMailThreadsPage() {
     </div>
   );
 }
+
