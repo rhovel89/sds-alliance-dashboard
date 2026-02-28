@@ -68,6 +68,25 @@ export default function StateOpsBoardDbPage() {
 
   useEffect(() => { void load(); }, [stateCode]);
 
+  useEffect(() => {
+    const ch = supabase
+      .channel(`rt_state_ops_${stateCode}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "state_ops_items", filter: `state_code=eq.${stateCode}` },
+        () => {
+          // debounce reload slightly to avoid rapid bursts
+          window.clearTimeout((window as any).__rt_ops_t);
+          (window as any).__rt_ops_t = window.setTimeout(() => { void load(); }, 250);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      try { supabase.removeChannel(ch); } catch {}
+    };
+  }, [stateCode]);
+
   function buildSummary(): string {
     const items = rows || [];
     const todo = items.filter((x: any) => x.status === "todo");
@@ -217,3 +236,4 @@ export default function StateOpsBoardDbPage() {
     </div>
   );
 }
+
