@@ -142,6 +142,7 @@ import OwnerActivityFeedPage from "../pages/owner/OwnerActivityFeedPage";
 import OwnerCommandCenterV2Page from "../pages/owner/OwnerCommandCenterV2Page";
 import StateOpsBoardDbPage from "../pages/state/StateOpsBoardDbPage";
 import OwnerStateLeadersAdminPage from "../pages/owner/OwnerStateLeadersAdminPage";
+import AllianceRosterPage from "../pages/alliance/AllianceRosterPage";
 
 export default function AppRoutes() {
   return (
@@ -204,6 +205,7 @@ export default function AppRoutes() {
 
         <Route path="alerts" element={<AllianceAlertsPage />} />
         <Route path="guides" element={<AllianceGuidesPage />} />
+        <Route path="roster" element={<RequireAllianceAccess><AllianceRosterPage /></RequireAllianceAccess>} />
 
         <Route path="hq-map" element={<AllianceHQMap />} />
         <Route path="calendar" element={<RequireAllianceAccess><AllianceCalendarPage /></RequireAllianceAccess>} />
