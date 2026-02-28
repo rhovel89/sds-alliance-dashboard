@@ -61,10 +61,12 @@ export default function MailMessageBody(props: { body: string }) {
   }
 
   async function del(path: string) {
-    const ok = confirm("Delete this attachment file? (Message text will still show the attachment marker.)");
+    const ok = confirm("Delete this attachment file? (The message text will still contain the marker.)");
     if (!ok) return;
+
     const r = await supabase.storage.from(MAIL_MEDIA_BUCKET).remove([path]);
     if (r.error) return alert(r.error.message);
+
     setDeleted((prev) => ({ ...prev, [path]: true }));
     alert("Deleted ✅");
   }
