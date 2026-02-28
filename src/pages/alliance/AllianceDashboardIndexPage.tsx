@@ -10,6 +10,7 @@ import { getCurrentTheme } from "../../utils/getCurrentTheme";
 import { DashboardHomeQuickLinks } from "../../components/nav/DashboardHomeQuickLinks";
 import AllianceAnnouncementsHomePreview from "../../components/announcements/AllianceAnnouncementsHomePreview";
 import StateQuickLinksPanel from "../../components/nav/StateQuickLinksPanel";
+import AllianceRosterLaunchCard from "../../components/alliance/AllianceRosterLaunchCard";
 
 export default function AllianceDashboardIndexPage() {
   const { alliance_id } = useParams();
@@ -55,6 +56,7 @@ export default function AllianceDashboardIndexPage() {
           </div>
           <RealtimeStatusBadge allianceCode={alliance || null} />
           <DashboardHomeQuickLinks />
+      <div style={{ marginTop: 12 }}><AllianceRosterLaunchCard /></div>
           <StateQuickLinksPanel />
           <AllianceAnnouncementsHomePreview />
         </div>
@@ -76,3 +78,4 @@ export default function AllianceDashboardIndexPage() {
     </div>
   );
 }
+
