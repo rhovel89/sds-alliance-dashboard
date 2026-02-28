@@ -7,6 +7,22 @@ import UserIdDisplay from "../../components/common/UserIdDisplay";
 type Row = any;
 type PlayerOpt = { user_id: string; display_name: string; player_id: string };
 
+function loadDiscordDefaults(): { channelName: string | null; rolesCsv: string | null } {
+  try {
+    const raw = localStorage.getItem("sad_discord_defaults_v1");
+    if (!raw) return { channelName: null, rolesCsv: null };
+    const s = JSON.parse(raw);
+    if (!s || s.version !== 1) return { channelName: null, rolesCsv: null };
+    const g = s.global || {};
+    return {
+      channelName: g.channelName ? String(g.channelName) : null,
+      rolesCsv: g.rolesCsv ? String(g.rolesCsv) : null,
+    };
+  } catch {
+    return { channelName: null, rolesCsv: null };
+  }
+}
+
 export default function StateOpsBoardDbPage() {
   const { state_code } = useParams();
   const stateCode = String(state_code || "789");
@@ -24,11 +40,13 @@ export default function StateOpsBoardDbPage() {
   async function load() {
     setStatus("Loading…");
 
+    // Permissions (Owner/Admin should return true automatically)
     try {
       const rpc = await supabase.rpc("can_manage_state_ops", { p_state_code: stateCode });
       if (!rpc.error) setCanManage(!!rpc.data);
     } catch {}
 
+    // Player list for assign dropdown
     const p = await supabase
       .from("v_approved_players")
       .select("user_id,display_name,player_id")
@@ -36,6 +54,7 @@ export default function StateOpsBoardDbPage() {
 
     if (!p.error) setPlayers((p.data ?? []) as any);
 
+    // Load ops items
     const r = await supabase
       .from("state_ops_items")
       .select("*")
@@ -48,6 +67,57 @@ export default function StateOpsBoardDbPage() {
   }
 
   useEffect(() => { void load(); }, [stateCode]);
+
+  function buildSummary(): string {
+    const items = rows || [];
+    const todo = items.filter((x: any) => x.status === "todo");
+    const doing = items.filter((x: any) => x.status === "doing");
+    const done = items.filter((x: any) => x.status === "done");
+
+    const lines: string[] = [];
+    lines.push(`🗺️ State ${stateCode} Ops Summary`);
+    lines.push(`✅ done: ${done.length} • 🔥 doing: ${doing.length} • ⬜ todo: ${todo.length}`);
+    lines.push("");
+
+    const top = [...doing, ...todo].slice(0, 12);
+    for (const x of top) {
+      lines.push(`• [${x.status}] ${String(x.title || "").trim()}`);
+    }
+    return lines.join("\n");
+  }
+
+  async function queueSummary() {
+    if (!canManage) return alert("You do not have permission to queue ops summaries.");
+    const msg = buildSummary();
+    const d = loadDiscordDefaults();
+
+    const payload = {
+      kind: "state_ops_summary",
+      state_code: stateCode,
+      channel_name: d.channelName,
+      roles_csv: d.rolesCsv,
+      message: msg,
+      created_at_utc: new Date().toISOString(),
+    };
+
+    const ins = await supabase.from("discord_send_queue").insert({
+      state_code: stateCode,
+      alliance_code: null,
+      channel_name: d.channelName,
+      roles_csv: d.rolesCsv,
+      message: msg,
+      payload,
+      status: "queued",
+    });
+
+    if (ins.error) {
+      try { await navigator.clipboard.writeText(JSON.stringify(payload, null, 2)); } catch {}
+      return alert("Queue insert failed — payload copied.\n" + ins.error.message);
+    }
+
+    try { await navigator.clipboard.writeText(msg); } catch {}
+    alert("Queued ✅ (and message copied)");
+  }
 
   async function add() {
     if (!canManage) return alert("No permission to manage ops.");
@@ -77,84 +147,24 @@ export default function StateOpsBoardDbPage() {
 
   const header = useMemo(() => `🗺️ State ${stateCode} Ops Board`, [stateCode]);
 
-  function buildSummary(): string {
-    const items = rows || [];
-    const todo = items.filter((x: any) => x.status === "todo");
-    const doing = items.filter((x: any) => x.status === "doing");
-    const done = items.filter((x: any) => x.status === "done");
-
-    const lines: string[] = [];
-    lines.push(`🗺️ State ${stateCode} Ops Summary`);
-    lines.push(`✅ done: ${done.length} • 🔥 doing: ${doing.length} • ⬜ todo: ${todo.length}`);
-    lines.push("");
-    const top = [...doing, ...todo].slice(0, 12);
-    for (const x of top) {
-      lines.push(`• [${x.status}] ${String(x.title || "").trim()}`);
-    }
-    return lines.join("\n");
-  }
-
-  async function queueSummary() {
-    if (!canManage) return alert("No permission to queue.");
-    const msg = buildSummary();
-
-    // Best-effort read defaults from localStorage (no hard dependency)
-    let channelName: string | null = null;
-    let rolesCsv: string | null = null;
-    try {
-      const raw = localStorage.getItem("sad_discord_defaults_v1");
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (s && s.version === 1) {
-          const g = s.global || {};
-          channelName = g.channelName ? String(g.channelName) : null;
-          rolesCsv = g.rolesCsv ? String(g.rolesCsv) : null;
-        }
-      }
-    } catch {}
-
-    const payload = {
-      kind: "state_ops_summary",
-      state_code: stateCode,
-      channel_name: channelName,
-      roles_csv: rolesCsv,
-      message: msg,
-      created_at_utc: new Date().toISOString(),
-    };
-
-    const ins = await supabase.from("discord_send_queue").insert({
-      state_code: stateCode,
-      alliance_code: null,
-      channel_name: channelName,
-      roles_csv: rolesCsv,
-      message: msg,
-      payload
-    });
-
-    if (ins.error) {
-      // fallback: copy payload to clipboard
-      try { await navigator.clipboard.writeText(JSON.stringify(payload, null, 2)); } catch {}
-      return alert("Queue insert failed. Payload copied.\n" + ins.error.message);
-    }
-
-    try { await navigator.clipboard.writeText(msg); } catch {}
-    alert("Queued ✅ (and message copied)");
-  }
-
-
   return (
     <div style={{ padding: 16, maxWidth: 1300, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>{header}</h2>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
-          {canManage ? <button type="button" onClick={() => void queueSummary()}>📥 Queue Summary to Discord</button> : null}
-          <a href="/owner/discord-queue-db" style={{ opacity: 0.85, fontSize: 12 }}>View Queue</a>
-        </div>
-        <SupportBundleButton />
-      </div>
+        <div>
+          <h2 style={{ margin: 0 }}>{header}</h2>
+          <div style={{ marginTop: 6, opacity: 0.85, fontSize: 12 }}>
+            {status || (canManage ? "Manager mode (you can add/edit + queue summary)" : "View mode")}
+          </div>
 
-      <div style={{ marginTop: 8, opacity: 0.85, fontSize: 12 }}>
-        {status || (canManage ? "Manager mode (you can add/edit)" : "View mode")}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+            {canManage ? (
+              <button type="button" onClick={() => void queueSummary()}>📥 Queue Summary to Discord</button>
+            ) : null}
+            <a href="/owner/discord-queue-db" style={{ opacity: 0.9, fontSize: 12 }}>View Queue</a>
+          </div>
+        </div>
+
+        <SupportBundleButton />
       </div>
 
       {canManage ? (
@@ -198,13 +208,6 @@ export default function StateOpsBoardDbPage() {
             </div>
 
             {r.notes ? <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{String(r.notes)}</div> : null}
-
-            {canManage ? (
-              <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button type="button" onClick={() => void setItem(r.id, { assigned_user_id: null })}>Unassign</button>
-                <button type="button" onClick={() => void setItem(r.id, { due_at: null })}>Clear Due</button>
-              </div>
-            ) : null}
           </div>
         ))}
         {!rows.length && !status ? <div style={{ opacity: 0.8 }}>No ops items yet.</div> : null}
@@ -212,4 +215,3 @@ export default function StateOpsBoardDbPage() {
     </div>
   );
 }
-
