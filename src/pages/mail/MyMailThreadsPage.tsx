@@ -102,7 +102,39 @@ function ReplyBox(props: { threadKey: string; onSent: () => void }) {
     ? "Finding peer…"
     : "";
 
-  return (
+    // Realtime: reload inbox/threads when any mail_items change
+  useEffect(() => {
+    let ch: any = null;
+    let alive = true;
+
+    (async () => {
+      const u = await supabase.auth.getUser();
+      const uid = u.data?.user?.id;
+      if (!uid || !alive) return;
+
+      ch = supabase
+        .channel(`rt_mail_items_${uid}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "mail_items" },
+          () => {
+            // debounce reload slightly to avoid rapid bursts
+            window.clearTimeout((window as any).__rt_mail_t);
+            (window as any).__rt_mail_t = window.setTimeout(() => {
+              try { void load(); } catch {}
+            }, 250);
+          }
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      alive = false;
+      try { if (ch) supabase.removeChannel(ch); } catch {}
+    };
+  }, []);
+
+return (
     <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ fontWeight: 950 }}>Reply</div>
@@ -299,4 +331,5 @@ export default function MyMailThreadsPage() {
     </div>
   );
 }
+
 
