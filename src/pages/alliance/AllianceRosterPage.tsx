@@ -57,15 +57,21 @@ async function resolveMyPlayerId(): Promise<string | null> {
   const uid = u.data?.user?.id || null;
   if (!uid) return null;
 
-  // direct players.auth_user_id
   const p1 = await supabase.from("players").select("id").eq("auth_user_id", uid).limit(1);
   if (!p1.error && p1.data?.[0]?.id) return String(p1.data[0].id);
 
-  // link table
   const link = await supabase.from("player_auth_links").select("player_id").eq("user_id", uid).limit(1);
   if (!link.error && link.data?.[0]?.player_id) return String(link.data[0].player_id);
 
   return null;
+}
+
+function roleTextForKey(k: string) {
+  const x = String(k || "").toLowerCase();
+  if (x === "owner") return "Owner";
+  if (x === "r5") return "R5";
+  if (x === "r4") return "R4";
+  return "Member";
 }
 
 export default function AllianceRosterPage() {
@@ -87,19 +93,16 @@ export default function AllianceRosterPage() {
     if (!allianceCode) return;
     setStatus("Loading…");
 
-    // owner/admin check (safe RPC)
     try {
       const own = await supabase.rpc("is_owner_or_admin");
       if (!own.error) setIsOwnerAdmin(!!own.data);
     } catch {}
 
-    // my player id (for self row)
     try {
       const pid = await resolveMyPlayerId();
       setMyPlayerId(pid);
     } catch {}
 
-    // roster
     const r = await supabase.rpc("get_alliance_roster", { p_alliance_code: allianceCode });
     if (r.error) { setStatus(r.error.message); setRows([]); return; }
     setRows((r.data ?? []) as any);
@@ -149,13 +152,35 @@ export default function AllianceRosterPage() {
   }
 
   async function setRole(membershipId: string, roleKey: string) {
-    const ok = confirm(`Change role to ${roleKey.toUpperCase()}?`);
+    const rk = String(roleKey || "").toLowerCase();
+    const ok = confirm(`Change role to ${rk.toUpperCase()}?`);
     if (!ok) return;
 
     setStatus("Saving role…");
-    const r = await supabase.rpc("alliance_set_member_role", { p_membership_id: membershipId, p_role_key: roleKey });
-    if (r.error) { setStatus(r.error.message); return; }
+
+    // 1) Try direct update (preferred)
+    const upd = await supabase
+      .from("player_alliances")
+      .update({
+        role_key: rk,
+        role: roleTextForKey(rk),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", membershipId);
+
+    if (upd.error) {
+      // 2) Fallback to RPC (if your DB uses RPC-only path)
+      const rpc = await supabase.rpc("alliance_set_member_role", { p_membership_id: membershipId, p_role_key: rk });
+      if (rpc.error) {
+        setStatus(rpc.error.message);
+        alert("Role change failed:\n" + rpc.error.message);
+        return;
+      }
+    }
+
+    setStatus("Saved ✅");
     await load();
+    window.setTimeout(() => setStatus(""), 800);
   }
 
   async function kick(membershipId: string, playerName: string) {
@@ -163,9 +188,22 @@ export default function AllianceRosterPage() {
     if (!ok) return;
 
     setStatus("Removing…");
-    const r = await supabase.rpc("alliance_remove_member", { p_membership_id: membershipId });
-    if (r.error) { setStatus(r.error.message); return; }
+
+    // 1) Try direct delete
+    const del = await supabase.from("player_alliances").delete().eq("id", membershipId);
+    if (del.error) {
+      // 2) Fallback RPC
+      const rpc = await supabase.rpc("alliance_remove_member", { p_membership_id: membershipId });
+      if (rpc.error) {
+        setStatus(rpc.error.message);
+        alert("Remove failed:\n" + rpc.error.message);
+        return;
+      }
+    }
+
+    setStatus("Removed ✅");
     await load();
+    window.setTimeout(() => setStatus(""), 800);
   }
 
   if (!allianceCode) return <div style={{ padding: 16 }}>Missing alliance code in URL.</div>;
@@ -194,9 +232,6 @@ export default function AllianceRosterPage() {
           <button type="button" onClick={() => void load()}>Refresh</button>
           <button type="button" onClick={() => void copyJson()}>Copy JSON</button>
           <button type="button" onClick={downloadCsv}>Download CSV</button>
-        </div>
-        <div style={{ marginTop: 8, opacity: 0.75, fontSize: 12 }}>
-          View-only roster for members. Owner/Admin can change alliance roles and remove members.
         </div>
       </div>
 
