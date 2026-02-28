@@ -1,0 +1,12 @@
+app = "sad-discord-worker-789"
+primary_region = "dfw"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[processes]
+  worker = "node worker.mjs"
+
+# keep 1 machine always on
+[deploy]
+  strategy = "rolling"
