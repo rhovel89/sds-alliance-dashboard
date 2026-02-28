@@ -40,11 +40,13 @@ export default function StateOpsBoardDbPage() {
   async function load() {
     setStatus("Loading…");
 
+    // Permissions check
     try {
       const rpc = await supabase.rpc("can_manage_state_ops", { p_state_code: stateCode });
       if (!rpc.error) setCanManage(!!rpc.data);
     } catch {}
 
+    // Players list for assigning
     const p = await supabase
       .from("v_approved_players")
       .select("user_id,display_name,player_id")
@@ -52,6 +54,7 @@ export default function StateOpsBoardDbPage() {
 
     if (!p.error) setPlayers((p.data ?? []) as any);
 
+    // Items
     const r = await supabase
       .from("state_ops_items")
       .select("*")
@@ -82,7 +85,8 @@ export default function StateOpsBoardDbPage() {
   }
 
   async function queueSummary() {
-    if (!canManage) return alert("You do not have permission to queue ops summaries.");
+    if (!canManage) return alert("You do not have permission to queue ops summaries (owner/admin or ops manager).");
+
     const msg = buildSummary();
     const d = loadDiscordDefaults();
 
@@ -152,8 +156,15 @@ export default function StateOpsBoardDbPage() {
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
-            {canManage ? <button type="button" onClick={() => void queueSummary()}>📥 Queue Summary to Discord</button> : null}
+            <button type="button" onClick={() => void queueSummary()} disabled={!canManage}>
+              📥 Queue Summary to Discord
+            </button>
             <a href="/owner/discord-queue-db" style={{ opacity: 0.9, fontSize: 12 }}>View Queue</a>
+            {!canManage ? (
+              <span style={{ opacity: 0.75, fontSize: 12 }}>
+                (Disabled: need owner/admin or ops manager)
+              </span>
+            ) : null}
           </div>
         </div>
 
