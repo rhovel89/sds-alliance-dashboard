@@ -143,6 +143,7 @@ import OwnerCommandCenterV2Page from "../pages/owner/OwnerCommandCenterV2Page";
 import StateOpsBoardDbPage from "../pages/state/StateOpsBoardDbPage";
 import OwnerStateLeadersAdminPage from "../pages/owner/OwnerStateLeadersAdminPage";
 import AllianceRosterPage from "../pages/alliance/AllianceRosterPage";
+import OwnerEventRemindersPage from "../pages/owner/OwnerEventRemindersPage";
 
 export default function AppRoutes() {
   return (
@@ -268,10 +269,12 @@ export default function AppRoutes() {
       <Route path="/state/:state_code/ops-db" element={<StateOpsBoardDbPage />} />
       <Route path="/state/789/ops-db" element={<StateOpsBoardDbPage />} />
       <Route path="/state/789/ops" element={<Navigate to="/state/789/ops-db" replace />} />
+            <Route path="/owner/event-reminders" element={<RequireAdmin><OwnerEventRemindersPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
 </Routes>
   );
 }
+
 
 
 
