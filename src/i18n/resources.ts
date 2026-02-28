@@ -1,6 +1,4 @@
 type AnyObj = Record<string, any>;
-
-// Eager-load all translation.json files under ./locales/<lng>/translation.json
 const modules = import.meta.glob("./locales/*/translation.json", { eager: true }) as Record<string, any>;
 
 export function buildResources(): AnyObj {
