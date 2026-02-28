@@ -141,6 +141,7 @@ import OwnerPermissionsMatrixV3Page from "../pages/owner/OwnerPermissionsMatrixV
 import OwnerActivityFeedPage from "../pages/owner/OwnerActivityFeedPage";
 import OwnerCommandCenterV2Page from "../pages/owner/OwnerCommandCenterV2Page";
 import StateOpsBoardDbPage from "../pages/state/StateOpsBoardDbPage";
+import OwnerStateLeadersAdminPage from "../pages/owner/OwnerStateLeadersAdminPage";
 
 export default function AppRoutes() {
   return (
