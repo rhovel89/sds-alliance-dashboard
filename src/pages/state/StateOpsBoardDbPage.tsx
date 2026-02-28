@@ -77,10 +77,79 @@ export default function StateOpsBoardDbPage() {
 
   const header = useMemo(() => `🗺️ State ${stateCode} Ops Board`, [stateCode]);
 
+  function buildSummary(): string {
+    const items = rows || [];
+    const todo = items.filter((x: any) => x.status === "todo");
+    const doing = items.filter((x: any) => x.status === "doing");
+    const done = items.filter((x: any) => x.status === "done");
+
+    const lines: string[] = [];
+    lines.push(`🗺️ State ${stateCode} Ops Summary`);
+    lines.push(`✅ done: ${done.length} • 🔥 doing: ${doing.length} • ⬜ todo: ${todo.length}`);
+    lines.push("");
+    const top = [...doing, ...todo].slice(0, 12);
+    for (const x of top) {
+      lines.push(`• [${x.status}] ${String(x.title || "").trim()}`);
+    }
+    return lines.join("\n");
+  }
+
+  async function queueSummary() {
+    if (!canManage) return alert("No permission to queue.");
+    const msg = buildSummary();
+
+    // Best-effort read defaults from localStorage (no hard dependency)
+    let channelName: string | null = null;
+    let rolesCsv: string | null = null;
+    try {
+      const raw = localStorage.getItem("sad_discord_defaults_v1");
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s && s.version === 1) {
+          const g = s.global || {};
+          channelName = g.channelName ? String(g.channelName) : null;
+          rolesCsv = g.rolesCsv ? String(g.rolesCsv) : null;
+        }
+      }
+    } catch {}
+
+    const payload = {
+      kind: "state_ops_summary",
+      state_code: stateCode,
+      channel_name: channelName,
+      roles_csv: rolesCsv,
+      message: msg,
+      created_at_utc: new Date().toISOString(),
+    };
+
+    const ins = await supabase.from("discord_send_queue").insert({
+      state_code: stateCode,
+      alliance_code: null,
+      channel_name: channelName,
+      roles_csv: rolesCsv,
+      message: msg,
+      payload
+    });
+
+    if (ins.error) {
+      // fallback: copy payload to clipboard
+      try { await navigator.clipboard.writeText(JSON.stringify(payload, null, 2)); } catch {}
+      return alert("Queue insert failed. Payload copied.\n" + ins.error.message);
+    }
+
+    try { await navigator.clipboard.writeText(msg); } catch {}
+    alert("Queued ✅ (and message copied)");
+  }
+
+
   return (
     <div style={{ padding: 16, maxWidth: 1300, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>{header}</h2>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+          {canManage ? <button type="button" onClick={() => void queueSummary()}>📥 Queue Summary to Discord</button> : null}
+          <a href="/owner/discord-queue-db" style={{ opacity: 0.85, fontSize: 12 }}>View Queue</a>
+        </div>
         <SupportBundleButton />
       </div>
 
@@ -143,3 +212,4 @@ export default function StateOpsBoardDbPage() {
     </div>
   );
 }
+
