@@ -10,6 +10,7 @@ import de from "./locales/de.json";
 import ru from "./locales/ru.json";
 import zh from "./locales/zh.json";
 import ko from "./locales/ko.json";
+import { buildResources } from "./resources";
 
 const STORAGE_KEY = "sad_lang_v1";
 
@@ -39,6 +40,7 @@ i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
+  resources: buildResources(),
     resources,
     fallbackLng: "en",
     // Support base langs; i18next will fall back from zh-CN -> zh automatically
@@ -58,3 +60,4 @@ i18n.on("languageChanged", (lng) => applyDocumentLang(lng));
 
 export default i18n;
 export const SAD_LANGUAGE_STORAGE_KEY = STORAGE_KEY;
+
