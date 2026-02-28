@@ -1,5 +1,8 @@
 {
-  "nav": { "me": "My Dashboard", "state": "State Hub", "mail": "My Mail", "search": "Search" },
-  "owner": { "commandCenter": "Owner Command Center", "accessControl": "Access Control", "activity": "Activity Feed" },
-  "common": { "refresh": "Refresh", "save": "Save", "cancel": "Cancel" }
+  "lang": { "label": "Language" },
+  "owner": { "commandCenter": "Owner Command Center", "activity": "Activity Feed" },
+  "me": { "title": "My Dashboard", "achievements": "My Achievements" },
+  "mail": { "title": "My Mail — Threads", "send": "Send", "reply": "Reply" },
+  "state": { "opsBoard": "State Ops Board" },
+  "common": { "refresh": "Refresh", "loading": "Loading…" }
 }
