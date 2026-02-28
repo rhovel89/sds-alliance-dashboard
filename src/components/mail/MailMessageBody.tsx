@@ -15,7 +15,6 @@ function parse(body: string): { text: string; atts: Att[] } {
   const lines = String(body || "").split("\n");
   const atts: Att[] = [];
   const kept: string[] = [];
-
   for (const ln of lines) {
     const m = ln.match(/^\[\[mailatt:(.+)\|(.+)\|(.+)\]\]$/);
     if (m) atts.push({ path: m[1], name: m[2], mime: m[3] });
@@ -58,17 +57,14 @@ export default function MailMessageBody(props: { body: string }) {
   }
 
   function canDelete(path: string) {
-    // Our uploader stores keys as: <uploaderUid>/<timestamp>-filename
     return !!me && path.startsWith(me + "/");
   }
 
   async function del(path: string) {
-    const ok = confirm("Delete this attachment file? (The message text will still show the attachment marker.)");
+    const ok = confirm("Delete this attachment file? (Message text will still show the attachment marker.)");
     if (!ok) return;
-
     const r = await supabase.storage.from(MAIL_MEDIA_BUCKET).remove([path]);
     if (r.error) return alert(r.error.message);
-
     setDeleted((prev) => ({ ...prev, [path]: true }));
     alert("Deleted ✅");
   }
@@ -104,7 +100,7 @@ export default function MailMessageBody(props: { body: string }) {
           </div>
 
           <div style={{ marginTop: 8, opacity: 0.7, fontSize: 12 }}>
-            Note: deleting removes the file from storage. The original message text still contains the attachment marker line.
+            Deleting removes the file from storage; the message still contains the marker line.
           </div>
         </div>
       ) : null}
