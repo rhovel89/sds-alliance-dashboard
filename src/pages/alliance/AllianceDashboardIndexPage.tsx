@@ -12,6 +12,7 @@ import AllianceAnnouncementsHomePreview from "../../components/announcements/All
 import StateQuickLinksPanel from "../../components/nav/StateQuickLinksPanel";
 import AllianceRosterLaunchCard from "../../components/alliance/AllianceRosterLaunchCard";
 import AllianceBannerPanel from "../../components/alliance/AllianceBannerPanel";
+import AllianceDefaultReminderChannelPanel from "../../components/alliance/AllianceDefaultReminderChannelPanel";
 
 export default function AllianceDashboardIndexPage() {
   const { alliance_id } = useParams();
@@ -80,5 +81,6 @@ export default function AllianceDashboardIndexPage() {
     </div>
   );
 }
+
 
 

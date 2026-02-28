@@ -9,7 +9,13 @@ const POLL_MS = Number(process.env.POLL_MS || 15000);
 const BATCH_SIZE = Number(process.env.BATCH_SIZE || 5);
 const DRY_RUN = String(process.env.DRY_RUN || "false").toLowerCase() === "true";
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+
+const AUTO_REMINDERS = String(process.env.AUTO_REMINDERS || "true").toLowerCase() === "true";
+const REMINDER_STATE_CODE = process.env.REMINDER_STATE_CODE || "789";
+const REMINDER_HOURS = Number(process.env.REMINDER_HOURS || 24);
+const REMINDER_INTERVAL_MS = Number(process.env.REMINDER_INTERVAL_MS || 300000);
+
+let lastReminderRun = 0;if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
   process.exit(1);
 }
@@ -82,13 +88,32 @@ async function claimBatch() {
 }
 
 async function resetStuck() {
-  const r = await sb.rpc("reset_stuck_discord_queue", { p_minutes: 10 });
+  const r = await sb.rpc("reset_stuck_discord_queue", { p_minutes: 10 }
+
+async function maybeQueueReminders() {
+  if (!AUTO_REMINDERS) return;
+  const now = Date.now();
+  if (now - lastReminderRun < REMINDER_INTERVAL_MS) return;
+
+  lastReminderRun = now;
+  try {
+    const r = await sb.rpc("queue_event_reminders", { p_state_code: REMINDER_STATE_CODE, p_hours: REMINDER_HOURS });
+    if (r.error) {
+      console.warn("queue_event_reminders error:", r.error.message);
+    } else {
+      console.log("Reminders queued:", r.data ?? 0);
+    }
+  } catch (e) {
+    console.warn("queue_event_reminders exception:", e?.message || e);
+  }
+});
   if (r.error) console.warn("reset_stuck_discord_queue error:", r.error.message);
 }
 
 async function loopOnce() {
   await resetStuck();
-  const batch = await claimBatch();
+  
+  await maybeQueueReminders();const batch = await claimBatch();
   if (!batch.length) return;
 
   for (const item of batch) {
@@ -121,4 +146,5 @@ async function main() {
 }
 
 main();
+
 
