@@ -1,7 +1,9 @@
 {canManage ? (
   <>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
     <button type="button" onClick={() => queueSendExistingAnnouncement(a)} style={{ padding: "8px 10px", borderRadius: 10, marginRight: 8 }}>Send to Discord</button>
     <button type="button" onClick={() => del(a.id)} style={{ padding: "8px 10px", borderRadius: 10 }}>Delete</button>
+    </div>
   </>
 ) : null}
 import { useEffect, useMemo, useState } from "react";
