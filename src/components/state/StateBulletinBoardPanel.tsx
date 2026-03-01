@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeRefresh } from "../../hooks/useRealtimeRefresh";
 import DiscordChannelSelect from "../discord/DiscordChannelSelect";
+import StateDiscordChannelSelect from "../discord/StateDiscordChannelSelect";
 
 type Row = {
   id: string;
@@ -222,6 +223,12 @@ return (
         <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" />
           <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a bulletin…" rows={4} />
+          <StateDiscordChannelSelect
+            stateCode={stateCode}
+            value={discordChannelId}
+            onChange={setDiscordChannelId}
+            label="Send to Discord channel"
+          />
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
             {canManage ? (
               <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.9 }}>
@@ -241,6 +248,7 @@ return (
               />
             </div>
             <button onClick={post} disabled={!body.trim()} style={{ display: "none" }}>Post</button>
+            <button onClick={postAndSend} disabled={!body.trim()} style={{ marginLeft: 8 }}>Post + Send to Discord</button>
             <button onClick={postAndSend} disabled={!body.trim()}>Post</button>
           </div>
         </div>
