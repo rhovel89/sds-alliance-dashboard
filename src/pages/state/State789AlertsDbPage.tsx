@@ -31,6 +31,7 @@ export default function State789AlertsDbPage() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [discordChannelId, setDiscordChannelId] = useState<string>("");
+  const [autoSend, setAutoSend] = useState<boolean>(true);
   const [tagsRaw, setTagsRaw] = useState("");
 
   const [onlyPinned, setOnlyPinned] = useState(false);
@@ -137,6 +138,7 @@ export default function State789AlertsDbPage() {
         (b ? ("\n" + b.slice(0, 1500)) : "") +
         "\nView: https://state789.site/state/789/alerts-db";
 
+              if (autoSend) {
       const q = await supabase.rpc("queue_discord_send" as any, {
         p_state_code: "789",
         p_alliance_code: "",
@@ -146,6 +148,7 @@ export default function State789AlertsDbPage() {
       } as any);
 
       if (q.error) throw q.error;
+              }
       alert("Queued to Discord ✅");
     } catch (e) {
       console.error(e);
@@ -169,6 +172,13 @@ return (
             </select>
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
             <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9 }}>Discord channel</div>
+          <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+            <input type="checkbox" checked={autoSend} onChange={(e) => setAutoSend(e.target.checked)} />
+            Auto-send to Discord
+          </label>
+          <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 10 }}>
+            Tip: leave Channel blank to use the default Discord channel.
+          </div>
             <DiscordChannelSelect
               scope="state"
               kind="alerts"
