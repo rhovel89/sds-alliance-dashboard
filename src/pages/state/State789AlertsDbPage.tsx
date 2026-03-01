@@ -188,12 +188,13 @@ return (
               value={discordChannelId}
               onChange={setDiscordChannelId}
             />
-          </div><button onClick={postAlert} disabled={!userId}            <StateDiscordChannelSelect
-              stateCode={"789"}
+            <StateDiscordChannelSelect
+              stateCode="789"
               value={discordChannelId}
               onChange={setDiscordChannelId}
               label="Send to Discord channel"
-            />>Post</button>
+            />
+          </div><button onClick={postAlert} disabled={!userId}>Post</button>
           <button
             type="button"
             onClick={async () => {
@@ -288,6 +289,5 @@ return (
     </div>
   );
 }
-
 
 
