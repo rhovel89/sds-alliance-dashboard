@@ -1,12 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
-          <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-            <input type="checkbox" checked={autoSend} onChange={(e) => setAutoSend(e.target.checked)} />
-            Auto-send to Discord
-          </label>
-          <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 10 }}>
-            Tip: leave Channel blank to use the default Discord channel.
-          </div>
 import DiscordChannelSelect from "../../components/discord/DiscordChannelSelect";
 
 type Severity = "info" | "warning" | "critical";
@@ -38,7 +31,6 @@ export default function State789AlertsDbPage() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [discordChannelId, setDiscordChannelId] = useState<string>("");
-  const [autoSend, setAutoSend] = useState<boolean>(true);
   const [tagsRaw, setTagsRaw] = useState("");
 
   const [onlyPinned, setOnlyPinned] = useState(false);
@@ -222,7 +214,7 @@ return (
             }}
             style={{ padding: "10px 12px", borderRadius: 10, marginLeft: 8 }}
           >
-            Post
+            Post + Send to Discord
           </button>
             <span style={{ opacity: 0.7, fontSize: 12 }}>
               Posting requires owner/admin or state grant can_manage_state_alerts.
