@@ -3,6 +3,9 @@ import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 import UserIdDisplay from "../../components/common/UserIdDisplay";
+import { supabase } from "../../lib/supabaseBrowserClient";
+import StateDiscordChannelSelect from "../../components/discord/StateDiscordChannelSelect";
+import StateDiscordChannelsManagerPanel from "../../components/state/StateDiscordChannelsManagerPanel";
 
 type Row = any;
 type PlayerOpt = { user_id: string; display_name: string; player_id: string };
@@ -24,6 +27,35 @@ function loadDiscordDefaults(): { channelName: string | null; rolesCsv: string |
 }
 
 export default function StateOpsBoardDbPage() {
+
+  // --- Ops → Discord ---
+  const [opsDiscordChannelId, setOpsDiscordChannelId] = useState<string>("");
+  const [opsPing, setOpsPing] = useState<string>("");
+
+  async function queueOpsToDiscord(message: string) {
+    const msg = String(message || "").trim();
+    if (!msg) return alert("Nothing to send.");
+
+    const q = await supabase.rpc("queue_discord_send" as any, {
+      p_state_code: "789",
+      p_alliance_code: "",
+      p_kind: "state_ops",
+      p_channel_id: String(opsDiscordChannelId || "").trim(),
+      p_message: msg,
+    } as any);
+
+    if ((q as any)?.error) {
+      alert("Discord queue failed: " + (q as any).error.message);
+    } else {
+      alert("Queued to Discord ✅");
+    }
+  }
+
+  function buildOpsSummary(): string {
+    const url = window.location.origin + "/state/789/ops-db";
+    return "🛰️ **State 789 Ops Board**\\n" + url;
+  }
+
   const { state_code } = useParams();
   const stateCode = String(state_code || "789");
 
@@ -236,4 +268,8 @@ export default function StateOpsBoardDbPage() {
     </div>
   );
 }
+
+
+
+
 
