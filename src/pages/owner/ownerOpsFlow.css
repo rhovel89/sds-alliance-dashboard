@@ -1,0 +1,43 @@
+/* Owner Ops Flow - Sidebar Readability */
+.owner-ops-sidebar {
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 14px;
+  padding: 12px;
+  color: rgba(255,255,255,0.95);
+}
+
+.owner-ops-sidebar a,
+.owner-ops-sidebar button,
+.owner-ops-sidebar span,
+.owner-ops-sidebar div,
+.owner-ops-sidebar p,
+.owner-ops-sidebar small,
+.owner-ops-sidebar strong,
+.owner-ops-sidebar b,
+.owner-ops-sidebar li {
+  color: inherit;
+}
+
+.owner-ops-sidebar a { text-decoration: none; }
+.owner-ops-sidebar a:hover { text-decoration: underline; }
+
+.owner-ops-sidebar .muted { opacity: 0.88; }
+
+.owner-ops-sidebar button {
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.owner-ops-sidebar button:hover {
+  background: rgba(255,255,255,0.16);
+}
+
+/* Mobile: keep it readable without taking over the screen */
+@media (max-width: 700px) {
+  .owner-ops-sidebar {
+    padding: 10px;
+    border-radius: 12px;
+  }
+}

@@ -1,4 +1,5 @@
 import React from "react";
+import "./ownerOpsFlow.css";
 import OwnerFlowShell, { FlowStep } from "../../components/owner/OwnerFlowShell";
 import OwnerPlayerIntakePage from "./OwnerPlayerIntakePage";
 import OwnerOnboardingQueuePage from "./OwnerOnboardingQueuePage";
@@ -62,4 +63,5 @@ export default function OwnerPlayerOpsFlowPage() {
     />
   );
 }
+
 
