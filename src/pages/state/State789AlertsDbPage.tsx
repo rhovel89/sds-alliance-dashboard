@@ -30,6 +30,7 @@ export default function State789AlertsDbPage() {
   const [severity, setSeverity] = useState<Severity>("info");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [discordChannelId, setDiscordChannelId] = useState<string>("");
   const [tagsRaw, setTagsRaw] = useState("");
 
   const [onlyPinned, setOnlyPinned] = useState(false);
