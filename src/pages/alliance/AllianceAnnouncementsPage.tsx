@@ -342,9 +342,12 @@ discordChannelId
                     {a.created_at ? <div style={{ opacity: 0.6, marginTop: 4, fontSize: 12 }}>{new Date(a.created_at).toLocaleString()}</div> : null}
                   </div>
                   {canManage ? (
-                    <button onClick={() => queueSendExistingAnnouncement(a)} style={{ padding: "8px 10px", borderRadius: 10, marginRight: 8 }}>Send to Discord</button>
-                    <button onClick={() => del(a.id)} style={{ padding: "8px 10px", borderRadius: 10 }}>Delete</button>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <button onClick={() => queueSendExistingAnnouncement(a)} style={{ padding: "8px 10px", borderRadius: 10, marginRight: 8 }}>Send to Discord</button>
+                      <button onClick={() => del(a.id)} style={{ padding: "8px 10px", borderRadius: 10 }}>Delete</button>
+                    </div>
                   ) : null}
+
                 </div>
                 {a.body ? <div style={{ marginTop: 10, whiteSpace: "pre-wrap", opacity: 0.9 }}>{a.body}</div> : null}
               </div>
@@ -360,6 +363,7 @@ discordChannelId
     </div>
   );
 }
+
 
 
 
