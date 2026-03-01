@@ -171,7 +171,7 @@ export default function AppRoutes() {
       <Route path="/owner/permissions-db" element={<RequireAdmin><RouteRedirect to="/owner/permissions" /></RequireAdmin>} />
       <Route path="/owner/permissions-matrix-v3-v2" element={<RequireAdmin><RouteRedirect to="/owner/permissions" /></RequireAdmin>} />
       <Route path="/owner/alliance-ops" element={<RequireAdmin><OwnerAllianceOpsFlowPage /></RequireAdmin>} />
-      <Route path="/owner/player-ops" element={<RequireAdmin><OwnerPlayerOpsFlowPage /></RequireAdmin>} />} />
+      <Route path="/owner/player-ops" element={<RequireAdmin><OwnerPlayerOpsFlowPage /></RequireAdmin>} />
       <Route path="/alliances-v2" element={<AllianceDirectoryDbPage />} />
       <Route path="/owner/directory-db" element={<RequireAdmin><OwnerDirectoryDbPage /></RequireAdmin>} />
       <Route path="/owner/mail-broadcast" element={<RequireAdmin><OwnerMailBroadcastPage /></RequireAdmin>} />
