@@ -75,8 +75,8 @@ export default function OwnerCommandCenterHome() {
       { group: "People & Membership", title: "Players Link", desc: "Link auth users to players.", to: "/owner/players-link" },
 
       // Permissions
-      { group: "Permissions", title: "Permissions Matrix V3", desc: "Your main permissions assignment UI.", to: "/owner/permissions-matrix-v3" },
-      { group: "Permissions", title: "Permissions DB", desc: "DB-focused permission tooling.", to: "/owner/permissions-db" },
+      { group: "Permissions", title: "Permissions Matrix V3", desc: "Your main permissions assignment UI.", to: "/owner/permissions?section=permissions" },
+      { group: "Permissions", title: "Permissions DB", desc: "DB-focused permission tooling.", to: "/owner/permissions?section=permissions" },
       { group: "Permissions", title: "Roles", desc: "Role/permission definitions (legacy).", to: "/owner/roles" },
       { group: "Permissions", title: "Access Control (Legacy only)", desc: "Original access-control page standalone.", to: "/owner/access-control-legacy" },
 
@@ -207,4 +207,5 @@ export default function OwnerCommandCenterHome() {
     </div>
   );
 }
+
 

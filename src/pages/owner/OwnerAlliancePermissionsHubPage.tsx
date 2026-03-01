@@ -129,9 +129,9 @@ export default function OwnerAlliancePermissionsHubPage() {
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 12 }}>
-            <Card title="Permissions Matrix V3" desc="Main per-player permissions assignment UI." to="/owner/permissions-matrix-v3" tag="PRIMARY" />
+            <Card title="Permissions Matrix V3" desc="Main per-player permissions assignment UI." to="/owner/permissions?section=permissions" tag="PRIMARY" />
             <Card title="Access Control" desc="Scoped per alliance/state permissions UI." to="/owner/access-control" tag="SCOPED" />
-            <Card title="Permissions DB" desc="DB-focused permissions tooling." to="/owner/permissions-db" tag="DB" />
+            <Card title="Permissions DB" desc="DB-focused permissions tooling." to="/owner/permissions?section=permissions" tag="DB" />
             <Card title="Roles" desc="Role definitions tooling." to="/owner/roles" tag="ROLES" />
             <Card title="Memberships" desc="Set who is in what alliance(s) and their role." to="/owner/memberships" />
           </div>
@@ -160,10 +160,11 @@ export default function OwnerAlliancePermissionsHubPage() {
             <Card title="Onboarding Queue" desc="Approve/provision new access." to="/owner/onboarding-queue" />
             <Card title="Players" desc="Player directory and linking tools." to="/owner/players" />
             <Card title="Memberships" desc="Assign alliance memberships + roles." to="/owner/memberships" />
-            <Card title="Permissions (Matrix V3)" desc="Grant what they can do (per alliance/state)." to="/owner/permissions-matrix-v3" tag="PRIMARY" />
+            <Card title="Permissions (Matrix V3)" desc="Grant what they can do (per alliance/state)." to="/owner/permissions?section=permissions" tag="PRIMARY" />
           </div>
         </>
       )}
     </div>
   );
 }
+

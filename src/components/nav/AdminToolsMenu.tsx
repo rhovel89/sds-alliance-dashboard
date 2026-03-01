@@ -16,7 +16,7 @@ const OWNER_BUTTONS: Btn[] = [
   { emoji: "🔧", label: "Discord Mentions (Roles/Channels)", to: "/owner/discord-mentions" },
   { emoji: "⚙️", label: "Discord Defaults", to: "/owner/discord-defaults" },
   { emoji: "🗂️", label: "Alliance Directory Editor", to: "/owner/alliance-directory" },
-  { emoji: "🧩", label: "Permissions Matrix (shell)", to: "/owner/permissions-matrix-v3" },
+  { emoji: "🧩", label: "Permissions Matrix (shell)", to: "/owner/permissions?section=permissions" },
   { emoji: "✅", label: "One-click Approve + Provision", to: "/owner/oneclick-provision" },
   { emoji: "🎯", label: "Event Types Library", to: "/owner/event-types-library" },
 { emoji: "📚", label: "Directory Editor", to: "/owner/directory-editor" },
@@ -111,5 +111,6 @@ export function AdminToolsMenu() {
 }
 
 export default AdminToolsMenu;
+
 
 

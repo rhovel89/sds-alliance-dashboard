@@ -18,7 +18,7 @@ export default function UuidOptionLabelEnhancer() {
   const enabled = useMemo(() => {
     const p = loc.pathname;
     return (
-      p.startsWith("/owner/permissions-matrix-v3") ||
+      p.startsWith("/owner/permissions?section=permissions") ||
       p.startsWith("/owner/players-link") ||
       p.startsWith("/owner/onboarding-queue")
     );
@@ -147,3 +147,4 @@ export default function UuidOptionLabelEnhancer() {
 
   return null;
 }
+

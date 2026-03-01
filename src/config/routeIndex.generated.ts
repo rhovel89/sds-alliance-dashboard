@@ -61,10 +61,10 @@ export const ROUTE_INDEX: RouteIndexItem[] = [
   { path: "/owner/onboarding-queue", normalized: "/owner/onboarding-queue", component: "OwnerOnboardingQueuePage", file: ".\\src\\pages\\owner\\OwnerOnboardingQueuePage.tsx", lastGit: "" },
   { path: "/owner/oneclick-provision", normalized: "/owner/oneclick-provision", component: "OwnerOneClickProvisionPage", file: ".\\src\\pages\\owner\\OwnerOneClickProvisionPage.tsx", lastGit: "" },
   { path: "/owner/oneclick-provision-plus", normalized: "/owner/oneclick-provision-plus", component: "OwnerOneClickProvisionPlusPage", file: ".\\src\\pages\\owner\\OwnerOneClickProvisionPlusPage.tsx", lastGit: "" },
-  { path: "/owner/permissions-db", normalized: "/owner/permissions", component: "", file: "", lastGit: "" },
-  { path: "/owner/permissions-matrix-v3", normalized: "/owner/permissions-matrix", component: "", file: "", lastGit: "" },
-  { path: "/owner/permissions", normalized: "/owner/permissions-matrix-v3", component: "", file: "", lastGit: "" },
-  { path: "/owner/permissions-matrix-v3-v3", normalized: "/owner/permissions-matrix-v3", component: "OwnerPermissionsMatrixV3Page", file: ".\\src\\pages\\owner\\OwnerPermissionsMatrixV3Page.tsx", lastGit: "" },
+  { path: "/owner/permissions?section=permissions", normalized: "/owner/permissions", component: "", file: "", lastGit: "" },
+  { path: "/owner/permissions?section=permissions", normalized: "/owner/permissions-matrix", component: "", file: "", lastGit: "" },
+  { path: "/owner/permissions", normalized: "/owner/permissions?section=permissions", component: "", file: "", lastGit: "" },
+  { path: "/owner/permissions?section=permissions-v3", normalized: "/owner/permissions?section=permissions", component: "OwnerPermissionsMatrixV3Page", file: ".\\src\\pages\\owner\\OwnerPermissionsMatrixV3Page.tsx", lastGit: "" },
   { path: "/owner/player-intake", normalized: "/owner/player-intake", component: "OwnerPlayerIntakePage", file: ".\\src\\pages\\owner\\OwnerPlayerIntakePage.tsx", lastGit: "" },
   { path: "/owner/players", normalized: "/owner/players", component: "OwnerPlayersPage", file: ".\\src\\pages\\owner\\OwnerPlayersPage.tsx", lastGit: "" },
   { path: "/owner/players-link", normalized: "/owner/players-link", component: "OwnerPlayersLinkPage", file: ".\\src\\pages\\owner\\OwnerPlayersLinkPage.tsx", lastGit: "" },
@@ -120,4 +120,5 @@ export const ROUTE_INDEX: RouteIndexItem[] = [
 export const OWNER_ROUTE_INDEX = ROUTE_INDEX.filter(r => r.path === "/owner" || r.path.startsWith("/owner/"));
 export const STATE_ROUTE_INDEX = ROUTE_INDEX.filter(r => r.path.startsWith("/state/") || r.path === "/state");
 export const PLAYER_ROUTE_INDEX = ROUTE_INDEX.filter(r => r.path === "/me" || r.path.startsWith("/me/") || r.path.StartsWith("/mail") -or r.path.StartsWith("/dashboard"));
+
 

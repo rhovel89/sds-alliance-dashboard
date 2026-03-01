@@ -174,7 +174,7 @@ export function OwnerLiveOpsEnhancements() {
         <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/alliance-directory")}>
           🗂️ Alliance Directory Editor
         </button>
-        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/permissions-matrix-v3")}>
+        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/permissions?section=permissions")}>
           🧩 Permissions Matrix (Shell)
         </button>
         <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789")}>
@@ -299,4 +299,5 @@ export function OwnerLiveOpsEnhancements() {
     </div>
   );
 }
+
 
