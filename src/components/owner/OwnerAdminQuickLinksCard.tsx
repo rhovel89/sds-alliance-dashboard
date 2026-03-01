@@ -5,7 +5,9 @@ type Item = { to: string; label: string; desc: string };
 
 export default function OwnerAdminQuickLinksCard() {
   const items: Item[] = [
-    { to: "/owner/directory-editor", label: "Directory Editor", desc: "Edit alliance directory (localStorage + export/import)" },
+    
+      { to: "/owner/links", label: "All Tools Index", desc: "Search every owner/state page (includes legacy/variants)" },
+{ to: "/owner/directory-editor", label: "Directory Editor", desc: "Edit alliance directory (localStorage + export/import)" },
     { to: "/owner/data-vault", label: "Data Vault", desc: "Export/import all sad_* localStorage configs" },
     { to: "/owner/permissions-matrix-v3", label: "Permissions Matrix", desc: "UI-only matrix (localStorage + export/import)" },
     { to: "/mail", label: "My Mail", desc: "UI-only threads/messages (localStorage + export/import)" },
@@ -38,6 +40,7 @@ export default function OwnerAdminQuickLinksCard() {
     </div>
   );
 }
+
 
 
 

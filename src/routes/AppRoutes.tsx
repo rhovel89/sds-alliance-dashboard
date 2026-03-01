@@ -151,7 +151,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/owner/directory-sync" element={<RequireAdmin><OwnerAllianceDirectorySyncPage /></RequireAdmin>} />
-      <Route path="/owner/permissions-matrix-v3-v2" element={<Navigate to="/owner/permissions-matrix-v3-v3" replace />} />
+      <Route path="/owner/permissions-matrix-v3-v2" element={<Navigate to="/owner/permissions-matrix-v3-v2" replace />} />
       <Route path="/me/hq-manager" element={<MyHqManagerPage />} />
       <Route path="/owner/discord-queue" element={<RequireAdmin><OwnerDiscordQueuePage /></RequireAdmin>} />
       <Route path="/mail-threads" element={<MyMailThreadsPage />} />
@@ -161,7 +161,7 @@ export default function AppRoutes() {
       <Route path="/state/789/alerts-db" element={<State789AlertsDbPage />} />
       <Route path="/state/789/discussion-db" element={<State789DiscussionDbPage />} />
       <Route path="/owner/live-ops-db" element={<RequireAdmin><OwnerLiveOpsDbPage /></RequireAdmin>} />
-      <Route path="/owner/permissions-db" element={<Navigate to="/owner/permissions-matrix-v3-v3" replace />} />
+      <Route path="/owner/permissions-db" element={<Navigate to="/owner/permissions-matrix-v3-v2" replace />} />
       <Route path="/alliances-v2" element={<AllianceDirectoryDbPage />} />
       <Route path="/owner/directory-db" element={<RequireAdmin><OwnerDirectoryDbPage /></RequireAdmin>} />
       <Route path="/owner/mail-broadcast" element={<RequireAdmin><OwnerMailBroadcastPage /></RequireAdmin>} />
@@ -267,17 +267,20 @@ export default function AppRoutes() {
             <Route path="/state/:state_code/alerts-db" element={<StateAlertsDbPage />} />
       <Route path="/state/:state_code/discussion-db" element={<StateDiscussionDbPage />} />
       <Route path="/owner/permissions-matrix-v3-v3" element={<RequireAdmin><OwnerPermissionsMatrixV3Page /></RequireAdmin>} />
-            <Route path="/owner/permissions-matrix-v3" element={<Navigate to="/owner/permissions-matrix-v3-v3" replace />} />
+            <Route path="/owner/permissions-matrix-v3" element={<Navigate to="/owner/permissions-matrix-v3-v2" replace />} />
       <Route path="/owner/activity-feed" element={<RequireAdmin><OwnerActivityFeedPage /></RequireAdmin>} />
       <Route path="/owner/command-center" element={<RequireAdmin><OwnerCommandCenterV2Page /></RequireAdmin>} />
       <Route path="/state/:state_code/ops-db" element={<StateOpsBoardDbPage />} />
       <Route path="/state/789/ops-db" element={<StateOpsBoardDbPage />} />
-      <Route path="/state/789/ops" element={<Navigate to="/state/789/ops-db" replace />} />
+      <Route path="/state/789/ops" element={<Navigate to="/state/789/ops" replace />} />
             <Route path="/owner/event-reminders" element={<RequireAdmin><OwnerEventRemindersPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
-</Routes>
+        <Route path="/owner/links" element={<RequireAdmin><OwnerLinksIndexPage /></RequireAdmin>} />
+      </Routes>
   );
 }
+
+
 
 
 
