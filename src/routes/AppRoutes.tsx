@@ -167,7 +167,12 @@ export default function AppRoutes() {
       <Route path="/state/789/alerts-db" element={<State789AlertsDbPage />} />
       <Route path="/state/789/discussion-db" element={<State789DiscussionDbPage />} />
       <Route path="/owner/live-ops-db" element={<RequireAdmin><OwnerLiveOpsDbPage /></RequireAdmin>} />
-      <Route path="/owner/permissions?section=permissions" element={<Navigate to="/owner/permissions" replace />} />
+      <Route path="/owner/permissions?section=permissions" element={<Navigate to="/owner/permissions" replace />
+      <Route path="/owner/access-control-legacy" element={<RequireAdmin><RouteRedirect to="/owner/access-control" /></RequireAdmin>} />
+      <Route path="/owner/permissions-db" element={<RequireAdmin><RouteRedirect to="/owner/permissions" /></RequireAdmin>} />
+      <Route path="/owner/permissions-matrix-v3-v2" element={<RequireAdmin><RouteRedirect to="/owner/permissions" /></RequireAdmin>} />
+      <Route path="/owner/alliance-ops" element={<RequireAdmin><OwnerAllianceOpsFlowPage /></RequireAdmin>} />
+      <Route path="/owner/player-ops" element={<RequireAdmin><OwnerPlayerOpsFlowPage /></RequireAdmin>} />} />
       <Route path="/alliances-v2" element={<AllianceDirectoryDbPage />} />
       <Route path="/owner/directory-db" element={<RequireAdmin><OwnerDirectoryDbPage /></RequireAdmin>} />
       <Route path="/owner/mail-broadcast" element={<RequireAdmin><OwnerMailBroadcastPage /></RequireAdmin>} />
@@ -288,6 +293,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
