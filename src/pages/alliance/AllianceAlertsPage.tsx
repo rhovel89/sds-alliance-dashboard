@@ -176,6 +176,32 @@ export default function AllianceAlertsPage() {
       alert("Post+Send failed (DB/RLS/queue).");
     }
   };
+  const queueSendExistingAlert = async (r: any) => {
+    try {
+      const t = String(r?.title ?? "").trim();
+      const b = String(r?.body ?? "").trim();
+      if (!t && !b) return;
+
+      const msg =
+        ("🚨 **" + String(allianceCode || "").toUpperCase() + " Alert**\n") +
+        (t ? ("**" + t.slice(0, 180) + "**") : "") +
+        (b ? ("\n" + b.slice(0, 1600)) : "");
+
+      const q = await supabase.rpc("queue_discord_send" as any, {
+        p_state_code: "789",
+        p_alliance_code: String(allianceCode || "").toUpperCase(),
+        p_kind: "alliance_alert_existing",
+        p_channel_id: String((discordChannelId || "") || ""),
+        p_message: msg,
+      } as any);
+
+      if (q.error) throw q.error;
+      alert("Queued to Discord ✅");
+    } catch (e: any) {
+      console.error(e);
+      alert("Queue failed: " + (e?.message || e));
+    }
+  };
 return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
       <h1 style={{ fontSize: 22, fontWeight: 900 }}>Alliance Alerts</h1>
@@ -310,6 +336,7 @@ return (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={() => toggleAck(r)}>{r.is_acked ? "Unack" : "Ack"}</button>
                 <button onClick={() => togglePinned(r)}>{r.pinned ? "Unpin" : "Pin"}</button>
+                <button type="button" onClick={() => queueSendExistingAlert(r)} style={{ padding: "8px 10px", borderRadius: 10 }}>Send to Discord</button>
                 <button onClick={() => removeAlert(r)}>Delete</button>
               </div>
             </div>
