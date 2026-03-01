@@ -179,7 +179,39 @@ return (
           </div><button onClick={postAlert} disabled={!userId}>Post</button>
           <button
             type="button"
-            onClick={createAndSend}
+            onClick={async () => {
+              const t = title.trim();
+              if (!t) return;
+
+              setStatus("Posting+Sending…");
+              try {
+                await create(); // keep your existing DB insert logic
+
+                const b = body.trim();
+                const msg =
+                  ("🚨 **State Alert (789)**\n") +
+                  ("**" + t.slice(0, 180) + "**") +
+                  (b ? ("\n" + b.slice(0, 1500)) : "") +
+                  ("\nView: https://state789.site/state/789/alerts-db");
+
+                const q = await supabase.rpc("queue_discord_send" as any, {
+                  p_state_code: "789",
+                  p_alliance_code: "",
+                  p_kind: "state_alerts",
+                  p_channel_id: String(discordChannelId || "").trim(),
+                  p_message: msg,
+                } as any);
+
+                if (q.error) throw q.error;
+
+                setStatus("Posted+queued ✅");
+                window.setTimeout(() => setStatus(""), 900);
+              } catch (e) {
+                console.error(e);
+                setStatus("Post+Send failed");
+                alert("Post+Send failed (DB/RLS/queue).");
+              }
+            }}
             style={{ padding: "10px 12px", borderRadius: 10, marginLeft: 8 }}
           >
             Post + Send to Discord
@@ -239,4 +271,5 @@ return (
     </div>
   );
 }
+
 
