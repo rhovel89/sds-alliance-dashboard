@@ -48,6 +48,7 @@ export default function StateBulletinBoardPanel(props: { stateCode?: string }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [discordChannelId, setDiscordChannelId] = useState<string>("");
+  const [autoSend, setAutoSend] = useState<boolean>(true);
   const [pin, setPin] = useState(false);
 
   const titleHint = useMemo(() => `State ${stateCode} Bulletin Board`, [stateCode]);
@@ -239,8 +240,8 @@ return (
                 onChange={setDiscordChannelId}
               />
             </div>
-            <button onClick={post} disabled={!body.trim()}>Post</button>
-            <button onClick={postAndSend} disabled={!body.trim()}>Post + Send to Discord</button>
+            <button onClick={post} disabled={!body.trim()} style={{ display: "none" }}>Post</button>
+            <button onClick={postAndSend} disabled={!body.trim()}>Post</button>
           </div>
         </div>
       ) : (
