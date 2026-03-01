@@ -157,6 +157,32 @@ export default function State789AlertsDbPage() {
       alert("Post+Send failed (DB/RLS/Discord queue).");
     }
   };
+  const queueSendExistingStateAlert = async (r: any) => {
+    try {
+      const t = String(r?.title ?? "").trim();
+      const b = String(r?.body ?? "").trim();
+      if (!t && !b) return;
+
+      const msg =
+        ("🚨 **State Alert**\n") +
+        (t ? ("**" + t.slice(0, 180) + "**") : "") +
+        (b ? ("\n" + b.slice(0, 1600)) : "");
+
+      const q = await supabase.rpc("queue_discord_send" as any, {
+        p_state_code: "789",
+        p_alliance_code: "",
+        p_kind: "state_alert_existing",
+        p_channel_id: String((discordChannelId || "") || ""),
+        p_message: msg,
+      } as any);
+
+      if (q.error) throw q.error;
+      alert("Queued to Discord ✅");
+    } catch (e: any) {
+      console.error(e);
+      alert("Queue failed: " + (e?.message || e));
+    }
+  };
 return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
       <h1 style={{ fontSize: 22, fontWeight: 900 }}>State 789 Alerts (DB)</h1>
