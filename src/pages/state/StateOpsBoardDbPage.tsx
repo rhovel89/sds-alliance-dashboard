@@ -114,6 +114,27 @@ export default function StateOpsBoardDbPage() {
       )
       .subscribe();
 
+  const queueOpsSummaryToDiscord = async () => {
+    try {
+      const msg =
+        "🛰️ **Ops Board Update**\n" +
+        "Open: " + window.location.href;
+
+      const q = await supabase.rpc("queue_discord_send" as any, {
+        p_state_code: "789",
+        p_alliance_code: "",
+        p_kind: "ops_board_summary",
+        p_channel_id: "",
+        p_message: msg,
+      } as any);
+
+      if (q.error) throw q.error;
+      alert("Queued to Discord ✅");
+    } catch (e: any) {
+      console.error(e);
+      alert("Queue failed: " + (e?.message || e));
+    }
+  };
     return () => {
       try { supabase.removeChannel(ch); } catch {}
     };
