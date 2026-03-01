@@ -180,6 +180,38 @@ export default function AllianceAnnouncementsPage() {
     }
   };
 
+
+  async function queueSendExistingAnnouncement(a: any) {
+    try {
+      const ch = String(
+discordChannelId
+ || "").trim();
+      const t = String(a?.title || "").trim();
+      const b = String(a?.body || "").trim();
+      const msg =
+        ("📣 **" + String(allianceCode || "").toUpperCase() + " Announcement**\n") +
+        (t ? ("**" + t.slice(0, 180) + "**\n") : "") +
+        (b ? b : "(no body)") +
+        ("\n\n" + window.location.origin + "/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
+
+      const q = await supabase.rpc("queue_discord_send" as any, {
+        p_state_code: "789",
+        p_alliance_code: String(allianceCode || "").toUpperCase(),
+        p_kind: "alliance_announcement",
+        p_channel_id: ch,
+        p_message: msg,
+      } as any);
+
+      if ((q as any)?.error) {
+        alert("Discord queue failed: " + (q as any).error.message);
+      } else {
+        alert("Queued to Discord ✅");
+      }
+    } catch (e: any) {
+      alert("Discord queue failed: " + String(e?.message || e));
+    }
+  }
+
   const del = async (id: string) => {
     if (!confirm("Delete this announcement?")) return;
     try {
@@ -302,6 +334,7 @@ export default function AllianceAnnouncementsPage() {
                     {a.created_at ? <div style={{ opacity: 0.6, marginTop: 4, fontSize: 12 }}>{new Date(a.created_at).toLocaleString()}</div> : null}
                   </div>
                   {canManage ? (
+                    <button onClick={() => queueSendExistingAnnouncement(a)} style={{ padding: "8px 10px", borderRadius: 10, marginRight: 8 }}>Send to Discord</button>
                     <button onClick={() => del(a.id)} style={{ padding: "8px 10px", borderRadius: 10 }}>Delete</button>
                   ) : null}
                 </div>
