@@ -69,6 +69,7 @@ export default function AllianceAnnouncementsPage() {
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [discordChannelId, setDiscordChannelId] = useState<string>("");
 
   const load = async () => {
     setLoading(true);
