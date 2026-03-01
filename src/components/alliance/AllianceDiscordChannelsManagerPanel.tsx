@@ -92,29 +92,7 @@ export default function AllianceDiscordChannelsManagerPanel() {
     await load();
   }
 
-    async function queueTestPing() {
-    try {
-      setTesting(true);
-      const msg = "✅ Discord channel test ping from State Alliance Dashboard";
-
-      const q = await supabase.rpc("queue_discord_send" as any, {
-        p_state_code: "789",
-        p_alliance_code: allianceCode,
-        p_kind: "announcements",
-        p_channel_id: testChannelId || "",
-        p_message: msg,
-      } as any);
-
-      if (q.error) throw q.error;
-      alert("Queued test ping ✅ (worker will send)");
-    } catch (e) {
-      console.error(e);
-      alert("Test ping failed (DB/RLS/queue).");
-    } finally {
-      setTesting(false);
-    }
-  }
-function label(r: Row) { return `${r.channel_name || "(unnamed)"} • ${r.channel_id}`; }
+  function label(r: Row) { return `${r.channel_name || "(unnamed)"} • ${r.channel_id}`; }
 
   return (
     <div className="zombie-card" style={{ padding: 12, borderRadius: 16 }}>
@@ -154,31 +132,7 @@ function label(r: Row) { return `${r.channel_name || "(unnamed)"} • ${r.channe
       </div>
 
       <div style={{ marginTop: 14 }}>
-        <div style={{ fontWeight: 900, marginBottom: 6 }      <div style={{ marginTop: 14, borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 12 }}>
-        <div style={{ fontWeight: 900, marginBottom: 6 }}>Test ping</div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <select
-            value={testChannelId}
-            onChange={(e) => setTestChannelId(e.target.value)}
-            disabled={!canManage || testing}
-            style={{ padding: "8px 10px", borderRadius: 10 }}
-          >
-            <option value="">Default (uses alliance default)</option>
-            {rows.map((r) => (
-              <option key={r.id} value={r.channel_id}>{label(r)}</option>
-            ))}
-          </select>
-
-          {canManage ? (
-            <button disabled={testing} onClick={() => void queueTestPing()}>
-              {testing ? "Queuing…" : "Queue Test Ping"}
-            </button>
-          ) : (
-            <div style={{ opacity: 0.75, fontSize: 12 }}>View-only</div>
-          )}
-        </div>
-      </div>
-}>Defaults (used when dropdown = Default)</div>
+        <div style={{ fontWeight: 900, marginBottom: 6 }}>Defaults (used when dropdown = Default)</div>
 
         <label style={{ display: "grid", gap: 6, marginBottom: 10 }}>
           <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9 }}>Alerts default</div>
@@ -205,4 +159,3 @@ function label(r: Row) { return `${r.channel_name || "(unnamed)"} • ${r.channe
     </div>
   );
 }
-
