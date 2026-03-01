@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
+import DiscordChannelSelect from "../../components/discord/DiscordChannelSelect";
 
 type Severity = "info" | "warning" | "critical";
 
@@ -120,7 +121,37 @@ export default function State789AlertsDbPage() {
     return true;
   }), [rows, filterSeverity, onlyPinned, onlyUnacked]);
 
-  return (
+    const createAndSend = async () => {
+    try {
+      await postAlert();
+
+      const t = String(title || "").trim();
+      const b = String(body || "").trim();
+
+      if (!t) return;
+
+      const msg =
+        🚨 **State Alert**\n +
+        **** +
+        (b ? \n : "") +
+        \nView: https://state789.site/state/789/alerts-db;
+
+      const q = await supabase.rpc("queue_discord_send" as any, {
+        p_state_code: "789",
+        p_alliance_code: "",
+        p_kind: "alerts",
+        p_channel_id: discordChannelId || "",
+        p_message: msg,
+      } as any);
+
+      if (q.error) throw q.error;
+      alert("Queued to Discord ✅");
+    } catch (e) {
+      console.error(e);
+      alert("Post+Send failed (DB/RLS/Discord queue).");
+    }
+  };
+return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
       <h1 style={{ fontSize: 22, fontWeight: 900 }}>State 789 Alerts (DB)</h1>
       <div style={{ opacity: 0.8, marginTop: 6 }}>{status ? status : "Supabase-backed alerts"}</div>
@@ -135,7 +166,23 @@ export default function State789AlertsDbPage() {
               <option value="warning">warning</option>
               <option value="critical">critical</option>
             </select>
-            <button onClick={postAlert} disabled={!userId}>Post</button>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+            <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9 }}>Discord channel</div>
+            <DiscordChannelSelect
+              scope="state"
+              kind="alerts"
+              stateCode="789"
+              value={discordChannelId}
+              onChange={setDiscordChannelId}
+            />
+          </div><button onClick={postAlert} disabled={!userId}>Post</button>
+          <button
+            type="button"
+            onClick={createAndSend}
+            style={{ padding: "10px 12px", borderRadius: 10, marginLeft: 8 }}
+          >
+            Post + Send to Discord
+          </button>
             <span style={{ opacity: 0.7, fontSize: 12 }}>
               Posting requires owner/admin or state grant can_manage_state_alerts.
             </span>
@@ -191,3 +238,4 @@ export default function State789AlertsDbPage() {
     </div>
   );
 }
+
