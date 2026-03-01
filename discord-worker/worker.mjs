@@ -118,7 +118,7 @@ async function loopOnce() {
 
   for (const item of batch) {
     try {
-      const channelId = item.channel_name; // your DB stores channel_id here
+      const channelId = item.discord_channel_id || item.channel_id || item.channel_name || item.channel || item.target_channel_id; // robust pick
       const content = item.message || "";
       const sent = await discordSend(channelId, content);
 
@@ -146,5 +146,6 @@ async function main() {
 }
 
 main();
+
 
 
