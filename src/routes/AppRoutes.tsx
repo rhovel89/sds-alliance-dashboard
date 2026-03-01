@@ -144,6 +144,7 @@ import StateOpsBoardDbPage from "../pages/state/StateOpsBoardDbPage";
 import OwnerStateLeadersAdminPage from "../pages/owner/OwnerStateLeadersAdminPage";
 import AllianceRosterPage from "../pages/alliance/AllianceRosterPage";
 import OwnerEventRemindersPage from "../pages/owner/OwnerEventRemindersPage";
+import OwnerStateAchievementsRosterPage from "../pages/owner/OwnerStateAchievementsRosterPage";
 
 export default function AppRoutes() {
   return (
@@ -259,6 +260,7 @@ export default function AppRoutes() {
       <Route path="/owner/oneclick-provision-plus" element={<RequireAdmin><OwnerOneClickProvisionPlusPage /></RequireAdmin>} />
       <Route path="/state/789/achievement-request" element={<State789AchievementRequestPage />} />
       <Route path="/owner/state-achievement-inbox" element={<RequireAdmin><OwnerStateAchievementInboxPage /></RequireAdmin>} />
+      <Route path="/owner/state-achievements-roster" element={<RequireAdmin><OwnerStateAchievementsRosterPage /></RequireAdmin>} />
       <Route path="/owner/discord-edge-test" element={<RequireAdmin><OwnerDiscordEdgeSendTestPage /></RequireAdmin>} />
             <Route path="/state/:state_code/alerts-db" element={<StateAlertsDbPage />} />
       <Route path="/state/:state_code/discussion-db" element={<StateDiscussionDbPage />} />
@@ -274,6 +276,7 @@ export default function AppRoutes() {
 </Routes>
   );
 }
+
 
 
 
