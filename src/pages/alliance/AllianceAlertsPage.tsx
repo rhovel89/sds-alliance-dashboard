@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseBrowserClient";
+import DiscordChannelSelect from "../../components/discord/DiscordChannelSelect";
 
 type Severity = "info" | "warning" | "critical";
 
@@ -38,6 +39,7 @@ export default function AllianceAlertsPage() {
   const [severity, setSeverity] = useState<Severity>("info");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [discordChannelId, setDiscordChannelId] = useState<string>("");
   const [tagsRaw, setTagsRaw] = useState("");
 
   // filters
@@ -141,7 +143,36 @@ export default function AllianceAlertsPage() {
     });
   }, [rows, filterSeverity, onlyPinned, onlyUnacked]);
 
-  return (
+    const createAndSend = async () => {
+    const t = String(title || "").trim();
+    const b = String(body || "").trim();
+    if (!t) return;
+
+    try {
+      await postAlert();
+
+      const msg =
+        ("🚨 **" + String(allianceCode || "").toUpperCase() + " Alert**\n") +
+        ("**" + t.slice(0, 180) + "**") +
+        (b ? ("\n" + b.slice(0, 1500)) : "") +
+        ("\nView: https://state789.site/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()));
+
+      const q = await supabase.rpc("queue_discord_send" as any, {
+        p_state_code: "789",
+        p_alliance_code: String(allianceCode || "").toUpperCase(),
+        p_kind: "alerts",
+        p_channel_id: discordChannelId || "",
+        p_message: msg,
+      } as any);
+
+      if (q.error) throw q.error;
+      alert("Queued to Discord ✅");
+    } catch (e) {
+      console.error(e);
+      alert("Post+Send failed (DB/RLS/queue).");
+    }
+  };
+return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
       <h1 style={{ fontSize: 22, fontWeight: 900 }}>Alliance Alerts</h1>
       <div style={{ opacity: 0.8, marginTop: 6 }}>
@@ -158,7 +189,24 @@ export default function AllianceAlertsPage() {
               <option value="warning">warning</option>
               <option value="critical">critical</option>
             </select>
-            <button onClick={postAlert} disabled={!userId}>Post</button>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9 }}>Discord channel</div>
+            <DiscordChannelSelect
+              scope="alliance"
+              kind="alerts"
+              stateCode="789"
+              allianceCode={String(allianceCode || "").toUpperCase()}
+              value={discordChannelId}
+              onChange={setDiscordChannelId}
+            />
+          </div><button onClick={postAlert} disabled={!userId}>Post</button>
+          <button
+            type="button"
+            onClick={createAndSend}
+            style={{ padding: "10px 12px", borderRadius: 10, marginLeft: 8 }}
+          >
+            Post + Send to Discord
+          </button>
             <span style={{ opacity: 0.7, fontSize: 12 }}>
               If Post fails, you need alliance permission can_post_alerts (or owner/admin).
             </span>
@@ -223,3 +271,4 @@ export default function AllianceAlertsPage() {
     </div>
   );
 }
+
