@@ -1,9 +1,9 @@
 import React from "react";
 import OwnerFlowShell, { FlowStep } from "../../components/owner/OwnerFlowShell";
-import OwnerAllianceDirectoryEditorPage from "../pages/owner/OwnerAllianceDirectoryEditorPage";
-import OwnerAllianceDirectorySyncPage from "../pages/owner/OwnerAllianceDirectorySyncPage";
-import OwnerAlliancesPage from "../pages/owner/OwnerAlliancesPage";
-import OwnerMembershipsPage from "../pages/owner/OwnerMembershipsPage";
+import OwnerAllianceDirectoryEditorPage from "./OwnerAllianceDirectoryEditorPage";
+import OwnerAllianceDirectorySyncPage from "./OwnerAllianceDirectorySyncPage";
+import OwnerAlliancesPage from "./OwnerAlliancesPage";
+import OwnerMembershipsPage from "./OwnerMembershipsPage";
 
 export default function OwnerAllianceOpsFlowPage() {
   const steps: FlowStep[] = [
@@ -55,3 +55,4 @@ export default function OwnerAllianceOpsFlowPage() {
     />
   );
 }
+
