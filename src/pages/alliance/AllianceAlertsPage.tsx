@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseBrowserClient";
 import DiscordChannelSelect from "../../components/discord/DiscordChannelSelect";
+import AllianceDiscordChannelsManagerPanel from "../../components/alliance/AllianceDiscordChannelsManagerPanel";
 
 type Severity = "info" | "warning" | "critical";
 

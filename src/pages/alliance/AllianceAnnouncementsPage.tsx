@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import PlayerProfileAndHqsPanel from "../../components/player/PlayerProfileAndHqsPanel";
 import DiscordChannelSelect from "../../components/discord/DiscordChannelSelect";
+import AllianceDiscordChannelsManagerPanel from "../../components/alliance/AllianceDiscordChannelsManagerPanel";
 
 type Announcement = {
   id: string;
@@ -196,6 +197,14 @@ export default function AllianceAnnouncementsPage() {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>📣 Announcements</h2>
         <a href={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ textDecoration: "none" }}>← Back</a>
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <details>
+          <summary style={{ cursor: "pointer", fontWeight: 900 }}>⚙️ Discord Channels (R5/R4)</summary>
+          <div style={{ marginTop: 10 }}>
+            <AllianceDiscordChannelsManagerPanel allianceCode={allianceCode} />
+          </div>
+        </details>
       </div>
 
       {canManage ? (
