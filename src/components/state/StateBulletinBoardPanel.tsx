@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeRefresh } from "../../hooks/useRealtimeRefresh";
+import DiscordChannelSelect from "../discord/DiscordChannelSelect";
 
 type Row = {
   id: string;
@@ -46,6 +47,7 @@ export default function StateBulletinBoardPanel(props: { stateCode?: string }) {
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [discordChannelId, setDiscordChannelId] = useState<string>("");
   const [pin, setPin] = useState(false);
 
   const titleHint = useMemo(() => `State ${stateCode} Bulletin Board`, [stateCode]);
@@ -159,7 +161,51 @@ export default function StateBulletinBoardPanel(props: { stateCode?: string }) {
     setStatus("");
   }
 
-  return (
+    async function postAndSend() {
+    const u = await supabase.auth.getUser();
+    const uid = u.data.user?.id ?? "";
+    if (!uid) return alert("Please sign in.");
+    if (!canPost) return alert("You do not have permission to post bulletins.");
+
+    const b = body.trim();
+    if (!b) return;
+
+    // insert bulletin (same as post())
+    const ins = await supabase.from("state_bulletins").insert({
+      state_code: stateCode,
+      title: title.trim() || null,
+      body: b,
+      pinned: canManage ? !!pin : false,
+      created_by: uid,
+    });
+
+    if (ins.error) { setStatus(ins.error.message); return; }
+
+    // queue discord send (state announcements)
+    const t = (title.trim() || "Update");
+    const msg =
+      "📣 **State Bulletin**\n" +
+      ("**" + t.slice(0, 180) + "**") +
+      (b ? ("\n" + b.slice(0, 1500)) : "") +
+      ("\nView: https://state789.site/state/" + encodeURIComponent(stateCode));
+
+    const q = await supabase.rpc("queue_state_discord_send" as any, {
+      p_state_code: stateCode,
+      p_kind: "announcements",
+      p_channel_id: discordChannelId || "",
+      p_message: msg,
+    } as any);
+
+    if (q.error) { setStatus(String(q.error.message || q.error)); return; }
+
+    setTitle("");
+    setBody("");
+    setPin(false);
+    setStatus("Posted + queued to Discord ✅");
+    await loadRows();
+    window.setTimeout(() => setStatus(""), 1200);
+  }
+return (
     <div style={{ border: "1px solid rgba(255,255,255,0.16)", borderRadius: 12, padding: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div>
@@ -183,7 +229,18 @@ export default function StateBulletinBoardPanel(props: { stateCode?: string }) {
               </label>
             ) : <span />}
 
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9 }}>Discord channel</div>
+              <DiscordChannelSelect
+                scope="state"
+                kind="announcements"
+                stateCode={stateCode}
+                value={discordChannelId}
+                onChange={setDiscordChannelId}
+              />
+            </div>
             <button onClick={post} disabled={!body.trim()}>Post</button>
+            <button onClick={postAndSend} disabled={!body.trim()}>Post + Send to Discord</button>
           </div>
         </div>
       ) : (
@@ -218,4 +275,5 @@ export default function StateBulletinBoardPanel(props: { stateCode?: string }) {
     </div>
   );
 }
+
 
