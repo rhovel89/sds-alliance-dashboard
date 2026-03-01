@@ -60,9 +60,9 @@ export default function AllianceAlertsPage() {
     if (!allianceId) return;
     setStatus("Loading…");
     const res = await supabase
-      .from("v_my_alliance_alerts")
+      .from("alliance_alerts")
       .select("*")
-      .eq("alliance_id", allianceId)
+      .eq("alliance_code", allianceCode)
       .order("created_at", { ascending: false })
       .limit(200);
 
@@ -273,4 +273,5 @@ return (
     </div>
   );
 }
+
 
