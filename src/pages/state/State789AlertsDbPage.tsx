@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
 import DiscordChannelSelect from "../../components/discord/DiscordChannelSelect";
+import StateDiscordChannelSelect from "../../components/discord/StateDiscordChannelSelect";
+import StateDiscordChannelsManagerPanel from "../../components/state/StateDiscordChannelsManagerPanel";
 
 type Severity = "info" | "warning" | "critical";
 
@@ -186,7 +188,12 @@ return (
               value={discordChannelId}
               onChange={setDiscordChannelId}
             />
-          </div><button onClick={postAlert} disabled={!userId}>Post</button>
+          </div><button onClick={postAlert} disabled={!userId}            <StateDiscordChannelSelect
+              stateCode={"789"}
+              value={discordChannelId}
+              onChange={setDiscordChannelId}
+              label="Send to Discord channel"
+            />>Post</button>
           <button
             type="button"
             onClick={async () => {
@@ -281,5 +288,6 @@ return (
     </div>
   );
 }
+
 
 
