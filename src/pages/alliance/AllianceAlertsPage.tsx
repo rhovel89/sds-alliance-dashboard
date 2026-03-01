@@ -179,6 +179,14 @@ export default function AllianceAlertsPage() {
 return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
       <h1 style={{ fontSize: 22, fontWeight: 900 }}>Alliance Alerts</h1>
+      <div style={{ marginTop: 12 }}>
+        <details>
+          <summary style={{ cursor: "pointer", fontWeight: 900 }}>⚙️ Discord Channels (R5/R4)</summary>
+          <div style={{ marginTop: 10 }}>
+            <AllianceDiscordChannelsManagerPanel allianceCode={allianceCode} />
+          </div>
+        </details>
+      </div>
       <div style={{ opacity: 0.8, marginTop: 6 }}>
         Alliance: <code>{allianceId}</code> {status ? " • " + status : ""}
       </div>
