@@ -167,7 +167,6 @@ export default function AppRoutes() {
       <Route path="/state/789/alerts-db" element={<State789AlertsDbPage />} />
       <Route path="/state/789/discussion-db" element={<State789DiscussionDbPage />} />
       <Route path="/owner/live-ops-db" element={<RequireAdmin><OwnerLiveOpsDbPage /></RequireAdmin>} />
-      <Route path="/owner/permissions?section=permissions" element={<Navigate to="/owner/permissions" replace />
       <Route path="/owner/access-control-legacy" element={<RequireAdmin><RouteRedirect to="/owner/access-control" /></RequireAdmin>} />
       <Route path="/owner/permissions-db" element={<RequireAdmin><RouteRedirect to="/owner/permissions" /></RequireAdmin>} />
       <Route path="/owner/permissions-matrix-v3-v2" element={<RequireAdmin><RouteRedirect to="/owner/permissions" /></RequireAdmin>} />
@@ -278,8 +277,6 @@ export default function AppRoutes() {
       <Route path="/owner/discord-edge-test" element={<RequireAdmin><OwnerDiscordEdgeSendTestPage /></RequireAdmin>} />
             <Route path="/state/:state_code/alerts-db" element={<StateAlertsDbPage />} />
       <Route path="/state/:state_code/discussion-db" element={<StateDiscussionDbPage />} />
-      <Route path="/owner/permissions?section=permissions-v3" element={<RequireAdmin><OwnerPermissionsMatrixV3Page /></RequireAdmin>} />
-            <Route path="/owner/permissions?section=permissions" element={<Navigate to="/owner/permissions" replace />} />
       <Route path="/owner/activity-feed" element={<RequireAdmin><OwnerActivityFeedPage /></RequireAdmin>} />
       <Route path="/owner/command-center" element={<RequireAdmin><OwnerCommandCenterV2Page /></RequireAdmin>} />
       <Route path="/state/:state_code/ops-db" element={<StateOpsBoardDbPage />} />
