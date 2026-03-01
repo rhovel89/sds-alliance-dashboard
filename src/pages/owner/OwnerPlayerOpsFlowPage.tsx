@@ -1,10 +1,10 @@
 import React from "react";
 import OwnerFlowShell, { FlowStep } from "../../components/owner/OwnerFlowShell";
-import OwnerPlayerIntakePage from "../pages/owner/OwnerPlayerIntakePage";
-import OwnerOnboardingQueuePage from "../pages/owner/OwnerOnboardingQueuePage";
-import OwnerPlayersPage from "../pages/owner/OwnerPlayersPage";
-import OwnerMembershipsPage from "../pages/owner/OwnerMembershipsPage";
-import OwnerAccessControlPage from "../pages/owner/OwnerAccessControlPage";
+import OwnerPlayerIntakePage from "./OwnerPlayerIntakePage";
+import OwnerOnboardingQueuePage from "./OwnerOnboardingQueuePage";
+import OwnerPlayersPage from "./OwnerPlayersPage";
+import OwnerMembershipsPage from "./OwnerMembershipsPage";
+import OwnerAccessControlPage from "./OwnerAccessControlPage";
 
 export default function OwnerPlayerOpsFlowPage() {
   const steps: FlowStep[] = [
@@ -62,3 +62,4 @@ export default function OwnerPlayerOpsFlowPage() {
     />
   );
 }
+
