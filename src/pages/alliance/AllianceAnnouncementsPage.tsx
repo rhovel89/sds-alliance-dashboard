@@ -221,7 +221,48 @@ export default function AllianceAnnouncementsPage() {
           </button>
           <button
             disabled={saving || !title.trim()}
-            onClick={createAndSend}
+            onClick={async () => {
+              const t = title.trim();
+              if (!t) return;
+
+              setSaving(true);
+              try {
+                const { error } = await supabase.from("alliance_announcements").insert({
+                  alliance_code: allianceCode,
+                  title: t,
+                  body: body.trim() || null,
+                  pinned,
+                } as any);
+                if (error) throw error;
+
+                const b = body.trim();
+
+                const msg =
+                  ("📣 **" + String(allianceCode || "").toUpperCase() + " Announcement**\n") +
+                  ("**" + t.slice(0, 180) + "**") +
+                  (b ? ("\n" + b.slice(0, 1500)) : "") +
+                  ("\nView: https://state789.site/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
+
+                const q = await supabase.rpc("queue_discord_send" as any, {
+                  p_state_code: "789",
+                  p_alliance_code: String(allianceCode || "").toUpperCase(),
+                  p_kind: "announcements",
+                  p_channel_id: discordChannelId || "",
+                  p_message: msg,
+                } as any);
+
+                if (q.error) throw q.error;
+
+                setTitle(""); setBody(""); setPinned(false);
+                await load();
+                alert("Posted + queued to Discord ✅");
+              } catch (e) {
+                console.error(e);
+                alert("Post+Send failed (DB/RLS/queue).");
+              } finally {
+                setSaving(false);
+              }
+            }}
             style={{ padding: "10px 12px", borderRadius: 10, marginLeft: 8 }}
           >
             {saving ? "Posting+Sending…" : "Post + Send to Discord"}
@@ -261,6 +302,7 @@ export default function AllianceAnnouncementsPage() {
     </div>
   );
 }
+
 
 
 
