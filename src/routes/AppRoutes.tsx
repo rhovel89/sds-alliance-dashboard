@@ -149,6 +149,10 @@ import OwnerStateAchievementsRosterPage from "../pages/owner/OwnerStateAchieveme
 import OwnerCommandCenterPage from "../pages/owner/OwnerCommandCenterPage";
 import OwnerAlliancePermissionsHubPage from "../pages/owner/OwnerAlliancePermissionsHubPage";
 import OwnerLinksIndexPage from "../pages/owner/OwnerLinksIndexPage";
+import OwnerHomePage from "../pages/owner/OwnerHomePage";
+import OwnerPlayerOpsFlowPage from "../pages/owner/OwnerPlayerOpsFlowPage";
+import OwnerAllianceOpsFlowPage from "../pages/owner/OwnerAllianceOpsFlowPage";
+import RouteRedirect from "../components/system/RouteRedirect";
 
 export default function AppRoutes() {
   return (
@@ -183,7 +187,8 @@ export default function AppRoutes() {
       <Route path="/dashboard/ME" element={<Navigate to="/me" replace />} />
 
       {/* Owner */}
-      <Route path="/owner" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
+      <Route path="/owner" element={<RequireAdmin><OwnerHomePage /></RequireAdmin>} />
+        <Route path="/owner/command-center" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
   <Route path="/owner/discord" element={<RequireAdmin><OwnerDiscordSettingsPage /></RequireAdmin>} />
       <Route path="/owner/select" element={<RequireAdmin><OwnerDashboardSelect /></RequireAdmin>} />
       <Route path="/owner/requests" element={<RequireAdmin><OwnerAccessRequestsPage /></RequireAdmin>} />
@@ -283,6 +288,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
