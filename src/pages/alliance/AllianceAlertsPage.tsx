@@ -60,7 +60,7 @@ export default function AllianceAlertsPage() {
     if (!allianceId) return;
     setStatus("Loading…");
     const res = await supabase
-      .from("alliance_alerts")
+      .from("v_my_alliance_alerts")
       .select("*")
       .eq("alliance_code", allianceCode)
       .order("created_at", { ascending: false })
@@ -82,7 +82,7 @@ export default function AllianceAlertsPage() {
     if (!t || !b) return alert("Title and body are required.");
 
     setStatus("Posting…");
-    const ins = await supabase.from("alliance_alerts").insert({
+    const ins = await supabase.from("v_my_alliance_alerts").insert({
       alliance_id: allianceId,
       created_by_user_id: userId,
       severity,
@@ -120,7 +120,7 @@ export default function AllianceAlertsPage() {
 
   async function togglePinned(r: Row) {
     setStatus("Saving…");
-    const up = await supabase.from("alliance_alerts").update({ pinned: !r.pinned }).eq("id", r.id);
+    const up = await supabase.from("v_my_alliance_alerts").update({ pinned: !r.pinned }).eq("id", r.id);
     if (up.error) { setStatus(up.error.message); return; }
     await load();
     setStatus("");
@@ -130,7 +130,7 @@ export default function AllianceAlertsPage() {
     const ok = confirm("Delete this alert?");
     if (!ok) return;
     setStatus("Deleting…");
-    const del = await supabase.from("alliance_alerts").delete().eq("id", r.id);
+    const del = await supabase.from("v_my_alliance_alerts").delete().eq("id", r.id);
     if (del.error) { setStatus(del.error.message); return; }
     await load();
     setStatus("");
@@ -273,6 +273,7 @@ return (
     </div>
   );
 }
+
 
 
 
