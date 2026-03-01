@@ -146,6 +146,7 @@ import OwnerStateLeadersAdminPage from "../pages/owner/OwnerStateLeadersAdminPag
 import AllianceRosterPage from "../pages/alliance/AllianceRosterPage";
 import OwnerEventRemindersPage from "../pages/owner/OwnerEventRemindersPage";
 import OwnerStateAchievementsRosterPage from "../pages/owner/OwnerStateAchievementsRosterPage";
+import OwnerCommandCenterPage from "../pages/owner/OwnerCommandCenterPage";
 
 export default function AppRoutes() {
   return (
@@ -275,10 +276,11 @@ export default function AppRoutes() {
       <Route path="/state/789/ops" element={<Navigate to="/state/789/ops" replace />} />
             <Route path="/owner/event-reminders" element={<RequireAdmin><OwnerEventRemindersPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
-        <Route path="/owner/links" element={<RequireAdmin><OwnerLinksIndexPage /></RequireAdmin>} />
+        <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterPage /></RequireAdmin>} />
       </Routes>
   );
 }
+
 
 
 
