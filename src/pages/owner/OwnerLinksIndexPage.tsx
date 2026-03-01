@@ -46,7 +46,7 @@ export default function OwnerLinksIndexPage() {
       "/owner",
       "/owner/onboarding-queue",
       "/owner/access-control",
-      "/owner/permissions-matrix-v3",
+      "/owner/permissions?section=permissions",
       "/owner/memberships",
       "/owner/players",
       "/owner/mail-broadcast",
@@ -130,3 +130,4 @@ export default function OwnerLinksIndexPage() {
     </div>
   );
 }
+

@@ -163,7 +163,7 @@ export default function AppRoutes() {
       <Route path="/state/789/alerts-db" element={<State789AlertsDbPage />} />
       <Route path="/state/789/discussion-db" element={<State789DiscussionDbPage />} />
       <Route path="/owner/live-ops-db" element={<RequireAdmin><OwnerLiveOpsDbPage /></RequireAdmin>} />
-      <Route path="/owner/permissions-db" element={<Navigate to="/owner/permissions" replace />} />
+      <Route path="/owner/permissions?section=permissions" element={<Navigate to="/owner/permissions" replace />} />
       <Route path="/alliances-v2" element={<AllianceDirectoryDbPage />} />
       <Route path="/owner/directory-db" element={<RequireAdmin><OwnerDirectoryDbPage /></RequireAdmin>} />
       <Route path="/owner/mail-broadcast" element={<RequireAdmin><OwnerMailBroadcastPage /></RequireAdmin>} />
@@ -268,8 +268,8 @@ export default function AppRoutes() {
       <Route path="/owner/discord-edge-test" element={<RequireAdmin><OwnerDiscordEdgeSendTestPage /></RequireAdmin>} />
             <Route path="/state/:state_code/alerts-db" element={<StateAlertsDbPage />} />
       <Route path="/state/:state_code/discussion-db" element={<StateDiscussionDbPage />} />
-      <Route path="/owner/permissions-matrix-v3-v3" element={<RequireAdmin><OwnerPermissionsMatrixV3Page /></RequireAdmin>} />
-            <Route path="/owner/permissions-matrix-v3" element={<Navigate to="/owner/permissions" replace />} />
+      <Route path="/owner/permissions?section=permissions-v3" element={<RequireAdmin><OwnerPermissionsMatrixV3Page /></RequireAdmin>} />
+            <Route path="/owner/permissions?section=permissions" element={<Navigate to="/owner/permissions" replace />} />
       <Route path="/owner/activity-feed" element={<RequireAdmin><OwnerActivityFeedPage /></RequireAdmin>} />
       <Route path="/owner/command-center" element={<RequireAdmin><OwnerCommandCenterV2Page /></RequireAdmin>} />
       <Route path="/state/:state_code/ops-db" element={<StateOpsBoardDbPage />} />
@@ -283,6 +283,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 

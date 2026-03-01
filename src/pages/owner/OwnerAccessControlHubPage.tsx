@@ -47,7 +47,7 @@ export default function OwnerAccessControlHubPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" onClick={() => nav("/owner/permissions-matrix-v3")}>Open Matrix (full page)</button>
+          <button type="button" onClick={() => nav("/owner/permissions?section=permissions")}>Open Matrix (full page)</button>
           <button type="button" onClick={() => nav("/owner/access-control-legacy")}>Open Legacy Only</button>
         </div>
       </div>
@@ -80,3 +80,4 @@ export default function OwnerAccessControlHubPage() {
     </div>
   );
 }
+
