@@ -29,10 +29,9 @@ function normalizeTags(raw: string): string[] {
 
 export default function AllianceAlertsPage() {
   const { alliance_id } = useParams();
-  const allianceCode = useMemo(() => String(alliance_id || "").toUpperCase().trim(), [alliance_id]);
 
-  const { alliance_id } = useParams();
   const allianceId = alliance_id ?? "";
+  const allianceCode = String(allianceId || "").toUpperCase().trim();
 
   const [userId, setUserId] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
