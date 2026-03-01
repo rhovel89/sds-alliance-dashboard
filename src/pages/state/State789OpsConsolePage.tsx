@@ -240,9 +240,9 @@ export default function State789OpsConsolePage() {
       <p style={{ opacity: 0.8, marginTop: 6 }}>UI-only command center with pinned alerts + pinned discussion.</p>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
-        <Link to="/state/789/alerts-v2">Alerts (V2)</Link>
+        <Link to="/state/789/alerts">Alerts (V2)</Link>
         <Link to="/state/789/alerts">Alerts (Legacy)</Link>
-        <Link to="/state/789/discussion-v2">Discussion (V2)</Link>
+        <Link to="/state/789/discussion">Discussion (V2)</Link>
         <Link to="/state/789/achievements">Achievements</Link>
         <Link to="/owner/broadcast">Broadcast Composer</Link>
         <Link to="/owner/data-vault">Data Vault</Link>
@@ -336,7 +336,7 @@ export default function State789OpsConsolePage() {
           <div style={{ padding: 12, display: "grid", gap: 12 }}>
             {pinnedAlerts.length === 0 ? (
               <div style={{ opacity: 0.75 }}>
-                No pinned alerts. Pin alerts in <Link to="/state/789/alerts-v2">Alerts (V2)</Link>.
+                No pinned alerts. Pin alerts in <Link to="/state/789/alerts">Alerts (V2)</Link>.
               </div>
             ) : (
               pinnedAlerts.slice(0, 6).map((a) => (
@@ -363,7 +363,7 @@ export default function State789OpsConsolePage() {
 
             {pinnedAlerts.length > 6 ? (
               <div style={{ opacity: 0.75 }}>
-                Showing 6 of {pinnedAlerts.length}. Open <Link to="/state/789/alerts-v2">Alerts (V2)</Link> for more.
+                Showing 6 of {pinnedAlerts.length}. Open <Link to="/state/789/alerts">Alerts (V2)</Link> for more.
               </div>
             ) : null}
           </div>
@@ -378,7 +378,7 @@ export default function State789OpsConsolePage() {
           <div style={{ padding: 12, display: "grid", gap: 12 }}>
             {pinnedDiscussion.length === 0 ? (
               <div style={{ opacity: 0.75 }}>
-                No pinned posts. Pin posts in <Link to="/state/789/discussion-v2">Discussion (V2)</Link>.
+                No pinned posts. Pin posts in <Link to="/state/789/discussion">Discussion (V2)</Link>.
                 <div style={{ opacity: 0.65, marginTop: 6, fontSize: 12 }}>
                   Using POSTS_KEY="{POSTS_KEY}" and META_KEY="{META_KEY}".
                 </div>
@@ -400,7 +400,7 @@ export default function State789OpsConsolePage() {
 
             {pinnedDiscussion.length > 6 ? (
               <div style={{ opacity: 0.75 }}>
-                Showing 6 of {pinnedDiscussion.length}. Open <Link to="/state/789/discussion-v2">Discussion (V2)</Link> for more.
+                Showing 6 of {pinnedDiscussion.length}. Open <Link to="/state/789/discussion">Discussion (V2)</Link> for more.
               </div>
             ) : null}
           </div>
@@ -411,3 +411,4 @@ export default function State789OpsConsolePage() {
     </div>
   );
 }
+

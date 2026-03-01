@@ -1,0 +1,834 @@
+[
+  {
+    "path": "/owner/directory-sync",
+    "normalized": "/owner/directory-sync",
+    "component": "OwnerAllianceDirectorySyncPage",
+    "importPath": "../pages/owner/OwnerAllianceDirectorySyncPage",
+    "file": ".\\src\\pages\\owner\\OwnerAllianceDirectorySyncPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/permissions-matrix-v3-v2",
+    "normalized": "/owner/permissions-matrix-v3",
+    "component": "",
+    "importPath": "",
+    "file": "",
+    "lastGit": ""
+  },
+  {
+    "path": "/me/hq-manager",
+    "normalized": "/me/hq-manager",
+    "component": "MyHqManagerPage",
+    "importPath": "../pages/me/MyHqManagerPage",
+    "file": ".\\src\\pages\\me\\MyHqManagerPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/discord-queue",
+    "normalized": "/owner/discord-queue",
+    "component": "OwnerDiscordQueuePage",
+    "importPath": "../pages/owner/OwnerDiscordQueuePage",
+    "file": ".\\src\\pages\\owner\\OwnerDiscordQueuePage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/mail-threads",
+    "normalized": "/mail-threads",
+    "component": "MyMailThreadsPage",
+    "importPath": "../pages/mail/MyMailThreadsPage",
+    "file": ".\\src\\pages\\mail\\MyMailThreadsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/onboarding-queue",
+    "normalized": "/owner/onboarding-queue",
+    "component": "OwnerOnboardingQueuePage",
+    "importPath": "../pages/owner/OwnerOnboardingQueuePage",
+    "file": ".\\src\\pages\\owner\\OwnerOnboardingQueuePage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/achievements/request-v2",
+    "normalized": "/state/789/achievements/request",
+    "component": "State789AchievementRequestV2Page",
+    "importPath": "../pages/state/State789AchievementRequestV2Page",
+    "file": ".\\src\\pages\\state\\State789AchievementRequestV2Page.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/achievements/admin-v2",
+    "normalized": "/state/789/achievements/admin",
+    "component": "State789AchievementsAdminV2Page",
+    "importPath": "../pages/state/State789AchievementsAdminV2Page",
+    "file": ".\\src\\pages\\state\\State789AchievementsAdminV2Page.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/alerts-db",
+    "normalized": "/state/789/alerts",
+    "component": "State789AlertsDbPage",
+    "importPath": "../pages/state/State789AlertsDbPage",
+    "file": ".\\src\\pages\\state\\State789AlertsDbPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/discussion-db",
+    "normalized": "/state/789/discussion",
+    "component": "State789DiscussionDbPage",
+    "importPath": "../pages/state/State789DiscussionDbPage",
+    "file": ".\\src\\pages\\state\\State789DiscussionDbPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/live-ops-db",
+    "normalized": "/owner/live-ops",
+    "component": "OwnerLiveOpsDbPage",
+    "importPath": "../pages/owner/OwnerLiveOpsDbPage",
+    "file": ".\\src\\pages\\owner\\OwnerLiveOpsDbPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/permissions-db",
+    "normalized": "/owner/permissions",
+    "component": "",
+    "importPath": "",
+    "file": "",
+    "lastGit": ""
+  },
+  {
+    "path": "/alliances-v2",
+    "normalized": "/alliances",
+    "component": "AllianceDirectoryDbPage",
+    "importPath": "../pages/alliance/AllianceDirectoryDbPage",
+    "file": ".\\src\\pages\\alliance\\AllianceDirectoryDbPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/directory-db",
+    "normalized": "/owner/directory",
+    "component": "OwnerDirectoryDbPage",
+    "importPath": "../pages/owner/OwnerDirectoryDbPage",
+    "file": ".\\src\\pages\\owner\\OwnerDirectoryDbPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/mail-broadcast",
+    "normalized": "/owner/mail-broadcast",
+    "component": "OwnerMailBroadcastPage",
+    "importPath": "../pages/owner/OwnerMailBroadcastPage",
+    "file": ".\\src\\pages\\owner\\OwnerMailBroadcastPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/data-vault",
+    "normalized": "/owner/data-vault",
+    "component": "OwnerDataVaultPage",
+    "importPath": "../pages/owner/OwnerDataVaultPage",
+    "file": ".\\src\\pages\\owner\\OwnerDataVaultPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/status",
+    "normalized": "/status",
+    "component": "SystemStatusPage",
+    "importPath": "../pages/SystemStatusPage",
+    "file": ".\\src\\pages\\SystemStatusPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/",
+    "normalized": "",
+    "component": "AuthLandingPage",
+    "importPath": "../pages/AuthLandingPage",
+    "file": ".\\src\\pages\\AuthLandingPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/dashboard",
+    "normalized": "/dashboard",
+    "component": "DashboardEntry",
+    "importPath": "",
+    "file": "",
+    "lastGit": ""
+  },
+  {
+    "path": "/onboarding",
+    "normalized": "/onboarding",
+    "component": "RequestAccessPage",
+    "importPath": "../pages/onboarding/RequestAccessPage",
+    "file": ".\\src\\pages\\onboarding\\RequestAccessPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/me",
+    "normalized": "/me",
+    "component": "PlayerDashboardSafePage",
+    "importPath": "../pages/PlayerDashboardSafePage",
+    "file": ".\\src\\pages\\PlayerDashboardSafePage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/dashboard/ME",
+    "normalized": "/dashboard/ME",
+    "component": "",
+    "importPath": "",
+    "file": "",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner",
+    "normalized": "/owner",
+    "component": "OwnerDashboardPage",
+    "importPath": "../pages/owner/OwnerDashboardPage",
+    "file": ".\\src\\pages\\owner\\OwnerDashboardPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/discord",
+    "normalized": "/owner/discord",
+    "component": "OwnerDiscordSettingsPage",
+    "importPath": "../pages/owner/OwnerDiscordSettingsPage",
+    "file": ".\\src\\pages\\owner\\OwnerDiscordSettingsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/select",
+    "normalized": "/owner/select",
+    "component": "OwnerDashboardSelect",
+    "importPath": "../pages/OwnerDashboardSelect",
+    "file": ".\\src\\pages\\OwnerDashboardSelect.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/requests",
+    "normalized": "/owner/requests",
+    "component": "OwnerAccessRequestsPage",
+    "importPath": "../pages/owner/OwnerAccessRequestsPage",
+    "file": ".\\src\\pages\\owner\\OwnerAccessRequestsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/memberships",
+    "normalized": "/owner/memberships",
+    "component": "OwnerMembershipsPage",
+    "importPath": "../pages/owner/OwnerMembershipsPage",
+    "file": ".\\src\\pages\\owner\\OwnerMembershipsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/alliances",
+    "normalized": "/owner/alliances",
+    "component": "OwnerAlliancesPage",
+    "importPath": "../pages/owner/OwnerAlliancesPage",
+    "file": ".\\src\\pages\\owner\\OwnerAlliancesPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/players",
+    "normalized": "/owner/players",
+    "component": "OwnerPlayersPage",
+    "importPath": "../pages/owner/OwnerPlayersPage",
+    "file": ".\\src\\pages\\owner\\OwnerPlayersPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/player-intake",
+    "normalized": "/owner/player-intake",
+    "component": "OwnerPlayerIntakePage",
+    "importPath": "../pages/owner/OwnerPlayerIntakePage",
+    "file": ".\\src\\pages\\owner\\OwnerPlayerIntakePage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/membership",
+    "normalized": "/owner/membership",
+    "component": "OwnerMembershipManagerPage",
+    "importPath": "../pages/owner/OwnerMembershipManagerPage",
+    "file": ".\\src\\pages\\owner\\OwnerMembershipManagerPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/requests-provision",
+    "normalized": "/owner/requests-provision",
+    "component": "OwnerRequestsProvisionPage",
+    "importPath": "../pages/owner/OwnerRequestsProvisionPage",
+    "file": ".\\src\\pages\\owner\\OwnerRequestsProvisionPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/players-link",
+    "normalized": "/owner/players-link",
+    "component": "OwnerPlayersLinkPage",
+    "importPath": "../pages/owner/OwnerPlayersLinkPage",
+    "file": ".\\src\\pages\\owner\\OwnerPlayersLinkPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/state",
+    "normalized": "/owner/state",
+    "component": "OwnerStateManagerPage",
+    "importPath": "../pages/owner/OwnerStateManagerPage",
+    "file": ".\\src\\pages\\owner\\OwnerStateManagerPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/state-leaders",
+    "normalized": "/owner/state-leaders",
+    "component": "OwnerStateLeadersAdminPage",
+    "importPath": "../pages/owner/OwnerStateLeadersAdminPage",
+    "file": ".\\src\\pages\\owner\\OwnerStateLeadersAdminPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/roles",
+    "normalized": "/owner/roles",
+    "component": "OwnerRolesPermissionsV2Page",
+    "importPath": "../pages/owner/OwnerRolesPermissionsV2Page",
+    "file": ".\\src\\pages\\owner\\OwnerRolesPermissionsV2Page.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/event-types",
+    "normalized": "/owner/event-types",
+    "component": "OwnerEventTypesPage",
+    "importPath": "../pages/owner/OwnerEventTypesPage",
+    "file": ".\\src\\pages\\owner\\OwnerEventTypesPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/access-control",
+    "normalized": "/owner/access-control",
+    "component": "OwnerAccessControlPage",
+    "importPath": "../pages/owner/OwnerAccessControlPage",
+    "file": ".\\src\\pages\\owner\\OwnerAccessControlPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state",
+    "normalized": "/state",
+    "component": "",
+    "importPath": "",
+    "file": "",
+    "lastGit": ""
+  },
+  {
+    "path": "/dashboard/:alliance_id",
+    "normalized": "/dashboard/:alliance_id",
+    "component": "DashboardLayout",
+    "importPath": "../layouts/DashboardLayout",
+    "file": ".\\src\\layouts\\DashboardLayout.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "announcements",
+    "normalized": "announcements",
+    "component": "AllianceAnnouncementsPage",
+    "importPath": "../pages/alliance/AllianceAnnouncementsPage",
+    "file": ".\\src\\pages\\alliance\\AllianceAnnouncementsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "alerts",
+    "normalized": "alerts",
+    "component": "AllianceAlertsPage",
+    "importPath": "../pages/alliance/AllianceAlertsPage",
+    "file": ".\\src\\pages\\alliance\\AllianceAlertsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "guides",
+    "normalized": "guides",
+    "component": "AllianceGuidesPage",
+    "importPath": "../pages/alliance/AllianceGuidesPage",
+    "file": ".\\src\\pages\\alliance\\AllianceGuidesPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "roster",
+    "normalized": "roster",
+    "component": "AllianceRosterPage",
+    "importPath": "../pages/alliance/AllianceRosterPage",
+    "file": ".\\src\\pages\\alliance\\AllianceRosterPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "hq-map",
+    "normalized": "hq-map",
+    "component": "AllianceHQMap",
+    "importPath": "../pages/dashboard/AllianceHQMap",
+    "file": ".\\src\\pages\\dashboard\\AllianceHQMap.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "calendar",
+    "normalized": "calendar",
+    "component": "AllianceCalendarPage",
+    "importPath": "../pages/calendar/AllianceCalendarPage",
+    "file": ".\\src\\pages\\calendar\\AllianceCalendarPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "permissions",
+    "normalized": "permissions",
+    "component": "PermissionsPage",
+    "importPath": "../pages/dashboard/Permissions",
+    "file": ".\\src\\pages\\dashboard\\Permissions.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "events",
+    "normalized": "events",
+    "component": "EventsPage",
+    "importPath": "../pages/EventsPage",
+    "file": ".\\src\\pages\\EventsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789",
+    "normalized": "/state/789",
+    "component": "State789DashboardPage",
+    "importPath": "../pages/state/State789DashboardPage",
+    "file": ".\\src\\pages\\state\\State789DashboardPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/alliances",
+    "normalized": "/alliances",
+    "component": "AllianceDirectoryPage",
+    "importPath": "../pages/alliance/AllianceDirectoryPage",
+    "file": ".\\src\\pages\\alliance\\AllianceDirectoryPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/mail",
+    "normalized": "/mail",
+    "component": "MyMailPage",
+    "importPath": "../pages/mail/MyMailPage",
+    "file": ".\\src\\pages\\mail\\MyMailPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/mail-v2",
+    "normalized": "/mail",
+    "component": "MyMailInboxPage",
+    "importPath": "../pages/mail/MyMailInboxPage",
+    "file": ".\\src\\pages\\mail\\MyMailInboxPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/alliance-directory",
+    "normalized": "/owner/alliance-directory",
+    "component": "OwnerAllianceDirectoryEditorPage",
+    "importPath": "../pages/owner/OwnerAllianceDirectoryEditorPage",
+    "file": ".\\src\\pages\\owner\\OwnerAllianceDirectoryEditorPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/debug",
+    "normalized": "/debug",
+    "component": "DebugPage",
+    "importPath": "../pages/DebugPage",
+    "file": ".\\src\\pages\\DebugPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/oneclick-provision",
+    "normalized": "/owner/oneclick-provision",
+    "component": "OwnerOneClickProvisionPage",
+    "importPath": "../pages/owner/OwnerOneClickProvisionPage",
+    "file": ".\\src\\pages\\owner\\OwnerOneClickProvisionPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/event-types-library",
+    "normalized": "/owner/event-types-library",
+    "component": "OwnerEventTypesLibraryPage",
+    "importPath": "../pages/owner/OwnerEventTypesLibraryPage",
+    "file": ".\\src\\pages\\owner\\OwnerEventTypesLibraryPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/jump",
+    "normalized": "/owner/jump",
+    "component": "OwnerAllianceJumpPage",
+    "importPath": "../pages/owner/OwnerAllianceJumpPage",
+    "file": ".\\src\\pages\\owner\\OwnerAllianceJumpPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/alerts",
+    "normalized": "/state/789/alerts",
+    "component": "State789AlertsPage",
+    "importPath": "../pages/state/State789AlertsPage",
+    "file": ".\\src\\pages\\state\\State789AlertsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/alerts-v2",
+    "normalized": "/state/789/alerts",
+    "component": "State789AlertsCenterPage",
+    "importPath": "../pages/state/State789AlertsCenterPage",
+    "file": ".\\src\\pages\\state\\State789AlertsCenterPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/discussion",
+    "normalized": "/state/789/discussion",
+    "component": "State789DiscussionBoardPage",
+    "importPath": "../pages/state/State789DiscussionBoardPage",
+    "file": ".\\src\\pages\\state\\State789DiscussionBoardPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/discussion-v2",
+    "normalized": "/state/789/discussion",
+    "component": "State789DiscussionBoardV2Page",
+    "importPath": "../pages/state/State789DiscussionBoardV2Page",
+    "file": ".\\src\\pages\\state\\State789DiscussionBoardV2Page.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/ops",
+    "normalized": "/state/789/ops",
+    "component": "State789OpsConsolePage",
+    "importPath": "../pages/state/State789OpsConsolePage",
+    "file": ".\\src\\pages\\state\\State789OpsConsolePage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/broadcast",
+    "normalized": "/owner/broadcast",
+    "component": "OwnerBroadcastComposerPage",
+    "importPath": "../pages/owner/OwnerBroadcastComposerPage",
+    "file": ".\\src\\pages\\owner\\OwnerBroadcastComposerPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/live-ops",
+    "normalized": "/owner/live-ops",
+    "component": "OwnerLiveOpsPage",
+    "importPath": "../pages/owner/OwnerLiveOpsPage",
+    "file": ".\\src\\pages\\owner\\OwnerLiveOpsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/discord-mentions",
+    "normalized": "/owner/discord-mentions",
+    "component": "OwnerDiscordMentionsPage",
+    "importPath": "../pages/owner/OwnerDiscordMentionsPage",
+    "file": ".\\src\\pages\\owner\\OwnerDiscordMentionsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/discord-send-log",
+    "normalized": "/owner/discord-send-log",
+    "component": "OwnerDiscordSendLogPage",
+    "importPath": "../pages/owner/OwnerDiscordSendLogPage",
+    "file": ".\\src\\pages\\owner\\OwnerDiscordSendLogPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/discord-test-send",
+    "normalized": "/owner/discord-test-send",
+    "component": "OwnerDiscordTestSendPage",
+    "importPath": "../pages/owner/OwnerDiscordTestSendPage",
+    "file": ".\\src\\pages\\owner\\OwnerDiscordTestSendPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/discord-defaults",
+    "normalized": "/owner/discord-defaults",
+    "component": "OwnerDiscordDefaultsPage",
+    "importPath": "../pages/owner/OwnerDiscordDefaultsPage",
+    "file": ".\\src\\pages\\owner\\OwnerDiscordDefaultsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/scheduled-sends",
+    "normalized": "/owner/scheduled-sends",
+    "component": "OwnerScheduledDiscordSendsPage",
+    "importPath": "../pages/owner/OwnerScheduledDiscordSendsPage",
+    "file": ".\\src\\pages\\owner\\OwnerScheduledDiscordSendsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/directory-editor",
+    "normalized": "/owner/directory-editor",
+    "component": "OwnerAllianceDirectoryEditorPage",
+    "importPath": "../pages/owner/OwnerAllianceDirectoryEditorPage",
+    "file": ".\\src\\pages\\owner\\OwnerAllianceDirectoryEditorPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/achievements",
+    "normalized": "/state/789/achievements",
+    "component": "State789AchievementsPage",
+    "importPath": "../pages/state/State789AchievementsPage",
+    "file": ".\\src\\pages\\state\\State789AchievementsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/achievements/requests",
+    "normalized": "/owner/achievements/requests",
+    "component": "OwnerAchievementRequestsPage",
+    "importPath": "../pages/owner/OwnerAchievementRequestsPage",
+    "file": ".\\src\\pages\\owner\\OwnerAchievementRequestsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/achievements/config",
+    "normalized": "/owner/achievements/config",
+    "component": "OwnerAchievementConfigPage",
+    "importPath": "../pages/owner/OwnerAchievementConfigPage",
+    "file": ".\\src\\pages\\owner\\OwnerAchievementConfigPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/achievements/access",
+    "normalized": "/owner/achievements/access",
+    "component": "OwnerAchievementAccessPage",
+    "importPath": "../pages/owner/OwnerAchievementAccessPage",
+    "file": ".\\src\\pages\\owner\\OwnerAchievementAccessPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/state-achievements",
+    "normalized": "/owner/state-achievements",
+    "component": "OwnerStateAchievementsPage",
+    "importPath": "../pages/owner/OwnerStateAchievementsPage",
+    "file": ".\\src\\pages\\owner\\OwnerStateAchievementsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/achievements-tracker",
+    "normalized": "/state/789/achievements-tracker",
+    "component": "State789AchievementsTrackerPage",
+    "importPath": "../pages/state/State789AchievementsTrackerPage",
+    "file": ".\\src\\pages\\state\\State789AchievementsTrackerPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/achievements-progress",
+    "normalized": "/state/789/achievements-progress",
+    "component": "State789AchievementsProgressPage",
+    "importPath": "../pages/state/State789AchievementsProgressPage",
+    "file": ".\\src\\pages\\state\\State789AchievementsProgressPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/achievements-form",
+    "normalized": "/state/789/achievements-form",
+    "component": "State789AchievementsFormPage",
+    "importPath": "../pages/state/State789AchievementsFormPage",
+    "file": ".\\src\\pages\\state\\State789AchievementsFormPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/state-achievements/queue",
+    "normalized": "/owner/state-achievements/queue",
+    "component": "OwnerStateAchievementsQueuePage",
+    "importPath": "../pages/owner/OwnerStateAchievementsQueuePage",
+    "file": ".\\src\\pages\\owner\\OwnerStateAchievementsQueuePage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/state-achievements/access",
+    "normalized": "/owner/state-achievements/access",
+    "component": "OwnerStateAchievementsAccessPage",
+    "importPath": "../pages/owner/OwnerStateAchievementsAccessPage",
+    "file": ".\\src\\pages\\owner\\OwnerStateAchievementsAccessPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/state-achievements/admin",
+    "normalized": "/owner/state-achievements/admin",
+    "component": "OwnerStateAchievementsAdminPage",
+    "importPath": "../pages/owner/OwnerStateAchievementsAdminPage",
+    "file": ".\\src\\pages\\owner\\OwnerStateAchievementsAdminPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/achievements/request",
+    "normalized": "/state/789/achievements/request",
+    "component": "State789AchievementRequestPage",
+    "importPath": "../pages/state/State789AchievementRequestPage",
+    "file": ".\\src\\pages\\state\\State789AchievementRequestPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/state-achievement-requests",
+    "normalized": "/owner/state-achievement-requests",
+    "component": "OwnerStateAchievementRequestsPage",
+    "importPath": "../pages/owner/OwnerStateAchievementRequestsPage",
+    "file": ".\\src\\pages\\owner\\OwnerStateAchievementRequestsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/progress",
+    "normalized": "/state/789/progress",
+    "component": "State789AchievementProgressPage",
+    "importPath": "../pages/state/State789AchievementProgressPage",
+    "file": ".\\src\\pages\\state\\State789AchievementProgressPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/state-achievement-catalog",
+    "normalized": "/owner/state-achievement-catalog",
+    "component": "OwnerStateAchievementCatalogPage",
+    "importPath": "../pages/owner/OwnerStateAchievementCatalogPage",
+    "file": ".\\src\\pages\\owner\\OwnerStateAchievementCatalogPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/discord-templates",
+    "normalized": "/owner/discord-templates",
+    "component": "OwnerDiscordTemplatesPage",
+    "importPath": "../pages/owner/OwnerDiscordTemplatesPage",
+    "file": ".\\src\\pages\\owner\\OwnerDiscordTemplatesPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/discord-mentions-tools",
+    "normalized": "/owner/discord-mentions-tools",
+    "component": "OwnerDiscordMentionsToolsPage",
+    "importPath": "../pages/owner/OwnerDiscordMentionsToolsPage",
+    "file": ".\\src\\pages\\owner\\OwnerDiscordMentionsToolsPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/realtime-history",
+    "normalized": "/owner/realtime-history",
+    "component": "OwnerRealtimeHistoryPage",
+    "importPath": "../pages/owner/OwnerRealtimeHistoryPage",
+    "file": ".\\src\\pages\\owner\\OwnerRealtimeHistoryPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/oneclick-provision-plus",
+    "normalized": "/owner/oneclick-provision-plus",
+    "component": "OwnerOneClickProvisionPlusPage",
+    "importPath": "../pages/owner/OwnerOneClickProvisionPlusPage",
+    "file": ".\\src\\pages\\owner\\OwnerOneClickProvisionPlusPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/achievement-request",
+    "normalized": "/state/789/achievement-request",
+    "component": "State789AchievementRequestPage",
+    "importPath": "../pages/state/State789AchievementRequestPage",
+    "file": ".\\src\\pages\\state\\State789AchievementRequestPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/state-achievement-inbox",
+    "normalized": "/owner/state-achievement-inbox",
+    "component": "OwnerStateAchievementInboxPage",
+    "importPath": "../pages/owner/OwnerStateAchievementInboxPage",
+    "file": ".\\src\\pages\\owner\\OwnerStateAchievementInboxPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/state-achievements-roster",
+    "normalized": "/owner/state-achievements-roster",
+    "component": "OwnerStateAchievementsRosterPage",
+    "importPath": "../pages/owner/OwnerStateAchievementsRosterPage",
+    "file": ".\\src\\pages\\owner\\OwnerStateAchievementsRosterPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/discord-edge-test",
+    "normalized": "/owner/discord-edge-test",
+    "component": "OwnerDiscordEdgeSendTestPage",
+    "importPath": "../pages/owner/OwnerDiscordEdgeSendTestPage",
+    "file": ".\\src\\pages\\owner\\OwnerDiscordEdgeSendTestPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/:state_code/alerts-db",
+    "normalized": "/state/:state_code/alerts",
+    "component": "StateAlertsDbPage",
+    "importPath": "../pages/state/StateAlertsDbPage",
+    "file": ".\\src\\pages\\state\\StateAlertsDbPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/:state_code/discussion-db",
+    "normalized": "/state/:state_code/discussion",
+    "component": "StateDiscussionDbPage",
+    "importPath": "../pages/state/StateDiscussionDbPage",
+    "file": ".\\src\\pages\\state\\StateDiscussionDbPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/permissions-matrix-v3-v3",
+    "normalized": "/owner/permissions-matrix-v3",
+    "component": "OwnerPermissionsMatrixV3Page",
+    "importPath": "../pages/owner/OwnerPermissionsMatrixV3Page",
+    "file": ".\\src\\pages\\owner\\OwnerPermissionsMatrixV3Page.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/permissions-matrix-v3",
+    "normalized": "/owner/permissions-matrix",
+    "component": "",
+    "importPath": "",
+    "file": "",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/activity-feed",
+    "normalized": "/owner/activity-feed",
+    "component": "OwnerActivityFeedPage",
+    "importPath": "../pages/owner/OwnerActivityFeedPage",
+    "file": ".\\src\\pages\\owner\\OwnerActivityFeedPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/command-center",
+    "normalized": "/owner/command-center",
+    "component": "OwnerCommandCenterV2Page",
+    "importPath": "../pages/owner/OwnerCommandCenterV2Page",
+    "file": ".\\src\\pages\\owner\\OwnerCommandCenterV2Page.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/:state_code/ops-db",
+    "normalized": "/state/:state_code/ops",
+    "component": "StateOpsBoardDbPage",
+    "importPath": "../pages/state/StateOpsBoardDbPage",
+    "file": ".\\src\\pages\\state\\StateOpsBoardDbPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/ops-db",
+    "normalized": "/state/789/ops",
+    "component": "StateOpsBoardDbPage",
+    "importPath": "../pages/state/StateOpsBoardDbPage",
+    "file": ".\\src\\pages\\state\\StateOpsBoardDbPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "/state/789/ops",
+    "normalized": "/state/789/ops",
+    "component": "",
+    "importPath": "",
+    "file": "",
+    "lastGit": ""
+  },
+  {
+    "path": "/owner/event-reminders",
+    "normalized": "/owner/event-reminders",
+    "component": "OwnerEventRemindersPage",
+    "importPath": "../pages/owner/OwnerEventRemindersPage",
+    "file": ".\\src\\pages\\owner\\OwnerEventRemindersPage.tsx",
+    "lastGit": ""
+  },
+  {
+    "path": "*",
+    "normalized": "*",
+    "component": "",
+    "importPath": "",
+    "file": "",
+    "lastGit": ""
+  }
+]

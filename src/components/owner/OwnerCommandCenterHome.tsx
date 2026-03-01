@@ -120,7 +120,7 @@ export default function OwnerCommandCenterHome() {
 
       // Ops / debug
       { group: "Ops & Debug", title: "Live Ops", desc: "Ops timer + checklist.", to: "/owner/live-ops" },
-      { group: "Ops & Debug", title: "Live Ops DB", desc: "DB-backed live ops tools.", to: "/owner/live-ops-db" },
+      { group: "Ops & Debug", title: "Live Ops DB", desc: "DB-backed live ops tools.", to: "/owner/live-ops" },
       { group: "Ops & Debug", title: "Realtime History", desc: "Realtime/debug history.", to: "/owner/realtime-history" },
 
       // Backups
@@ -207,3 +207,4 @@ export default function OwnerCommandCenterHome() {
     </div>
   );
 }
+

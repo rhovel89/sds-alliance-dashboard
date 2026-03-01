@@ -1,0 +1,82 @@
+[
+  {
+    "normalized": "/alliances",
+    "from": "/alliances-v2",
+    "to": "/alliances",
+    "fromIsLegacy": true,
+    "toIsLegacy": false,
+    "canonicalLastGit": ""
+  },
+  {
+    "normalized": "/mail",
+    "from": "/mail-v2",
+    "to": "/mail",
+    "fromIsLegacy": true,
+    "toIsLegacy": false,
+    "canonicalLastGit": ""
+  },
+  {
+    "normalized": "/owner/live-ops",
+    "from": "/owner/live-ops-db",
+    "to": "/owner/live-ops",
+    "fromIsLegacy": true,
+    "toIsLegacy": false,
+    "canonicalLastGit": ""
+  },
+  {
+    "normalized": "/owner/permissions-matrix-v3",
+    "from": "/owner/permissions-matrix-v3-v3",
+    "to": "/owner/permissions-matrix-v3-v2",
+    "fromIsLegacy": true,
+    "toIsLegacy": true,
+    "canonicalLastGit": ""
+  },
+  {
+    "normalized": "/state/789/achievements/request",
+    "from": "/state/789/achievements/request-v2",
+    "to": "/state/789/achievements/request",
+    "fromIsLegacy": true,
+    "toIsLegacy": false,
+    "canonicalLastGit": ""
+  },
+  {
+    "normalized": "/state/789/alerts",
+    "from": "/state/789/alerts-db",
+    "to": "/state/789/alerts",
+    "fromIsLegacy": true,
+    "toIsLegacy": false,
+    "canonicalLastGit": ""
+  },
+  {
+    "normalized": "/state/789/alerts",
+    "from": "/state/789/alerts-v2",
+    "to": "/state/789/alerts",
+    "fromIsLegacy": true,
+    "toIsLegacy": false,
+    "canonicalLastGit": ""
+  },
+  {
+    "normalized": "/state/789/discussion",
+    "from": "/state/789/discussion-db",
+    "to": "/state/789/discussion",
+    "fromIsLegacy": true,
+    "toIsLegacy": false,
+    "canonicalLastGit": ""
+  },
+  {
+    "normalized": "/state/789/discussion",
+    "from": "/state/789/discussion-v2",
+    "to": "/state/789/discussion",
+    "fromIsLegacy": true,
+    "toIsLegacy": false,
+    "canonicalLastGit": ""
+  },
+  {
+    "normalized": "/state/789/ops",
+    "from": "/state/789/ops-db",
+    "to": "/state/789/ops",
+    "fromIsLegacy": true,
+    "toIsLegacy": false,
+    "canonicalLastGit": ""
+  }
+]

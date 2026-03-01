@@ -370,8 +370,8 @@ export default function MeDashboardPage() {
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
         <Link to="/state/789/ops">State Ops Console</Link>
-        <Link to="/state/789/alerts-v2">State Alerts (V2)</Link>
-        <Link to="/mail-v2">My Mail (Supabase)</Link>
+        <Link to="/state/789/alerts">State Alerts (V2)</Link>
+        <Link to="/mail">My Mail (Supabase)</Link>
         <button disabled={!userId} onClick={() => userId && refreshAll(userId)}>Refresh</button>
       </div>
 
@@ -395,7 +395,7 @@ export default function MeDashboardPage() {
                 ))}
               </div>
             )}
-            <div style={{ marginTop: 10 }}><Link to="/mail-v2">Open inbox</Link></div>
+            <div style={{ marginTop: 10 }}><Link to="/mail">Open inbox</Link></div>
           </div>
         </div>
       </div>
@@ -635,3 +635,4 @@ export default function MeDashboardPage() {
     </div>
   );
 }
+
