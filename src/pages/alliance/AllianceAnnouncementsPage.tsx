@@ -153,6 +153,48 @@ export default function AllianceAnnouncementsPage() {
       .channel("ann_page_" + allianceCode)
       .on("postgres_changes", { event: "*", schema: "public", table: "alliance_announcements", filter: "alliance_code=eq." + allianceCode }, () => load())
       .subscribe();
+  const createAndSend = async () => {
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("alliance_announcements").insert({
+        alliance_code: allianceCode,
+        title: title.trim(),
+        body: body.trim() || null,
+        pinned,
+      } as any);
+      if (error) throw error;
+
+      const t = title.trim();
+      const b = body.trim();
+
+      const msg =
+        ("📣 **" + String(allianceCode || "").toUpperCase() + " Announcement**\n") +
+        ("**" + t.slice(0, 180) + "**") +
+        (b ? ("\n" + b.slice(0, 1500)) : "") +
+        ("\nView: https://state789.site/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
+
+      const q = await supabase.rpc("queue_discord_send" as any, {
+        p_state_code: "789",
+        p_alliance_code: String(allianceCode || "").toUpperCase(),
+        p_kind: "announcements",
+        p_channel_id: discordChannelId || "",
+        p_message: msg,
+      } as any);
+
+      if (q.error) throw q.error;
+
+      setTitle(""); setBody(""); setPinned(false);
+      await load();
+      alert("Posted + queued to Discord ✅");
+    } catch (e) {
+      console.error(e);
+      alert("Post+Send failed (DB/RLS/queue).");
+    } finally {
+      setSaving(false);
+    }
+  };
+
     return () => { supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allianceCode]);
