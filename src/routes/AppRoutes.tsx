@@ -147,12 +147,13 @@ import AllianceRosterPage from "../pages/alliance/AllianceRosterPage";
 import OwnerEventRemindersPage from "../pages/owner/OwnerEventRemindersPage";
 import OwnerStateAchievementsRosterPage from "../pages/owner/OwnerStateAchievementsRosterPage";
 import OwnerCommandCenterPage from "../pages/owner/OwnerCommandCenterPage";
+import OwnerAlliancePermissionsHubPage from "../pages/owner/OwnerAlliancePermissionsHubPage";
+import OwnerLinksIndexPage from "../pages/owner/OwnerLinksIndexPage";
 
 export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/owner/directory-sync" element={<RequireAdmin><OwnerAllianceDirectorySyncPage /></RequireAdmin>} />
-      <Route path="/owner/permissions-matrix-v3-v2" element={<Navigate to="/owner/permissions-matrix-v3-v2" replace />} />
       <Route path="/me/hq-manager" element={<MyHqManagerPage />} />
       <Route path="/owner/discord-queue" element={<RequireAdmin><OwnerDiscordQueuePage /></RequireAdmin>} />
       <Route path="/mail-threads" element={<MyMailThreadsPage />} />
@@ -277,9 +278,12 @@ export default function AppRoutes() {
             <Route path="/owner/event-reminders" element={<RequireAdmin><OwnerEventRemindersPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
         <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterPage /></RequireAdmin>} />
+              <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
+        <Route path="/owner/permissions-matrix-v3-v2" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
       </Routes>
   );
 }
+
 
 
 
