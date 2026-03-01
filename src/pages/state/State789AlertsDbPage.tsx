@@ -131,10 +131,10 @@ export default function State789AlertsDbPage() {
       if (!t) return;
 
       const msg =
-        🚨 **State Alert**\n +
-        **** +
-        (b ? \n : "") +
-        \nView: https://state789.site/state/789/alerts-db;
+        "🚨 **State Alert**\n" +
+        ("**" + t.slice(0, 180) + "**") +
+        (b ? ("\n" + b.slice(0, 1500)) : "") +
+        "\nView: https://state789.site/state/789/alerts-db";
 
       const q = await supabase.rpc("queue_discord_send" as any, {
         p_state_code: "789",
