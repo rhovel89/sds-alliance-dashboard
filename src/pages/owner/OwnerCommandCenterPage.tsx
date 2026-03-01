@@ -199,6 +199,7 @@ export default function OwnerCommandCenterPage() {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div>
           <h2 style={{ margin: 0 }}>🧟 Owner Command Center</h2>
+      <div style={{ marginTop: 10 }}><a href="/owner/player-intake" style={{ textDecoration: "none" }}>🧪 Player Intake (pre-register)</a></div>
           <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>
             One page to run the whole state. (Health + links + quick jumps)
           </div>
@@ -377,3 +378,4 @@ export default function OwnerCommandCenterPage() {
     </div>
   );
 }
+

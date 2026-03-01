@@ -43,6 +43,7 @@ import OwnerAccessRequestsPage from "../pages/owner/OwnerAccessRequestsPage";
 import OwnerMembershipsPage from "../pages/owner/OwnerMembershipsPage";
 import OwnerAlliancesPage from "../pages/owner/OwnerAlliancesPage";
 import OwnerPlayersPage from "../pages/owner/OwnerPlayersPage";
+import OwnerPlayerIntakePage from "../pages/owner/OwnerPlayerIntakePage";
 import OwnerMembershipManagerPage from "../pages/owner/OwnerMembershipManagerPage";
 import OwnerRequestsProvisionPage from "../pages/owner/OwnerRequestsProvisionPage";
 import OwnerPlayersLinkPage from "../pages/owner/OwnerPlayersLinkPage";
@@ -187,6 +188,7 @@ export default function AppRoutes() {
       <Route path="/owner/memberships" element={<RequireAdmin><OwnerMembershipsPage /></RequireAdmin>} />
       <Route path="/owner/alliances" element={<RequireAdmin><OwnerAlliancesPage /></RequireAdmin>} />
       <Route path="/owner/players" element={<RequireAdmin><OwnerPlayersPage /></RequireAdmin>} />
+      <Route path="/owner/player-intake" element={<RequireAdmin><OwnerPlayerIntakePage /></RequireAdmin>} />
       <Route path="/owner/membership" element={<RequireAdmin><OwnerMembershipManagerPage /></RequireAdmin>} />
       <Route path="/owner/requests-provision" element={<RequireAdmin><OwnerRequestsProvisionPage /></RequireAdmin>} />
       <Route path="/owner/players-link" element={<RequireAdmin><OwnerPlayersLinkPage /></RequireAdmin>} />
@@ -276,6 +278,7 @@ export default function AppRoutes() {
 </Routes>
   );
 }
+
 
 
 
