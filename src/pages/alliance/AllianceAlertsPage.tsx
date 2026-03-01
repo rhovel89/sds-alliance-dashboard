@@ -204,7 +204,39 @@ return (
           </div><button onClick={postAlert} disabled={!userId}>Post</button>
           <button
             type="button"
-            onClick={createAndSend}
+            onClick={async () => {
+              const t = String(title || "").trim();
+              if (!t) return;
+
+              const b = String(body || "").trim();
+
+              try {
+                // 1) Post alert using the existing working logic
+                await postAlert();
+
+                // 2) Queue to Discord
+                const msg =
+                  ("🚨 **" + String(allianceCode || "").toUpperCase() + " Alert**\n") +
+                  ("**" + t.slice(0, 180) + "**") +
+                  (b ? ("\n" + b.slice(0, 1500)) : "") +
+                  ("\nView: https://state789.site/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/alerts");
+
+                const q = await supabase.rpc("queue_discord_send" as any, {
+                  p_state_code: "789",
+                  p_alliance_code: String(allianceCode || "").toUpperCase(),
+                  p_kind: "alliance_alerts",
+                  p_channel_id: String(discordChannelId || "").trim(),
+                  p_message: msg,
+                } as any);
+
+                if (q.error) throw q.error;
+
+                alert("Posted + queued to Discord ✅");
+              } catch (e) {
+                console.error(e);
+                alert("Post+Send failed (DB/RLS/queue).");
+              }
+            }}
             style={{ padding: "10px 12px", borderRadius: 10, marginLeft: 8 }}
           >
             Post + Send to Discord
@@ -273,6 +305,7 @@ return (
     </div>
   );
 }
+
 
 
 
