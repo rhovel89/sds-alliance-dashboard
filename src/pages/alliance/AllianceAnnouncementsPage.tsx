@@ -70,6 +70,7 @@ export default function AllianceAnnouncementsPage() {
   const [pinned, setPinned] = useState(false);
   const [saving, setSaving] = useState(false);
   const [discordChannelId, setDiscordChannelId] = useState<string>("");
+  const [autoSend, setAutoSend] = useState<boolean>(true);
 
   const load = async () => {
     setLoading(true);
@@ -208,6 +209,13 @@ export default function AllianceAnnouncementsPage() {
           </label>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
             <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9 }}>Discord channel</div>
+          <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+            <input type="checkbox" checked={autoSend} onChange={(e) => setAutoSend(e.target.checked)} />
+            Auto-send to Discord
+          </label>
+          <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 10 }}>
+            Tip: leave Channel blank to use the default Discord channel.
+          </div>
             <DiscordChannelSelect
               scope="alliance"
               kind="announcements"
@@ -265,7 +273,7 @@ export default function AllianceAnnouncementsPage() {
             }}
             style={{ padding: "10px 12px", borderRadius: 10, marginLeft: 8 }}
           >
-            {saving ? "Posting+Sending…" : "Post + Send to Discord"}
+            {saving ? "Posting+Sending…" : "Post"}
           </button>
         </div>
       ) : null}

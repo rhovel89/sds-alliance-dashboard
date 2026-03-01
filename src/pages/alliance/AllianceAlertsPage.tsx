@@ -42,6 +42,7 @@ export default function AllianceAlertsPage() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [discordChannelId, setDiscordChannelId] = useState<string>("");
+  const [autoSend, setAutoSend] = useState<boolean>(true);
   const [tagsRaw, setTagsRaw] = useState("");
 
   // filters
@@ -193,6 +194,13 @@ return (
             </select>
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
             <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9 }}>Discord channel</div>
+          <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+            <input type="checkbox" checked={autoSend} onChange={(e) => setAutoSend(e.target.checked)} />
+            Auto-send to Discord
+          </label>
+          <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 10 }}>
+            Tip: leave Channel blank to use the default Discord channel.
+          </div>
             <DiscordChannelSelect
               scope="alliance"
               kind="alerts"
@@ -201,7 +209,7 @@ return (
               value={discordChannelId}
               onChange={setDiscordChannelId}
             />
-          </div><button onClick={postAlert} disabled={!userId}>Post</button>
+          </div><button onClick={postAlert} disabled={!userId} style={{ display: "none" }}>Post</button>
           <button
             type="button"
             onClick={async () => {
@@ -239,7 +247,7 @@ return (
             }}
             style={{ padding: "10px 12px", borderRadius: 10, marginLeft: 8 }}
           >
-            Post + Send to Discord
+            Post
           </button>
             <span style={{ opacity: 0.7, fontSize: 12 }}>
               If Post fails, you need alliance permission can_post_alerts (or owner/admin).
