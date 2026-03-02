@@ -14,7 +14,7 @@ type StepDef = {
   render: () => JSX.Element;
 };
 
-const BUILD_STAMP = "20260301-231856";
+const BUILD_STAMP = "20260301-232052";
 
 const STEPS: StepDef[] = [
   { id: "alliances", title: "Alliances", render: () => <OwnerAlliancesPage /> },
@@ -72,9 +72,7 @@ export default function OwnerAllianceOpsFlowPage() {
   useEffect(() => {
     const cur = (sp.get("step") || "").toLowerCase();
     const ok = STEPS.some(s => s.id === cur);
-    if (!ok) {
-      setSp({ step: STEPS[0].id }, { replace: true });
-    }
+    if (!ok) setSp({ step: STEPS[0].id }, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -93,7 +91,7 @@ export default function OwnerAllianceOpsFlowPage() {
               return (
                 <Link
                   key={s.id}
-                  to={/owner/alliance-ops?step=}
+                  to={"/owner/alliance-ops?step=" + encodeURIComponent(s.id)}
                   style={{
                     padding: "10px 12px",
                     borderRadius: 10,

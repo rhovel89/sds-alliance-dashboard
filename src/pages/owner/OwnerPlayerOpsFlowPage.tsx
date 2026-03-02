@@ -14,7 +14,7 @@ type StepDef = {
   render: () => JSX.Element;
 };
 
-const BUILD_STAMP = "20260301-231844";
+const BUILD_STAMP = "20260301-232052";
 
 const STEPS: StepDef[] = [
   { id: "intake", title: "Intake", render: () => <OwnerPlayerIntakePage /> },
@@ -69,13 +69,10 @@ export default function OwnerPlayerOpsFlowPage() {
   const step = (STEPS.find(s => s.id === stepParam)?.id ?? STEPS[0].id) as StepDef["id"];
   const active = STEPS.find(s => s.id === step)!;
 
-  // Ensure URL always has a valid step (prevents "blank" state)
   useEffect(() => {
     const cur = (sp.get("step") || "").toLowerCase();
     const ok = STEPS.some(s => s.id === cur);
-    if (!ok) {
-      setSp({ step: STEPS[0].id }, { replace: true });
-    }
+    if (!ok) setSp({ step: STEPS[0].id }, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -94,7 +91,7 @@ export default function OwnerPlayerOpsFlowPage() {
               return (
                 <Link
                   key={s.id}
-                  to={/owner/player-ops?step=}
+                  to={"/owner/player-ops?step=" + encodeURIComponent(s.id)}
                   style={{
                     padding: "10px 12px",
                     borderRadius: 10,
