@@ -403,7 +403,7 @@ const nav = useNavigate();
                   <div style={{ fontWeight: 800 }}>Slot {h?.slot_number ?? "?"}{h?.label ? ` — ${h.label}` : ""}</div>
                   <div style={{ marginTop: 6, opacity: 0.8, fontSize: 13 }}>
                     Map Slot: ({h?.slot_x ?? "?"},{h?.slot_y ?? "?"})
-                    {h?.player_x != null -and h?.player_y != null ? ` • Player HQ: (${h.player_x},${h.player_y})` : ""}
+                    {h?.player_x != null && h?.player_y != null ? ` • Player HQ: (${h.player_x},${h.player_y})` : ""}
                   </div>
                 </div>
               ))}
@@ -437,3 +437,4 @@ const nav = useNavigate();
     </div>
   );
 }
+

@@ -4,9 +4,10 @@ import { useAllianceRoles } from "../../hooks/useAllianceRoles";
 import { useMyAllianceContext } from "../../contexts/AllianceContext";
 
 export default function OwnerPermissions() {
-  const { alliance_id } = useParams<{ alliance_id: string }>();
-  const { alliance_id, allianceName } = useMyAllianceContext();
-  const { roles } = useAllianceRoles(alliance_id);
+  const { alliance_id: route_alliance_id } = useParams<{ alliance_id: string }>();
+  const { alliance_id: ctx_alliance_id, allianceName } = useMyAllianceContext();
+  const alliance_id = String(ctx_alliance_id || route_alliance_id || "");
+const { roles } = useAllianceRoles(alliance_id);
   const [inviteRole, setInviteRole] = useState("Member");
   const [email, setEmail] = useState("");
 
@@ -68,4 +69,6 @@ async function revokeInvite(id: string) {
     .update({ revoked: true })
     .eq("id", id);
 }
+
+
 
