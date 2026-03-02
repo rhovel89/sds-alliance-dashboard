@@ -14,8 +14,8 @@ export function useIsAppAdmin() {
       setError(null);
 
       try {
-        // Avoid auth/v1/user network call (can be blocked by CORS/extensions).
-        // getSession reads local persisted session.
+        // Avoid auth/v1/user (can fail in some browsers/extensions).
+        // Session is persisted locally, so this is enough to know if signed in.
         const { data } = await supabase.auth.getSession();
         const user = data?.session?.user ?? null;
 
