@@ -8,7 +8,9 @@ function pickFirstId(x: any): string | null {
   return x.id ?? null;
 }
 const STATE_NUM = Number(import.meta.env.VITE_STATE_ID ?? 789);
-const DEFAULT_STATE_CODE = `S${STATE_NUM}`;
+const DEFAULT_STATE_CODE = String(STATE_NUM);
+// Tolerate either DB style: "789" or "S789"
+const DEFAULT_STATE_CODE_ALIASES = [DEFAULT_STATE_CODE, `S${DEFAULT_STATE_CODE}`] as const;
 
 type AllianceRow = {
   code: string;
@@ -45,16 +47,18 @@ export default function OwnerAlliancesPage() {
   // alliances.state_id is UUID in your DB, so we resolve the UUID from states.id
   const [stateUuid, setStateUuid] = useState<string | null>(null);
 
-  const loadStateUuid = async () => {
-    // Try by state_code first (S789). Do NOT query states.state_id (it doesn't exist for you).
+    const loadStateUuid = async (): Promise<string | null> => {
+    // Resolve the UUID from states.id. Your DB uses states.code = "789" (not "S789").
     let res = await supabase
       .from("states")
       .select("id")
-      .eq("code", DEFAULT_STATE_CODE)
+      .in("code", Array.from(DEFAULT_STATE_CODE_ALIASES))
+      .order("id", { ascending: true })
+      .limit(1)
       .maybeSingle();
 
     if (res.error && isMissingColumnErr(res.error, "code")) {
-      // If state_code doesn't exist either, fallback to first state row
+      // If "code" doesn't exist, fallback to first state row
       res = await supabase
         .from("states")
         .select("id")
@@ -66,10 +70,17 @@ export default function OwnerAlliancesPage() {
     if (res.error) {
       console.error(res.error);
       alert(`Could not load state UUID from states table: ${res.error.message}`);
-      return;
+      return null;
     }
 
-    setStateUuid((res.data as any)?.id ?? null);
+    const id = (res.data as any)?.id ?? null;
+    if (!id) {
+      console.warn("No state row found for codes:", DEFAULT_STATE_CODE_ALIASES);
+      return null;
+    }
+
+    setStateUuid(id);
+    return id;
   };
 
   const refetch = async () => {
@@ -118,12 +129,7 @@ export default function OwnerAlliancesPage() {
     if (!code) return alert("Alliance code required (example: OZR)");
     if (!/^[A-Z0-9]{2,12}$/.test(code)) return alert("Code must be 2–12 chars (A–Z, 0–9).");
 
-    if (!stateUuid) {
-      await loadStateUuid();
-      // stateUuid updates async; re-check current value next tick
-    }
-
-    const stateId = stateUuid;
+    const stateId = stateUuid ?? await loadStateUuid();
     if (!stateId) return alert("State UUID not loaded yet. Try again in a moment.");
 
     // Insert with: code, name, enabled (if exists), state_id(UUID), state_code (if exists)
@@ -283,6 +289,7 @@ export default function OwnerAlliancesPage() {
     </div>
   );
 }
+
 
 
 
