@@ -13,7 +13,7 @@ export async function createInvite(alliance_id: string, userId: string) {
   return code;
 }
 
-// --- compatibility exports (auto-added 20260301-203706) ---
+// --- compatibility exports (auto-added 20260301-204511) ---
 export {  as useAllianceInvites };
 export default ;
 
