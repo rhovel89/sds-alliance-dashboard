@@ -44,10 +44,10 @@ export default function OwnerAlliancesPage() {
     let res = await supabase
       .from("states")
       .select("id")
-      .eq("state_code", DEFAULT_STATE_CODE)
+      .eq("code", DEFAULT_STATE_CODE)
       .maybeSingle();
 
-    if (res.error && isMissingColumnErr(res.error, "state_code")) {
+    if (res.error && isMissingColumnErr(res.error, "code")) {
       // If state_code doesn't exist either, fallback to first state row
       res = await supabase
         .from("states")
@@ -136,7 +136,7 @@ export default function OwnerAlliancesPage() {
       ins = await supabase.from("alliances").insert(payload);
     }
 
-    if (ins.error && isMissingColumnErr(ins.error, "state_code")) {
+    if (ins.error && isMissingColumnErr(ins.error, "code")) {
       delete payload.state_code;
       ins = await supabase.from("alliances").insert(payload);
     }
@@ -277,3 +277,4 @@ export default function OwnerAlliancesPage() {
     </div>
   );
 }
+
