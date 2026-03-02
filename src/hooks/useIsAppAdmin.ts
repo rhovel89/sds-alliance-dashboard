@@ -2,45 +2,51 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 export function useIsAppAdmin() {
-  const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  const check = async () => {
-    setLoading(true);
-
-    const { data: u } = await supabase.auth.getUser();
-    if (!u?.user) {
-      setIsAdmin(false);
-      setLoading(false);
-      return;
-    }
-
-    // Prefer RPC
-    const rpc = await supabase.rpc("is_app_admin");
-    if (!rpc.error) {
-      setIsAdmin(!!rpc.data);
-      setLoading(false);
-      return;
-    }
-
-    // Fallback: app_admins (policy allows selecting your own row)
-    const sel = await supabase.from("app_admins").select("user_id").limit(1);
-    setIsAdmin(!sel.error && (sel.data?.length ?? 0) > 0);
-    setLoading(false);
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    check();
+    let cancelled = false;
 
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      check();
-    });
+    (async () => {
+      setLoading(true);
+      setError(null);
 
-    return () => {
-      sub?.subscription?.unsubscribe();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      try {
+        // Avoid auth/v1/user network call (can be blocked by CORS/extensions).
+        // getSession reads local persisted session.
+        const { data } = await supabase.auth.getSession();
+        const user = data?.session?.user ?? null;
+
+        if (!user) {
+          if (!cancelled) {
+            setIsAdmin(false);
+            setLoading(false);
+          }
+          return;
+        }
+
+        const r = await supabase.rpc("is_app_admin");
+        const ok = r?.data === true;
+
+        if (!cancelled) {
+          setIsAdmin(ok);
+          setLoading(false);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setError(e?.message ?? String(e));
+          setIsAdmin(false);
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
-  return { isAdmin, loading, refresh: check };
+  return { isAdmin, loading, error };
 }
+
+export default useIsAppAdmin;
