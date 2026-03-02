@@ -9,7 +9,7 @@ import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 
 export default function EventsPage() {
   const { isAdmin: canEditCalendar } = useIsAppAdmin();
-  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const { alliance_id: route_alliance_id } = useParams<{ alliance_id: string }>();
   const { alliance_id, loading } = useAlliance();
   const [events, setEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -53,4 +53,3 @@ export default function EventsPage() {
     </div>
   );
 }
-'@ | Set-Content src/pages/EventsPage.tsx -Encoding UTF8
