@@ -34,4 +34,10 @@ export function AllianceProvider({ children }: { children: any }) {
 export function useAlliance() {
   return useContext(AllianceContext);
 }
-
+  
+// --- Compat hook (auto-added 20260301-223757) ---
+// Some older components import { useMyAllianceContext } from AllianceContext
+export function useMyAllianceContext() {
+  // @ts-ignore
+  return useContext(AllianceContext);
+}

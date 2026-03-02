@@ -281,7 +281,7 @@ export default function AppRoutes() {
       <Route path="/owner/command-center" element={<RequireAdmin><OwnerCommandCenterV2Page /></RequireAdmin>} />
       <Route path="/state/:state_code/ops-db" element={<StateOpsBoardDbPage />} />
       <Route path="/state/789/ops-db" element={<StateOpsBoardDbPage />} />
-      <Route path="/state/789/ops" element={<Navigate to="/state/789/ops" replace />} />
+      <Route path="/state/789/ops" element={<Navigate to="/state/789/ops-db" replace />} />
             <Route path="/owner/event-reminders" element={<RequireAdmin><OwnerEventRemindersPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
         <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterPage /></RequireAdmin>} />
@@ -290,6 +290,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 

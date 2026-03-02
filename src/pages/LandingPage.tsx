@@ -8,10 +8,14 @@ export default function LandingPage() {
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) navigate('/auth/callback', { replace: true });
+
     };
     checkSession();
   }, [navigate]);
+  useEffect(() => {
+    if (session) navigate("/auth/callback", { replace: true });
+  }, [session, navigate]);
+
 
   return (
     <div className="panel scanner">
@@ -21,3 +25,4 @@ export default function LandingPage() {
     </div>
   );
 }
+

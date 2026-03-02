@@ -59,7 +59,7 @@ export default function Onboarding() {
         if (paErr) return;
 
         const code = (pa && pa[0] && pa[0].alliance_code) ? String(pa[0].alliance_code).trim().toUpperCase() : "";
-        if (code) navigate(/dashboard/, { replace: true });
+        if (code) navigate("/dashboard", { replace: true });
       } catch {
         // ignore
       }
@@ -165,6 +165,7 @@ export default function Onboarding() {
     </div>
   );
 }
+
 
 
 

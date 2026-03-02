@@ -14,17 +14,6 @@ import { buildResources } from "./resources";
 
 const STORAGE_KEY = "sad_lang_v1";
 
-const resources = {
-  en: { translation: en },
-  es: { translation: es },
-  pt: { translation: pt },
-  fr: { translation: fr },
-  de: { translation: de },
-  ru: { translation: ru },
-  zh: { translation: zh },
-  ko: { translation: ko },
-} as const;
-
 // RTL support for future languages (not used by current list)
 const rtlLangs = new Set<string>(["ar", "fa", "ur", "he"]);
 
@@ -36,27 +25,28 @@ function applyDocumentLang(lang: string) {
   }
 }
 
-i18n
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
-  resources: buildResources(),
-    fallbackLng: "en",
-    // Support base langs; i18next will fall back from zh-CN -> zh automatically
-    supportedLngs: ["en", "es", "pt", "fr", "de", "ru", "zh", "ko"],
-    nonExplicitSupportedLngs: true,
-    interpolation: { escapeValue: false },
-    returnNull: false,
-    detection: {
-      order: ["localStorage", "navigator"],
-      lookupLocalStorage: STORAGE_KEY,
-      caches: ["localStorage"],
-    },
-  });
+// Prevent repeated init + repeated event handlers (fixes spam if app remounts)
+if (!i18n.isInitialized) {
+  i18n
+    .use(LanguageDetector)
+    .use(initReactI18next)
+    .init({
+      resources: buildResources(),
+      fallbackLng: "en",
+      supportedLngs: ["en", "es", "pt", "fr", "de", "ru", "zh", "ko"],
+      nonExplicitSupportedLngs: true,
+      interpolation: { escapeValue: false },
+      returnNull: false,
+      detection: {
+        order: ["localStorage", "navigator"],
+        lookupLocalStorage: STORAGE_KEY,
+        caches: ["localStorage"],
+      },
+    });
 
-applyDocumentLang(i18n.language);
-i18n.on("languageChanged", (lng) => applyDocumentLang(lng));
+  applyDocumentLang(i18n.language);
+  i18n.on("languageChanged", (lng) => applyDocumentLang(lng));
+}
 
 export default i18n;
 export const SAD_LANGUAGE_STORAGE_KEY = STORAGE_KEY;
-
