@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { Suspense, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 type Step = {
@@ -6,12 +6,66 @@ type Step = {
   title: string;
   desc: string;
   path: string;
+  candidates?: string[];
 };
 
-function clampStep(steps: Step[], key: string | null) {
-  if (!key) return steps[0];
-  const hit = steps.find((s) => s.key === key);
-  return hit || steps[0];
+const modules = import.meta.glob("../../pages/**/*.tsx");
+
+function pickModuleByCandidates(cands?: string[]) {
+  if (!cands || cands.length === 0) return null;
+
+  const keys = Object.keys(modules);
+  for (const name of cands) {
+    const hit = keys.find((k) => k.endsWith(`/${name}.tsx`));
+    if (hit) return modules[hit] as any;
+  }
+  return null;
+}
+
+function StepEmbed(props: { step: Step }) {
+  const mod = pickModuleByCandidates(props.step.candidates);
+  if (!mod) {
+    return (
+      <div style={{ marginTop: 12, padding: 12, border: "1px solid rgba(255,255,255,0.14)", borderRadius: 12 }}>
+        <div style={{ fontWeight: 900, color: "rgba(245,245,245,0.98)" }}>Open this step</div>
+        <div style={{ opacity: 0.85, marginTop: 6 }}>
+          (This step page couldn't be auto-embedded by filename lookup.)
+        </div>
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <a href={props.step.path} style={{ textDecoration: "none" }}>
+            <button type="button" style={{ padding: "10px 12px", borderRadius: 12 }}>Open Step</button>
+          </a>
+          <a href={props.step.path} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+            <button type="button" style={{ padding: "10px 12px", borderRadius: 12 }}>Open Fullscreen</button>
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const Lazy = React.lazy(mod);
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{
+        border: "1px solid rgba(255,255,255,0.14)",
+        borderRadius: 12,
+        background: "rgba(0,0,0,0.25)",
+        maxHeight: "70vh",
+        overflow: "auto",
+      }}>
+        <Suspense fallback={<div style={{ padding: 14, opacity: 0.85 }}>Loading step…</div>}>
+          <div style={{ padding: 10 }}>
+            <Lazy />
+          </div>
+        </Suspense>
+      </div>
+
+      <div style={{ marginTop: 8, opacity: 0.75, fontSize: 12 }}>
+        If the embedded view feels tight, use <b>Open Step Fullscreen</b>.
+      </div>
+    </div>
+  );
 }
 
 export default function OwnerPlayerOpsFlowPage() {
@@ -23,69 +77,66 @@ export default function OwnerPlayerOpsFlowPage() {
       title: "1. Player Intake",
       desc: "Add / link players (manual / backup method).",
       path: "/owner/player-intake",
+      candidates: [
+        "OwnerPlayerIntakePage",
+        "OwnerPlayerIntake",
+        "OwnerPlayerIntakeV2Page",
+      ],
     },
     {
       key: "onboarding",
       title: "2. Onboarding Queue",
       desc: "Approve + provision new sign-ins.",
       path: "/owner/onboarding-queue",
+      candidates: [
+        "OwnerOnboardingQueuePage",
+        "OwnerOnboardingQueue",
+      ],
     },
     {
       key: "memberships",
       title: "3. Memberships",
       desc: "Assign players to alliances.",
       path: "/owner/memberships",
+      candidates: [
+        "OwnerMembershipsPage",
+        "OwnerMemberships",
+      ],
     },
     {
       key: "roles",
       title: "4. Roles",
       desc: "Role definitions (legacy).",
       path: "/owner/roles",
+      candidates: [
+        "OwnerRolesPage",
+        "OwnerRoles",
+      ],
     },
     {
       key: "permissions",
       title: "5. Permissions",
       desc: "Your main permissions assignment UI.",
       path: "/owner/permissions-matrix-v3",
+      candidates: [
+        "OwnerPermissionsMatrixV3Page",
+        "OwnerPermissionsMatrixV3",
+        "OwnerAccessControlPage",
+        "OwnerPermissionsDbPage",
+      ],
     },
   ]), []);
 
-  const active = clampStep(steps, sp.get("step"));
+  const stepKey = sp.get("step") || steps[0].key;
+  const active = steps.find((s) => s.key === stepKey) || steps[0];
   const activeIndex = steps.findIndex((s) => s.key === active.key);
 
-  const goStep = (idx: number) => {
+  const go = (idx: number) => {
     const s = steps[Math.max(0, Math.min(steps.length - 1, idx))];
     setSp({ step: s.key });
   };
 
-  const shellStyle: React.CSSProperties = {
-    padding: 16,
-    maxWidth: 1400,
-    margin: "0 auto",
-  };
-
-  const pageTitleStyle: React.CSSProperties = {
-    margin: 0,
-    fontSize: 28,
-    fontWeight: 900,
-    color: "rgba(240,255,240,0.98)",
-    textShadow: "0 0 18px rgba(0,0,0,0.65)",
-  };
-
-  const subtitleStyle: React.CSSProperties = {
-    marginTop: 6,
-    opacity: 0.9,
-    fontSize: 14,
-    color: "rgba(235,255,235,0.92)",
-  };
-
-  const gridStyle: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "360px 1fr",
-    gap: 14,
-    marginTop: 14,
-    alignItems: "start",
-  };
+  const shellStyle: React.CSSProperties = { padding: 16, maxWidth: 1400, margin: "0 auto" };
 
   const cardStyle: React.CSSProperties = {
     border: "1px solid rgba(255,255,255,0.16)",
@@ -93,9 +144,6 @@ export default function OwnerPlayerOpsFlowPage() {
     background: "rgba(0,0,0,0.45)",
     boxShadow: "0 10px 40px rgba(0,0,0,0.45)",
   };
-
-  const leftStyle: React.CSSProperties = { ...cardStyle, padding: 12 };
-  const rightStyle: React.CSSProperties = { ...cardStyle, padding: 12, minHeight: 520 };
 
   const stepBtnBase: React.CSSProperties = {
     width: "100%",
@@ -105,20 +153,7 @@ export default function OwnerPlayerOpsFlowPage() {
     border: "1px solid rgba(255,255,255,0.14)",
     background: "rgba(0,0,0,0.25)",
     cursor: "pointer",
-    color: "rgba(245,245,245,0.96)",          // ✅ readable
-  };
-
-  const stepTitleStyle: React.CSSProperties = {
-    fontWeight: 900,
-    fontSize: 14,
-    color: "rgba(250,250,250,0.98)",          // ✅ readable
-  };
-
-  const stepDescStyle: React.CSSProperties = {
-    marginTop: 4,
-    fontSize: 12,
-    lineHeight: 1.3,
-    color: "rgba(230,230,230,0.90)",          // ✅ readable
+    color: "rgba(245,245,245,0.96)",
   };
 
   const selectedStyle: React.CSSProperties = {
@@ -131,9 +166,11 @@ export default function OwnerPlayerOpsFlowPage() {
     <div style={shellStyle}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div>
-          <h1 style={pageTitleStyle}>Player Ops Flow</h1>
-          <div style={subtitleStyle}>
-            One page flow: Player Intake → Onboarding → Memberships → Roles → Permissions.
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: "rgba(240,255,240,0.98)", textShadow: "0 0 18px rgba(0,0,0,0.65)" }}>
+            Player Ops Flow
+          </h1>
+          <div style={{ marginTop: 6, opacity: 0.9, fontSize: 14, color: "rgba(235,255,235,0.92)" }}>
+            One flow: Player Intake → Onboarding → Memberships → Roles → Permissions.
           </div>
         </div>
 
@@ -147,9 +184,8 @@ export default function OwnerPlayerOpsFlowPage() {
         </div>
       </div>
 
-      <div style={gridStyle}>
-        {/* LEFT */}
-        <div style={leftStyle}>
+      <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 14, marginTop: 14, alignItems: "start" }}>
+        <div style={{ ...cardStyle, padding: 12 }}>
           <div style={{ fontWeight: 900, marginBottom: 10, color: "rgba(245,245,245,0.98)" }}>Flow Steps</div>
 
           <div style={{ display: "grid", gap: 10 }}>
@@ -162,45 +198,23 @@ export default function OwnerPlayerOpsFlowPage() {
                   onClick={() => setSp({ step: s.key })}
                   style={{ ...stepBtnBase, ...(selected ? selectedStyle : null) }}
                 >
-                  <div style={stepTitleStyle}>{s.title}</div>
-                  <div style={stepDescStyle}>{s.desc}</div>
+                  <div style={{ fontWeight: 900, fontSize: 14, color: "rgba(250,250,250,0.98)" }}>{s.title}</div>
+                  <div style={{ marginTop: 4, fontSize: 12, lineHeight: 1.3, color: "rgba(230,230,230,0.90)" }}>{s.desc}</div>
                 </button>
               );
             })}
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 12 }}>
-            <button type="button" onClick={() => goStep(activeIndex - 1)} disabled={activeIndex <= 0}>
-              ← Prev
-            </button>
-            <button type="button" onClick={() => goStep(activeIndex + 1)} disabled={activeIndex >= steps.length - 1}>
-              Next →
-            </button>
+            <button type="button" onClick={() => go(activeIndex - 1)} disabled={activeIndex <= 0}>← Prev</button>
+            <button type="button" onClick={() => go(activeIndex + 1)} disabled={activeIndex >= steps.length - 1}>Next →</button>
           </div>
         </div>
 
-        {/* RIGHT */}
-        <div style={rightStyle}>
+        <div style={{ ...cardStyle, padding: 12, minHeight: 520 }}>
           <div style={{ fontWeight: 900, fontSize: 18, color: "rgba(245,245,245,0.98)" }}>{active.title.replace(/^\d+\.\s*/, "")}</div>
           <div style={{ opacity: 0.9, marginTop: 6, color: "rgba(235,235,235,0.92)" }}>{active.desc}</div>
-
-          {/* ✅ Always embed (no more “couldn't auto-embed”) */}
-          <div style={{ marginTop: 12 }}>
-            <iframe
-              title={active.key}
-              src={active.path}
-              style={{
-                width: "100%",
-                height: "70vh",
-                border: "1px solid rgba(255,255,255,0.14)",
-                borderRadius: 12,
-                background: "rgba(0,0,0,0.25)",
-              }}
-            />
-            <div style={{ marginTop: 8, opacity: 0.75, fontSize: 12 }}>
-              If the embedded view ever looks tight, use <b>Open Step Fullscreen</b>.
-            </div>
-          </div>
+          <StepEmbed step={active} />
         </div>
       </div>
     </div>
