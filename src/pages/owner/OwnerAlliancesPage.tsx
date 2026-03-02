@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
+
+function pickFirstId(x: any): string | null {
+  if (!x) return null;
+  if (Array.isArray(x)) return x[0]?.id ?? null;
+  return x.id ?? null;
+}
 const STATE_NUM = Number(import.meta.env.VITE_STATE_ID ?? 789);
 const DEFAULT_STATE_CODE = `S${STATE_NUM}`;
 
@@ -277,4 +283,5 @@ export default function OwnerAlliancesPage() {
     </div>
   );
 }
+
 
