@@ -3,8 +3,9 @@ import { useState } from "react";
 import { useAllianceInvites } from "../../hooks/useAllianceInvites";
 
 export default function OwnerInvites({ alliance_id }: { alliance_id: string }) {
-  const { alliance_id } = useParams<{ alliance_id: string }>();
-  const { createInvite, getInvites } = useAllianceInvites(alliance_id);
+    const { alliance_id: route_alliance_id } = useParams<{ alliance_id: string }>();
+  const effectiveAllianceId = String(alliance_id || route_alliance_id || "");
+  const { createInvite, getInvites } = useAllianceInvites(effectiveAllianceId);
   const [link, setLink] = useState("");
 
   async function handleCreate() {
@@ -27,5 +28,6 @@ export default function OwnerInvites({ alliance_id }: { alliance_id: string }) {
     </div>
   );
 }
+
 
 
