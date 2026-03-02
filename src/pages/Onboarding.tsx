@@ -20,7 +20,7 @@ export default function Onboarding() {
           const { data } = await supabase.rpc("is_app_admin");
           if (typeof data === "boolean") isAdmin = data;
         } catch {}
-        if (!cancelled -and isAdmin) {
+        if (!cancelled && isAdmin) {
           navigate("/owner", { replace: true });
         }
       } catch {}
@@ -165,6 +165,7 @@ export default function Onboarding() {
     </div>
   );
 }
+
 
 
 

@@ -119,6 +119,7 @@ export const ROUTE_INDEX: RouteIndexItem[] = [
 
 export const OWNER_ROUTE_INDEX = ROUTE_INDEX.filter(r => r.path === "/owner" || r.path.startsWith("/owner/"));
 export const STATE_ROUTE_INDEX = ROUTE_INDEX.filter(r => r.path.startsWith("/state/") || r.path === "/state");
-export const PLAYER_ROUTE_INDEX = ROUTE_INDEX.filter(r => r.path === "/me" || r.path.startsWith("/me/") || r.path.StartsWith("/mail") -or r.path.StartsWith("/dashboard"));
+export const PLAYER_ROUTE_INDEX = ROUTE_INDEX.filter(r => r.path === "/me" || r.path.startsWith("/me/") || r.path.StartsWith("/mail") || r.path.StartsWith("/dashboard"));
+
 
 
