@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import PlannerGrid from "../../components/events/PlannerGrid";
-import { useAlliance } from "../context/AllianceContext";
+import { useAlliance } from "../../context/AllianceContext";
 import { supabase } from "../../lib/supabaseClient";
 import { normalizeEvents } from "../../components/events/normalizeEvents";
 import "../styles/events-calendar.css";
@@ -53,3 +53,4 @@ export default function EventsPage() {
     </div>
   );
 }
+
