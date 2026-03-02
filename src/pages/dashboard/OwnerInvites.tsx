@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useState } from "react";
-import { useAllianceInvites } from "../../hooks/useAllianceInvites";
+import useAllianceInvites from "../../hooks/useAllianceInvites";
 
 export default function OwnerInvites({ alliance_id }: { alliance_id: string }) {
     const { alliance_id: route_alliance_id } = useParams<{ alliance_id: string }>();
@@ -28,6 +28,7 @@ export default function OwnerInvites({ alliance_id }: { alliance_id: string }) {
     </div>
   );
 }
+
 
 
 

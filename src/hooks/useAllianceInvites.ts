@@ -12,3 +12,8 @@ export async function createInvite(alliance_id: string, userId: string) {
 
   return code;
 }
+
+// --- compatibility exports (auto-added 20260301-203127) ---
+export const useAllianceInvites = ;
+export default ;
+
