@@ -106,8 +106,8 @@ export default function OwnerPlayerIntakePage() {
     // 1) alliance_directory_items (common in directory setups)
     try {
       const r = await supabase
-        .from("alliance_directory_items")
-        .select("code,name,state,alliance_code,display_name")
+        .from("alliance_directory_entries")
+        .select("code,name,enabled,tag")
         .order("code", { ascending: true })
         .limit(500);
       if (!r.error && Array.isArray(r.data) && r.data.length) {
@@ -123,7 +123,7 @@ export default function OwnerPlayerIntakePage() {
     try {
       const r = await supabase
         .from("alliances")
-        .select("code,name,state,alliance_code,display_name")
+        .select("code,name,enabled,tag")
         .order("code", { ascending: true })
         .limit(500);
       if (!r.error && Array.isArray(r.data) && r.data.length) {
@@ -595,3 +595,5 @@ export default function OwnerPlayerIntakePage() {
     </div>
   );
 }
+
+
