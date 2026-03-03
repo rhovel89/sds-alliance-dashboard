@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
+import BroadcastHeader from "..\/..\/components\/commandcenter\/BroadcastHeader";
+import ThreatStrip from "..\/..\/components\/commandcenter\/ThreatStrip";
 import { State789AchievementsProgressWidget } from "../../components/state/State789AchievementsProgressWidget";
 import { StateAchievementsWidget } from "../../components/state/StateAchievementsWidget";
 import StateBulletinBoardPanel from "../../components/state/StateBulletinBoardPanel";
@@ -416,38 +418,25 @@ export default function State789DiscussionPage() {
   return (
     <div style={{ padding: 14, maxWidth: 1200, margin: "0 auto" }}>
       <div className="zombie-card" style={{ marginTop: 6, marginBottom: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>STATE HUB</div>
-            <div style={{ fontWeight: 950, fontSize: 20 }}>🧟 State 789 Command Deck</div>
-            <div style={{ opacity: 0.75, marginTop: 4 }}>Quick links + live panels for your state.</div>
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/achievements")}>🏆 Achievements</button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/alerts")}>🚨 Alerts</button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/discussion")}>💬 Discussion</button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/ops-db")}>🧰 Ops DB</button>
-          </div>
-        </div>
-      </div>
-      <div style={{ marginTop: 12 }}>         <StateBulletinBoardDbPanel stateCode="789" />       </div>
-      <div style={{ marginTop: 12 }}><StateBulletinBoardPanel stateCode="789" /></div>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>💬 State 789 — Discussion</h2>
-
-      <StateAchievementsWidget stateCode="789" />
-
-        <State789AchievementsProgressWidget />
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789")}>⬅ Back</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/discord-mentions")}>🔧 Mentions</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/discord-send-log")}>📜 Send Log</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportJson}>Export</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={importJson}>Import</button>
-          <SupportBundleButton />
-        </div>
-      </div>
+              <BroadcastHeader
+        stateCode="789"
+        title="🧟 State 789 Command Deck"
+        subtitle="Emergency Broadcast Hub • Alerts • Ops • Intel"
+        threat="watch"
+        actions={
+            <>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>⬅ Back</button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.reload()}>↻ Refresh</button>
+              <SupportBundleButton />
+            </>
+          }
+      />
+      <ThreatStrip items={[
+        { label: "BROADCAST", value: "ONLINE", stamp: "AUTHORIZED" },
+        { label: "SECTOR", value: "STATE 789", stamp: "QUARANTINE" },
+        { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
+        { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
+      ]} /></div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ fontWeight: 900 }}>Send to Discord</div>
@@ -576,6 +565,7 @@ export default function State789DiscussionPage() {
     </div>
   );
 }
+
 
 
 

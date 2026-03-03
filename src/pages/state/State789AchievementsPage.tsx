@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
+import BroadcastHeader from "..\/..\/components\/commandcenter\/BroadcastHeader";
+import ThreatStrip from "..\/..\/components\/commandcenter\/ThreatStrip";
 import StateAchievementsProgressPanel from "../../components/state/StateAchievementsProgressPanel";
 import StateMyAdminAchievementsPanel from "../../components/state/StateMyAdminAchievementsPanel";
 
@@ -192,14 +194,25 @@ export default function State789AchievementsPage() {
   return (
     <div style={{ padding: 14, maxWidth: 1200, margin: "0 auto" }}>
       <StateAchievementsProgressPanel stateCode="789" />
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🏆 State 789 — Achievements</h2>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>Back to State</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
-          <SupportBundleButton />
-        </div>
-      </div>
+            <BroadcastHeader
+        stateCode="789"
+        title="🏆 Achievements Control Center"
+        subtitle="Bloody Emergency Broadcast • Requests • Approvals • Exports"
+        threat="watch"
+        actions={
+            <>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>⬅ Back</button>
+              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.reload()}>↻ Refresh</button>
+              <SupportBundleButton />
+            </>
+          }
+      />
+      <ThreatStrip items={[
+        { label: "BROADCAST", value: "ONLINE", stamp: "AUTHORIZED" },
+        { label: "SECTOR", value: "STATE 789", stamp: "QUARANTINE" },
+        { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
+        { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
+      ]} /></div>
 
       <StateMyAdminAchievementsPanel stateCode="789" title="✅ Admin-added achievements for you" limit={25} />
 
@@ -302,5 +315,6 @@ export default function State789AchievementsPage() {
     </div>
   );
 }
+
 
 
