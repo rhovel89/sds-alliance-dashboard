@@ -8,6 +8,7 @@ import { State789AchievementsProgressWidget } from "../../components/state/State
 import { StateAchievementsWidget } from "../../components/state/StateAchievementsWidget";
 import StateBulletinBoardPanel from "../../components/state/StateBulletinBoardPanel";
 import StateBulletinBoardDbPanel from "../../components/state/StateBulletinBoardDbPanel";
+import MetricTiles from "../../components/commandcenter/MetricTiles";
 
 type DirItem = { id: string; code: string; name: string; state: string };
 
