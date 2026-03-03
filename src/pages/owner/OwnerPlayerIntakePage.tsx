@@ -102,8 +102,8 @@ export default function OwnerPlayerIntakePage() {
   }, [players, q]);
 
   async function tryLoadAlliances(): Promise<AllianceOption[]> {
-  // Best-effort: schemas vary. Avoid selecting non-existent columns (causes 400).
-  const mapRows = (rows: any[]): AllianceOption[] =>
+  // Avoid selecting columns that may not exist (causes 400).
+  const mapRows = (rows: any[]) =>
     rows
       .map((x: any) => ({
         code: uc(x.code || x.alliance_code),
@@ -112,32 +112,28 @@ export default function OwnerPlayerIntakePage() {
       }))
       .filter((x: AllianceOption) => !!x.code);
 
-  const attempt = async (table: string, select: string, orderCol?: string): Promise<AllianceOption[] | null> => {
+  const attempt = async (table: string, select: string, orderCol?: string) => {
     try {
       let q: any = supabase.from(table).select(select).limit(500);
       if (orderCol) q = q.order(orderCol, { ascending: true });
       const r = await q;
-      if (!r.error && Array.isArray(r.data) && r.data.length) {
-        return mapRows(r.data as any[]);
-      }
+      if (!r.error && Array.isArray(r.data) && r.data.length) return mapRows(r.data as any[]);
     } catch {}
     return null;
   };
 
-  // 1) alliance_directory_entries (schema differs across environments)
+  // 1) alliance_directory_entries (schema varies)
   let rows =
     (await attempt("alliance_directory_entries", "code,name", "code")) ??
     (await attempt("alliance_directory_entries", "alliance_code,name,display_name", "alliance_code")) ??
     (await attempt("alliance_directory_entries", "alliance_code,display_name", "alliance_code"));
   if (rows && rows.length) return rows;
 
-  // 2) alliances (minimal safe columns first)
-  rows =
-    (await attempt("alliances", "code,name", "code")) ??
-    (await attempt("alliances", "code,name", "code"));
+  // 2) alliances (minimal safe)
+  rows = (await attempt("alliances", "code,name", "code"));
   if (rows && rows.length) return rows;
 
-  // 3) alliance_code_map (code-only fallback)
+  // 3) alliance_code_map (code only)
   try {
     const r = await supabase
       .from("alliance_code_map")
@@ -599,6 +595,7 @@ async function loadAll() {
     </div>
   );
 }
+
 
 
 
