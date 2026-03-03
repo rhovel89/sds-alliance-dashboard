@@ -478,6 +478,8 @@ export default function OwnerStateAchievementsPage() {
         </div>
       </div>
 
+      <StateAchievementsExportPanel stateCode={stateCode} requests={requests} />
+
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ opacity: 0.75, fontSize: 12 }}>State</div>
@@ -491,6 +493,8 @@ export default function OwnerStateAchievementsPage() {
         </div>
         {msg ? <div style={{ marginTop: 10, opacity: 0.9 }}>{msg}</div> : null}
       </div>
+
+      <StateAchievementsExportPanel stateCode={stateCode} requests={requests} />
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

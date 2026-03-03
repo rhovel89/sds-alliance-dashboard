@@ -414,7 +414,22 @@ export default function State789DiscussionPage() {
   const others = useMemo(() => (store.threads || []).filter((x) => !x.pinned), [store.threads]);
 
   return (
-    <div style={{ padding: 14 }}>
+    <div style={{ padding: 14, maxWidth: 1200, margin: "0 auto" }}>
+      <div className="zombie-card" style={{ marginTop: 6, marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div>
+            <div style={{ opacity: 0.75, fontSize: 12 }}>STATE HUB</div>
+            <div style={{ fontWeight: 950, fontSize: 20 }}>🧟 State 789 Command Deck</div>
+            <div style={{ opacity: 0.75, marginTop: 4 }}>Quick links + live panels for your state.</div>
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/achievements")}>🏆 Achievements</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/alerts")}>🚨 Alerts</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/discussion")}>💬 Discussion</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/ops-db")}>🧰 Ops DB</button>
+          </div>
+        </div>
+      </div>
       <div style={{ marginTop: 12 }}>         <StateBulletinBoardDbPanel stateCode="789" />       </div>
       <div style={{ marginTop: 12 }}><StateBulletinBoardPanel stateCode="789" /></div>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -561,5 +576,6 @@ export default function State789DiscussionPage() {
     </div>
   );
 }
+
 
 

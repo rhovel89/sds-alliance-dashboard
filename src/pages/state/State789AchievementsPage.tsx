@@ -189,7 +189,7 @@ export default function State789AchievementsPage() {
   };
 
   return (
-    <div style={{ padding: 14 }}>
+    <div style={{ padding: 14, maxWidth: 1200, margin: "0 auto" }}>
       <StateAchievementsProgressPanel stateCode="789" />
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>🏆 State 789 — Achievements</h2>
@@ -200,12 +200,16 @@ export default function State789AchievementsPage() {
         </div>
       </div>
 
+      <StateMyAdminAchievementsPanel stateCode="789" title="✅ Admin-added achievements for you" limit={25} />
+
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ opacity: 0.75, fontSize: 12 }}>
           {loading ? "Loading…" : `Loaded types: ${types.length} • options: ${options.length} • requests visible: ${requests.length}`}
         </div>
         {msg ? <div style={{ marginTop: 10, opacity: 0.9 }}>{msg}</div> : null}
       </div>
+
+      <StateMyAdminAchievementsPanel stateCode="789" title="✅ Admin-added achievements for you" limit={25} />
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ fontWeight: 900 }}>Request an Achievement</div>
@@ -261,6 +265,8 @@ export default function State789AchievementsPage() {
         </div>
       </div>
 
+      <StateMyAdminAchievementsPanel stateCode="789" title="✅ Admin-added achievements for you" limit={25} />
+
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ fontWeight: 900 }}>My Visible Requests</div>
         <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
@@ -295,3 +301,4 @@ export default function State789AchievementsPage() {
     </div>
   );
 }
+
