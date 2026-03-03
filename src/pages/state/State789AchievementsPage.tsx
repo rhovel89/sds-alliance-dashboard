@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
-import BroadcastHeader from "..\/..\/components\/commandcenter\/BroadcastHeader";
-import ThreatStrip from "..\/..\/components\/commandcenter\/ThreatStrip";
 import StateAchievementsProgressPanel from "../../components/state/StateAchievementsProgressPanel";
 
 type AnyRow = Record<string, any>;
@@ -27,11 +25,7 @@ export default function State789AchievementsPage() {
   const [options, setOptions] = useState<AnyRow[]>([]);
   const [requests, setRequests] = useState<AnyRow[]>([]);
 
-  // Control Surface filters
-  const [filterAlliance, setFilterAlliance] = useState<string>("ALL");
-  const [filterStatus, setFilterStatus] = useState<string>("ALL");
-  const [search, setSearch] = useState<string>("");
-// Form fields
+  // Form fields
   const [playerName, setPlayerName] = useState("");
   const [allianceName, setAllianceName] = useState("");
   const [typeId, setTypeId] = useState<string>("");
@@ -193,107 +187,18 @@ export default function State789AchievementsPage() {
     const o = (options || []).find((x) => String(x.id) === String(id));
     return o ? String(o.label || "") : "";
   };
-  const allianceOptions = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of (requests || [])) {
-      const a = norm(r.alliance_name || r.alliance || "");
-      if (a) s.add(a);
-    }
-    return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
-  }, [requests]);
-
-  const visibleRequests = useMemo(() => {
-    const af = normLower(filterAlliance);
-    const sf = normLower(filterStatus);
-    const q  = normLower(search);
-
-    return (requests || []).filter((r) => {
-      if (af && af !== "all") {
-        const a = normLower(r.alliance_name || r.alliance || "");
-        if (a !== af) return false;
-      }
-      if (sf && sf !== "all") {
-        const st = normLower(r.status || "");
-        if (st !== sf) return false;
-      }
-      if (q) {
-        const tName = normLower(typeName(r.achievement_type_id));
-        const oLabel = normLower(optionLabel(r.option_id));
-        const aName = normLower(r.alliance_name || "");
-        const blob = (tName + " " + oLabel + " " + aName).trim();
-        if (!blob.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [requests, filterAlliance, filterStatus, search]);
 
   return (
-    <div className="cc-theme">
-      <div className="zombie-card" style={{ marginTop: 12 }}>
-  <div style={{ padding: 14 }}>
-    <div style={{ opacity: 0.72, fontSize: 11, fontWeight: 950, letterSpacing: "0.12em" }}>PROGRESS BAY</div>
-    <div style={{ fontSize: 16, fontWeight: 950, marginTop: 6 }}>🧪 Infection Protocol — Achievement Progress</div>
-    <div style={{ marginTop: 10 }}>
+    <div style={{ padding: 14 }}>
       <StateAchievementsProgressPanel stateCode="789" />
-    </div>
-  </div>
-</div>
-      <BroadcastHeader
-  stateCode="789"
-  title="🏆 Achievements Control Center"
-  subtitle="Bloody Emergency Broadcast • Requests • Approvals • Exports"
-  threat="watch"
-  actions={
-    <>
-      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>⬅ Back</button>
-      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.reload()}>↻ Refresh</button>
-      <SupportBundleButton />
-    </>
-  }
-/>
-
-<ThreatStrip items={[
-  { label: "BROADCAST", value: "ONLINE", stamp: "AUTHORIZED" },
-  { label: "SECTOR", value: "STATE 789", stamp: "QUARANTINE" },
-  { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
-  { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
-]} />
-
-<div className="cc-controlbar">
-  <div className="cc-control-row">
-    <div>
-      <div className="cc-control-label">ALLIANCE FILTER</div>
-      <select className="zombie-input" value={filterAlliance} onChange={(e) => setFilterAlliance(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
-        {allianceOptions.map((a) => (<option key={a} value={a}>{a}</option>))}
-      </select>
-    </div>
-
-    <div>
-      <div className="cc-control-label">STATUS</div>
-      <select className="zombie-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
-        <option value="ALL">ALL</option>
-        <option value="submitted">SUBMITTED</option>
-        <option value="pending">PENDING</option>
-        <option value="approved">APPROVED</option>
-        <option value="completed">COMPLETED</option>
-        <option value="rejected">REJECTED</option>
-      </select>
-    </div>
-
-    <div>
-      <div className="cc-control-label">SEARCH</div>
-      <input className="zombie-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search achievement / option / alliance" style={{ padding: "10px 12px", width: "100%" }} />
-    </div>
-
-    <div className="cc-control-actions">
-      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>↻ REFRESH</button>
-      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/owner/state-achievements")}>🧾 OWNER QUEUE</button>
-    </div>
-  </div>
-</div>
-
-<div className="cc-grid2">
-  <div className="cc-rail"></div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <h2 style={{ margin: 0 }}>🏆 State 789 — Achievements</h2>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>Back to State</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
+          <SupportBundleButton />
+        </div>
+      </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ opacity: 0.75, fontSize: 12 }}>
@@ -356,56 +261,21 @@ export default function State789AchievementsPage() {
         </div>
       </div>
 
-        </div>
-
-  <div className="cc-rail">
-
+      <div className="zombie-card" style={{ marginTop: 12 }}>
+        <div style={{ fontWeight: 900 }}>My Visible Requests</div>
         <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
           Visibility is controlled by Supabase RLS.
         </div>
 
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-          {(visibleRequests || []).slice(0, 40).map((r) => {
+          {(requests || []).slice(0, 40).map((r) => {
             const tName = typeName(r.achievement_type_id);
             const oLabel = optionLabel(r.option_id);
             const req = Math.max(1, asInt(r.required_count, asInt(typeById[String(r.achievement_type_id)]?.required_count, 1)));
             const cur = Math.max(0, asInt(r.current_count, 0));
             const done = (String(r.status) === "completed") || (cur >= req);
-  const allianceOptions = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of (requests || [])) {
-      const a = norm(r.alliance_name || r.alliance || "");
-      if (a) s.add(a);
-    }
-    return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
-  }, [requests]);
 
-  const visibleRequests = useMemo(() => {
-    const af = normLower(filterAlliance);
-    const sf = normLower(filterStatus);
-    const q  = normLower(search);
-
-    return (requests || []).filter((r) => {
-      if (af && af !== "all") {
-        const a = normLower(r.alliance_name || r.alliance || "");
-        if (a !== af) return false;
-      }
-      if (sf && sf !== "all") {
-        const st = normLower(r.status || "");
-        if (st !== sf) return false;
-      }
-      if (q) {
-        const tName = normLower(typeName(r.achievement_type_id));
-        const oLabel = normLower(optionLabel(r.option_id));
-        const aName = normLower(r.alliance_name || "");
-        const blob = (tName + " " + oLabel + " " + aName).trim();
-        if (!blob.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [requests, filterAlliance, filterStatus, search]);
-
-  return (
+            return (
               <div key={String(r.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                   <div style={{ fontWeight: 900 }}>
@@ -421,9 +291,7 @@ export default function State789AchievementsPage() {
           })}
           {!loading && (!requests || requests.length === 0) ? <div style={{ opacity: 0.75 }}>No requests yet.</div> : null}
         </div>
-      </div>  </div>
-</div>
-
-</div>
+      </div>
+    </div>
   );
 }
