@@ -22,3 +22,30 @@ node_modules/
 dist/
 *.zip
 *.bak-*
+
+# Local builds
+dist/
+node_modules/
+
+# Local audit artifacts
+audit/
+*.bundle
+*.bundle.zip
+*.zip
+
+# Snapshots / backups (DO NOT COMMIT)
+backups/
+_backup*/
+_backup_*/
+_BACKUPS*/
+SAFE-*/
+SAFE_*/
+SAFE-SNAPSHOT*/
+SAFE-ROLLBACK*/
+_snapshots/
+_RECOVERY_*/
+_recovery_*/
+src-backup*/
+src_backup*/
+backup-src*/
+
