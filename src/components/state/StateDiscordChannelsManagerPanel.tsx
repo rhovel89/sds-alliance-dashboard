@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
+import StateDiscordChannelSelect from "../discord/StateDiscordChannelSelect";
 
 type Row = {
   id: string;
   state_code: string;
   channel_name: string;
   channel_id: string;
-  active: boolean;
+  active?: boolean;
   is_default: boolean;
   created_at: string;
 };
@@ -18,6 +19,8 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string>("");
 
+  const [reportsChannelId, setReportsChannelId] = useState<string>("");
+
   const [name, setName] = useState("");
   const [channelId, setChannelId] = useState("");
 
@@ -27,7 +30,7 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
     setStatus("");
     const res = await supabase
       .from("state_discord_channels")
-      .select("id,state_code,channel_name,channel_id,active,is_default,created_at")
+      .select("id,state_code,channel_name,channel_id,is_default,created_at")
       .eq("state_code", stateCode)
       .order("is_default", { ascending: false })
       .order("channel_name", { ascending: true });
@@ -40,6 +43,16 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
       return;
     }
     setRows((res.data ?? []) as any);
+
+    // Load saved defaults (reports channel)
+    try {
+      const d = await supabase
+        .from("state_discord_defaults")
+        .select("reports_channel_id")
+        .eq("state_code", stateCode)
+        .maybeSingle();
+      setReportsChannelId(String((d.data as any)?.reports_channel_id ?? ""));
+    } catch {}
   }
 
   useEffect(() => { void load(); }, [stateCode]);
@@ -54,7 +67,6 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
       state_code: stateCode,
       channel_name: n,
       channel_id: c,
-      active: true,
       is_default: rows.length === 0, // first becomes default
     } as any);
 
@@ -101,6 +113,20 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
     await load();
     setStatus("");
   }
+  async function saveReportsDefault() {
+    if (!stateCode) return;
+    const cid = String(reportsChannelId || "").trim();
+    if (!cid) return;
+
+    setStatus("Saving reports default…");
+    const up = await supabase
+      .from("state_discord_defaults")
+      .upsert({ state_code: stateCode, reports_channel_id: cid } as any, { onConflict: "state_code" } as any);
+
+    if (up.error) { setStatus(up.error.message); return; }
+    setStatus("Reports default saved ✅");
+    window.setTimeout(() => setStatus(""), 900);
+  }
 
   return (
     <div style={{ border: "1px solid rgba(255,255,255,0.16)", borderRadius: 12, padding: 12 }}>
@@ -112,6 +138,27 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
           </div>
         </div>
         <button onClick={() => void load()}>Refresh</button>
+      </div>
+      <div style={{ marginTop: 12, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 10 }}>
+        <div style={{ fontWeight: 900 }}>Default Reports Channel</div>
+        <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
+          Used by Achievements “Export → PNG → Discord”
+        </div>
+
+        <div style={{ marginTop: 10 }}>
+          <StateDiscordChannelSelect
+            stateCode={stateCode}
+            value={reportsChannelId}
+            onChange={setReportsChannelId}
+            label="Reports Channel"
+          />
+        </div>
+
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button onClick={() => void saveReportsDefault()} disabled={!String(reportsChannelId || "").trim()}>
+            Save Reports Default
+          </button>
+        </div>
       </div>
 
       <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
@@ -131,12 +178,12 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
                   {r.is_default ? "⭐ " : ""}{r.channel_name}
                 </div>
                 <div style={{ opacity: 0.75, fontSize: 12 }}>
-                  {r.channel_id} • {r.active ? "active" : "inactive"}
+                  {r.channel_id} • {typeof r.active === "boolean" ? (r.active ? "active" : "inactive") : "configured"}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {!r.is_default ? <button onClick={() => void setDefault(r)}>Set default</button> : null}
-                <button onClick={() => void toggleActive(r)}>{r.active ? "Disable" : "Enable"}</button>
+                {typeof r.active === "boolean" ? <button onClick={() => void toggleActive(r)}>{r.active ? "Disable" : "Enable"}</button> : null}
                 <button onClick={() => void remove(r)}>Delete</button>
               </div>
             </div>
@@ -147,3 +194,4 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
     </div>
   );
 }
+
