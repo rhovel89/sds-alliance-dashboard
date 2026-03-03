@@ -183,7 +183,7 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {!r.is_default ? <button onClick={() => void setDefault(r)}>Set default</button> : null}
-                {typeof r.active === "boolean" ? <button onClick={() => void toggleActive(r)}>{r.active ? "Disable" : "Enable"}</button> : null}
+                {typeof r.active === "boolean" ? {typeof r.active === "boolean" ? <button onClick={() => void toggleActive(r)}>{r.active ? "Disable" : "Enable"}</button> : null} : null}
                 <button onClick={() => void remove(r)}>Delete</button>
               </div>
             </div>
@@ -194,4 +194,5 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
     </div>
   );
 }
+
 
