@@ -16,18 +16,7 @@ function asInt(v: any, fallback: number) {
 }
 
 export default function State789AchievementsPage() {
-  
-  // --- Command Center filters (UI only; wiring comes next patch) ---
-  const [filterAlliance, setFilterAlliance] = useState<string>("ALL");
-  const [filterStatus, setFilterStatus] = useState<string>("ALL");
-  const [search, setSearch] = useState<string>("");
-
-  const __ccAllianceOptions = useMemo(() => {
-    // If requests exists, we’ll populate options dynamically in Patch B.
-    return ["ALL"];
-  }, []);
-
-const stateCode = "789";
+  const stateCode = "789";
 
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
@@ -38,7 +27,20 @@ const stateCode = "789";
   const [options, setOptions] = useState<AnyRow[]>([]);
   const [requests, setRequests] = useState<AnyRow[]>([]);
 
-  // Form fields
+  // --- Command Center filters (UI only for Patch A) ---
+  const [filterAlliance, setFilterAlliance] = useState<string>("ALL");
+  const [filterStatus, setFilterStatus] = useState<string>("ALL");
+  const [search, setSearch] = useState<string>("");
+
+  const allianceOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of (requests || [])) {
+      const a = norm(r.alliance_name || r.alliance || "");
+      if (a) s.add(a);
+    }
+    return ["ALL", ...Array.from(s).sort((a,b) => a.localeCompare(b))];
+  }, [requests]);
+// Form fields
   const [playerName, setPlayerName] = useState("");
   const [allianceName, setAllianceName] = useState("");
   const [typeId, setTypeId] = useState<string>("");
@@ -202,18 +204,62 @@ const stateCode = "789";
   };
 
   return (
-    <div style={{ padding: 14 }}>
+    <div className="cc-theme">
       <StateAchievementsProgressPanel stateCode="789" />
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🏆 State 789 — Achievements</h2>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>Back to State</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
-          <SupportBundleButton />
+
+      <BroadcastHeader
+        stateCode="789"
+        title="🏆 Achievements Control Center"
+        subtitle="Bloody Emergency Broadcast • Requests • Approvals • Exports"
+        threat="watch"
+        actions={
+          <>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>⬅ Back</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>↻ Refresh</button>
+            <SupportBundleButton />
+          </>
+        }
+      />
+
+      <ThreatStrip items={[
+        { label: "BROADCAST", value: "ONLINE", stamp: "AUTHORIZED" },
+        { label: "SECTOR", value: "STATE 789", stamp: "QUARANTINE" },
+        { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
+        { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
+      ]} />
+
+      <div className="cc-controlbar">
+        <div className="cc-control-row">
+          <div>
+            <div className="cc-control-label">ALLIANCE FILTER</div>
+            <select className="zombie-input" value={filterAlliance} onChange={(e) => setFilterAlliance(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
+              {allianceOptions.map((a) => (<option key={a} value={a}>{a}</option>))}
+            </select>
+          </div>
+
+          <div>
+            <div className="cc-control-label">STATUS</div>
+            <select className="zombie-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
+              <option value="ALL">ALL</option>
+              <option value="submitted">SUBMITTED</option>
+              <option value="pending">PENDING</option>
+              <option value="approved">APPROVED</option>
+              <option value="completed">COMPLETED</option>
+              <option value="rejected">REJECTED</option>
+            </select>
+          </div>
+
+          <div>
+            <div className="cc-control-label">SEARCH</div>
+            <input className="zombie-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", width: "100%" }} />
+          </div>
+
+          <div className="cc-control-actions">
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => { setFilterAlliance("ALL"); setFilterStatus("ALL"); setSearch(""); }}>CLEAR</button>
+          </div>
         </div>
       </div>
-
-      <div className="zombie-card" style={{ marginTop: 12 }}>
+<div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ opacity: 0.75, fontSize: 12 }}>
           {loading ? "Loading…" : `Loaded types: ${types.length} • options: ${options.length} • requests visible: ${requests.length}`}
         </div>
@@ -289,60 +335,6 @@ const stateCode = "789";
             const done = (String(r.status) === "completed") || (cur >= req);
 
             return (
-    <div className="cc-theme">
-      <BroadcastHeader
-        stateCode="789"
-        title="🏆 Achievements Control Center"
-        subtitle="Bloody Emergency Broadcast • Requests • Approvals • Exports"
-        threat="watch"
-        actions={
-          <>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>⬅ Back</button>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.reload()}>↻ Refresh</button>
-          </>
-        }
-      />
-
-      <ThreatStrip items={[
-        { label: "BROADCAST", value: "ONLINE", stamp: "AUTHORIZED" },
-        { label: "SECTOR", value: "STATE 789", stamp: "QUARANTINE" },
-        { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
-        { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
-      ]} />
-
-      <div className="cc-controlbar">
-        <div className="cc-control-row">
-          <div>
-            <div className="cc-control-label">ALLIANCE FILTER</div>
-            <select className="zombie-input" value={filterAlliance} onChange={(e) => setFilterAlliance(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
-              {__ccAllianceOptions.map((a) => (<option key={a} value={a}>{a}</option>))}
-            </select>
-            <div className="cc-mini-note">Wiring to the feed comes next patch.</div>
-          </div>
-
-          <div>
-            <div className="cc-control-label">STATUS</div>
-            <select className="zombie-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
-              <option value="ALL">ALL</option>
-              <option value="submitted">SUBMITTED</option>
-              <option value="pending">PENDING</option>
-              <option value="approved">APPROVED</option>
-              <option value="completed">COMPLETED</option>
-              <option value="rejected">REJECTED</option>
-            </select>
-          </div>
-
-          <div>
-            <div className="cc-control-label">SEARCH</div>
-            <input className="zombie-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", width: "100%" }} />
-          </div>
-
-          <div className="cc-control-actions">
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.reload()}>↻ HARD REFRESH</button>
-          </div>
-        </div>
-      </div>
-
               <div key={String(r.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                   <div style={{ fontWeight: 900 }}>
@@ -359,7 +351,6 @@ const stateCode = "789";
           {!loading && (!requests || requests.length === 0) ? <div style={{ opacity: 0.75 }}>No requests yet.</div> : null}
         </div>
       </div>
-    </div>
     </div>
   );
 }
