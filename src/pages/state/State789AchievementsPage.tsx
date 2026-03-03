@@ -4,6 +4,7 @@ import SupportBundleButton from "../../components/system/SupportBundleButton";
 import StateAchievementsProgressPanel from "../../components/state/StateAchievementsProgressPanel";
 import BroadcastHeader from "../../components/commandcenter/BroadcastHeader";
 import ThreatStrip from "../../components/commandcenter/ThreatStrip";
+import StateAchievementsIntelRail from "../../components/state/StateAchievementsIntelRail";
 
 type AnyRow = Record<string, any>;
 
@@ -403,6 +404,7 @@ export default function State789AchievementsPage() {
     </div>
   );
 }
+
 
 
 
