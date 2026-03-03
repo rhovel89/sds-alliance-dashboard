@@ -212,7 +212,7 @@ export default function State789AchievementsPage() {
         { label: "SECTOR", value: "STATE 789", stamp: "QUARANTINE" },
         { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
         { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
-      ]} /></div>
+      ]} />
 
       <StateMyAdminAchievementsPanel stateCode="789" title="✅ Admin-added achievements for you" limit={25} />
 
@@ -315,6 +315,7 @@ export default function State789AchievementsPage() {
     </div>
   );
 }
+
 
 
 
