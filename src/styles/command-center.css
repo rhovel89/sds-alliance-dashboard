@@ -195,3 +195,46 @@
   display: grid;
   gap: 12px;
 }
+
+/* --- Achievements Control Strip --- */
+.cc-controlbar{
+  margin-top: 12px;
+  position: sticky;
+  top: 92px;           /* sits under sticky broadcast header */
+  z-index: 25;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.45);
+}
+@media (max-width: 720px){
+  .cc-controlbar{ top: 110px; }
+}
+.cc-control-row{
+  padding: 12px 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.cc-control-label{
+  opacity: 0.72;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  margin-bottom: 6px;
+}
+.cc-control-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-end;
+}
+.cc-mini-note{
+  opacity: 0.70;
+  font-size: 12px;
+  margin-top: 8px;
+}
+

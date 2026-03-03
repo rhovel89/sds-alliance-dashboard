@@ -190,6 +190,40 @@ export default function State789AchievementsPage() {
     const o = (options || []).find((x) => String(x.id) === String(id));
     return o ? String(o.label || "") : "";
   };
+  const allianceOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of (requests || [])) {
+      const a = norm(r.alliance_name || r.alliance || "");
+      if (a) s.add(a);
+    }
+    return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
+  }, [requests]);
+
+  const visibleRequests = useMemo(() => {
+    const af = normLower(filterAlliance);
+    const sf = normLower(filterStatus);
+    const q  = normLower(search);
+
+    return (requests || []).filter((r) => {
+      if (af && af !== "all") {
+        const a = normLower(r.alliance_name || r.alliance || "");
+        if (a !== af) return false;
+      }
+      if (sf && sf !== "all") {
+        const st = normLower(r.status || "");
+        if (st !== sf) return false;
+      }
+      if (q) {
+        const tName = normLower(typeById[String(r.achievement_type_id)]?.name || "");
+        const oLabel = normLower(((options || []).find((x) => String(x.id) === String(r.option_id)) as any)?.label || "");
+        const pName = normLower(r.player_name || "");
+        const aName = normLower(r.alliance_name || "");
+        const blob = (tName + " " + oLabel + " " + pName + " " + aName).trim();
+        if (!blob.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [requests, filterAlliance, filterStatus, search, typeById, options]);
 
   return (
     <div className="cc-theme">
@@ -212,7 +246,54 @@ export default function State789AchievementsPage() {
         { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
         { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
       ]} />
+      
+      <div className="cc-controlbar">
+  <div className="cc-control-row">
+    <div>
+      <div className="cc-control-label">ALLIANCE FILTER</div>
+      <select className="zombie-input" value={filterAlliance} onChange={(e) => setFilterAlliance(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
+        {allianceOptions.map((a) => (<option key={a} value={a}>{a}</option>))}
+      </select>
+      <div className="cc-mini-note">Filter affects the right-side “My Requests” feed.</div>
+    </div>
+
+    <div>
+      <div className="cc-control-label">STATUS</div>
+      <select className="zombie-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
+        <option value="ALL">ALL</option>
+        <option value="submitted">SUBMITTED</option>
+        <option value="pending">PENDING</option>
+        <option value="approved">APPROVED</option>
+        <option value="completed">COMPLETED</option>
+        <option value="rejected">REJECTED</option>
+      </select>
+      <div className="cc-mini-note">Shows what RLS allows you to see.</div>
+    </div>
+
+    <div>
+      <div className="cc-control-label">SEARCH</div>
+      <input className="zombie-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search achievement / option / player / alliance" style={{ padding: "10px 12px", width: "100%" }} />
+      <div className="cc-mini-note">Instant filter. No backend calls.</div>
+    </div>
+
+    <div className="cc-control-actions">
+      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>↻ REFRESH FEED</button>
+      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/owner/state-achievements")}>🧾 OWNER QUEUE</button>
+    </div>
+  </div>
+</div>
+
+      <div className="cc-grid2">
+        <div className="cc-rail">
+<div className="zombie-card" style={{ marginTop: 12 }}>
+  <div style={{ padding: 14 }}>
+    <div style={{ opacity: 0.72, fontSize: 11, fontWeight: 950, letterSpacing: "0.12em" }}>PROGRESS BAY</div>
+    <div style={{ fontSize: 16, fontWeight: 950, marginTop: 6 }}>🧪 Infection Protocol — Achievement Progress</div>
+    <div style={{ marginTop: 10 }}>
       <StateAchievementsProgressPanel stateCode="789" />
+    </div>
+  </div>
+</div>
             <BroadcastHeader
         stateCode="789"
         title="🏆 Achievements Control Center"
@@ -233,7 +314,46 @@ export default function State789AchievementsPage() {
         { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
       ]} />
 
-      <StateMyAdminAchievementsPanel stateCode="789" title="✅ Admin-added achievements for you" limit={25} />
+      
+      <div className="cc-controlbar">
+  <div className="cc-control-row">
+    <div>
+      <div className="cc-control-label">ALLIANCE FILTER</div>
+      <select className="zombie-input" value={filterAlliance} onChange={(e) => setFilterAlliance(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
+        {allianceOptions.map((a) => (<option key={a} value={a}>{a}</option>))}
+      </select>
+      <div className="cc-mini-note">Filter affects the right-side “My Requests” feed.</div>
+    </div>
+
+    <div>
+      <div className="cc-control-label">STATUS</div>
+      <select className="zombie-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
+        <option value="ALL">ALL</option>
+        <option value="submitted">SUBMITTED</option>
+        <option value="pending">PENDING</option>
+        <option value="approved">APPROVED</option>
+        <option value="completed">COMPLETED</option>
+        <option value="rejected">REJECTED</option>
+      </select>
+      <div className="cc-mini-note">Shows what RLS allows you to see.</div>
+    </div>
+
+    <div>
+      <div className="cc-control-label">SEARCH</div>
+      <input className="zombie-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search achievement / option / player / alliance" style={{ padding: "10px 12px", width: "100%" }} />
+      <div className="cc-mini-note">Instant filter. No backend calls.</div>
+    </div>
+
+    <div className="cc-control-actions">
+      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>↻ REFRESH FEED</button>
+      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/owner/state-achievements")}>🧾 OWNER QUEUE</button>
+    </div>
+  </div>
+</div>
+
+      <div className="cc-grid2">
+        <div className="cc-rail">
+<StateMyAdminAchievementsPanel stateCode="789" title="✅ Admin-added achievements for you" limit={25} />
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ opacity: 0.75, fontSize: 12 }}>
@@ -300,21 +420,58 @@ export default function State789AchievementsPage() {
 
       <StateMyAdminAchievementsPanel stateCode="789" title="✅ Admin-added achievements for you" limit={25} />
 
-      <div className="zombie-card" style={{ marginTop: 12 }}>
+              </div>
+
+        <div className="cc-rail">
+          <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ fontWeight: 900 }}>My Visible Requests</div>
         <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
           Visibility is controlled by Supabase RLS.
         </div>
 
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-          {(requests || []).slice(0, 40).map((r) => {
+          {(visibleRequests || []).slice(0, 40).map((r) => {
             const tName = typeName(r.achievement_type_id);
             const oLabel = optionLabel(r.option_id);
             const req = Math.max(1, asInt(r.required_count, asInt(typeById[String(r.achievement_type_id)]?.required_count, 1)));
             const cur = Math.max(0, asInt(r.current_count, 0));
             const done = (String(r.status) === "completed") || (cur >= req);
+  const allianceOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of (requests || [])) {
+      const a = norm(r.alliance_name || r.alliance || "");
+      if (a) s.add(a);
+    }
+    return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
+  }, [requests]);
 
-            return (
+  const visibleRequests = useMemo(() => {
+    const af = normLower(filterAlliance);
+    const sf = normLower(filterStatus);
+    const q  = normLower(search);
+
+    return (requests || []).filter((r) => {
+      if (af && af !== "all") {
+        const a = normLower(r.alliance_name || r.alliance || "");
+        if (a !== af) return false;
+      }
+      if (sf && sf !== "all") {
+        const st = normLower(r.status || "");
+        if (st !== sf) return false;
+      }
+      if (q) {
+        const tName = normLower(typeById[String(r.achievement_type_id)]?.name || "");
+        const oLabel = normLower(((options || []).find((x) => String(x.id) === String(r.option_id)) as any)?.label || "");
+        const pName = normLower(r.player_name || "");
+        const aName = normLower(r.alliance_name || "");
+        const blob = (tName + " " + oLabel + " " + pName + " " + aName).trim();
+        if (!blob.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [requests, filterAlliance, filterStatus, search, typeById, options]);
+
+  return (
               <div key={String(r.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                   <div style={{ fontWeight: 900 }}>
@@ -330,14 +487,8 @@ export default function State789AchievementsPage() {
           })}
           {!loading && (!requests || requests.length === 0) ? <div style={{ opacity: 0.75 }}>No requests yet.</div> : null}
         </div>
+      </div>        </div>
       </div>
     </div>
   );
 }
-
-
-
-
-
-
-
