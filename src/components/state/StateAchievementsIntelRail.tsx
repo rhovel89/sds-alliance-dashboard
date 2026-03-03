@@ -7,19 +7,10 @@ type AnyRow = Record<string, any>;
 const U = (v: any) => String(v ?? "").trim().toUpperCase();
 const L = (v: any) => String(v ?? "").trim().toLowerCase();
 
-function pickAlliance(r: AnyRow) {
-  return r?.alliance_code ?? r?.alliance_tag ?? r?.alliance ?? r?.alliance_name ?? r?.tag ?? "";
-}
-function pickStatus(r: AnyRow) {
-  return r?.status ?? r?.request_status ?? r?.approval_status ?? r?.state ?? "";
-}
-function pickPlayer(r: AnyRow) {
-  return r?.player_name ?? r?.game_name ?? r?.name ?? "";
-}
-function isDone(st: any) {
-  const s = L(st);
-  return s === "completed" || s === "approved" || s === "done";
-}
+function pickAlliance(r: AnyRow) { return r?.alliance_code ?? r?.alliance_tag ?? r?.alliance ?? r?.alliance_name ?? r?.tag ?? ""; }
+function pickStatus(r: AnyRow) { return r?.status ?? r?.request_status ?? r?.approval_status ?? r?.state ?? ""; }
+function pickPlayer(r: AnyRow) { return r?.player_name ?? r?.game_name ?? r?.name ?? ""; }
+function isDone(st: any) { const s = L(st); return s === "completed" || s === "approved" || s === "done"; }
 function tsLabel() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -35,7 +26,7 @@ export default function StateAchievementsIntelRail(props: {
   const activeFilter = U(props.activeFilterAlliance || "ALL");
   const allRequests = Array.isArray(props.requests) ? props.requests : [];
 
-  const [scope, setScope] = useState<string>("CURRENT"); // CURRENT | ALL | alliance code/tag
+  const [scope, setScope] = useState<string>("CURRENT"); // CURRENT | ALL | alliance
   const [channelId, setChannelId] = useState<string>("");
 
   const [busy, setBusy] = useState(false);
@@ -43,7 +34,11 @@ export default function StateAchievementsIntelRail(props: {
 
   const captureRef = useRef<HTMLDivElement | null>(null);
 
-  // auto-load owner default reports channel
+  // Admin-awarded achievements included in report
+  const [adminAwards, setAdminAwards] = useState<AnyRow[]>([]);
+  const [adminAwardsErr, setAdminAwardsErr] = useState<string>("");
+
+  // Auto-load owner-configured default reports channel (if column exists)
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -76,17 +71,17 @@ export default function StateAchievementsIntelRail(props: {
     return U(scope || "ALL");
   }, [scope, activeFilter]);
 
-  const scoped = useMemo(() => {
+  const scopedRequests = useMemo(() => {
     const a = U(reportAlliance || "ALL");
     if (a === "ALL") return allRequests;
     return allRequests.filter(r => U(pickAlliance(r)) === a);
   }, [allRequests, reportAlliance]);
 
-  const completed = useMemo(() => scoped.filter(r => isDone(pickStatus(r))), [scoped]);
+  const completed = useMemo(() => scopedRequests.filter(r => isDone(pickStatus(r))), [scopedRequests]);
 
   const leaderboard = useMemo(() => {
     const m = new Map<string, { a: string; c: number; t: number }>();
-    for (const r of scoped) {
+    for (const r of scopedRequests) {
       const a = U(pickAlliance(r) || "UNKNOWN");
       if (!m.has(a)) m.set(a, { a, c: 0, t: 0 });
       const row = m.get(a)!;
@@ -94,13 +89,90 @@ export default function StateAchievementsIntelRail(props: {
       if (isDone(pickStatus(r))) row.c++;
     }
     return Array.from(m.values()).sort((x,y)=> (y.c-x.c) || (y.t-x.t) || x.a.localeCompare(y.a)).slice(0,10);
-  }, [scoped]);
+  }, [scopedRequests]);
 
   const recentDone = useMemo(() => {
     const rows = completed.slice();
     rows.sort((a,b)=> (Date.parse(String(b.updated_at ?? b.created_at ?? 0))||0) - (Date.parse(String(a.updated_at ?? a.created_at ?? 0))||0));
     return rows.slice(0,10);
   }, [completed]);
+
+  // Load admin awards for scope (best-effort; RLS may limit non-admins)
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      setAdminAwardsErr("");
+      setAdminAwards([]);
+
+      try {
+        // If ALL: pull recent awards
+        if (reportAlliance === "ALL") {
+          const a = await supabase
+            .from("state_player_achievements")
+            .select("*")
+            .eq("state_code", stateCode)
+            .order("created_at", { ascending: false })
+            .limit(200);
+
+          if (a.error) throw a.error;
+          if (!cancelled) setAdminAwards((a.data as any[]) || []);
+          return;
+        }
+
+        // Alliance scope: get player_ids from player_alliances then fetch awards
+        const pa = await supabase
+          .from("player_alliances")
+          .select("player_id")
+          .eq("alliance_code", reportAlliance)
+          .limit(800);
+
+        if (pa.error) throw pa.error;
+
+        const ids = ((pa.data as any[]) || []).map(x => String(x.player_id)).filter(Boolean);
+        if (ids.length === 0) { if (!cancelled) setAdminAwards([]); return; }
+
+        const a2 = await supabase
+          .from("state_player_achievements")
+          .select("*")
+          .eq("state_code", stateCode)
+          .in("player_id", ids.slice(0, 500))
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        if (a2.error) throw a2.error;
+
+        // Attach player names (best-effort)
+        const p = await supabase
+          .from("players")
+          .select("id,game_name,name")
+          .in("id", ids.slice(0, 500));
+
+        const nameMap = new Map<string,string>();
+        ((p.data as any[]) || []).forEach(r => {
+          const n = String(r.game_name || r.name || "").trim();
+          if (r.id && n) nameMap.set(String(r.id), n);
+        });
+
+        const enriched = ((a2.data as any[]) || []).map(r => ({
+          ...r,
+          player_name: nameMap.get(String(r.player_id)) || String(r.player_id || "").slice(0, 8),
+        }));
+
+        if (!cancelled) setAdminAwards(enriched);
+      } catch (e: any) {
+        if (!cancelled) setAdminAwardsErr(e?.message ?? String(e));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [stateCode, reportAlliance]);
+
+  const adminAwardsRecent = useMemo(() => {
+    const rows = (adminAwards || []).slice();
+    rows.sort((a,b)=> (Date.parse(String(b.created_at ?? 0))||0) - (Date.parse(String(a.created_at ?? 0))||0));
+    return rows.slice(0, 10);
+  }, [adminAwards]);
 
   function ReportView() {
     return (
@@ -115,15 +187,17 @@ export default function StateAchievementsIntelRail(props: {
       }}>
         <div style={{ fontSize: 14, letterSpacing: "0.14em", opacity: 0.8, fontWeight: 950 }}>EMERGENCY BROADCAST</div>
         <div style={{ fontSize: 28, fontWeight: 950, marginTop: 10 }}>STATE {stateCode} — ACHIEVEMENT REPORT</div>
-        <div style={{ opacity: 0.8, marginTop: 6 }}>Scope: <b>{reportAlliance}</b> • Generated: {new Date().toLocaleString()}</div>
+        <div style={{ opacity: 0.8, marginTop: 6 }}>
+          Scope: <b>{reportAlliance}</b> • Generated: {new Date().toLocaleString()}
+        </div>
 
         <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div style={{ padding: 12, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14 }}>
-            <div style={{ fontWeight: 950 }}>Summary</div>
+            <div style={{ fontWeight: 950 }}>Requests Summary</div>
             <div style={{ marginTop: 10, opacity: 0.85 }}>
-              Total: <b>{scoped.length}</b><br/>
+              Total requests: <b>{scopedRequests.length}</b><br/>
               Completed: <b>{completed.length}</b><br/>
-              Other: <b>{Math.max(0, scoped.length - completed.length)}</b>
+              Other: <b>{Math.max(0, scopedRequests.length - completed.length)}</b>
             </div>
           </div>
 
@@ -141,12 +215,27 @@ export default function StateAchievementsIntelRail(props: {
         </div>
 
         <div style={{ marginTop: 12, padding: 12, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14 }}>
-          <div style={{ fontWeight: 950 }}>Recent Completions</div>
+          <div style={{ fontWeight: 950 }}>Recent Completions (Requests)</div>
           <div style={{ marginTop: 8 }}>
+            {recentDone.length === 0 ? <div style={{ opacity: 0.7 }}>None visible</div> : null}
             {recentDone.map((r, i) => (
               <div key={String(r.id || i)} style={{ marginTop: 8 }}>
                 <div><b>{String(pickPlayer(r) || "Unknown")}</b> <span style={{ opacity: 0.75 }}>({U(pickAlliance(r) || "UNKNOWN")})</span></div>
                 <div style={{ opacity: 0.75, fontSize: 12 }}>status: {String(pickStatus(r) || "")}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, padding: 12, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14 }}>
+          <div style={{ fontWeight: 950 }}>Admin Awards (Recent)</div>
+          <div style={{ marginTop: 8 }}>
+            {adminAwardsErr ? <div style={{ opacity: 0.7 }}>Not visible: {adminAwardsErr}</div> : null}
+            {!adminAwardsErr && adminAwardsRecent.length === 0 ? <div style={{ opacity: 0.7 }}>No admin awards in scope</div> : null}
+            {adminAwardsRecent.map((r, i) => (
+              <div key={String(r.id || i)} style={{ marginTop: 8 }}>
+                <div><b>{String(r.player_name || String(r.player_id || "").slice(0, 8))}</b> <span style={{ opacity: 0.75 }}>• {String(r.title || "Achievement")}</span></div>
+                <div style={{ opacity: 0.75, fontSize: 12 }}>status: {String(r.status || "")} • {String(r.created_at || "")}</div>
               </div>
             ))}
           </div>
@@ -180,6 +269,7 @@ export default function StateAchievementsIntelRail(props: {
         `🩸 **STATE ${stateCode} — ACHIEVEMENT REPORT**\n` +
         `Scope: **${reportAlliance}**\n` +
         `Generated: ${new Date().toLocaleString()}\n` +
+        `Admin awards included: ${adminAwards.length}\n` +
         url;
 
       const q = await supabase.rpc("queue_discord_send" as any, {
@@ -193,7 +283,7 @@ export default function StateAchievementsIntelRail(props: {
       if (q.error) throw q.error;
       setMsg(`Queued ✅\n${url}`);
     } catch (e: any) {
-      setMsg(`Export failed: ${e?.message ?? String(e)}\nIf it says "Bucket not found", create public bucket: exports`);
+      setMsg(`Export failed: ${e?.message ?? String(e)}`);
     } finally {
       setBusy(false);
     }
@@ -213,7 +303,9 @@ export default function StateAchievementsIntelRail(props: {
               <option value="ALL">ALL</option>
               {allianceOptions.filter(a => a !== "ALL").map(a => (<option key={a} value={a}>{a}</option>))}
             </select>
-            <div style={{ opacity: 0.75, fontSize: 12, marginTop: 8 }}>Rows: <b>{scoped.length}</b> • Completed: <b>{completed.length}</b></div>
+            <div style={{ opacity: 0.75, fontSize: 12, marginTop: 8 }}>
+              Requests: <b>{scopedRequests.length}</b> • Completed: <b>{completed.length}</b> • Admin awards: <b>{adminAwards.length}</b>
+            </div>
           </div>
 
           <div style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)" }}>
@@ -244,4 +336,3 @@ export default function StateAchievementsIntelRail(props: {
     </div>
   );
 }
-
