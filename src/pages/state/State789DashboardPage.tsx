@@ -436,7 +436,14 @@ export default function State789DiscussionPage() {
         { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
         { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
       ]} />
-      <div className="zombie-card" style={{ marginTop: 6, marginBottom: 12 }}>
+      
+      <MetricTiles tiles={[
+        { label: "ACTIVE ALERTS", value: "—", stamp: "WATCH", tone: "watch", sub: "Emergency broadcasts & ops pings" },
+        { label: "PENDING REVIEWS", value: "—", stamp: "QUEUE", tone: "watch", sub: "Awaiting leader approval" },
+        { label: "ACHIEVEMENTS (24H)", value: "—", stamp: "REPORT", tone: "neutral", sub: "Completions detected" },
+        { label: "DISCORD QUEUE", value: "—", stamp: "TRANSMIT", tone: "neutral", sub: "Queued messages to send" },
+      ]} />
+<div className="zombie-card" style={{ marginTop: 6, marginBottom: 12 }}>
               <BroadcastHeader
         stateCode="789"
         title="🧟 State 789 Command Deck"
@@ -455,7 +462,14 @@ export default function State789DiscussionPage() {
         { label: "SECTOR", value: "STATE 789", stamp: "QUARANTINE" },
         { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
         { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
-      ]} /></div>
+      ]} />
+      <MetricTiles tiles={[
+        { label: "ACTIVE ALERTS", value: "—", stamp: "WATCH", tone: "watch", sub: "Emergency broadcasts & ops pings" },
+        { label: "PENDING REVIEWS", value: "—", stamp: "QUEUE", tone: "watch", sub: "Awaiting leader approval" },
+        { label: "ACHIEVEMENTS (24H)", value: "—", stamp: "REPORT", tone: "neutral", sub: "Completions detected" },
+        { label: "DISCORD QUEUE", value: "—", stamp: "TRANSMIT", tone: "neutral", sub: "Queued messages to send" },
+      ]} />
+</div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ fontWeight: 900 }}>Send to Discord</div>
@@ -584,6 +598,7 @@ export default function State789DiscussionPage() {
     </div>
   );
 }
+
 
 
 
