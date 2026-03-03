@@ -445,32 +445,7 @@ export default function State789DiscussionPage() {
         { label: "DISCORD QUEUE", value: "—", stamp: "TRANSMIT", tone: "neutral", sub: "Queued messages to send" },
       ]} />
 <div className="zombie-card" style={{ marginTop: 6, marginBottom: 12 }}>
-              <BroadcastHeader
-        stateCode="789"
-        title="🧟 State 789 Command Deck"
-        subtitle="Emergency Broadcast Hub • Alerts • Ops • Intel"
-        threat="watch"
-        actions={
-            <>
-              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>⬅ Back</button>
-              <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.reload()}>↻ Refresh</button>
-              <SupportBundleButton />
-            </>
-          }
-      />
-      <ThreatStrip items={[
-        { label: "BROADCAST", value: "ONLINE", stamp: "AUTHORIZED" },
-        { label: "SECTOR", value: "STATE 789", stamp: "QUARANTINE" },
-        { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
-        { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
-      ]} />
-      <MetricTiles tiles={[
-        { label: "ACTIVE ALERTS", value: "—", stamp: "WATCH", tone: "watch", sub: "Emergency broadcasts & ops pings" },
-        { label: "PENDING REVIEWS", value: "—", stamp: "QUEUE", tone: "watch", sub: "Awaiting leader approval" },
-        { label: "ACHIEVEMENTS (24H)", value: "—", stamp: "REPORT", tone: "neutral", sub: "Completions detected" },
-        { label: "DISCORD QUEUE", value: "—", stamp: "TRANSMIT", tone: "neutral", sub: "Queued messages to send" },
-      ]} />
-</div>
+              </div>
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ fontWeight: 900 }}>Send to Discord</div>
@@ -599,6 +574,7 @@ export default function State789DiscussionPage() {
     </div>
   );
 }
+
 
 
 
