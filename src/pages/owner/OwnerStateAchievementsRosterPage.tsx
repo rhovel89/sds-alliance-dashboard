@@ -26,7 +26,10 @@ export default function OwnerStateAchievementsRosterPage() {
   const stateCode = "789";
 
   const [players, setPlayers] = useState<PlayerRow[]>([]);
-  const [playerId, setPlayerId] = useState<string>("");
+  
+  const [newGameName, setNewGameName] = useState<string>("");
+  const [newAllianceCode, setNewAllianceCode] = useState<string>("");
+  const [newNote, setNewNote] = useState<string>("");const [playerId, setPlayerId] = useState<string>("");
 
   const [rows, setRows] = useState<AchRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,6 +148,75 @@ export default function OwnerStateAchievementsRosterPage() {
     await loadAchievements(playerId);
     window.setTimeout(() => setStatusMsg(""), 1200);
   }
+  async function addPlaceholderPlayer() {
+    const gn = newGameName.trim();
+    if (!gn) return alert("Game name required.");
+
+    setStatusMsg("Creating placeholder player…");
+
+    // Create player row (auth_user_id stays NULL until you link later)
+    let payload: any = { game_name: gn, name: gn };
+    const nt = newNote.trim();
+    if (nt) payload.note = nt;
+
+    let ins = await supabase
+      .from("players")
+      .insert(payload)
+      .select("id")
+      .single();
+
+    // If note column doesn't exist in this environment, retry without it
+    if (ins.error && payload.note) {
+      delete payload.note;
+      ins = await supabase
+        .from("players")
+        .insert(payload)
+        .select("id")
+        .single();
+    }
+
+    if (ins.error) {
+      setStatusMsg("Player create failed: " + ins.error.message);
+      return;
+    }
+
+    const newId = String((ins.data as any)?.id || "");
+    if (!newId) {
+      setStatusMsg("Player create failed: missing id");
+      return;
+    }
+
+    // Optional: assign alliance membership
+    const ac = newAllianceCode.trim().toUpperCase();
+    if (ac) {
+      // Validate alliance exists (prevents FK failure)
+      const chk = await supabase.from("alliances").select("code").eq("code", ac).maybeSingle();
+      if (chk.error) {
+        setStatusMsg("Player created ✅ but alliance check failed: " + chk.error.message);
+      } else if (!chk.data?.code) {
+        setStatusMsg("Player created ✅ but alliance code not found in DB: " + ac);
+      } else {
+        const mem = await supabase.from("player_alliances").insert({
+          player_id: newId,
+          alliance_code: ac,
+          role: "member"
+        } as any);
+
+        if (mem.error) {
+          setStatusMsg("Player created ✅ but membership failed: " + mem.error.message);
+        }
+      }
+    }
+
+    // refresh list + select new player
+    await loadPlayers();
+    setPlayerId(newId);
+
+    setNewGameName("");
+    setNewAllianceCode("");
+    setNewNote("");
+    window.setTimeout(() => setStatusMsg(""), 1400);
+  }
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
@@ -154,7 +226,34 @@ export default function OwnerStateAchievementsRosterPage() {
       </div>
 
       <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "360px 1fr", gap: 14 }}>
-        <div style={{ border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: 12 }}>
+        <div style={{ border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: 12 }}>          <div style={{ fontWeight: 900, marginBottom: 8 }}>Add placeholder player</div>
+          <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
+            <input
+              value={newGameName}
+              onChange={(e) => setNewGameName(e.target.value)}
+              placeholder="Game name (required)"
+            />
+            <input
+              value={newAllianceCode}
+              onChange={(e) => setNewAllianceCode(e.target.value)}
+              placeholder="Alliance code (optional, e.g. OZ)"
+            />
+            <textarea
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              placeholder="Note (optional)"
+              rows={3}
+            />
+            <button
+              onClick={addPlaceholderPlayer}
+              disabled={!newGameName.trim()}
+              style={{ padding: "10px 12px", borderRadius: 10 }}
+            >
+              Add player to roster
+            </button>
+          </div>
+
+
           <div style={{ fontWeight: 900, marginBottom: 8 }}>Select player</div>
           <select value={playerId} onChange={(e) => setPlayerId(e.target.value)} style={{ width: "100%", padding: 10, borderRadius: 10 }}>
             {players.map((p) => <option key={p.id} value={p.id}>{labelForPlayer(p)}</option>)}
@@ -243,3 +342,4 @@ export default function OwnerStateAchievementsRosterPage() {
     </div>
   );
 }
+
