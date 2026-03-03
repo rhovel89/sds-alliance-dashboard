@@ -32,10 +32,9 @@ export default function StateMyAdminAchievementsPanel(props: {
           return;
         }
 
-        // Map auth user -> player id
         const p = await supabase
           .from("players")
-          .select("id,name,game_name")
+          .select("id,game_name,name")
           .eq("auth_user_id", uid)
           .maybeSingle();
 
@@ -45,7 +44,6 @@ export default function StateMyAdminAchievementsPanel(props: {
           return;
         }
 
-        // Load admin-added achievements for THIS player
         const r = await supabase
           .from("state_player_achievements")
           .select("*")
