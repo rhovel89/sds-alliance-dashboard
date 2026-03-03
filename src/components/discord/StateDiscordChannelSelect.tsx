@@ -6,7 +6,7 @@ type Row = {
   state_code: string;
   channel_name: string;
   channel_id: string;
-  active: boolean;
+  active?: boolean;
   is_default: boolean;
 };
 
@@ -27,9 +27,8 @@ export default function StateDiscordChannelSelect(props: {
     setLoading(true);
     const res = await supabase
       .from("state_discord_channels")
-      .select("id,state_code,channel_name,channel_id,active,is_default")
+      .select("id,state_code,channel_name,channel_id,is_default")
       .eq("state_code", stateCode)
-      .eq("active", true)
       .order("is_default", { ascending: false })
       .order("channel_name", { ascending: true });
 
@@ -80,3 +79,4 @@ export default function StateDiscordChannelSelect(props: {
     </div>
   );
 }
+
