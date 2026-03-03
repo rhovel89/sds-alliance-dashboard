@@ -30,6 +30,27 @@ function isUuid(v: string) {
 }
 function uc(v: any) { return String(v || "").trim().toUpperCase(); }
 function lc(v: any) { return String(v || "").trim().toLowerCase(); }
+async function ensureAllianceExists(allianceCode: string, allianceName?: string | null): Promise<boolean> {
+  const code = uc(allianceCode);
+  if (!code) return false;
+
+  // If already exists, we're good
+  try {
+    const chk = await supabase.from("alliances").select("code").eq("code", code).maybeSingle();
+    if (!chk.error && chk.data?.code) return true;
+  } catch {}
+
+  // Auto-provision minimal row so FK player_alliances_alliance_code_fkey can pass
+  const name = (allianceName ?? "").trim() || code;
+
+  const ins = await supabase.from("alliances").insert({ code, name } as any);
+  if (ins.error) {
+    console.error(ins.error);
+    return false;
+  }
+  return true;
+}
+
 
 export default function OwnerPlayerIntakePage() {
   const [status, setStatus] = useState<string>("");
@@ -102,53 +123,60 @@ export default function OwnerPlayerIntakePage() {
   }, [players, q]);
 
   async function tryLoadAlliances(): Promise<AllianceOption[]> {
-    // Best-effort: try tables in order. If a table doesn't exist, ignore and fall back.
-    // 1) alliance_directory_items (common in directory setups)
-    try {
-      const r = await supabase
-        .from("alliance_directory_entries")
-        .select("code,name,enabled,tag")
-        .order("code", { ascending: true })
-        .limit(500);
-      if (!r.error && Array.isArray(r.data) && r.data.length) {
-        return r.data.map((x: any) => ({
-          code: uc(x.code || x.alliance_code),
-          name: (x.name ?? x.display_name ?? null),
-          state: (x.state ?? null),
-        })).filter((x: AllianceOption) => !!x.code);
-      }
-    } catch {}
+  // IMPORTANT: player_alliances.alliance_code FK references public.alliances(code),
+  // so prefer alliances as the authoritative list to avoid FK failures.
+  const mapRows = (rows: any[]) =>
+    (rows || [])
+      .map((x: any) => ({
+        code: uc(x.code || x.alliance_code),
+        name: (x.name ?? x.display_name ?? null),
+        state: (x.state ?? null),
+      }))
+      .filter((x: AllianceOption) => !!x.code);
 
-    // 2) alliances
-    try {
-      const r = await supabase
-        .from("alliances")
-        .select("code,name,enabled,tag")
-        .order("code", { ascending: true })
-        .limit(500);
-      if (!r.error && Array.isArray(r.data) && r.data.length) {
-        return r.data.map((x: any) => ({
-          code: uc(x.code || x.alliance_code),
-          name: (x.name ?? x.display_name ?? null),
-          state: (x.state ?? null),
-        })).filter((x: AllianceOption) => !!x.code);
-      }
-    } catch {}
+  // 1) alliances (authoritative)
+  try {
+    const r = await supabase
+      .from("alliances")
+      .select("code,name")
+      .order("code", { ascending: true })
+      .limit(500);
 
-    // 3) alliance_code_map (code only)
-    try {
-      const r = await supabase
-        .from("alliance_code_map")
-        .select("alliance_code")
-        .order("alliance_code", { ascending: true })
-        .limit(500);
-      if (!r.error && Array.isArray(r.data) && r.data.length) {
-        return r.data.map((x: any) => ({ code: uc(x.alliance_code), name: null, state: null })).filter((x: AllianceOption) => !!x.code);
-      }
-    } catch {}
+    if (!r.error && Array.isArray(r.data) && r.data.length) {
+      return mapRows(r.data as any[]);
+    }
+  } catch {}
 
-    return [];
-  }
+  // 2) directory entries (fallback, safe columns only)
+  try {
+    const r = await supabase
+      .from("alliance_directory_entries")
+      .select("alliance_code,display_name,name,code")
+      .order("alliance_code", { ascending: true })
+      .limit(500);
+
+    if (!r.error && Array.isArray(r.data) && r.data.length) {
+      return mapRows(r.data as any[]);
+    }
+  } catch {}
+
+  // 3) alliance_code_map (code-only fallback)
+  try {
+    const r = await supabase
+      .from("alliance_code_map")
+      .select("alliance_code")
+      .order("alliance_code", { ascending: true })
+      .limit(500);
+
+    if (!r.error && Array.isArray(r.data) && r.data.length) {
+      return (r.data as any[])
+        .map((x: any) => ({ code: uc(x.alliance_code), name: null, state: null }))
+        .filter((x: AllianceOption) => !!x.code);
+    }
+  } catch {}
+
+  return [];
+}
 
   async function loadAll() {
     setStatus("");
@@ -262,7 +290,16 @@ export default function OwnerPlayerIntakePage() {
         role_key: lc(x.role),
       }));
 
-      const m = await supabase.from("player_alliances").insert(payload as any);
+            // FK guard: ensure each alliance exists before inserting memberships
+      const codes = Array.from(new Set(payload.map((p: any) => uc(p.alliance_code)).filter(Boolean)));
+      for (const c of codes) {
+        const ok = await ensureAllianceExists(c);
+        if (!ok) {
+          setStatus("Player created ✅ but memberships insert failed: alliance '" + c + "' not provisioned in Alliances yet. Create it in Alliance Ops or check RLS.");
+          return;
+        }
+      }
+const m = await supabase.from("player_alliances").insert(payload as any);
 
       if (m.error) setStatus("Player created ✅ but memberships insert failed: " + m.error.message);
       else setStatus("Player created + memberships added ✅");
@@ -335,7 +372,13 @@ export default function OwnerPlayerIntakePage() {
     const existing = (membershipsByPlayer[playerId] || []).some((m) => uc(m.alliance_code) === ac);
     if (existing) return alert("Player already has membership for " + ac);
 
-    setStatus("Adding membership…");
+        // FK guard: player_alliances.alliance_code -> alliances.code
+    const ok = await ensureAllianceExists(ac);
+    if (!ok) {
+      setStatus("Add membership failed: alliance '" + ac + "' is not provisioned in Alliances yet. Create it in Alliance Ops or check RLS.");
+      return;
+    }
+setStatus("Adding membership…");
     const ins = await supabase.from("player_alliances").insert({
       player_id: playerId,
       alliance_code: ac,
@@ -595,5 +638,6 @@ export default function OwnerPlayerIntakePage() {
     </div>
   );
 }
+
 
 
