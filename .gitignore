@@ -45,3 +45,14 @@ src-backup*/
 src_backup*/
 backup-src*/
 
+
+# local safety backups
+*.bak
+*.broken.*.bak
+*_restore_*
+audit/_restore_*
+
+# never commit giant bundles/snapshots
+audit/*.bundle
+audit/sad-source-snapshot-*.zip
+
