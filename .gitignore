@@ -22,3 +22,26 @@ node_modules/
 dist/
 *.zip
 *.bak-*
+
+# Builds
+dist/
+node_modules/
+
+# Local artifacts / archives
+audit/
+*.bundle
+*.bundle.zip
+
+# Backups / snapshots (never commit)
+backups/
+_BACKUPS*/
+_backup*/
+_backup_*/
+_RECOVERY_*/
+_recovery_*/
+_snapshots/
+SAFE-*/
+src-backup*/
+src_backup*/
+backup-src*/
+
