@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { toPng } from "html-to-image";
 import { supabase } from "../../lib/supabaseClient";
 import StateDiscordChannelSelect from "../discord/StateDiscordChannelSelect";
@@ -52,6 +52,25 @@ export default function StateAchievementsIntelRail(props: {
   // discord channel id
   const [channelId, setChannelId] = useState<string>("");
 
+  // Auto-load owner-configured default reports channel (if set)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const d = await supabase
+          .from("state_discord_defaults")
+          .select("reports_channel_id")
+          .eq("state_code", stateCode)
+          .maybeSingle();
+
+        const cid = String((d.data as any)?.reports_channel_id ?? "").trim();
+        if (!cancelled && cid && !String(channelId || "").trim()) {
+          setChannelId(cid);
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [stateCode]);
   // export status
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string>("");
@@ -312,3 +331,4 @@ export default function StateAchievementsIntelRail(props: {
     </div>
   );
 }
+
