@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
@@ -439,10 +440,11 @@ export default function State789DiscussionPage() {
       ]} />
       
       <MetricTiles tiles={[
-                { label: "ACTIVE ALERTS", value: (metrics.active_alerts ?? "—").toString(), stamp: "WATCH", tone: "watch", sub: "Emergency broadcasts & ops pings" },
-        { label: "PENDING REVIEWS", value: (metrics.pending_reviews ?? "—").toString(), stamp: "QUEUE", tone: "watch", sub: "Awaiting leader approval" },
-        { label: "ACHIEVEMENTS (24H)", value: (metrics.achievements_24h ?? "—").toString(), stamp: "REPORT", tone: "neutral", sub: "Completions detected" },
-        { label: "DISCORD QUEUE", value: (metrics.discord_queue ?? "—").toString(), stamp: "TRANSMIT", tone: "neutral", sub: "Queued messages to send" },]} />
+  { label: "ACTIVE ALERTS", value: String(metrics.active_alerts ?? "—"), stamp: "WATCH", tone: "watch", sub: "Emergency broadcasts & ops pings" },
+  { label: "PENDING REVIEWS", value: String(metrics.pending_reviews ?? "—"), stamp: "QUEUE", tone: "watch", sub: "Awaiting leader approval" },
+  { label: "ACHIEVEMENTS (24H)", value: String(metrics.achievements_24h ?? "—"), stamp: "REPORT", tone: "neutral", sub: "Completions detected" },
+  { label: "DISCORD QUEUE", value: String(metrics.discord_queue ?? "—"), stamp: "TRANSMIT", tone: "neutral", sub: "Queued messages to send" },
+]} />
 <div className="zombie-card" style={{ marginTop: 6, marginBottom: 12 }}>
               </div>
 
@@ -573,6 +575,7 @@ export default function State789DiscussionPage() {
     </div>
   );
 }
+
 
 
 
