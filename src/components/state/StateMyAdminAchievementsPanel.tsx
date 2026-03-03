@@ -1,93 +1,110 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
 type Row = Record<string, any>;
 
-function norm(s: any) { return String(s ?? "").trim(); }
-function normLower(s: any) { return String(s ?? "").trim().toLowerCase(); }
+export default function StateMyAdminAchievementsPanel(props: {
+  stateCode: string;
+  title?: string;
+  limit?: number;
+}) {
+  const stateCode = String(props.stateCode || "").trim();
+  const title = props.title || "✅ Admin-added achievements for you";
+  const limit = Number(props.limit || 25);
 
-export default function StateMyAdminAchievementsPanel(props: { stateCode: string; title?: string; limit?: number }) {
-  const stateCode = norm(props.stateCode) || "789";
-  const limit = Math.max(1, Number(props.limit ?? 25) || 25);
-
+  const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
-  const [status, setStatus] = useState<string>("");
+  const [msg, setMsg] = useState<string>("");
 
-  const title = props.title ?? "✅ Admin-added achievements (your account)";
+  useEffect(() => {
+    let cancelled = false;
 
-  async function load() {
-    setStatus("Loading…");
-    setRows([]);
+    (async () => {
+      setLoading(true);
+      setMsg("");
+      setRows([]);
 
-    const u = await supabase.auth.getUser();
-    const uid = u.data?.user?.id || null;
-    if (!uid) { setStatus("Sign in to see admin-added achievements."); return; }
+      try {
+        const u = await supabase.auth.getUser();
+        const uid = u.data?.user?.id || null;
+        if (!uid) {
+          if (!cancelled) { setMsg("Sign in to see admin-added achievements."); setLoading(false); }
+          return;
+        }
 
-    const p = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
-    if (p.error || !p.data?.id) {
-      setStatus("Player profile not linked yet.");
-      return;
-    }
+        // Map auth user -> player id
+        const p = await supabase
+          .from("players")
+          .select("id,name,game_name")
+          .eq("auth_user_id", uid)
+          .maybeSingle();
 
-    const r = await supabase
-      .from("state_player_achievements")
-      .select("*")
-      .eq("state_code", stateCode)
-      .eq("player_id", String(p.data.id))
-      .order("created_at", { ascending: false })
-      .limit(limit);
+        const playerId = p.data?.id ? String(p.data.id) : null;
+        if (!playerId) {
+          if (!cancelled) { setMsg("Player profile not found yet. Complete onboarding first."); setLoading(false); }
+          return;
+        }
 
-    if (r.error) {
-      const msg = String(r.error.message || "");
-      if (msg.toLowerCase().includes("could not find the table")) { setStatus(""); setRows([]); return; }
-      setStatus(msg);
-      return;
-    }
+        // Load admin-added achievements for THIS player
+        const r = await supabase
+          .from("state_player_achievements")
+          .select("*")
+          .eq("state_code", stateCode)
+          .eq("player_id", playerId)
+          .order("created_at", { ascending: false })
+          .limit(limit);
 
-    setRows((r.data ?? []) as any);
-    setStatus("");
-  }
+        if (r.error) throw r.error;
 
-  useEffect(() => { void load(); }, [stateCode]);
+        if (!cancelled) {
+          setRows((r.data as any[]) || []);
+          setLoading(false);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setMsg(e?.message ?? String(e));
+          setRows([]);
+          setLoading(false);
+        }
+      }
+    })();
 
-  const pretty = useMemo(() => {
-    return rows.map((r) => {
-      const t = norm(r.title || r.achievement || r.name || "Achievement");
-      const st = normLower(r.status || "completed");
-      const pct = r.progress_percent != null ? Number(r.progress_percent) : null;
-      const note = norm(r.note || "");
-      const created = norm(r.created_at || "");
-      return { id: String(r.id), title: t, status: st, pct, note, created };
-    });
-  }, [rows]);
+    return () => { cancelled = true; };
+  }, [stateCode, limit]);
 
   return (
     <div className="zombie-card" style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ fontWeight: 900 }}>{title}</div>
-        <div style={{ marginLeft: "auto", opacity: 0.75, fontSize: 12 }}>{status || (pretty.length ? `${pretty.length} item(s)` : " ")}</div>
-      </div>
+      <div style={{ padding: 14 }}>
+        <div style={{ fontWeight: 950 }}>{title}</div>
 
-      {!status && pretty.length === 0 ? (
-        <div style={{ marginTop: 10, opacity: 0.75 }}>None yet.</div>
-      ) : null}
-
-      {pretty.length ? (
-        <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-          {pretty.map((r) => (
-            <div key={r.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <div style={{ fontWeight: 900 }}>{r.title}</div>
-                <div style={{ marginLeft: "auto", fontWeight: 900, fontSize: 12, opacity: 0.9 }}>
-                  {r.status}{r.pct != null ? ` • ${Math.round(r.pct)}%` : ""}
+        {loading ? (
+          <div style={{ opacity: 0.8, marginTop: 8 }}>Loading…</div>
+        ) : msg ? (
+          <div style={{ opacity: 0.85, marginTop: 8 }}>
+            <b>Notice:</b> {msg}
+          </div>
+        ) : rows.length === 0 ? (
+          <div style={{ opacity: 0.8, marginTop: 8 }}>No admin-added achievements yet.</div>
+        ) : (
+          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+            {rows.map((r) => (
+              <div key={String(r.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)" }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
+                  <div style={{ fontWeight: 950 }}>{String(r.title || "Achievement")}</div>
+                  <div style={{ marginLeft: "auto", opacity: 0.75, fontSize: 12 }}>
+                    {String(r.created_at || "")}
+                  </div>
                 </div>
+                <div style={{ opacity: 0.8, marginTop: 4 }}>
+                  status: <b>{String(r.status || "—")}</b>{" "}
+                  {typeof r.progress_percent === "number" ? <span style={{ opacity: 0.75 }}> • {r.progress_percent}%</span> : null}
+                </div>
+                {r.note ? <div style={{ opacity: 0.8, marginTop: 6 }}>{String(r.note)}</div> : null}
               </div>
-              {r.note ? <div style={{ marginTop: 6, opacity: 0.8, fontSize: 12 }}>{r.note}</div> : null}
-              {r.created ? <div style={{ marginTop: 6, opacity: 0.6, fontSize: 12 }}>added: {r.created}</div> : null}
-            </div>
-          ))}
-        </div>
-      ) : null}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
