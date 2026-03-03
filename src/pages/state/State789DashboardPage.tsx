@@ -203,7 +203,36 @@ function fmtThread(t: { title: string; body: string; tags: string[] }) {
 }
 
 export default function State789DiscussionPage() {
-  const nav = useNavigate();
+  
+  const __ccStateCode = "789";
+
+  const [metrics, setMetrics] = useState<any>({
+    active_alerts: "—",
+    pending_reviews: "—",
+    achievements_24h: "—",
+    discord_queue: "—",
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await supabase.rpc("get_state_dashboard_metrics" as any, { p_state_code: __ccStateCode } as any);
+        if (!cancelled && !r.error && r.data) {
+          setMetrics({
+            active_alerts: (r.data as any).active_alerts ?? 0,
+            pending_reviews: (r.data as any).pending_reviews ?? 0,
+            achievements_24h: (r.data as any).achievements_24h ?? 0,
+            discord_queue: (r.data as any).discord_queue ?? 0,
+          });
+        }
+      } catch {
+        // keep placeholders
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+const nav = useNavigate();
   const dir = useMemo(() => loadDir(), []);
   const [store, setStore] = useState<Store>(() => loadStore());
   useEffect(() => saveStore(store), [store]);
@@ -575,6 +604,7 @@ export default function State789DiscussionPage() {
     </div>
   );
 }
+
 
 
 
