@@ -149,18 +149,33 @@ export default function OwnerAccessControlPage() {
     setPermKeys(normed);
   };
 
+    const getAllianceRoleId = async (code: string, rk: string): Promise<string | null> => {
+    try {
+      const r = await supabase
+        .from("alliance_roles")
+        .select("id")
+        .eq("alliance_code", upper(code))
+        .eq("role_key", rk)
+        .maybeSingle();
+
+      if (r.error) return null;
+      return r.data?.id ? String(r.data.id) : null;
+    } catch {
+      return null;
+    }
+  };
   const loadRolePermissions = async (code: string, rk: string) => {
     if (!code || !rk) { setEnabledPermKeys(new Set()); return; }
 
-    let rows: any[] | null = null;
-    rows = await trySelect<any[]>(() =>
-      supabase.from("alliance_role_permissions").select("*").eq("alliance_code", upper(code)).eq("role_key", rk)
-    );
-    if (!rows) rows = await trySelect<any[]>(() =>
-      supabase.from("alliance_role_permissions").select("*").eq("alliance_code", upper(code)).eq("role_key", rk)
-    );
-    if (!rows) rows = await trySelect<any[]>(() =>
-      supabase.from("alliance_role_permissions").select("*").eq("alliance_code", upper(code)).eq("role_key", rk).limit(500)
+    const roleId = await getAllianceRoleId(code, rk);
+    if (!roleId) { setEnabledPermKeys(new Set()); return; }
+
+    const rows = await trySelect<any[]>(() =>
+      supabase
+        .from("alliance_role_permissions")
+        .select("permission_key")
+        .eq("alliance_role_id", roleId)
+        .limit(500)
     );
 
     const s = new Set<string>();
@@ -192,9 +207,15 @@ export default function OwnerAccessControlPage() {
     }
   };
 
-  const togglePermission = async (permKey: string) => {
+    const togglePermission = async (permKey: string) => {
     if (!canEditPermissions) return;
     if (!allianceCode || !roleKey || !permKey) return;
+
+    const roleId = await getAllianceRoleId(allianceCode, roleKey);
+    if (!roleId) {
+      setErr("Missing alliance role id for role '" + roleKey + "'. Make sure alliance_roles has rows for this alliance.");
+      return;
+    }
 
     const isOn = enabledPermKeys.has(permKey);
     setSaving(true);
@@ -202,21 +223,11 @@ export default function OwnerAccessControlPage() {
 
     try {
       if (isOn) {
-        let del = await supabase
+        const del = await supabase
           .from("alliance_role_permissions")
           .delete()
-          .eq("alliance_code", upper(allianceCode))
-          .eq("role_key", roleKey)
+          .eq("alliance_role_id", roleId)
           .eq("permission_key", permKey);
-
-        if (del.error) {
-          del = await supabase
-            .from("alliance_role_permissions")
-            .delete()
-            .eq("alliance_code", upper(allianceCode))
-            .eq("role_key", roleKey)
-            .eq("key", permKey);
-        }
 
         if (del.error) throw del.error;
 
@@ -226,15 +237,9 @@ export default function OwnerAccessControlPage() {
           return n;
         });
       } else {
-        let ins = await supabase
+        const ins = await supabase
           .from("alliance_role_permissions")
-          .insert({ alliance_code: upper(allianceCode), role_key: roleKey, permission_key: permKey });
-
-        if (ins.error) {
-          ins = await supabase
-            .from("alliance_role_permissions")
-            .insert({ alliance_code: upper(allianceCode), role_key: roleKey, key: permKey });
-        }
+          .insert({ alliance_role_id: roleId, permission_key: permKey } as any);
 
         if (ins.error) throw ins.error;
 
@@ -422,4 +427,5 @@ export default function OwnerAccessControlPage() {
     </div>
   );
 }
+
 
