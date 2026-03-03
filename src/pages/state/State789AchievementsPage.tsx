@@ -32,49 +32,63 @@ export default function State789AchievementsPage() {
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [search, setSearch] = useState<string>("");
 
+    const __pickAlliance = (r: any) => {
+    const v =
+      r?.alliance_code ??
+      r?.alliance_tag ??
+      r?.alliance ??
+      r?.alliance_name ??
+      r?.allianceCode ??
+      r?.allianceName ??
+      r?.tag ??
+      "";
+    return String(v ?? "").trim();
+  };
+
+  const __pickStatus = (r: any) => {
+    const v =
+      r?.status ??
+      r?.request_status ??
+      r?.approval_status ??
+      r?.state ??
+      "";
+    return String(v ?? "").trim();
+  };
+
   const allianceOptions = useMemo(() => {
     const s = new Set<string>();
     for (const r of (requests || [])) {
-      const a = norm(r.alliance_name || r.alliance || "");
-      if (a) s.add(a);
+      const a = __pickAlliance(r);
+      if (a) s.add(a.toUpperCase());
     }
-    return ["ALL", ...Array.from(s).sort((a,b) => a.localeCompare(b))];
+    return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
   }, [requests]);
 
+  const visibleRequests = useMemo(() => {
+    const af = String(filterAlliance || "ALL").trim().toUpperCase();
+    const sf = String(filterStatus || "ALL").trim().toLowerCase();
+    const q  = String(search || "").trim().toLowerCase();
 
-const visibleRequests = useMemo(() => {
-  const af = String(filterAlliance || "ALL").trim().toUpperCase();
-  const sf = String(filterStatus || "ALL").trim().toLowerCase();
-  const q  = String(search || "").trim().toLowerCase();
+    return (requests || []).filter((r: any) => {
+      if (af !== "ALL") {
+        const a = __pickAlliance(r).toUpperCase();
+        if (a !== af) return false;
+      }
 
-  return (requests || []).filter((r: any) => {
-    // Alliance filter (best-effort)
-    if (af !== "ALL") {
-      const a = String(r.alliance_name || r.alliance || "").trim().toUpperCase();
-      if (a !== af) return false;
-    }
+      if (sf !== "all") {
+        const st = __pickStatus(r).toLowerCase();
+        if (st !== sf) return false;
+      }
 
-    // Status filter (best-effort)
-    if (sf !== "all") {
-      const st = String(r.status || "").trim().toLowerCase();
-      if (st !== sf) return false;
-    }
+      if (q) {
+        // guaranteed to work regardless of schema
+        const blob = JSON.stringify(r || {}).toLowerCase();
+        if (!blob.includes(q)) return false;
+      }
 
-    // Search filter (best-effort)
-    if (q) {
-      const blob = (
-        String(r.player_name || "") + " " +
-        String(r.alliance_name || r.alliance || "") + " " +
-        String(r.note || "") + " " +
-        String(r.status || "")
-      ).toLowerCase();
-
-      if (!blob.includes(q)) return false;
-    }
-
-    return true;
-  });
-}, [requests, filterAlliance, filterStatus, search]);
+      return true;
+    });
+  }, [requests, filterAlliance, filterStatus, search]);
 // Form fields
   const [playerName, setPlayerName] = useState("");
   const [allianceName, setAllianceName] = useState("");
@@ -389,5 +403,6 @@ const visibleRequests = useMemo(() => {
     </div>
   );
 }
+
 
 
