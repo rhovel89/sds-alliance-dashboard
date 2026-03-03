@@ -1,10 +1,5 @@
 import React from "react";
-
-export type ThreatStripItem = {
-  label: string;
-  value: string;
-  stamp?: string;
-};
+export type ThreatStripItem = { label: string; value: string; stamp?: string; };
 
 export default function ThreatStrip(props: { items: ThreatStripItem[] }) {
   const items = Array.isArray(props.items) ? props.items : [];

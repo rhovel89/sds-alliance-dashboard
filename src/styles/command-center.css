@@ -1,242 +1,126 @@
-/* =========================================================
-   COMMAND CENTER THEME — Bloody Emergency Broadcast (scoped)
-   Apply by wrapping a page with: className="cc-theme"
-   ========================================================= */
-
-.cc-theme {
-  min-height: 100vh;
-  padding: 18px;
-  max-width: 1280px;
-  margin: 0 auto;
-
-  color: rgba(240, 238, 232, 0.92);
-
-  /* gritty bunker background */
+/* COMMAND CENTER THEME — Bloody Emergency Broadcast (scoped)
+   Wrap page root with: className="cc-theme"
+*/
+.cc-theme{
+  min-height:100vh;
+  max-width:1280px;
+  margin:0 auto;
+  padding:18px;
+  color:rgba(240,238,232,.92);
   background:
-    radial-gradient(1200px 500px at 15% 0%, rgba(90, 10, 20, 0.16), transparent 60%),
-    radial-gradient(900px 420px at 85% 10%, rgba(30, 40, 35, 0.18), transparent 62%),
-    linear-gradient(rgba(6,7,8,0.88), rgba(6,7,8,0.88)),
-    url("/zombie-bg.jpg") center / cover no-repeat fixed;
-
-  position: relative;
+    radial-gradient(1200px 520px at 15% 0%, rgba(90,10,20,.18), transparent 60%),
+    radial-gradient(900px 420px at 85% 10%, rgba(35,30,25,.20), transparent 62%),
+    linear-gradient(rgba(6,7,8,.90), rgba(6,7,8,.90));
+  position:relative;
 }
-
-.cc-theme::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  /* grime/noise + vignette */
+.cc-theme::before{
+  content:"";
+  position:fixed; inset:0;
+  pointer-events:none;
   background:
-    radial-gradient(1200px 900px at 50% 30%, transparent 60%, rgba(0,0,0,0.55)),
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 6px);
-  mix-blend-mode: overlay;
-  opacity: 0.35;
+    radial-gradient(1200px 900px at 50% 30%, transparent 60%, rgba(0,0,0,.60)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 6px);
+  mix-blend-mode:overlay;
+  opacity:.35;
+}
+.cc-header{
+  position:sticky; top:0; z-index:30;
+  border-radius:14px;
+  border:1px solid rgba(120,20,30,.55);
+  box-shadow:0 18px 40px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.05);
+  background:linear-gradient(180deg, rgba(28,10,12,.95), rgba(12,12,12,.92));
+  backdrop-filter:blur(6px);
+  overflow:hidden;
+}
+.cc-header::after{
+  content:"";
+  position:absolute; left:0; right:0; bottom:0;
+  height:3px;
+  background:linear-gradient(90deg, transparent, rgba(176,21,38,.85), rgba(107,15,26,.90), transparent);
+  opacity:.85;
+}
+.cc-header-inner{
+  display:flex; gap:14px; flex-wrap:wrap;
+  align-items:center; justify-content:space-between;
+  padding:14px 14px 12px 14px;
+}
+.cc-badge{display:inline-flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+.cc-state{font-weight:950; letter-spacing:.10em; font-size:12px; opacity:.85;}
+.cc-title{font-weight:950; font-size:18px;}
+.cc-sub{opacity:.75; font-size:12px; letter-spacing:.03em; margin-top:4px;}
+.cc-led{
+  width:10px; height:10px; border-radius:999px;
+  background:rgba(120,255,120,.90);
+  box-shadow:0 0 10px rgba(120,255,120,.45);
+  animation:ccPulse 1.8s ease-in-out infinite;
+  display:inline-block;
+}
+@keyframes ccPulse{0%,100%{opacity:.55; transform:scale(.92)} 50%{opacity:1; transform:scale(1.06)}}
+.cc-threat{
+  display:inline-flex; gap:8px; align-items:center;
+  padding:6px 10px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(0,0,0,.25);
+  font-size:12px; font-weight:850;
+}
+.cc-dot{width:8px; height:8px; border-radius:999px; display:inline-block;}
+.cc-threat[data-level="watch"] .cc-dot{background:rgba(210,150,40,.95); box-shadow:0 0 10px rgba(210,150,40,.35);}
+.cc-threat[data-level="critical"] .cc-dot{background:rgba(176,21,38,.95); box-shadow:0 0 12px rgba(176,21,38,.45);}
+.cc-threat[data-level="clear"] .cc-dot{background:rgba(90,210,120,.95); box-shadow:0 0 10px rgba(90,210,120,.35);}
+.cc-actions{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+
+.cc-strip{
+  margin-top:12px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(0,0,0,.35);
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
+  gap:10px;
+}
+.cc-strip-item{
+  padding:10px 10px; border-radius:12px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(10,10,10,.55);
+}
+.cc-strip-label{opacity:.70; font-size:11px; letter-spacing:.10em; font-weight:900;}
+.cc-strip-value{margin-top:6px; font-weight:950; font-size:16px;}
+.cc-stamp{
+  display:inline-block; margin-left:8px;
+  padding:3px 8px; font-size:11px; font-weight:950; letter-spacing:.12em;
+  border-radius:999px;
+  border:1px dashed rgba(176,21,38,.65);
+  color:rgba(255,210,210,.95);
+  background:rgba(60,10,15,.35);
 }
 
-/* --- Broadcast Header --- */
-.cc-header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-
-  border-radius: 14px;
-  border: 1px solid rgba(120, 20, 30, 0.55);
-  box-shadow:
-    0 18px 40px rgba(0,0,0,0.55),
-    inset 0 0 0 1px rgba(255,255,255,0.05);
-
-  background:
-    linear-gradient(180deg, rgba(28, 10, 12, 0.95), rgba(12, 12, 12, 0.92));
-  backdrop-filter: blur(6px);
-
-  overflow: hidden;
+/* Make existing zombie cards look like console bays inside cc-theme */
+.cc-theme .zombie-card{
+  border-radius:14px;
+  border:1px solid rgba(120,20,30,.45);
+  background:linear-gradient(180deg, rgba(18,18,18,.92), rgba(10,10,10,.92));
+  box-shadow:0 18px 40px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.04);
+  position:relative;
 }
-
-.cc-header::after {
-  /* subtle blood/drip edge */
-  content: "";
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 3px;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(176, 21, 38, 0.85),
-    rgba(107, 15, 26, 0.9),
-    transparent
-  );
-  opacity: 0.85;
+.cc-theme .zombie-card::before,.cc-theme .zombie-card::after{
+  content:""; position:absolute; width:12px; height:12px;
+  border-top:2px solid rgba(176,21,38,.55);
+  border-left:2px solid rgba(176,21,38,.55);
+  opacity:.85;
 }
-
-.cc-header-inner {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 14px 12px 14px;
+.cc-theme .zombie-card::before{top:10px; left:10px;}
+.cc-theme .zombie-card::after{bottom:10px; right:10px; transform:rotate(180deg);}
+.cc-theme .zombie-btn{
+  background:linear-gradient(180deg, rgba(35,12,14,.90), rgba(12,12,12,.92));
+  border:1px solid rgba(176,21,38,.65);
+  color:rgba(245,235,235,.95);
+  border-radius:10px;
 }
-
-.cc-badge {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.cc-badge .cc-state {
-  font-weight: 950;
-  letter-spacing: 0.08em;
-  font-size: 12px;
-  opacity: 0.85;
-}
-
-.cc-badge .cc-title {
-  font-weight: 950;
-  font-size: 18px;
-}
-
-.cc-subtitle {
-  margin-top: 4px;
-  opacity: 0.75;
-  font-size: 12px;
-  letter-spacing: 0.03em;
-}
-
-.cc-led {
-  width: 10px; height: 10px;
-  border-radius: 999px;
-  background: rgba(120, 255, 120, 0.9);
-  box-shadow: 0 0 10px rgba(120,255,120,0.45);
-  animation: ccPulse 1.8s ease-in-out infinite;
-  display: inline-block;
-}
-
-@keyframes ccPulse {
-  0%, 100% { opacity: 0.55; transform: scale(0.92); }
-  50% { opacity: 1; transform: scale(1.06); }
-}
-
-.cc-threat {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(0,0,0,0.25);
-  font-size: 12px;
-  font-weight: 850;
-}
-
-.cc-threat .cc-dot {
-  width: 8px; height: 8px;
-  border-radius: 999px;
-  display: inline-block;
-}
-
-.cc-threat[data-level="watch"] .cc-dot { background: rgba(210, 150, 40, 0.95); box-shadow: 0 0 10px rgba(210,150,40,0.35); }
-.cc-threat[data-level="critical"] .cc-dot { background: rgba(176, 21, 38, 0.95); box-shadow: 0 0 12px rgba(176,21,38,0.45); }
-.cc-threat[data-level="clear"] .cc-dot { background: rgba(90, 210, 120, 0.95); box-shadow: 0 0 10px rgba(90,210,120,0.35); }
-
-.cc-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-/* --- Threat Strip --- */
-.cc-strip {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(0,0,0,0.35);
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-}
-
-.cc-strip-item {
-  padding: 10px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(10,10,10,0.55);
-}
-
-.cc-strip-label {
-  opacity: 0.7;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  font-weight: 850;
-}
-
-.cc-strip-value {
-  margin-top: 6px;
-  font-weight: 950;
-  font-size: 16px;
-}
-
-.cc-stamp {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 950;
-  letter-spacing: 0.12em;
-  border-radius: 999px;
-  border: 1px dashed rgba(176, 21, 38, 0.65);
-  color: rgba(255, 210, 210, 0.95);
-  background: rgba(60, 10, 15, 0.35);
-}
-
-/* --- Make existing zombie UI look like console bays inside cc-theme --- */
-.cc-theme .zombie-card {
-  border-radius: 14px;
-  border: 1px solid rgba(120, 20, 30, 0.45);
-  background:
-    linear-gradient(180deg, rgba(18,18,18,0.92), rgba(10,10,10,0.92));
-  box-shadow:
-    0 18px 40px rgba(0,0,0,0.55),
-    inset 0 0 0 1px rgba(255,255,255,0.04);
-  position: relative;
-}
-
-.cc-theme .zombie-card::before,
-.cc-theme .zombie-card::after {
-  content: "";
-  position: absolute;
-  width: 12px; height: 12px;
-  border-top: 2px solid rgba(176, 21, 38, 0.55);
-  border-left: 2px solid rgba(176, 21, 38, 0.55);
-  opacity: 0.85;
-}
-.cc-theme .zombie-card::before { top: 10px; left: 10px; }
-.cc-theme .zombie-card::after  { bottom: 10px; right: 10px; transform: rotate(180deg); }
-
-.cc-theme .zombie-card h1,
-.cc-theme .zombie-card h2,
-.cc-theme .zombie-card h3 {
-  color: rgba(255, 235, 235, 0.95);
-  text-shadow: 0 0 0 rgba(0,0,0,0);
-}
-
-.cc-theme .zombie-btn {
-  background: linear-gradient(180deg, rgba(35, 12, 14, 0.9), rgba(12, 12, 12, 0.92));
-  border: 1px solid rgba(176, 21, 38, 0.65);
-  color: rgba(245, 235, 235, 0.95);
-  border-radius: 10px;
-}
-.cc-theme .zombie-btn:hover {
-  box-shadow: 0 0 18px rgba(176, 21, 38, 0.22);
-  transform: translateY(-1px);
-}
-
-.cc-theme .zombie-input,
-.cc-theme input.zombie-input,
-.cc-theme select.zombie-input {
-  background: rgba(0,0,0,0.45);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: rgba(240,238,232,0.92);
-  border-radius: 10px;
+.cc-theme .zombie-btn:hover{box-shadow:0 0 18px rgba(176,21,38,.22); transform:translateY(-1px);}
+.cc-theme .zombie-input{
+  background:rgba(0,0,0,.45);
+  border:1px solid rgba(255,255,255,.12);
+  color:rgba(240,238,232,.92);
+  border-radius:10px;
 }

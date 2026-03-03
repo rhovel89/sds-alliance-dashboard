@@ -1,5 +1,4 @@
 import React, { useMemo } from "react";
-
 type ThreatLevel = "clear" | "watch" | "critical";
 
 export default function BroadcastHeader(props: {
@@ -10,10 +9,7 @@ export default function BroadcastHeader(props: {
   actions?: React.ReactNode;
 }) {
   const threat = (props.threat ?? "watch") as ThreatLevel;
-
-  const ts = useMemo(() => {
-    try { return new Date().toLocaleString(); } catch { return ""; }
-  }, []);
+  const ts = useMemo(() => { try { return new Date().toLocaleString(); } catch { return ""; } }, []);
 
   return (
     <div className="cc-header">
@@ -29,7 +25,7 @@ export default function BroadcastHeader(props: {
             </span>
           </div>
           <div style={{ fontWeight: 950, fontSize: 18 }}>{props.title}</div>
-          {props.subtitle ? <div className="cc-subtitle">{props.subtitle}</div> : null}
+          {props.subtitle ? <div className="cc-sub">{props.subtitle}</div> : null}
         </div>
 
         <div className="cc-actions">

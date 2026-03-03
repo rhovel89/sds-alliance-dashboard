@@ -416,7 +416,26 @@ export default function State789DiscussionPage() {
   const others = useMemo(() => (store.threads || []).filter((x) => !x.pinned), [store.threads]);
 
   return (
-    <div style={{ padding: 14, maxWidth: 1200, margin: "0 auto" }}>
+    <div className="cc-theme">
+      <BroadcastHeader
+        stateCode="789"
+        title="🧟 State 789 Command Deck"
+        subtitle="Emergency Broadcast Hub • Alerts • Ops • Intel"
+        threat="watch"
+        actions={
+          <>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>⬅ Back</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.reload()}>↻ Refresh</button>
+            <SupportBundleButton />
+          </>
+        }
+      />
+      <ThreatStrip items={[
+        { label: "BROADCAST", value: "ONLINE", stamp: "AUTHORIZED" },
+        { label: "SECTOR", value: "STATE 789", stamp: "QUARANTINE" },
+        { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
+        { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
+      ]} />
       <div className="zombie-card" style={{ marginTop: 6, marginBottom: 12 }}>
               <BroadcastHeader
         stateCode="789"
@@ -565,6 +584,7 @@ export default function State789DiscussionPage() {
     </div>
   );
 }
+
 
 
 

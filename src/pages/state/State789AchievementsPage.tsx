@@ -192,7 +192,26 @@ export default function State789AchievementsPage() {
   };
 
   return (
-    <div style={{ padding: 14, maxWidth: 1200, margin: "0 auto" }}>
+    <div className="cc-theme">
+      <BroadcastHeader
+        stateCode="789"
+        title="🏆 Achievements Control Center"
+        subtitle="Bloody Emergency Broadcast • Requests • Approvals • Exports"
+        threat="watch"
+        actions={
+          <>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>⬅ Back</button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.reload()}>↻ Refresh</button>
+            <SupportBundleButton />
+          </>
+        }
+      />
+      <ThreatStrip items={[
+        { label: "BROADCAST", value: "ONLINE", stamp: "AUTHORIZED" },
+        { label: "SECTOR", value: "STATE 789", stamp: "QUARANTINE" },
+        { label: "OUTPUT", value: "DISCORD READY", stamp: "TRANSMIT" },
+        { label: "ACCESS", value: "RLS ENFORCED", stamp: "SECURE" },
+      ]} />
       <StateAchievementsProgressPanel stateCode="789" />
             <BroadcastHeader
         stateCode="789"
@@ -315,6 +334,8 @@ export default function State789AchievementsPage() {
     </div>
   );
 }
+
+
 
 
 
