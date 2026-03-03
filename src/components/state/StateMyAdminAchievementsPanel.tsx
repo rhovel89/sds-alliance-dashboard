@@ -93,10 +93,12 @@ export default function StateMyAdminAchievementsPanel(props: {
                     {String(r.created_at || "")}
                   </div>
                 </div>
+
                 <div style={{ opacity: 0.8, marginTop: 4 }}>
                   status: <b>{String(r.status || "—")}</b>{" "}
                   {typeof r.progress_percent === "number" ? <span style={{ opacity: 0.75 }}> • {r.progress_percent}%</span> : null}
                 </div>
+
                 {r.note ? <div style={{ opacity: 0.8, marginTop: 6 }}>{String(r.note)}</div> : null}
               </div>
             ))}
