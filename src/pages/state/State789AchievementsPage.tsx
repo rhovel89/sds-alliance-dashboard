@@ -40,6 +40,41 @@ export default function State789AchievementsPage() {
     }
     return ["ALL", ...Array.from(s).sort((a,b) => a.localeCompare(b))];
   }, [requests]);
+
+
+const visibleRequests = useMemo(() => {
+  const af = String(filterAlliance || "ALL").trim().toUpperCase();
+  const sf = String(filterStatus || "ALL").trim().toLowerCase();
+  const q  = String(search || "").trim().toLowerCase();
+
+  return (requests || []).filter((r: any) => {
+    // Alliance filter (best-effort)
+    if (af !== "ALL") {
+      const a = String(r.alliance_name || r.alliance || "").trim().toUpperCase();
+      if (a !== af) return false;
+    }
+
+    // Status filter (best-effort)
+    if (sf !== "all") {
+      const st = String(r.status || "").trim().toLowerCase();
+      if (st !== sf) return false;
+    }
+
+    // Search filter (best-effort)
+    if (q) {
+      const blob = (
+        String(r.player_name || "") + " " +
+        String(r.alliance_name || r.alliance || "") + " " +
+        String(r.note || "") + " " +
+        String(r.status || "")
+      ).toLowerCase();
+
+      if (!blob.includes(q)) return false;
+    }
+
+    return true;
+  });
+}, [requests, filterAlliance, filterStatus, search]);
 // Form fields
   const [playerName, setPlayerName] = useState("");
   const [allianceName, setAllianceName] = useState("");
@@ -327,7 +362,7 @@ export default function State789AchievementsPage() {
         </div>
 
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-          {(requests || []).slice(0, 40).map((r) => {
+          {(visibleRequests || []).slice(0, 40).map((r) => {
             const tName = typeName(r.achievement_type_id);
             const oLabel = optionLabel(r.option_id);
             const req = Math.max(1, asInt(r.required_count, asInt(typeById[String(r.achievement_type_id)]?.required_count, 1)));
@@ -348,10 +383,11 @@ export default function State789AchievementsPage() {
               </div>
             );
           })}
-          {!loading && (!requests || requests.length === 0) ? <div style={{ opacity: 0.75 }}>No requests yet.</div> : null}
+          {!loading && (!visibleRequests || visibleRequests.length === 0) ? <div style={{ opacity: 0.75 }}>No requests yet.</div> : null}
         </div>
       </div>
     </div>
   );
 }
+
 
