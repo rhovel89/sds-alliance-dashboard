@@ -102,55 +102,59 @@ export default function OwnerPlayerIntakePage() {
   }, [players, q]);
 
   async function tryLoadAlliances(): Promise<AllianceOption[]> {
-    // Best-effort: try tables in order. If a table doesn't exist, ignore and fall back.
-    // 1) alliance_directory_items (common in directory setups)
+  // Best-effort: schemas vary. Avoid selecting non-existent columns (causes 400).
+  const mapRows = (rows: any[]): AllianceOption[] =>
+    rows
+      .map((x: any) => ({
+        code: uc(x.code || x.alliance_code),
+        name: (x.name ?? x.display_name ?? null),
+        state: (x.state ?? null),
+      }))
+      .filter((x: AllianceOption) => !!x.code);
+
+  const attempt = async (table: string, select: string, orderCol?: string): Promise<AllianceOption[] | null> => {
     try {
-      const r = await supabase
-        .from("alliance_directory_entries")
-        .select("code,name,enabled,tag")
-        .order("code", { ascending: true })
-        .limit(500);
+      let q: any = supabase.from(table).select(select).limit(500);
+      if (orderCol) q = q.order(orderCol, { ascending: true });
+      const r = await q;
       if (!r.error && Array.isArray(r.data) && r.data.length) {
-        return r.data.map((x: any) => ({
-          code: uc(x.code || x.alliance_code),
-          name: (x.name ?? x.display_name ?? null),
-          state: (x.state ?? null),
-        })).filter((x: AllianceOption) => !!x.code);
+        return mapRows(r.data as any[]);
       }
     } catch {}
+    return null;
+  };
 
-    // 2) alliances
-    try {
-      const r = await supabase
-        .from("alliances")
-        .select("code,name,enabled,tag")
-        .order("code", { ascending: true })
-        .limit(500);
-      if (!r.error && Array.isArray(r.data) && r.data.length) {
-        return r.data.map((x: any) => ({
-          code: uc(x.code || x.alliance_code),
-          name: (x.name ?? x.display_name ?? null),
-          state: (x.state ?? null),
-        })).filter((x: AllianceOption) => !!x.code);
-      }
-    } catch {}
+  // 1) alliance_directory_entries (schema differs across environments)
+  let rows =
+    (await attempt("alliance_directory_entries", "code,name", "code")) ??
+    (await attempt("alliance_directory_entries", "alliance_code,name,display_name", "alliance_code")) ??
+    (await attempt("alliance_directory_entries", "alliance_code,display_name", "alliance_code"));
+  if (rows && rows.length) return rows;
 
-    // 3) alliance_code_map (code only)
-    try {
-      const r = await supabase
-        .from("alliance_code_map")
-        .select("alliance_code")
-        .order("alliance_code", { ascending: true })
-        .limit(500);
-      if (!r.error && Array.isArray(r.data) && r.data.length) {
-        return r.data.map((x: any) => ({ code: uc(x.alliance_code), name: null, state: null })).filter((x: AllianceOption) => !!x.code);
-      }
-    } catch {}
+  // 2) alliances (minimal safe columns first)
+  rows =
+    (await attempt("alliances", "code,name", "code")) ??
+    (await attempt("alliances", "code,name", "code"));
+  if (rows && rows.length) return rows;
 
-    return [];
-  }
+  // 3) alliance_code_map (code-only fallback)
+  try {
+    const r = await supabase
+      .from("alliance_code_map")
+      .select("alliance_code")
+      .order("alliance_code", { ascending: true })
+      .limit(500);
 
-  async function loadAll() {
+    if (!r.error && Array.isArray(r.data) && r.data.length) {
+      return r.data
+        .map((x: any) => ({ code: uc(x.alliance_code), name: null, state: null }))
+        .filter((x: AllianceOption) => !!x.code);
+    }
+  } catch {}
+
+  return [];
+}
+async function loadAll() {
     setStatus("");
 
     // players
@@ -595,5 +599,6 @@ export default function OwnerPlayerIntakePage() {
     </div>
   );
 }
+
 
 
