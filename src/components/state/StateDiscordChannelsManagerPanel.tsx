@@ -48,7 +48,7 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
     try {
       const d = await supabase
         .from("state_discord_defaults")
-        .select("reports_channel_id")
+        .select("*")
         .eq("state_code", stateCode)
         .maybeSingle();
       setReportsChannelId(String((d.data as any)?.reports_channel_id ?? ""));
@@ -194,5 +194,6 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
     </div>
   );
 }
+
 
 

@@ -50,7 +50,7 @@ export default function StateAchievementsIntelRail(props: {
       try {
         const d = await supabase
           .from("state_discord_defaults")
-          .select("reports_channel_id")
+          .select("*")
           .eq("state_code", stateCode)
           .maybeSingle();
 
@@ -244,3 +244,4 @@ export default function StateAchievementsIntelRail(props: {
     </div>
   );
 }
+
