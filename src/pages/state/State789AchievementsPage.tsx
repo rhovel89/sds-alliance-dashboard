@@ -401,6 +401,9 @@ export default function State789AchievementsPage() {
           {!loading && (!visibleRequests || visibleRequests.length === 0) ? <div style={{ opacity: 0.75 }}>No requests yet.</div> : null}
         </div>
       </div>
+
+        <StateAchievementsIntelRail stateCode="789" activeFilterAlliance={filterAlliance} requests={requests || []} />
+
     </div>
   );
 }
