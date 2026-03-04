@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -22,71 +22,112 @@ export default function MyDashboardsPage() {
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  const rtRef = useRef<any>(null);
+
   const managers = useMemo(() => memberships.filter((m) => isManagerRole(m.role)), [memberships]);
 
-  useEffect(() => {
-    let cancelled = false;
+  async function load() {
+    setLoading(true);
+    setErr(null);
 
-    async function load() {
-      setLoading(true);
-      setErr(null);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const id = u?.user?.id ?? null;
+
+      setUid(id);
+      if (!id) {
+        setErr("Please sign in.");
+        setMemberships([]);
+        setPlayerId(null);
+        return;
+      }
 
       try {
-        const { data: u } = await supabase.auth.getUser();
-        const id = u?.user?.id ?? null;
-        if (cancelled) return;
+        const a = await supabase.rpc("is_app_admin");
+        if (typeof a.data === "boolean") setIsAdmin(a.data);
+      } catch {}
 
-        setUid(id);
-        if (!id) {
-          setErr("Please sign in.");
-          setLoading(false);
-          return;
-        }
+      // Deterministic player row (no auto-create here)
+      const p1 = await supabase
+        .from("players")
+        .select("id")
+        .eq("auth_user_id", id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-        try {
-          const a = await supabase.rpc("is_app_admin");
-          if (!cancelled && typeof a.data === "boolean") setIsAdmin(a.data);
-        } catch {}
+      const pid = p1.data?.id ? String(p1.data.id) : null;
+      setPlayerId(pid);
 
-        let pid: string | null = null;
-        const p1 = await supabase.from("players").select("id").eq("auth_user_id", id).maybeSingle();
-        if (!p1.error && p1.data?.id) pid = String(p1.data.id);
-        else {
-          try {
-            const ins = await supabase.from("players").insert({ auth_user_id: id } as any).select("id").maybeSingle();
-            if (!ins.error && ins.data?.id) pid = String(ins.data.id);
-          } catch {}
-        }
-        setPlayerId(pid);
-
-        if (pid) {
-          const mRes = await supabase
-            .from("player_alliances")
-            .select("alliance_code,role")
-            .eq("player_id", pid)
-            .order("alliance_code", { ascending: true });
-
-          if (mRes.error) throw mRes.error;
-
-          setMemberships(
-            (mRes.data ?? []).map((r: any) => ({
-              alliance_code: upper(r.alliance_code),
-              role: (r.role ?? null) as any,
-            }))
-          );
-        } else {
-          setMemberships([]);
-        }
-      } catch (e: any) {
-        setErr(e?.message ?? String(e));
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (!pid) {
+        setMemberships([]);
+        return;
       }
-    }
 
-    load();
-    return () => { cancelled = true; };
+      const mRes = await supabase
+        .from("player_alliances")
+        .select("alliance_code,role")
+        .eq("player_id", pid)
+        .order("alliance_code", { ascending: true });
+
+      if (mRes.error) throw mRes.error;
+
+      setMemberships(
+        (mRes.data ?? []).map((r: any) => ({
+          alliance_code: upper(r.alliance_code),
+          role: (r.role ?? null) as any,
+        }))
+      );
+    } catch (e: any) {
+      setErr(e?.message ?? String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Initial load + refresh on focus/visibility
+  useEffect(() => {
+    void load();
+
+    const onFocus = () => void load();
+    const onVis = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Realtime refresh for membership changes
+  useEffect(() => {
+    if (!playerId) return;
+
+    try {
+      if (rtRef.current) supabase.removeChannel(rtRef.current);
+    } catch {}
+
+    const ch = supabase
+      .channel("rt-my-dashboards-" + playerId)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "player_alliances", filter: `player_id=eq.${playerId}` },
+        () => { void load(); }
+      )
+      .subscribe();
+
+    rtRef.current = ch;
+
+    return () => {
+      try { supabase.removeChannel(ch); } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerId]);
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
 
@@ -163,30 +204,14 @@ export default function MyDashboardsPage() {
               {managers.map((m) => (
                 <div key={m.alliance_code} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-                    <div style={{ fontWeight: 900 }}>{upper(m.alliance_code)} ({String(m.role)})</div>
-                    <Link to={`/dashboard/${encodeURIComponent(upper(m.alliance_code))}`} style={{ fontWeight: 900 }}>
-                      Open dashboard
-                    </Link>
+                    <div style={{ fontWeight: 900 }}>{upper(m.alliance_code)}</div>
+                    <Link to={`/dashboard/${encodeURIComponent(upper(m.alliance_code))}`} style={{ fontWeight: 900 }}>Open</Link>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         ) : null}
-
-        <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
-          <div style={{ fontWeight: 900 }}>🏛️ State</div>
-          <div style={{ marginTop: 8, opacity: 0.8 }}>
-            If you have a state role, you’ll be able to view the state dashboard.
-          </div>
-          <div style={{ marginTop: 10 }}>
-            <Link to="/state" style={{ fontWeight: 900 }}>Open State</Link>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
-        Tip: Everyone uses <b>/me</b>. Owners/R4/R5 get extra “Manage” links.
       </div>
     </div>
   );

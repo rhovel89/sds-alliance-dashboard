@@ -13,8 +13,15 @@ function isManagerRole(role?: string | null) {
   return ["owner", "r4", "r5"].includes(r);
 }
 
-function getAllianceFromParams(params: any): string {
-  return upper(params?.allianceCode ?? params?.alliance_id ?? params?.code ?? "");
+function pickAllianceFromParams(params: any) {
+  const raw =
+    params?.allianceCode ??
+    params?.code ??
+    params?.alliance ??
+    params?.tag ??
+    params?.alliance_id ??
+    "";
+  return upper(raw);
 }
 
 export default function AllianceSwitcher() {
@@ -25,11 +32,11 @@ export default function AllianceSwitcher() {
   const [loading, setLoading] = useState(true);
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [selected, setSelected] = useState<string>("");
-
   const [playerId, setPlayerId] = useState<string | null>(null);
+
   const rtRef = useRef<any>(null);
 
-  const currentFromParams = useMemo(() => getAllianceFromParams(params), [params]);
+  const currentFromParams = useMemo(() => pickAllianceFromParams(params), [params]);
   const currentFromQuery = useMemo(() => {
     const sp = new URLSearchParams(loc.search);
     return upper(sp.get("alliance"));
@@ -43,7 +50,6 @@ export default function AllianceSwitcher() {
   const isManager = useMemo(() => isManagerRole(selectedRole), [selectedRole]);
 
   const loadMemberships = useCallback(async () => {
-    let cancelled = false;
     setLoading(true);
 
     try {
@@ -51,29 +57,32 @@ export default function AllianceSwitcher() {
       const uid = data?.user?.id ?? null;
 
       if (!uid) {
-        if (!cancelled) {
-          setMemberships([]);
-          setSelected("");
-          setPlayerId(null);
-        }
+        setMemberships([]);
+        setSelected("");
+        setPlayerId(null);
+        localStorage.removeItem("selected_alliance");
         return;
       }
 
-      // Find player id (do NOT create rows here; just read)
-      let pid: string | null = null;
-      const p1 = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
-      if (!p1.error && p1.data?.id) pid = String(p1.data.id);
+      // IMPORTANT: do NOT auto-create players rows here (onboarding owns creation)
+      // Pick oldest player row deterministically if duplicates exist.
+      const p = await supabase
+        .from("players")
+        .select("id")
+        .eq("auth_user_id", uid)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      const pid = p.data?.id ? String(p.data.id) : null;
+      setPlayerId(pid);
 
       if (!pid) {
-        if (!cancelled) {
-          setMemberships([]);
-          setSelected("");
-          setPlayerId(null);
-        }
+        setMemberships([]);
+        setSelected("");
+        localStorage.removeItem("selected_alliance");
         return;
       }
-
-      if (!cancelled) setPlayerId(pid);
 
       const mRes = await supabase
         .from("player_alliances")
@@ -88,45 +97,35 @@ export default function AllianceSwitcher() {
         role: (r.role ?? null) as any,
       })) as Membership[];
 
-      if (cancelled) return;
-
       setMemberships(ms);
 
-      // Compute best selection
+      const allowed = new Set(ms.map((x) => upper(x.alliance_code)));
       const stored = upper(localStorage.getItem("selected_alliance"));
       const urlPreferred = currentFromParams || currentFromQuery;
 
-      const allowed = new Set(ms.map((x) => upper(x.alliance_code)));
-
       let next =
-        (urlPreferred && allowed.has(upper(urlPreferred)) ? upper(urlPreferred) : "") ||
-        (stored && allowed.has(upper(stored)) ? upper(stored) : "") ||
+        (urlPreferred && allowed.has(urlPreferred) ? urlPreferred : "") ||
+        (stored && allowed.has(stored) ? stored : "") ||
         (ms[0]?.alliance_code ?? "");
 
-      // If none allowed, clear storage + selection
+      // If nothing is allowed, clear selection + storage
       if (!next) {
+        setSelected("");
         localStorage.removeItem("selected_alliance");
-        if (!cancelled) setSelected("");
         return;
       }
 
-      // If stored selection is no longer valid, clear it
+      // If stored no longer allowed, clear it
       if (stored && !allowed.has(stored)) localStorage.removeItem("selected_alliance");
 
-      if (!cancelled) {
-        setSelected(next);
-        localStorage.setItem("selected_alliance", next);
-      }
-    } catch (e) {
-      console.error(e);
+      setSelected(next);
+      localStorage.setItem("selected_alliance", next);
     } finally {
-      if (!cancelled) setLoading(false);
+      setLoading(false);
     }
-
-    return () => { cancelled = true; };
   }, [currentFromParams, currentFromQuery]);
 
-  // Initial load + refresh on focus/visibility
+  // Initial load + refresh on focus / visibility
   useEffect(() => {
     void loadMemberships();
 
@@ -144,11 +143,10 @@ export default function AllianceSwitcher() {
     };
   }, [loadMemberships]);
 
-  // Realtime refresh when player_alliances changes for this player
+  // Realtime refresh when player_alliances changes
   useEffect(() => {
     if (!playerId) return;
 
-    // cleanup previous
     try {
       if (rtRef.current) supabase.removeChannel(rtRef.current);
     } catch {}
@@ -169,17 +167,17 @@ export default function AllianceSwitcher() {
     };
   }, [playerId, loadMemberships]);
 
-  // Keep in sync if URL indicates a valid alliance
+  // Keep in sync if URL changes to a valid alliance
   useEffect(() => {
     const next = currentFromParams || currentFromQuery;
     if (!next) return;
 
     const allowed = new Set(memberships.map((x) => upper(x.alliance_code)));
-    if (!allowed.has(upper(next))) return;
+    if (!allowed.has(next)) return;
 
     if (upper(next) !== upper(selected)) {
-      setSelected(upper(next));
-      localStorage.setItem("selected_alliance", upper(next));
+      setSelected(next);
+      localStorage.setItem("selected_alliance", next);
     }
   }, [currentFromParams, currentFromQuery, memberships, selected]);
 
@@ -190,14 +188,14 @@ export default function AllianceSwitcher() {
 
     const path = loc.pathname;
 
-    // If user is currently inside /dashboard/<code>/..., keep the same sub-path when switching
+    // If inside /dashboard/<code>/..., keep sub-path when switching
     if (path.startsWith("/dashboard/")) {
-      const rest = path.replace(/^\/dashboard\/[^/]+/, ""); // keep /calendar, /hq-map, etc
+      const rest = path.replace(/^\/dashboard\/[^/]+/, "");
       nav(`/dashboard/${encodeURIComponent(code)}${rest}${loc.search}`, { replace: true });
       return;
     }
 
-    // Otherwise, default to personal dashboard (ME)
+    // Default: personal dashboard with alliance in query
     const sp = new URLSearchParams(loc.search);
     sp.set("alliance", code);
     nav(`/me?${sp.toString()}`, { replace: true });
@@ -215,7 +213,6 @@ export default function AllianceSwitcher() {
           </option>
         ))}
       </select>
-
       <span style={{ opacity: 0.7, fontSize: 12 }}>{isManager ? "Manager" : "Member"}</span>
     </label>
   );
