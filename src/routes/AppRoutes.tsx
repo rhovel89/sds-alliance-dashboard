@@ -153,6 +153,7 @@ import OwnerHomePage from "../pages/owner/OwnerHomePage";
 import OwnerPlayerOpsFlowPage from "../pages/owner/OwnerPlayerOpsFlowPage";
 import OwnerAllianceOpsFlowPage from "../pages/owner/OwnerAllianceOpsFlowPage";
 import RouteRedirect from "../components/system/RouteRedirect";
+import CommandCenterShell from "../components/commandcenter/CommandCenterShell";
 
 export default function AppRoutes() {
   return (
@@ -230,7 +231,7 @@ export default function AppRoutes() {
       </Route>
 
       {/* fallback */}
-      <Route path="/state/789" element={<State789DashboardPage />} />
+      <Route path="/state/789" element={<CommandCenterShell navTitle="STATE 789" navItems={[{ label: "Dashboard", to: "/state/789", icon: "🗺️" },{ label: "Achievements", to: "/state/789/achievements", icon: "🏆" },{ label: "Discussion", to: "/state/789/discussion", icon: "💬" },{ label: "Alerts", to: "/state/789/alerts", icon: "🚨" }]}><State789DashboardPage /></CommandCenterShell>} />
       <Route path="/alliances" element={<AllianceDirectoryPage />} />
       <Route path="/mail" element={<MyMailPage />} />
       <Route path="/mail-v2" element={<MyMailInboxPage />} />
@@ -252,7 +253,7 @@ export default function AppRoutes() {
       <Route path="/owner/discord-defaults" element={<RequireAdmin><OwnerDiscordDefaultsPage /></RequireAdmin>} />
       <Route path="/owner/scheduled-sends" element={<RequireAdmin><OwnerScheduledDiscordSendsPage /></RequireAdmin>} />
       <Route path="/owner/directory-editor" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
-      <Route path="/state/789/achievements" element={<State789AchievementsPage />} />
+      <Route path="/state/789/achievements" element={<CommandCenterShell navTitle="ACHIEVEMENTS — STATE 789" navItems={[{ label: "Dashboard", to: "/state/789", icon: "🗺️" },{ label: "Achievements", to: "/state/789/achievements", icon: "🏆" },{ label: "Progress", to: "/state/789/achievements-progress", icon: "📈" },{ label: "Tracker", to: "/state/789/achievements-tracker", icon: "🧾" }]}><State789AchievementsPage /></CommandCenterShell>} />
       <Route path="/owner/achievements/requests" element={<RequireAdmin><OwnerAchievementRequestsPage /></RequireAdmin>} />
       <Route path="/owner/achievements/config" element={<RequireAdmin><OwnerAchievementConfigPage /></RequireAdmin>} />
       <Route path="/owner/achievements/access" element={<RequireAdmin><OwnerAchievementAccessPage /></RequireAdmin>} />
@@ -290,6 +291,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
