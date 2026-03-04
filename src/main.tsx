@@ -5,6 +5,8 @@ import { BrowserRouter } from 'react-router-dom';
 import App from "./App";
 import GlobalErrorOverlay from "./components/system/GlobalErrorOverlay";
 import './index.css';
+
+import "./styles/cc-shell.css";
 import AppErrorBoundary from "./components/system/AppErrorBoundary";
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -55,4 +57,5 @@ import "./styles/responsive.css";
 
 
 import './styles/cc-highend.css';
+
 

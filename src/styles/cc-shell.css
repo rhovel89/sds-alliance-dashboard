@@ -1,0 +1,115 @@
+/* ============================================================
+   Command Center Shell (Phase 2)
+   Left Nav + Main Ops + Intel Rail
+   ============================================================ */
+
+.cc-shell{ margin-top: 12px; }
+
+.cc-shell-grid{
+  display: grid;
+  grid-template-columns: 260px 1fr 360px;
+  gap: 12px;
+  align-items: start;
+}
+
+/* Sticky nav/rail for “command center” feel */
+.cc-shell-nav{
+  position: sticky;
+  top: 12px;
+  padding: 12px;
+}
+
+.cc-shell-rail{
+  position: sticky;
+  top: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+/* Nav header */
+.cc-shell-nav-head{
+  padding: 8px 8px 12px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 10px;
+}
+.cc-shell-nav-kicker{
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  opacity: 0.70;
+  font-weight: 900;
+}
+.cc-shell-nav-title{
+  margin-top: 6px;
+  font-weight: 950;
+  font-size: 16px;
+}
+
+/* Nav list */
+.cc-shell-nav-list{
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cc-nav-item{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.20);
+  text-decoration: none;
+  color: rgba(240,238,232,0.92);
+  transition: transform 120ms ease, border-color 120ms ease, filter 120ms ease;
+}
+.cc-nav-item:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  border-color: rgba(177,18,38,0.32);
+}
+
+.cc-nav-item--active{
+  border-color: rgba(73,255,73,0.28);
+  box-shadow: 0 0 0 3px rgba(73,255,73,0.08);
+}
+
+.cc-nav-icon{
+  width: 22px;
+  text-align: center;
+  opacity: 0.9;
+}
+.cc-nav-label{
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+.cc-nav-badge{
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.85;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(10,10,10,0.50);
+}
+
+/* Nav footer */
+.cc-shell-nav-foot{
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Main column */
+.cc-shell-main{
+  min-width: 0;
+}
+
+/* Responsive */
+@media (max-width: 1200px){
+  .cc-shell-grid{ grid-template-columns: 240px 1fr 320px; }
+}
+@media (max-width: 980px){
+  .cc-shell-grid{ grid-template-columns: 1fr; }
+  .cc-shell-nav, .cc-shell-rail{ position: static; }
+}

@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 import BroadcastHeader from "..\/..\/components\/commandcenter\/BroadcastHeader";
 import ThreatStrip from "..\/..\/components\/commandcenter\/ThreatStrip";
+import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
 import { State789AchievementsProgressWidget } from "../../components/state/State789AchievementsProgressWidget";
 import { StateAchievementsWidget } from "../../components/state/StateAchievementsWidget";
 import StateBulletinBoardPanel from "../../components/state/StateBulletinBoardPanel";
@@ -447,8 +448,42 @@ const nav = useNavigate();
   const others = useMemo(() => (store.threads || []).filter((x) => !x.pinned), [store.threads]);
 
   return (
-    <div className="cc-theme">
-      <BroadcastHeader
+        <div className="cc-theme">
+      <CommandCenterShell
+        navTitle="STATE 789"
+        navItems={[
+          { label: "State Hub", to: "/state/789", icon: "🧟" },
+          { label: "Alerts", to: "/state/789/alerts", icon: "🚨" },
+          { label: "Ops Console", to: "/state/789/ops-db", icon: "🛰️" },
+          { label: "Discussion", to: "/state/789/discussion", icon: "🧵" },
+          { label: "Achievements", to: "/state/789/achievements", icon: "🏆" },
+        ]}
+        rightRail={
+          <div style={{ display: "grid", gap: 12 }}>
+            <div className="zombie-card" style={{ padding: 14 }}>
+              <div style={{ fontWeight: 950 }}>📡 Quick Nav</div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>Fast jumps for leaders.</div>
+              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                <button className="zombie-btn" style={{ width: "100%", justifyContent: "center" }} onClick={() => (window.location.href="/state/789/alerts")}>🚨 Alerts Center</button>
+                <button className="zombie-btn" style={{ width: "100%", justifyContent: "center" }} onClick={() => (window.location.href="/state/789/ops-db")}>🛰️ Ops Board DB</button>
+                <button className="zombie-btn" style={{ width: "100%", justifyContent: "center" }} onClick={() => (window.location.href="/state/789/discussion")}>🧵 Discussion</button>
+                <button className="zombie-btn" style={{ width: "100%", justifyContent: "center" }} onClick={() => (window.location.href="/state/789/achievements")}>🏆 Achievements</button>
+              </div>
+            </div>
+
+            <div className="zombie-card" style={{ padding: 14 }}>
+              <div style={{ fontWeight: 950 }}>☣ Sector Status</div>
+              <div style={{ marginTop: 10, display: "grid", gap: 8, fontSize: 12, opacity: 0.85 }}>
+                <div>• Broadcast: <b>ONLINE</b></div>
+                <div>• Quarantine: <b>ACTIVE</b></div>
+                <div>• Realtime: <b>ARMED</b></div>
+                <div>• RLS: <b>ENFORCED</b></div>
+              </div>
+            </div>
+          </div>
+        }
+      >
+<BroadcastHeader
         stateCode="789"
         title="🧟 State 789 Command Deck"
         subtitle="Emergency Broadcast Hub • Alerts • Ops • Intel"
@@ -601,9 +636,11 @@ const nav = useNavigate();
           </div>
         </div>
       </div>
+      </CommandCenterShell>
     </div>
   );
 }
+
 
 
 

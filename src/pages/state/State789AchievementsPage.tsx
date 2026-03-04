@@ -5,6 +5,7 @@ import StateAchievementsProgressPanel from "../../components/state/StateAchievem
 import StateMyAdminAchievementsPanel from "../../components/state/StateMyAdminAchievementsPanel";
 import BroadcastHeader from "../../components/commandcenter/BroadcastHeader";
 import ThreatStrip from "../../components/commandcenter/ThreatStrip";
+import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
 import StateAchievementsIntelRail from "../../components/state/StateAchievementsIntelRail";
 
 type AnyRow = Record<string, any>;
@@ -255,8 +256,22 @@ export default function State789AchievementsPage() {
   };
 
   return (
-    <div className="cc-theme">
-      <StateAchievementsProgressPanel stateCode="789" />
+        <div className="cc-theme">
+      <CommandCenterShell
+        navTitle="STATE 789"
+        navItems={[
+          { label: "State Hub", to: "/state/789", icon: "🧟" },
+          { label: "Alerts", to: "/state/789/alerts", icon: "🚨" },
+          { label: "Ops Console", to: "/state/789/ops-db", icon: "🛰️" },
+          { label: "Discussion", to: "/state/789/discussion", icon: "🧵" },
+          { label: "Achievements", to: "/state/789/achievements", icon: "🏆" },
+          { label: "Tracker", to: "/state/789/achievements-tracker", icon: "📊" },
+          { label: "Progress", to: "/state/789/achievements-progress", icon: "📈" },
+          { label: "Submit Form", to: "/state/789/achievements-form", icon: "📝" },
+        ]}
+        rightRail={<StateAchievementsIntelRail stateCode="789" activeFilterAlliance={filterAlliance} requests={requests || []} />}
+      >
+<StateAchievementsProgressPanel stateCode="789" />
 
       <BroadcastHeader
         stateCode="789"
@@ -403,11 +418,11 @@ export default function State789AchievementsPage() {
         </div>
       </div>
 
-        <StateAchievementsIntelRail stateCode="789" activeFilterAlliance={filterAlliance} requests={requests || []} />
-
+      </CommandCenterShell>
     </div>
   );
 }
+
 
 
 
