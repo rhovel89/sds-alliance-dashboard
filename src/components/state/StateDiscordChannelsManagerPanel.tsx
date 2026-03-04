@@ -7,32 +7,37 @@ type Row = {
   state_code: string;
   channel_name: string;
   channel_id: string;
-  active?: boolean;
-  is_default: boolean;
-  created_at: string;
+  active?: boolean | null;
+  is_default?: boolean | null;
+  created_at?: string | null;
 };
 
+function norm(s: any) { return String(s ?? "").trim(); }
+
 export default function StateDiscordChannelsManagerPanel(props: { stateCode: string }) {
-  const stateCode = useMemo(() => String(props.stateCode || "").trim(), [props.stateCode]);
+  const stateCode = useMemo(() => norm(props.stateCode), [props.stateCode]);
 
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string>("");
 
   const [reportsChannelId, setReportsChannelId] = useState<string>("");
-
   const [name, setName] = useState("");
   const [channelId, setChannelId] = useState("");
+
+  const supportsActive = useMemo(() => rows.some(r => typeof r.active === "boolean"), [rows]);
+  const supportsDefault = useMemo(() => rows.some(r => typeof r.is_default === "boolean"), [rows]);
 
   async function load() {
     if (!stateCode) return;
     setLoading(true);
     setStatus("");
+
+    // IMPORTANT: select("*") avoids 400s when columns differ between environments
     const res = await supabase
       .from("state_discord_channels")
-      .select("id,state_code,channel_name,channel_id,is_default,created_at")
+      .select("*")
       .eq("state_code", stateCode)
-      .order("is_default", { ascending: false })
       .order("channel_name", { ascending: true });
 
     setLoading(false);
@@ -42,16 +47,33 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
       setStatus(res.error.message);
       return;
     }
-    setRows((res.data ?? []) as any);
 
-    // Load saved defaults (reports channel)
+    const data = ((res.data ?? []) as any[]) as Row[];
+    // Sort default first ONLY if the column exists
+    if (data.some(r => typeof (r as any).is_default === "boolean")) {
+      data.sort((a, b) => {
+        const da = (a as any).is_default ? 1 : 0;
+        const db = (b as any).is_default ? 1 : 0;
+        if (db !== da) return db - da;
+        return String(a.channel_name || "").localeCompare(String(b.channel_name || ""));
+      });
+    }
+
+    setRows(data);
+
+    // Load saved defaults (reports/export channels) from state_discord_defaults (schema may differ)
     try {
       const d = await supabase
         .from("state_discord_defaults")
         .select("*")
         .eq("state_code", stateCode)
         .maybeSingle();
-      setReportsChannelId(String((d.data as any)?.reports_channel_id ?? ""));
+
+      const obj: any = d.data || {};
+      const v = String(
+        obj.reports_channel_id ?? obj.achievements_export_channel_id ?? obj.alerts_channel_id ?? ""
+      ).trim();
+      if (v) setReportsChannelId(v);
     } catch {}
   }
 
@@ -63,12 +85,16 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
     if (!n || !c) return;
 
     setStatus("Saving…");
-    const ins = await supabase.from("state_discord_channels").insert({
-      state_code: stateCode,
-      channel_name: n,
-      channel_id: c,
-      is_default: rows.length === 0, // first becomes default
-    } as any);
+
+    // Try insert with is_default, then retry without if column missing
+    let payload: any = { state_code: stateCode, channel_name: n, channel_id: c };
+    if (rows.length === 0) payload.is_default = true;
+
+    let ins = await supabase.from("state_discord_channels").insert(payload);
+    if (ins.error && String(ins.error.message || "").toLowerCase().includes("column") && String(ins.error.message || "").toLowerCase().includes("is_default")) {
+      delete payload.is_default;
+      ins = await supabase.from("state_discord_channels").insert(payload);
+    }
 
     if (ins.error) { setStatus(ins.error.message); return; }
     setName(""); setChannelId("");
@@ -78,9 +104,9 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
   }
 
   async function setDefault(r: Row) {
+    if (!supportsDefault) { alert("Default flag not supported yet. Apply the SQL migration first."); return; }
     setStatus("Setting default…");
 
-    // unset existing default
     const unset = await supabase
       .from("state_discord_channels")
       .update({ is_default: false } as any)
@@ -98,8 +124,9 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
   }
 
   async function toggleActive(r: Row) {
+    if (!supportsActive) { alert("Active flag not supported yet. Apply the SQL migration first."); return; }
     setStatus("Updating…");
-    const up = await supabase.from("state_discord_channels").update({ active: !r.active } as any).eq("id", r.id);
+    const up = await supabase.from("state_discord_channels").update({ active: !(r.active === true) } as any).eq("id", r.id);
     if (up.error) { setStatus(up.error.message); return; }
     await load();
     setStatus("");
@@ -113,23 +140,38 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
     await load();
     setStatus("");
   }
+
   async function saveReportsDefault() {
     if (!stateCode) return;
     const cid = String(reportsChannelId || "").trim();
     if (!cid) return;
 
-    setStatus("Saving reports default…");
-    const up = await supabase
-      .from("state_discord_defaults")
-      .upsert({ state_code: stateCode, reports_channel_id: cid } as any, { onConflict: "state_code" } as any);
+    setStatus("Saving default…");
+
+    // Try to satisfy NOT NULL alerts_channel_id if it exists (use same channel id)
+    // Also set achievements_export_channel_id for the export panel
+    const payload: any = {
+      state_code: stateCode,
+      reports_channel_id: cid,
+      achievements_export_channel_id: cid,
+      alerts_channel_id: cid,
+    };
+
+    let up = await supabase.from("state_discord_defaults").upsert(payload as any, { onConflict: "state_code" } as any);
+
+    // If alerts_channel_id column does NOT exist, retry without it
+    if (up.error && String(up.error.message || "").toLowerCase().includes("alerts_channel_id") && String(up.error.message || "").toLowerCase().includes("column")) {
+      delete payload.alerts_channel_id;
+      up = await supabase.from("state_discord_defaults").upsert(payload as any, { onConflict: "state_code" } as any);
+    }
 
     if (up.error) { setStatus(up.error.message); return; }
-    setStatus("Reports default saved ✅");
+    setStatus("Default saved ✅");
     window.setTimeout(() => setStatus(""), 900);
   }
 
   return (
-    <div style={{ border: "1px solid rgba(255,255,255,0.16)", borderRadius: 12, padding: 12 }}>
+    <div className="zombie-card" style={{ marginTop: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div>
           <div style={{ fontWeight: 900 }}>State Discord Channels</div>
@@ -137,10 +179,11 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
             State {stateCode} • {loading ? "Loading…" : `${rows.length} saved`} {status ? " • " + status : ""}
           </div>
         </div>
-        <button onClick={() => void load()}>Refresh</button>
+        <button className="zombie-btn" type="button" onClick={() => void load()}>Refresh</button>
       </div>
-      <div style={{ marginTop: 12, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 10 }}>
-        <div style={{ fontWeight: 900 }}>Default Reports Channel</div>
+
+      <div style={{ marginTop: 12 }}>
+        <div style={{ fontWeight: 900 }}>Default Reports / Export Channel</div>
         <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
           Used by Achievements “Export → PNG → Discord”
         </div>
@@ -155,18 +198,16 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
         </div>
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button onClick={() => void saveReportsDefault()} disabled={!String(reportsChannelId || "").trim()}>
-            Save Reports Default
+          <button className="zombie-btn" type="button" onClick={() => void saveReportsDefault()} disabled={!String(reportsChannelId || "").trim()}>
+            Save Default
           </button>
         </div>
       </div>
 
       <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Channel name (ex: State Alerts)" />
-        <input value={channelId} onChange={(e) => setChannelId(e.target.value)} placeholder="Channel ID (numbers)" />
-        <div>
-          <button onClick={add} disabled={!name.trim() || !channelId.trim()}>Add Channel</button>
-        </div>
+        <input className="zombie-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Channel name (ex: State Alerts)" />
+        <input className="zombie-input" value={channelId} onChange={(e) => setChannelId(e.target.value)} placeholder="Channel ID (numbers)" />
+        <div><button className="zombie-btn" type="button" onClick={add} disabled={!name.trim() || !channelId.trim()}>Add Channel</button></div>
       </div>
 
       <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
@@ -182,18 +223,20 @@ export default function StateDiscordChannelsManagerPanel(props: { stateCode: str
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {!r.is_default ? <button onClick={() => void setDefault(r)}>Set default</button> : null}
-                {typeof r.active === "boolean" ? {typeof r.active === "boolean" ? <button onClick={() => void toggleActive(r)}>{r.active ? "Disable" : "Enable"}</button> : null} : null}
-                <button onClick={() => void remove(r)}>Delete</button>
+                {supportsDefault && !r.is_default ? <button className="zombie-btn" type="button" onClick={() => void setDefault(r)}>Set default</button> : null}
+                {supportsActive ? <button className="zombie-btn" type="button" onClick={() => void toggleActive(r)}>{r.active ? "Disable" : "Enable"}</button> : null}
+                <button className="zombie-btn" type="button" onClick={() => void remove(r)}>Delete</button>
               </div>
             </div>
           </div>
         ))}
         {rows.length === 0 ? <div style={{ opacity: 0.8 }}>No channels yet.</div> : null}
       </div>
+
+      <div style={{ marginTop: 12, opacity: 0.75, fontSize: 12 }}>
+        If you still see 400 errors, apply the SQL migration in <code>supabase/migrations</code> to add missing columns.
+      </div>
     </div>
   );
 }
-
-
 

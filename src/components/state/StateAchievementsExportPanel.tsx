@@ -54,27 +54,38 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     try {
       const r = await supabase
         .from("state_discord_channels")
-        .select("channel_id,channel_name,is_default")
+        .select("*")
         .eq("state_code", stateCode)
-        .eq("active", true)
-        .order("is_default", { ascending: false })
         .order("channel_name", { ascending: true });
 
-      if (!r.error) setChannels((r.data || []) as any);
+      if (!r.error) {
+        const data = (r.data || []) as any[];
+        // Filter active only if column exists
+        const filtered = data.filter((x) => (typeof x.active === "boolean" ? x.active === true : true));
+        // Sort default first only if column exists
+        filtered.sort((a, b) => {
+          const da = a?.is_default ? 1 : 0;
+          const db = b?.is_default ? 1 : 0;
+          if (db !== da) return db - da;
+          return String(a.channel_name || "").localeCompare(String(b.channel_name || ""));
+        });
+        setChannels(filtered as any);
+      }if (!r.error) setChannels((r.data || []) as any);
     } catch {}
 
     // default export channel (best-effort; table may not exist yet)
     try {
       const d = await supabase
-        .from("state_discord_defaults")
-        .select("achievements_export_channel_id")
+        .from("state_discord_defaults").select("*")
         .eq("state_code", stateCode)
         .maybeSingle();
 
       if (!d.error) {
-        const v = String((d.data as any)?.achievements_export_channel_id || "").trim();
-        if (v) setChannelId(v);
-      }
+              const obj: any = d.data || {};
+      const v = String(
+        obj.achievements_export_channel_id ?? obj.reports_channel_id ?? obj.alerts_channel_id ?? ""
+      ).trim();
+      if (v) setChannelId(v);}
     } catch {}
   }
 
@@ -95,11 +106,24 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     setBusy(true);
     setStatus("Saving default export channel…");
     try {
-      const up = await supabase
-        .from("state_discord_defaults")
-        .upsert({ state_code: stateCode, achievements_export_channel_id: v } as any, { onConflict: "state_code" });
+      const payload: any = {
+        state_code: stateCode,
+        achievements_export_channel_id: v,
+        reports_channel_id: v,
+        alerts_channel_id: v, // satisfies NOT NULL if present
+      };
 
-      if (up.error) throw up.error;
+      let up = await supabase
+        .from("state_discord_defaults")
+        .upsert(payload as any, { onConflict: "state_code" });
+
+      // If alerts_channel_id column does not exist, retry without it
+      if (up.error && String(up.error.message || "").toLowerCase().includes("alerts_channel_id") && String(up.error.message || "").toLowerCase().includes("column")) {
+        delete payload.alerts_channel_id;
+        up = await supabase
+          .from("state_discord_defaults")
+          .upsert(payload as any, { onConflict: "state_code" });
+      }if (up.error) throw up.error;
       setStatus("Saved ✅");
     } catch (e: any) {
       setStatus("Save failed: " + String(e?.message || e || "Error"));
@@ -125,7 +149,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
   async function uploadPng(blob: Blob): Promise<string> {
     // Reuse existing bucket used by Guides (avoids bucket permission surprises)
-    const bucket = "guide-media";
+    const bucket = "exports";
     const ts = new Date().toISOString().replace(/[:.]/g, "-");
     const fname = `state-${stateCode}-achievements-${safeSlug(allianceFilter)}-${ts}.png`;
     const path = `exports/state/${stateCode}/achievements/${fname}`;
@@ -300,3 +324,4 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
