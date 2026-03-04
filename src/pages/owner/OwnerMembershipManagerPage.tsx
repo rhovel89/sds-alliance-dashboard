@@ -113,12 +113,34 @@ const [alliances, setAlliances] = useState<AllianceRow[]>([]);
   useEffect(() => {
     if (selectedAlliance) refetchMemberships(selectedAlliance);
   }, [selectedAlliance]);
+  async function ensureAllianceExists(code: string) {
+    const c = String(code || "").trim().toUpperCase();
+    if (!c) return;
+
+    // If alliance already exists, no-op
+    const chk = await supabase.from("alliances").select("code").eq("code", c).maybeSingle();
+    if (!chk.error && chk.data?.code) return;
+
+    // Try insert minimal row (tolerate schema differences)
+    let payload: any = { code: c, name: c, enabled: true };
+    let ins = await supabase.from("alliances").insert(payload);
+
+    // If enabled column missing, retry without it
+    if (ins.error && String(ins.error.message || "").toLowerCase().includes("enabled") && String(ins.error.message || "").toLowerCase().includes("does not exist")) {
+      delete payload.enabled;
+      ins = await supabase.from("alliances").insert(payload);
+    }
+
+    // If insert fails due to RLS or duplicate, we just continue; membership insert will tell us
+  }
 
   const addMembership = async () => {
     if (!selectedAlliance) return alert("Select an alliance first.");
     if (!addPlayerId) return alert("Select a player.");
 
-    const { error } = await supabase.from("player_alliances").insert({
+    // Prevent FK violation: ensure alliance code exists in alliances table
+    await ensureAllianceExists(selectedAlliance);
+const { error } = await supabase.from("player_alliances").insert({
       player_id: addPlayerId,
       alliance_code: selectedAlliance,
       role: addRole,
@@ -430,4 +452,6 @@ const [alliances, setAlliances] = useState<AllianceRow[]>([]);
     </div>
   );
 }
+
+
 
