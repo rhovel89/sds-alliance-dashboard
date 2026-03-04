@@ -7,7 +7,6 @@ export type CommandNavItem = {
   to: string;
   icon?: string;
   badge?: string;
-  hint?: string;
 };
 
 function isActive(pathname: string, to: string) {
@@ -19,7 +18,8 @@ function isActive(pathname: string, to: string) {
 
 export default function CommandCenterShell(props: {
   navTitle?: string;
-  navItems: CommandNavItem[];
+  navItems?: CommandNavItem[];
+  nav?: ReactNode;
   rightRail?: ReactNode;
   children: ReactNode;
 }) {
@@ -33,7 +33,6 @@ export default function CommandCenterShell(props: {
       to: x.to,
       icon: x.icon || "▸",
       badge: x.badge || "",
-      hint: x.hint || "",
     }));
   }, [props.navItems]);
 
@@ -47,25 +46,29 @@ export default function CommandCenterShell(props: {
           </div>
 
           <div className="cc-shell-nav-list">
-            {items.map((it) => {
-              const active = isActive(loc.pathname, it.to);
-              return (
-                <Link
-                  key={it.id}
-                  to={it.to}
-                  className={"cc-nav-item " + (active ? "cc-nav-item--active" : "")}
-                >
-                  <span className="cc-nav-icon">{it.icon}</span>
-                  <span className="cc-nav-label">{it.label}</span>
-                  {it.badge ? <span className="cc-nav-badge">{it.badge}</span> : null}
-                </Link>
-              );
-            })}
+            {props.nav ? (
+              props.nav
+            ) : (
+              items.map((it) => {
+                const active = isActive(loc.pathname, it.to);
+                return (
+                  <Link
+                    key={it.id}
+                    to={it.to}
+                    className={"cc-nav-item " + (active ? "cc-nav-item--active" : "")}
+                  >
+                    <span className="cc-nav-icon">{it.icon}</span>
+                    <span className="cc-nav-label">{it.label}</span>
+                    {it.badge ? <span className="cc-nav-badge">{it.badge}</span> : null}
+                  </Link>
+                );
+              })
+            )}
           </div>
 
           <div className="cc-shell-nav-foot">
-            <div style={{ opacity: 0.65, fontSize: 12 }}>
-              Tip: Access/memberships refresh on focus and realtime.
+            <div style={{ opacity: 0.7, fontSize: 12 }}>
+              Tip: if something looks stale, refresh the page or re-open the tab.
             </div>
           </div>
         </aside>
@@ -76,10 +79,10 @@ export default function CommandCenterShell(props: {
           {props.rightRail ? (
             props.rightRail
           ) : (
-            <div className="zombie-card" style={{ padding: 14, opacity: 0.8 }}>
+            <div className="zombie-card" style={{ padding: 14, opacity: 0.85 }}>
               <div style={{ fontWeight: 900 }}>INTEL RAIL</div>
               <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
-                No intel panels attached yet.
+                Attach panels here per page (status, queue, exports, etc).
               </div>
             </div>
           )}
