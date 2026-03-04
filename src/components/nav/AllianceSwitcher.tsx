@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -26,6 +26,9 @@ export default function AllianceSwitcher() {
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [selected, setSelected] = useState<string>("");
 
+  const [playerId, setPlayerId] = useState<string | null>(null);
+  const rtRef = useRef<any>(null);
+
   const currentFromParams = useMemo(() => getAllianceFromParams(params), [params]);
   const currentFromQuery = useMemo(() => {
     const sp = new URLSearchParams(loc.search);
@@ -39,93 +42,146 @@ export default function AllianceSwitcher() {
 
   const isManager = useMemo(() => isManagerRole(selectedRole), [selectedRole]);
 
-  // Load memberships for current user
-  useEffect(() => {
+  const loadMemberships = useCallback(async () => {
     let cancelled = false;
+    setLoading(true);
 
-    async function load() {
-      setLoading(true);
-      try {
-        const { data } = await supabase.auth.getUser();
-        const uid = data?.user?.id ?? null;
+    try {
+      const { data } = await supabase.auth.getUser();
+      const uid = data?.user?.id ?? null;
 
-        if (!uid) {
-          if (!cancelled) {
-            setMemberships([]);
-            setSelected("");
-          }
-          return;
+      if (!uid) {
+        if (!cancelled) {
+          setMemberships([]);
+          setSelected("");
+          setPlayerId(null);
         }
-
-        // Ensure player row exists
-        let pid: string | null = null;
-        const p1 = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
-        if (!p1.error && p1.data?.id) {
-          pid = String(p1.data.id);
-        } else {
-          const ins = await supabase.from("players").insert({ auth_user_id: uid } as any).select("id").maybeSingle();
-          if (!ins.error && ins.data?.id) pid = String(ins.data.id);
-        }
-
-        if (!pid) {
-          if (!cancelled) {
-            setMemberships([]);
-            setSelected("");
-          }
-          return;
-        }
-
-        const mRes = await supabase
-          .from("player_alliances")
-          .select("alliance_code,role")
-          .eq("player_id", pid)
-          .order("alliance_code", { ascending: true });
-
-        if (mRes.error) throw mRes.error;
-
-        const ms = (mRes.data ?? []).map((r: any) => ({
-          alliance_code: upper(r.alliance_code),
-          role: (r.role ?? null) as any,
-        })) as Membership[];
-
-        if (cancelled) return;
-
-        setMemberships(ms);
-
-        // Pick initial
-        const stored = upper(localStorage.getItem("selected_alliance"));
-        const initial =
-          currentFromParams ||
-          currentFromQuery ||
-          stored ||
-          ms[0]?.alliance_code ||
-          "";
-
-        setSelected(initial);
-        if (initial) localStorage.setItem("selected_alliance", initial);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        if (!cancelled) setLoading(false);
+        return;
       }
+
+      // Find player id (do NOT create rows here; just read)
+      let pid: string | null = null;
+      const p1 = await supabase.from("players").select("id").eq("auth_user_id", uid).maybeSingle();
+      if (!p1.error && p1.data?.id) pid = String(p1.data.id);
+
+      if (!pid) {
+        if (!cancelled) {
+          setMemberships([]);
+          setSelected("");
+          setPlayerId(null);
+        }
+        return;
+      }
+
+      if (!cancelled) setPlayerId(pid);
+
+      const mRes = await supabase
+        .from("player_alliances")
+        .select("alliance_code,role")
+        .eq("player_id", pid)
+        .order("alliance_code", { ascending: true });
+
+      if (mRes.error) throw mRes.error;
+
+      const ms = (mRes.data ?? []).map((r: any) => ({
+        alliance_code: upper(r.alliance_code),
+        role: (r.role ?? null) as any,
+      })) as Membership[];
+
+      if (cancelled) return;
+
+      setMemberships(ms);
+
+      // Compute best selection
+      const stored = upper(localStorage.getItem("selected_alliance"));
+      const urlPreferred = currentFromParams || currentFromQuery;
+
+      const allowed = new Set(ms.map((x) => upper(x.alliance_code)));
+
+      let next =
+        (urlPreferred && allowed.has(upper(urlPreferred)) ? upper(urlPreferred) : "") ||
+        (stored && allowed.has(upper(stored)) ? upper(stored) : "") ||
+        (ms[0]?.alliance_code ?? "");
+
+      // If none allowed, clear storage + selection
+      if (!next) {
+        localStorage.removeItem("selected_alliance");
+        if (!cancelled) setSelected("");
+        return;
+      }
+
+      // If stored selection is no longer valid, clear it
+      if (stored && !allowed.has(stored)) localStorage.removeItem("selected_alliance");
+
+      if (!cancelled) {
+        setSelected(next);
+        localStorage.setItem("selected_alliance", next);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      if (!cancelled) setLoading(false);
     }
 
-    load();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => { cancelled = true; };
+  }, [currentFromParams, currentFromQuery]);
 
-  // Keep in sync if URL params change (ex: navigating to /dashboard/OZ)
+  // Initial load + refresh on focus/visibility
+  useEffect(() => {
+    void loadMemberships();
+
+    const onFocus = () => void loadMemberships();
+    const onVis = () => {
+      if (document.visibilityState === "visible") void loadMemberships();
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [loadMemberships]);
+
+  // Realtime refresh when player_alliances changes for this player
+  useEffect(() => {
+    if (!playerId) return;
+
+    // cleanup previous
+    try {
+      if (rtRef.current) supabase.removeChannel(rtRef.current);
+    } catch {}
+
+    const ch = supabase
+      .channel("rt-player-alliances-" + playerId)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "player_alliances", filter: `player_id=eq.${playerId}` },
+        () => { void loadMemberships(); }
+      )
+      .subscribe();
+
+    rtRef.current = ch;
+
+    return () => {
+      try { supabase.removeChannel(ch); } catch {}
+    };
+  }, [playerId, loadMemberships]);
+
+  // Keep in sync if URL indicates a valid alliance
   useEffect(() => {
     const next = currentFromParams || currentFromQuery;
-    if (next && upper(next) !== upper(selected)) {
+    if (!next) return;
+
+    const allowed = new Set(memberships.map((x) => upper(x.alliance_code)));
+    if (!allowed.has(upper(next))) return;
+
+    if (upper(next) !== upper(selected)) {
       setSelected(upper(next));
       localStorage.setItem("selected_alliance", upper(next));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentFromParams, currentFromQuery]);
+  }, [currentFromParams, currentFromQuery, memberships, selected]);
 
   const onChange = (codeRaw: string) => {
     const code = upper(codeRaw);
@@ -160,11 +216,7 @@ export default function AllianceSwitcher() {
         ))}
       </select>
 
-      {/* tiny hint so you can see role at a glance */}
-      <span style={{ opacity: 0.7, fontSize: 12 }}>
-        {isManager ? "Manager" : "Member"}
-      </span>
+      <span style={{ opacity: 0.7, fontSize: 12 }}>{isManager ? "Manager" : "Member"}</span>
     </label>
   );
 }
-
