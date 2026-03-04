@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { getCanonicalPlayerIdForUser } from "../../utils/getCanonicalPlayerId";
 
 type Row = Record<string, any>;
 
@@ -32,15 +33,9 @@ export default function StateMyAdminAchievementsPanel(props: {
           return;
         }
 
-        const p = await supabase
-          .from("players")
-          .select("id,game_name,name")
-          .eq("auth_user_id", uid)
-          .maybeSingle();
-
-        const playerId = p.data?.id ? String(p.data.id) : null;
+        const playerId = await getCanonicalPlayerIdForUser(uid);
         if (!playerId) {
-          if (!cancelled) { setMsg("Player profile not found yet. Complete onboarding first."); setLoading(false); }
+          if (!cancelled) { setMsg("Player profile not linked yet. Complete onboarding and/or owner linking."); setLoading(false); }
           return;
         }
 
@@ -78,9 +73,7 @@ export default function StateMyAdminAchievementsPanel(props: {
         {loading ? (
           <div style={{ opacity: 0.8, marginTop: 8 }}>Loading…</div>
         ) : msg ? (
-          <div style={{ opacity: 0.85, marginTop: 8 }}>
-            <b>Notice:</b> {msg}
-          </div>
+          <div style={{ opacity: 0.85, marginTop: 8 }}><b>Notice:</b> {msg}</div>
         ) : rows.length === 0 ? (
           <div style={{ opacity: 0.8, marginTop: 8 }}>No admin-added achievements yet.</div>
         ) : (
@@ -89,16 +82,12 @@ export default function StateMyAdminAchievementsPanel(props: {
               <div key={String(r.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)" }}>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
                   <div style={{ fontWeight: 950 }}>{String(r.title || "Achievement")}</div>
-                  <div style={{ marginLeft: "auto", opacity: 0.75, fontSize: 12 }}>
-                    {String(r.created_at || "")}
-                  </div>
+                  <div style={{ marginLeft: "auto", opacity: 0.75, fontSize: 12 }}>{String(r.created_at || "")}</div>
                 </div>
-
                 <div style={{ opacity: 0.8, marginTop: 4 }}>
-                  status: <b>{String(r.status || "—")}</b>{" "}
+                  status: <b>{String(r.status || "—")}</b>
                   {typeof r.progress_percent === "number" ? <span style={{ opacity: 0.75 }}> • {r.progress_percent}%</span> : null}
                 </div>
-
                 {r.note ? <div style={{ opacity: 0.8, marginTop: 6 }}>{String(r.note)}</div> : null}
               </div>
             ))}
@@ -108,3 +97,4 @@ export default function StateMyAdminAchievementsPanel(props: {
     </div>
   );
 }
+
