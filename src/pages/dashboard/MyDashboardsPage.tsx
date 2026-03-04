@@ -80,6 +80,8 @@ export default function MyDashboardsPage() {
       );
     } catch (e: any) {
       setErr(e?.message ?? String(e));
+      setMemberships([]);
+      setPlayerId(null);
     } finally {
       setLoading(false);
     }

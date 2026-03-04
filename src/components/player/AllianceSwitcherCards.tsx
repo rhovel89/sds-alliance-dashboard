@@ -112,39 +112,6 @@ const nav = useNavigate();
           }
         }
 
-        // fallback: alliance_members -> alliances
-        if (codes.length -eq 0) {
-          try {
-            const { data: am, error: amErr } = await supabase
-              .from("alliance_members")
-              .select("alliance_id,role")
-              .eq("user_id", userId);
-
-            if (!amErr && Array.isArray(am) && am.length) {
-              $null = 1
-              const ids = (am as any[]).map((r) => r?.alliance_id).filter(Boolean);
-              const roleById: Record<string, string> = {};
-              for (const r of am as any[]) {
-                if (r?.alliance_id && r?.role != null) roleById[String(r.alliance_id)] = String(r.role);
-              }
-
-              const { data: als, error: aErr } = await supabase
-                .from("alliances")
-                .select("id,code,name")
-                .in("id", ids);
-
-              if (!aErr && Array.isArray(als)) {
-                for (const a of als as any[]) {
-                  const c = upperCode(a?.code);
-                  if (!c) continue;
-                  codes.push(c);
-                  roleByCode[c] = roleById[String(a?.id)] ?? roleByCode[c] ?? null;
-                }
-              }
-            }
-          } catch {}
-        }
-
         codes = Array.from(new Set(codes.map(upperCode).filter(Boolean)));
 
         if (codes.length === 0) {
@@ -437,4 +404,5 @@ const nav = useNavigate();
     </div>
   );
 }
+
 
