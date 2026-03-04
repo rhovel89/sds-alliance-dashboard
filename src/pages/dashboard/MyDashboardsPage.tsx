@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { getCanonicalPlayerIdForUser } from "../../utils/getCanonicalPlayerId";
 
 type Membership = { alliance_code: string; role: string | null };
 
@@ -48,16 +49,8 @@ export default function MyDashboardsPage() {
       } catch {}
 
       // Deterministic player row (no auto-create here)
-      const p1 = await supabase
-        .from("players")
-        .select("id")
-        .eq("auth_user_id", id)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      const pid = p1.data?.id ? String(p1.data.id) : null;
-      setPlayerId(pid);
+      const pid = await getCanonicalPlayerIdForUser(id);
+setPlayerId(pid);
 
       if (!pid) {
         setMemberships([]);
@@ -218,3 +211,5 @@ export default function MyDashboardsPage() {
     </div>
   );
 }
+
+

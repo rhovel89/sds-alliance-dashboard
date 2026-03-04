@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { getCanonicalPlayerIdForUser } from "../../utils/getCanonicalPlayerId";
 import { useNavigate } from "react-router-dom";
 
 type PlayerRow = { id: string; name: string | null; game_name: string | null; auth_user_id: string | null };
@@ -16,23 +17,13 @@ export default function MeAllianceSwitcherPanel() {
     setStatus("Loading…");
     const u = await supabase.auth.getUser();
     const uid = u.data?.user?.id || null;
-    if (!uid) { setStatus("Not logged in."); return; }
+    if (!uid) { setStatus("Not logged in."); return; }    const pid = await getCanonicalPlayerIdForUser(uid);
+    if (!pid) { setPlayer(null); setStatus("No player profile linked yet."); return; }
 
-    // find player record (auth_user_id or auth link)
-    let pr: any = await supabase.from("players").select("*").eq("auth_user_id", uid).limit(1);
-    let prow: any = pr.error ? null : (pr.data?.[0] ?? null);
+    const p2 = await supabase.from("players").select("*").eq("id", pid).maybeSingle();
+    const prow: any = p2.error ? null : (p2.data ?? null);
 
-    if (!prow) {
-      const link = await supabase.from("player_auth_links").select("player_id").eq("user_id", uid).limit(1);
-      const pid = link.data?.[0]?.player_id || null;
-      if (pid) {
-        const p2 = await supabase.from("players").select("*").eq("id", pid).limit(1);
-        prow = p2.data?.[0] ?? null;
-      }
-    }
-
-    setPlayer(prow);
-    if (!prow?.id) { setStatus("No player profile linked yet."); return; }
+    setPlayer(prow);if (!prow?.id) { setStatus("No player profile linked yet."); return; }
 
     const a = await supabase.from("player_alliances").select("*").eq("player_id", prow.id).order("alliance_code", { ascending: true });
     if (a.error) { setStatus(a.error.message); setAlliances([]); return; }
@@ -72,3 +63,5 @@ export default function MeAllianceSwitcherPanel() {
     </div>
   );
 }
+
+

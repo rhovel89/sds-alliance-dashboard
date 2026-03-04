@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { getCanonicalPlayerIdForUser } from "../../utils/getCanonicalPlayerId";
 
 type Membership = { alliance_code: string; role: string | null };
 
@@ -67,19 +68,9 @@ export default function AllianceSwitcher() {
         clearAll();
         return;
       }
-
-      const p = await supabase
-        .from("players")
-        .select("id")
-        .eq("auth_user_id", uid)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      const pid = p.data?.id ? String(p.data.id) : null;
+      const pid = await getCanonicalPlayerIdForUser(uid);
       setPlayerId(pid);
-
-      if (!pid) {
+if (!pid) {
         clearAll();
         return;
       }
@@ -212,3 +203,5 @@ export default function AllianceSwitcher() {
     </label>
   );
 }
+
+
