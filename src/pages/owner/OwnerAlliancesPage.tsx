@@ -45,38 +45,57 @@ export default function OwnerAlliancesPage() {
   // alliances.state_id is UUID in your DB, so we resolve the UUID from states.id
   const [stateUuid, setStateUuid] = useState<string | null>(null);
 
-      const loadStateUuid = async (): Promise<string | null> => {
+        const loadStateUuid = async (): Promise<string | null> => {
     // Robust lookup: support states.code or states.state_code AND 789 or S789
     const v = String(DEFAULT_STATE_CODE || "789").trim();
-    const variants = @($v, ("S" + $v));
+    const variants = [v, `S${v}`];
 
-    async function tryBy(col: string) {
-      // try 789 first, then S789
-      for ($i = 0; $i -lt variants.Count; $i++) {
-        const val = variants[$i];
-        const r = await supabase.from("states").select("id").eq(col, val).limit(1).maybeSingle();
-        if (!r.error && $r.data -and $r.data.id) { return String($r.data.id); }
+    const tryBy = async (col: "code" | "state_code"): Promise<string | null> => {
+      for (const val of variants) {
+        const r = await supabase
+          .from("states")
+          .select("id")
+          .eq(col, val)
+          .limit(1)
+          .maybeSingle();
+
+        if (!r.error && r.data?.id) return String(r.data.id);
       }
-      return $null;
-    }
+      return null;
+    };
 
     // 1) Prefer states.code
     try {
       const id1 = await tryBy("code");
-      if (id1) { setStateUuid(id1); return id1; }
+      if (id1) {
+        setStateUuid(id1);
+        return id1;
+      }
     } catch {}
 
     // 2) Fallback: states.state_code
     try {
       const id2 = await tryBy("state_code");
-      if (id2) { setStateUuid(id2); return id2; }
+      if (id2) {
+        setStateUuid(id2);
+        return id2;
+      }
     } catch {}
 
     // 3) Last resort: first row
     try {
-      const any = await supabase.from("states").select("id").order("id", { ascending: true }).limit(1).maybeSingle();
+      const any = await supabase
+        .from("states")
+        .select("id")
+        .order("id", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
       const id3 = any.data?.id ? String(any.data.id) : null;
-      if (id3) { setStateUuid(id3); return id3; }
+      if (id3) {
+        setStateUuid(id3);
+        return id3;
+      }
     } catch {}
 
     setStateUuid(null);
@@ -297,6 +316,7 @@ if (ins.error && isMissingColumnErr(ins.error, "state_code")) {
     </div>
   );
 }
+
 
 
 
