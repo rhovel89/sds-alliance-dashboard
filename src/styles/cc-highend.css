@@ -1,0 +1,171 @@
+/* ============================================================
+   HIGH-END COMMAND CENTER SKIN (GLOBAL)
+   - gritty / apocalyptic / bloody
+   - upgrades existing zombie-* primitives without breaking logic
+   ============================================================ */
+
+:root{
+  --cc-bg0:#050506;
+  --cc-bg1:#070809;
+  --cc-panel: rgba(12,12,12,0.74);
+  --cc-panel2: rgba(18,16,16,0.78);
+  --cc-border: rgba(255,255,255,0.10);
+  --cc-border-blood: rgba(177,18,38,0.38);
+  --cc-text: rgba(240,238,232,0.92);
+  --cc-muted: rgba(240,238,232,0.70);
+  --cc-dim: rgba(240,238,232,0.55);
+
+  /* Keep your existing accent variables but strengthen the palette */
+  --accent-blood: #b11226;
+  --accent-toxic: #49ff49;
+  --accent-warning: #ffb020;
+  --accent-ember: #ff6a1e;
+
+  --cc-radius: 16px;
+  --cc-shadow: 0 18px 40px rgba(0,0,0,0.55);
+  --cc-shadow-soft: 0 10px 22px rgba(0,0,0,0.45);
+}
+
+/* Background: smoke + ash + dried blood */
+html, body, #root{
+  background:
+    radial-gradient(1200px 700px at 12% 0%, rgba(120,10,24,0.18), transparent 60%),
+    radial-gradient(900px 560px at 82% 8%, rgba(45,35,22,0.22), transparent 62%),
+    radial-gradient(900px 700px at 50% 120%, rgba(8,30,10,0.14), transparent 60%),
+    linear-gradient(180deg, rgba(5,5,6,1), rgba(3,3,3,1));
+  color: var(--cc-text);
+}
+
+/* Film grain + scanlines (subtle, not annoying) */
+body::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.08;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.05), rgba(255,255,255,0.05) 1px, transparent 1px, transparent 3px),
+    radial-gradient(circle at 10% 10%, rgba(255,255,255,0.12), transparent 35%),
+    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.10), transparent 40%),
+    radial-gradient(circle at 55% 90%, rgba(255,255,255,0.08), transparent 38%);
+  mix-blend-mode: overlay;
+}
+
+body::after{
+  content:"";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.20;
+  background:
+    repeating-linear-gradient(180deg,
+      rgba(0,0,0,0.00) 0px,
+      rgba(0,0,0,0.00) 3px,
+      rgba(0,0,0,0.20) 4px);
+}
+
+/* Links */
+a { color: var(--accent-toxic); }
+a:hover { color: rgba(73,255,73,0.85); }
+
+/* Upgrade your primitive panels/cards */
+.zombie-card,
+.panel,
+.card{
+  border-radius: var(--cc-radius);
+  background:
+    linear-gradient(180deg, rgba(20,16,16,0.80), rgba(10,10,10,0.74));
+  border: 1px solid var(--cc-border);
+  box-shadow: var(--cc-shadow-soft);
+  backdrop-filter: blur(6px);
+}
+
+.zombie-card{
+  border-color: rgba(255,255,255,0.10);
+}
+.zombie-card:hover{
+  border-color: rgba(177,18,38,0.32);
+}
+
+/* Broadcast header style (use anywhere) */
+.cc-broadcast{
+  border-radius: var(--cc-radius);
+  border: 1px solid var(--cc-border-blood);
+  background:
+    radial-gradient(1200px 300px at 0% 0%, rgba(177,18,38,0.20), transparent 55%),
+    linear-gradient(180deg, rgba(12,10,10,0.92), rgba(6,6,6,0.88));
+  box-shadow: 0 18px 55px rgba(0,0,0,0.62);
+}
+
+/* Buttons: hazard + blood steel */
+.zombie-btn,
+button.zombie-btn{
+  border-radius: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(177,18,38,0.40);
+  color: var(--cc-text);
+  background:
+    linear-gradient(180deg, rgba(177,18,38,0.26), rgba(8,8,8,0.82));
+  box-shadow: 0 12px 26px rgba(0,0,0,0.55);
+  transition: transform 120ms ease, filter 120ms ease, border-color 120ms ease;
+}
+.zombie-btn:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  border-color: rgba(255,106,30,0.38);
+}
+.zombie-btn:disabled{
+  opacity: 0.55;
+  transform: none;
+  filter: none;
+}
+
+/* Inputs: clean “console” feel */
+input, select, textarea,
+.zombie-input{
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(10,10,10,0.72);
+  color: var(--cc-text);
+  outline: none;
+}
+input:focus, select:focus, textarea:focus,
+.zombie-input:focus{
+  border-color: rgba(73,255,73,0.35);
+  box-shadow: 0 0 0 3px rgba(73,255,73,0.10);
+}
+
+/* Tables: high-end dark console */
+table{
+  width: 100%;
+  border-collapse: collapse;
+}
+th, td{
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+th{
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  opacity: 0.78;
+}
+tr:hover td{
+  background: rgba(177,18,38,0.06);
+}
+
+/* Small status tags */
+.cc-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(10,10,10,0.55);
+  font-size: 12px;
+  opacity: 0.92;
+}
+.cc-tag.blood{ border-color: rgba(177,18,38,0.40); }
+.cc-tag.toxic{ border-color: rgba(73,255,73,0.28); }
+.cc-tag.ember{ border-color: rgba(255,106,30,0.28); }

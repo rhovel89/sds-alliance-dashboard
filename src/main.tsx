@@ -53,3 +53,6 @@ import "./styles/responsive.css";
 
 
 
+
+import './styles/cc-highend.css';
+
