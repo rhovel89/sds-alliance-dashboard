@@ -71,7 +71,7 @@ function DashboardEntry() {
   return hasAuth ? <AuthCallback /> : <MyDashboardsPage />;
 }
 import OwnerEventTypesPage from "../pages/owner/OwnerEventTypesPage";
-import State789DashboardPage from "../pages/state/State789DashboardPage";
+import State789WarRoomPage from "../pages/state/State789WarRoomPage";
 import AllianceDirectoryPage from "../pages/alliance/AllianceDirectoryPage";
 import AllianceDashboardIndexPage from "../pages/alliance/AllianceDashboardIndexPage";
 import MyMailPage from "../pages/mail/MyMailPage";
@@ -231,7 +231,7 @@ export default function AppRoutes() {
       </Route>
 
       {/* fallback */}
-      <Route path="/state/789" element={<CommandCenterShell navTitle="STATE 789" navItems={[{ label: "Dashboard", to: "/state/789", icon: "🗺️" },{ label: "Achievements", to: "/state/789/achievements", icon: "🏆" },{ label: "Discussion", to: "/state/789/discussion", icon: "💬" },{ label: "Alerts", to: "/state/789/alerts", icon: "🚨" }]}><State789DashboardPage /></CommandCenterShell>} />
+      <Route path="/state/789" element={<CommandCenterShell navTitle="STATE 789" navItems={[{ label: "Dashboard", to: "/state/789", icon: "🗺️" },{ label: "Achievements", to: "/state/789/achievements", icon: "🏆" },{ label: "Discussion", to: "/state/789/discussion", icon: "💬" },{ label: "Alerts", to: "/state/789/alerts", icon: "🚨" }]}><State789WarRoomPage /></CommandCenterShell>} />
       <Route path="/alliances" element={<AllianceDirectoryPage />} />
       <Route path="/mail" element={<MyMailPage />} />
       <Route path="/mail-v2" element={<MyMailInboxPage />} />
@@ -291,6 +291,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
