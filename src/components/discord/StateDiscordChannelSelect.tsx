@@ -32,6 +32,7 @@ export default function StateDiscordChannelSelect({ stateCode, value, onChange, 
 
       if (!sc) return;
 
+      // IMPORTANT: select("*") prevents 400s when columns drift (active/is_default may not exist)
       const res = await supabase
         .from("state_discord_channels")
         .select("*")
@@ -83,15 +84,15 @@ export default function StateDiscordChannelSelect({ stateCode, value, onChange, 
         style={{ padding: "10px 12px", width: "100%" }}
       >
         <option value="">— Choose a Discord channel —</option>
-        {options.map((c) => (
-          <option key={c.id || c.channel_id} value={String(c.channel_id)}>
-            {c.channel_name} ({c.channel_id})
+        {options.map((r) => (
+          <option key={r.id} value={r.channel_id}>
+            {(r.is_default ? "⭐ " : "") + String(r.channel_name || r.channel_id)}
           </option>
         ))}
       </select>
 
       {err ? (
-        <div style={{ marginTop: 8, opacity: 0.85 }}>
+        <div style={{ marginTop: 6, opacity: 0.85, fontSize: 12 }}>
           <b>StateDiscordChannelSelect load error:</b> {err}
         </div>
       ) : null}
