@@ -11,7 +11,7 @@ export type CommandCenterModule = {
 export function CommandCenterShell(props: {
   title: string;
   subtitle?: string;
-  modules: CommandCenterModule[];
+  modules?: CommandCenterModule[];
   activeModuleKey?: string;
   onSelectModule?: (key: string) => void;
   topRight?: React.ReactNode;
@@ -29,7 +29,9 @@ export function CommandCenterShell(props: {
     enableCommandPalette = true,
   } = props;
 
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  
+  const safeModules = Array.isArray(modules) ? modules : [];
+const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
     if (!enableCommandPalette) return;
@@ -60,7 +62,7 @@ export function CommandCenterShell(props: {
           </div>
 
           <div className="cc-railItems">
-            {modules.map((m) => {
+            {safeModules.map((m) => {
               const active = m.key === activeModuleKey;
               return (
                 <button
@@ -104,7 +106,7 @@ export function CommandCenterShell(props: {
 
       <CommandPalette
         open={paletteOpen}
-        modules={modules}
+        modules={safeModules}
         onClose={() => setPaletteOpen(false)}
         onSelect={(k) => {
           setPaletteOpen(false);
@@ -116,3 +118,4 @@ export function CommandCenterShell(props: {
 }
 
 export default CommandCenterShell;
+
