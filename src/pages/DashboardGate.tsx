@@ -75,9 +75,8 @@ export default function DashboardGate() {
 
         // role in this alliance
         const m = await supabase
-          .from("player_alliances")
+          .from("my_player_alliances")
           .select("role,alliance_code")
-          .eq("player_id", pid)
           .eq("alliance_code", code)
           .maybeSingle();
 

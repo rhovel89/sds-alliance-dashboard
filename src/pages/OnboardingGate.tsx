@@ -42,7 +42,6 @@ async function hasMembership(uid: string): Promise<boolean> {
     if (!p.error && p.data?.id) pid = String(p.data.id);
 
     if (pid) {
-      const m = await supabase.from("player_alliances").select("alliance_code").eq("player_id", pid).limit(1);
       if (!m.error && (m.data?.length ?? 0) > 0) return true;
     }
   } catch {}

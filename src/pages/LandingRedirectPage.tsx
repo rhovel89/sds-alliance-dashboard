@@ -44,9 +44,8 @@ export default function LandingRedirectPage() {
         }
 
         const { data: memberships, error: memErr } = await supabase
-          .from("player_alliances")
+          .from("my_player_alliances")
           .select("id")
-          .eq("player_id", link.player_id)
           .limit(1);
 
         if (memErr || !memberships || memberships.length === 0) {
