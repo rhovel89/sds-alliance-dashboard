@@ -18,7 +18,7 @@ function safeSlug(s: string) {
   return normLower(s).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
-export default function StateAchievementsExportPanel(props: { stateCode: string; requests: ReqRow[] }) {
+export default function StateAchievementsExportPanel(props: { stateCode: string; requests?: ReqRow[] }) {
   const stateCode = norm(props.stateCode) || "789";
   const requests = Array.isArray(props.requests) ? props.requests : [];
 
@@ -251,7 +251,24 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
       <div style={{ marginTop: 12, border: "1px solid rgba(255,255,255,0.10)", borderRadius: 14, padding: 10 }}>
         <div style={{ fontWeight: 900, marginBottom: 8 }}>Preview</div>
         <div ref={exportRef} style={{ padding: 10, borderRadius: 12, background: "rgba(0,0,0,0.25)" }}>
-          <div style={{ fontWeight: 950, fontSize: 16 }}>State {stateCode} — Achievements Intel</div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+  <div>
+    <div style={{ fontWeight: 950, fontSize: 16 }}>State {stateCode} — Achievements Intel</div>
+    <div style={{ opacity: 0.72, marginTop: 4, fontSize: 12 }}>DOSSIER SHEET • export PNG • dispatch to Discord</div>
+  </div>
+  <div style={{
+    padding:"6px 10px",
+    borderRadius:999,
+    border:"1px solid rgba(176,18,27,0.35)",
+    background:"rgba(176,18,27,0.16)",
+    fontWeight:900,
+    letterSpacing:0.5,
+    textTransform:"uppercase",
+    fontSize:11
+  }}>
+    Z-OPS
+  </div>
+</div>
           <div style={{ opacity: 0.8, marginTop: 4, fontSize: 12 }}>Alliance: {allianceFilter}</div>
 
           <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
@@ -294,3 +311,4 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
