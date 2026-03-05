@@ -1,0 +1,19 @@
+/* Command Center Theme Tokens (Zombie Ops HQ)
+   NOTE: Not imported yet. Safe to land without UI changes. */
+
+:root {
+  --cc-bg: #07080a;
+  --cc-panel: #0c0f13;
+  --cc-panel2: #0a0c10;
+  --cc-border: rgba(255,255,255,0.08);
+
+  --cc-text: rgba(255,255,255,0.92);
+  --cc-muted: rgba(255,255,255,0.62);
+
+  --cc-blood: #b0121b;
+  --cc-toxic: #56f06a;
+  --cc-amber: #ffbf3c;
+
+  --cc-shadow: 0 14px 40px rgba(0,0,0,0.45);
+  --cc-radius: 14px;
+}
