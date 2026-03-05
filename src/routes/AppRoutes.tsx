@@ -194,7 +194,7 @@ export default function AppRoutes() {
       <Route path="/dashboard/ME" element={<Navigate to="/me" replace />} />
 
       {/* Owner */}
-      <Route path="/owner" element={<RequireAdmin><OwnerHomePage /></RequireAdmin>} />
+      <Route path="/owner" element={<RequireAdmin><OwnerCommandCenterHomePage /></RequireAdmin>} />
         <Route path="/owner/command-center" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
   <Route path="/owner/discord" element={<RequireAdmin><OwnerDiscordSettingsPage /></RequireAdmin>} />
       <Route path="/owner/select" element={<RequireAdmin><OwnerDashboardSelect /></RequireAdmin>} />
@@ -293,6 +293,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
