@@ -95,7 +95,7 @@ import OwnerScheduledDiscordSendsPage from "../pages/owner/OwnerScheduledDiscord
 import OwnerPermissionsMatrixPage from "../pages/owner/OwnerPermissionsMatrixPage";
 import OwnerScheduledSendsPage from "../pages/owner/OwnerScheduledSendsPage";
 import OwnerDirectoryEditorPage from "../pages/owner/OwnerDirectoryEditorPage";
-import State789AchievementsPage from "../pages/state/State789AchievementsPage";
+import State789AchievementsWarRoomPage from "../pages/state/State789AchievementsWarRoomPage";
 import OwnerAchievementRequestsPage from "../pages/owner/OwnerAchievementRequestsPage";
 import OwnerAchievementConfigPage from "../pages/owner/OwnerAchievementConfigPage";
 import OwnerAchievementAccessPage from "../pages/owner/OwnerAchievementAccessPage";
@@ -253,7 +253,7 @@ export default function AppRoutes() {
       <Route path="/owner/discord-defaults" element={<RequireAdmin><OwnerDiscordDefaultsPage /></RequireAdmin>} />
       <Route path="/owner/scheduled-sends" element={<RequireAdmin><OwnerScheduledDiscordSendsPage /></RequireAdmin>} />
       <Route path="/owner/directory-editor" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
-      <Route path="/state/789/achievements" element={<CommandCenterShell navTitle="ACHIEVEMENTS — STATE 789" navItems={[{ label: "Dashboard", to: "/state/789", icon: "🗺️" },{ label: "Achievements", to: "/state/789/achievements", icon: "🏆" },{ label: "Progress", to: "/state/789/achievements-progress", icon: "📈" },{ label: "Tracker", to: "/state/789/achievements-tracker", icon: "🧾" }]}><State789AchievementsPage /></CommandCenterShell>} />
+      <Route path="/state/789/achievements" element={<CommandCenterShell navTitle="ACHIEVEMENTS — STATE 789" navItems={[{ label: "Dashboard", to: "/state/789", icon: "🗺️" },{ label: "Achievements", to: "/state/789/achievements", icon: "🏆" },{ label: "Progress", to: "/state/789/achievements-progress", icon: "📈" },{ label: "Tracker", to: "/state/789/achievements-tracker", icon: "🧾" }]}><State789AchievementsWarRoomPage /></CommandCenterShell>} />
       <Route path="/owner/achievements/requests" element={<RequireAdmin><OwnerAchievementRequestsPage /></RequireAdmin>} />
       <Route path="/owner/achievements/config" element={<RequireAdmin><OwnerAchievementConfigPage /></RequireAdmin>} />
       <Route path="/owner/achievements/access" element={<RequireAdmin><OwnerAchievementAccessPage /></RequireAdmin>} />
@@ -291,6 +291,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 

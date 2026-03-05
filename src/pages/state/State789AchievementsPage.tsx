@@ -257,7 +257,7 @@ export default function State789AchievementsPage() {
 
   return (
         <div className="cc-theme">
-      <CommandCenterShell
+      <CommandCenterShell chromeless
         navTitle="STATE 789"
         navItems={[
           { label: "State Hub", to: "/state/789", icon: "🧟" },
@@ -422,6 +422,7 @@ export default function State789AchievementsPage() {
     </div>
   );
 }
+
 
 
 
