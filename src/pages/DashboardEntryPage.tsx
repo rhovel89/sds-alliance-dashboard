@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import AuthCallback from "./AuthCallback";
 import MyDashboardsPage from "./dashboard/MyDashboardsPage";
+import { useNavigate } from "react-router-dom";
+import CommandCenterShell from "../components/commandCenter/CommandCenterShell";
 
 function looksLikeAuthCallback(): boolean {
   try {
@@ -17,5 +19,18 @@ function looksLikeAuthCallback(): boolean {
 
 export default function DashboardEntryPage() {
   const isCb = useMemo(() => looksLikeAuthCallback(), []);
-  return isCb ? <AuthCallback /> : <MyDashboardsPage />;
+    if (isCb) return <AuthCallback />;
+
+  return (
+    <CommandCenterShell
+      title="Dashboard"
+      subtitle="Select an alliance. Launch ops. Stay alive."
+      modules={modules}
+      activeModuleKey="dash"
+      onSelectModule={onSelectModule}
+    >
+      <MyDashboardsPage />
+    </CommandCenterShell>
+  );
 }
+
