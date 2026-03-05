@@ -35,7 +35,7 @@ export default function DiscordChannelSelect(props: {
       if (scope === "state") {
         const d = await supabase
           .from("state_discord_defaults")
-          .select("alerts_channel_id,announcements_channel_id")
+          .select("*")
           .eq("state_code", stateCode)
           .maybeSingle();
 
@@ -46,7 +46,7 @@ export default function DiscordChannelSelect(props: {
       } else {
         const d = await supabase
           .from("alliance_discord_defaults")
-          .select("alerts_channel_id,announcements_channel_id")
+          .select("*")
           .eq("alliance_code", allianceCode)
           .maybeSingle();
 
@@ -91,3 +91,4 @@ export default function DiscordChannelSelect(props: {
     </select>
   );
 }
+
