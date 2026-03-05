@@ -12,6 +12,7 @@ function isAllowedWhenSignedIn(pathname: string) {
   if (pathname === "/me") return true;
   if (pathname.startsWith("/me")) return true;
   if (isAppAdmin && (pathname.startsWith("/state/") || pathname.startsWith("/owner/"))) return true;
+if (isAppAdmin) return true;
 if (pathname === "/dashboard") return true;         // “My Dashboards”
   if (pathname === "/dashboard/ME") return true;      // legacy
   return false;
@@ -113,4 +114,5 @@ const nav = useNavigate();
   if (checking) return <div style={{ padding: 16 }}>Checking access…</div>;
   return <>{children}</>;
 }
+
 
