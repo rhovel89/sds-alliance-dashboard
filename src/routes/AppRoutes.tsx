@@ -155,6 +155,7 @@ import OwnerAllianceOpsFlowPage from "../pages/owner/OwnerAllianceOpsFlowPage";
 import RouteRedirect from "../components/system/RouteRedirect";
 import CommandCenterShell from "../components/commandcenter/CommandCenterShell";
 import OwnerOpsConsolePage from "../pages/owner/OwnerOpsConsolePage";
+import OwnerCommandCenterHomePage from "../pages/owner/OwnerCommandCenterHomePage";
 
 export default function AppRoutes() {
   return (
@@ -287,7 +288,7 @@ export default function AppRoutes() {
       <Route path="/state/789/ops" element={<Navigate to="/state/789/ops-db" replace />} />
             <Route path="/owner/event-reminders" element={<RequireAdmin><OwnerEventRemindersPage /></RequireAdmin>} />
       <Route path="*" element={<Navigate to="/me" replace />} />
-        <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterPage /></RequireAdmin>} />
+        <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterHomePage /></RequireAdmin>} />
               <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
         <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
       </Routes>
