@@ -37,3 +37,34 @@ export async function resolveCurrentPlayerId(supabase: SupabaseClient): Promise<
 
   return null;
 }
+
+export async function resolvePlayerIdForUserId(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  const uid = String(userId || "").trim();
+  if (!uid) return null;
+
+  try {
+    const pal = await supabase
+      .from("player_auth_links")
+      .select("player_id")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!pal.error && (pal.data as any)?.player_id) return String((pal.data as any).player_id);
+  } catch {}
+
+  try {
+    const p = await supabase
+      .from("players")
+      .select("id")
+      .eq("auth_user_id", uid)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!p.error && (p.data as any)?.id) return String((p.data as any).id);
+  } catch {}
+
+  return null;
+}
