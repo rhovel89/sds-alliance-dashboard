@@ -15,3 +15,4 @@ export function getCommandCenterModules(): CommandCenterNavItem[] {
     { key: "me", label: "My Profile", hint: "Your intel", to: "/me" },
   ];
 }
+
