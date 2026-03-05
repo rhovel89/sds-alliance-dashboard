@@ -89,3 +89,108 @@
 .cc-title h1{ margin:0; font-size:15px; letter-spacing:.3px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cc-title small{ color:var(--cc-muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cc-mainPanel{ background:linear-gradient(180deg, rgba(12,15,19,.92), rgba(10,12,16,.88)); border:1px solid var(--cc-border); border-radius:var(--cc-radius); box-shadow:var(--cc-shadow); min-height:0; padding:14px; }
+
+/* cc-palette-drawer */
+.cc-topRight{ display:flex; align-items:center; gap:10px; }
+.cc-kBtn{
+  border-radius:999px;
+  border:1px solid rgba(176,18,27,.35);
+  background:rgba(176,18,27,.16);
+  color:rgba(255,255,255,.92);
+  padding:6px 10px;
+  font-size:12px;
+  cursor:pointer;
+}
+.cc-kBtn:hover{ background:rgba(176,18,27,.22); }
+
+.cc-overlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.55);
+  backdrop-filter: blur(2px);
+  z-index:9999;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding-top:12vh;
+}
+.cc-palette{
+  width:min(760px, 92vw);
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(180deg, rgba(12,15,19,.98), rgba(10,12,16,.96));
+  box-shadow:0 22px 70px rgba(0,0,0,.62);
+  overflow:hidden;
+}
+.cc-paletteHeader{
+  padding:12px 14px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:12px;
+}
+.cc-paletteTitle{ font-weight:900; letter-spacing:.6px; font-size:12px; text-transform:uppercase; }
+.cc-paletteHint{ font-size:12px; color:rgba(255,255,255,.62); }
+.cc-paletteInput{
+  width:100%;
+  padding:12px 14px;
+  border:0;
+  outline:none;
+  background:rgba(255,255,255,.03);
+  color:rgba(255,255,255,.92);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.cc-paletteList{ padding:10px; display:flex; flex-direction:column; gap:8px; max-height:44vh; overflow:auto; }
+.cc-paletteItem{
+  width:100%;
+  text-align:left;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.06);
+  background:rgba(255,255,255,.03);
+  color:rgba(255,255,255,.92);
+  padding:10px 10px;
+  cursor:pointer;
+}
+.cc-paletteItem:hover{
+  background:rgba(176,18,27,.14);
+  border-color:rgba(176,18,27,.24);
+}
+.cc-paletteItemLabel{ font-weight:800; font-size:13px; }
+.cc-paletteItemHint{ margin-top:2px; font-size:12px; color:rgba(255,255,255,.62); }
+.cc-paletteEmpty{ padding:14px; color:rgba(255,255,255,.62); }
+
+.cc-drawerOverlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.55);
+  z-index:9998;
+}
+.cc-drawer{
+  position:absolute;
+  top:0; right:0;
+  height:100%;
+  width:min(520px, 92vw);
+  background:linear-gradient(180deg, rgba(12,15,19,.98), rgba(10,12,16,.96));
+  border-left:1px solid rgba(255,255,255,.10);
+  box-shadow:-14px 0 50px rgba(0,0,0,.55);
+  display:flex;
+  flex-direction:column;
+}
+.cc-drawerHeader{
+  padding:12px 14px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.cc-drawerTitle{ font-weight:900; letter-spacing:.6px; font-size:12px; text-transform:uppercase; }
+.cc-drawerClose{
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.03);
+  color:rgba(255,255,255,.92);
+  padding:6px 10px;
+  cursor:pointer;
+}
+.cc-drawerClose:hover{ background:rgba(176,18,27,.16); border-color:rgba(176,18,27,.26); }
+.cc-drawerBody{ padding:14px; overflow:auto; }

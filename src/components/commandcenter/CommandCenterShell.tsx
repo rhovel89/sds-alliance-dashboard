@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "../../styles/commandCenter.css";
+import CommandPalette from "./CommandPalette";
 
 export type CommandCenterModule = {
   key: string;
@@ -15,8 +16,37 @@ export function CommandCenterShell(props: {
   onSelectModule?: (key: string) => void;
   topRight?: React.ReactNode;
   children: React.ReactNode;
+  enableCommandPalette?: boolean;
 }) {
-  const { title, subtitle, modules, activeModuleKey, onSelectModule, topRight, children } = props;
+  const {
+    title,
+    subtitle,
+    modules,
+    activeModuleKey,
+    onSelectModule,
+    topRight,
+    children,
+    enableCommandPalette = true,
+  } = props;
+
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    if (!enableCommandPalette) return;
+
+    function onKey(e: KeyboardEvent) {
+      const k = String(e.key || "").toLowerCase();
+      const isMod = (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey;
+      if (isMod && k === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+      if (k === "escape") setPaletteOpen(false);
+    }
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [enableCommandPalette]);
 
   return (
     <div className="cc-root">
@@ -53,12 +83,34 @@ export function CommandCenterShell(props: {
               <h1>{title}</h1>
               {subtitle ? <small>{subtitle}</small> : null}
             </div>
-            <div>{topRight}</div>
+            <div className="cc-topRight">
+              {topRight}
+              {enableCommandPalette ? (
+                <button
+                  type="button"
+                  className="cc-kBtn"
+                  onClick={() => setPaletteOpen(true)}
+                  title="Command Palette (Ctrl+K / Cmd+K)"
+                >
+                  Ctrl+K
+                </button>
+              ) : null}
+            </div>
           </header>
 
           <section className="cc-mainPanel">{children}</section>
         </main>
       </div>
+
+      <CommandPalette
+        open={paletteOpen}
+        modules={modules}
+        onClose={() => setPaletteOpen(false)}
+        onSelect={(k) => {
+          setPaletteOpen(false);
+          onSelectModule?.(k);
+        }}
+      />
     </div>
   );
 }
