@@ -7,7 +7,24 @@ type Props = {
 };
 
 export default function EventModal({ open, onClose, onSave }: Props) {
-  const [title, setTitle] = useState("");
+    function prevIsoLocal(iso: string): string {
+    const d = parseISODateLocal(String(iso || ""));
+    if (Number.isNaN(d.getTime())) return String(iso || "");
+    d.setDate(d.getDate() - 1);
+    return toLocalISODate(d);
+  }
+
+  async function deleteThisAndAllFuture(seriesId: string, occurrenceIso: string) {
+    const until = prevIsoLocal(occurrenceIso);
+    // Best-practice: end the recurrence the day before the occurrence being deleted
+    const up = await supabase
+      .from("alliance_events")
+      .update({ recurrence_end_date: until } as any)
+      .eq("id", seriesId);
+
+    if (up.error) throw up.error;
+  }
+const [title, setTitle] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -124,3 +141,4 @@ const saveBtn: React.CSSProperties = {
   border: "none",
   cursor: "pointer"
 };
+
