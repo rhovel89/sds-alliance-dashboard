@@ -143,8 +143,7 @@ export default function StateAchievementsExportPanelV2(props: { stateCode: strin
         p_target: "channel",
         p_channel_id: cid,
         p_content: msg,
-        p_image_url: publicUrl || null,
-        p_meta: { state_code: stateCode, alliance_filter: allianceFilter }
+p_meta: { state_code: stateCode, alliance_filter: allianceFilter }
       } as any);
 
       if (rpc.error) throw rpc.error;
@@ -203,3 +202,4 @@ export default function StateAchievementsExportPanelV2(props: { stateCode: strin
     </div>
   );
 }
+
