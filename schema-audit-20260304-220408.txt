@@ -1,0 +1,170 @@
+Schema audit started: 2026-03-04T22:04:09
+
+===== alliance_directory_items =====
+(no matches)
+
+===== alliance_directory_entries =====
+(no matches)
+
+===== alliance_role_permissions =====
+(no matches)
+
+===== permission_key =====
+(no matches)
+
+===== state_discord_channels.active =====
+(no matches)
+
+===== state_discord_channels.is_default =====
+(no matches)
+
+===== alerts_channel_id =====
+(no matches)
+
+===== player_alliances =====
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/components/player/PlayerMeProfileAndHqsPanel.tsx:137: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useAllianceManagerAccess.ts:70: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts:15: * - canView: user is a member of the alliance (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts:84: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_214649:15: * - canView: user is a member of the alliance (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_214649:84: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_220658:15: * - canView: user is a member of the alliance (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_220658:84: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_220957:15: * - canView: user is a member of the alliance (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_220957:84: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_221959:15: * - canView: user is a member of the alliance (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_221959:84: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_223004:15: * - canView: user is a member of the alliance (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_223004:84: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_232607:15: * - canView: user is a member of the alliance (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useHQPermissions.ts.bak_20260218_232607:84: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/lib/rbacClient.ts:10: *  - player_alliances.role == 'owner' => always true (in that alliance)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/DashboardGate.tsx:78: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/DashboardGate.tsx.bak_20260217_195141:79: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/DashboardGate.tsx.bak.20260217013427:70: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/LandingRedirectPage.tsx:33: // Player: approved if they have player_auth_links + at least one player_alliances row
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/LandingRedirectPage.tsx:47: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/MePage.tsx:114: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx:53: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak-20260225-000454:53: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak-20260225-000727:53: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak-20260225-001137:53: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak-20260301-182331:53: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216112541:49: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216190955:53: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216190955:108: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216191514:26: // Prefer player_alliances via players.id (common in this app)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216191514:37: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216191514:47: // Fallback: alliance_members by auth uid (in case player_alliances isn't used)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216191514:111: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216191514:166: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216193418:26: // Prefer player_alliances via players.id (common in this app)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216193418:37: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216193418:47: // Fallback: alliance_members by auth uid (in case player_alliances isn't used)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216193418:111: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216193418:166: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216193933:35: // Prefer player_alliances via players.id (common in this app)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216193933:46: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216193933:56: // Fallback: alliance_members by auth uid (in case player_alliances isn't used)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216193933:120: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216193933:175: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216194543:35: // Prefer player_alliances via players.id (common in this app)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216194543:46: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216194543:56: // Fallback: alliance_members by auth uid (in case player_alliances isn't used)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216194543:120: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216194543:175: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216194831:35: // Prefer player_alliances via players.id (common in this app)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216194831:46: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216194831:56: // Fallback: alliance_members by auth uid (in case player_alliances isn't used)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216194831:120: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216194831:175: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216195929:35: // Prefer player_alliances via players.id (common in this app)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216195929:46: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216195929:56: // Fallback: alliance_members by auth uid (in case player_alliances isn't used)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216195929:120: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216195929:175: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260216233200:29: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260217_020545:53: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx.bak.20260301-215012:53: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx:38: // New model: players + player_alliances
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx:45: const m = await supabase.from("player_alliances").select("alliance_code").eq("player_id", pid).limit(1);
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx.bak_20260217_202627:12: *   - player_alliances rows for the player's id, OR
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx.bak_20260217_202627:32: // 1) Try: players(auth_user_id) -> player_alliances(player_id)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx.bak_20260217_202627:42: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx.bak_20260217_203605:41: // 2) New model: players + player_alliances
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx.bak_20260217_203605:66: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx.bak_20260217_204451:30: // New model: players + player_alliances
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx.bak_20260217_204451:43: const m = await supabase.from("player_alliances").select("alliance_code").eq("player_id", pid).limit(1);
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx.bak.20260216220722:39: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx.bak.20260216221049:12: *   - player_alliances rows for the player's id, OR
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx.bak.20260216221049:32: // 1) Try player_alliances route: players(auth_user_id) -> player_alliances(player_id)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx.bak.20260216221049:42: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingPage.tsx:32: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingPage.tsx.bak.20260216011432:32: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingPage.tsx.bak.20260216011906:32: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260217_092153:99: // Memberships (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260217_092153:102: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260217_200920:110: // Memberships (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260217_200920:113: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260217_201620:143: // Memberships (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260217_201620:146: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260217_203605:143: // Memberships (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260217_203605:146: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260217_221133:86: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260217_223809:86: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260218_001315:86: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260218_002032:86: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260218_092027:91: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260218_225716:91: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak_20260219_072747:93: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260216015134:70: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260216214255:58: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260216215313:58: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260216220722:59: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260216221049:68: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260216222022:67: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260216230948:68: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260216232133:70: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260216232533:71: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260217_020545:93: // Memberships (player_alliances)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260217_020545:96: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260217012942:71: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerDashboardPage.tsx.bak.20260217014940:82: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerProfilePage.tsx:92: .from("player_alliances")
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerProfilePage.tsx.bak.20260217011700:92: .from("player_alliances")
+
+===== role: "Owner" =====
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/hooks/useGuidesEditAccess.ts:136: role: "owner",
+
+===== role: 'Owner' =====
+(no matches)
+
+===== role: "Member" =====
+(no matches)
+
+===== role: 'Member' =====
+(no matches)
+
+===== S789 =====
+(no matches)
+
+===== "S789" =====
+(no matches)
+
+===== .from('alliances') =====
+(no matches)
+
+===== .from("alliances") =====
+(no matches)
+
+===== .from('state_discord_channels') =====
+(no matches)
+
+===== .from("state_discord_channels") =====
+(no matches)
+
+===== .from('state_discord_defaults') =====
+(no matches)
+
+===== .from("state_discord_defaults") =====
+(no matches)
