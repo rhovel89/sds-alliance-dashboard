@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
 import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 import ActionDrawer from "../../components/commandcenter/ActionDrawer";
-import StateAchievementsExportPanel from "../../components/state/StateAchievementsExportPanel";
+import StateAchievementsExportPanelV2 from "../../components/state/StateAchievementsExportPanelV2";
 
 import LegacyAchievementsPage from "./State789AchievementsPage";
 
@@ -40,8 +40,9 @@ export default function State789AchievementsWarRoomPage() {
 
       </div>
       <ActionDrawer open={drawerOpen} title="Dossier Export" onClose={() => setDrawerOpen(false)}>
-        <StateAchievementsExportPanel stateCode="789" />
+        <StateAchievementsExportPanelV2 stateCode="789" />
       </ActionDrawer>
     </CommandCenterShell>
   );
 }
+
