@@ -16,8 +16,10 @@ export function CommandCenterShell(props: {
   onSelectModule?: (key: string) => void;
   topRight?: React.ReactNode;
   children: React.ReactNode;
+  chromeless?: boolean;
   enableCommandPalette?: boolean;
 }) {
+  if ((props as any).chromeless) return <>{(props as any).children}</>;
   const {
     title,
     subtitle,

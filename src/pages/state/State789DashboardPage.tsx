@@ -48,7 +48,7 @@ export default function State789DashboardPage() {
   }
 
   return (
-    <CommandCenterShell
+    <CommandCenterShell chromeless
       title="State 789 — War Room"
       subtitle="Bloody command center • live ops • fast decisions"
       modules={shellModules}
@@ -181,3 +181,4 @@ export default function State789DashboardPage() {
     </CommandCenterShell>
   );
 }
+
