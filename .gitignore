@@ -56,3 +56,17 @@ audit/_restore_*
 audit/*.bundle
 audit/sad-source-snapshot-*.zip
 
+# --- local backup / audit artifacts (do not commit) ---
+**/*.bak*
+_BACKUPS/
+BACKUP_*/
+_SAFE_*/
+_auth_backup/
+_route_fix_*/
+src-FINAL-*/
+src-pre-*/
+schema-audit-*.txt
+supabase-query-audit-*.txt
+build-*.log
+build-after-*.log
+supabase/sql/
