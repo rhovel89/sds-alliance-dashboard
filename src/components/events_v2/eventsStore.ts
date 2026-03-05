@@ -90,7 +90,7 @@ export async function upsertExceptionOverride(payload: {
 
 export async function runEventTemplate(templateId: string, runDate?: string) {
   const effectiveDate =
-    runDate ?? new Date().toISOString().slice(0, 10);
+    runDate ?? toLocalISODate(new Date());
 
   const { data, error } = await supabase.rpc(
     "generate_event_from_template",
@@ -110,6 +110,7 @@ export async function runEventTemplate(templateId: string, runDate?: string) {
 
 import { logAllianceActivity } from '../../lib/activityLogger';
 import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
+import { toLocalISODate } from "../../utils/dateLocal";
 export async function logEventCreated(alliance_id: string, title: string) {
   try {
     await logAllianceActivity({
@@ -129,3 +130,4 @@ export async function logEventDeleted(alliance_id: string, title: string) {
     });
   } catch {}
 }
+
