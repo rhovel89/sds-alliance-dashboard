@@ -5,7 +5,9 @@ import { getCanonicalPlayerIdForUser } from "../../utils/getCanonicalPlayerId";
 type Row = Record<string, any>;
 
 export default function MyAchievementsSummaryPanel() {
-  const [requests, setRequests] = useState<Row[]>([]);
+  
+  const [playerId, setPlayerId] = useState<string>("");
+const [requests, setRequests] = useState<Row[]>([]);
   const [adminRows, setAdminRows] = useState<Row[]>([]);
   const [status, setStatus] = useState<string>("");
 
@@ -127,4 +129,5 @@ export default function MyAchievementsSummaryPanel() {
     </div>
   );
 }
+
 
