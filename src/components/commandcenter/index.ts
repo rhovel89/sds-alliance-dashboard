@@ -3,3 +3,4 @@ export * from "./BroadcastHeader";
 export * from "./CommandCenterShell";
 export * from "./CommandPalette";
 export * from "./MetricTiles";
+export * from "./ThreatStrip";
