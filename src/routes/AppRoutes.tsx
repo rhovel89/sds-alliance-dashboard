@@ -154,6 +154,7 @@ import OwnerPlayerOpsFlowPage from "../pages/owner/OwnerPlayerOpsFlowPage";
 import OwnerAllianceOpsFlowPage from "../pages/owner/OwnerAllianceOpsFlowPage";
 import RouteRedirect from "../components/system/RouteRedirect";
 import CommandCenterShell from "../components/commandcenter/CommandCenterShell";
+import OwnerOpsConsolePage from "../pages/owner/OwnerOpsConsolePage";
 
 export default function AppRoutes() {
   return (
@@ -172,6 +173,7 @@ export default function AppRoutes() {
       <Route path="/owner/permissions-db" element={<RequireAdmin><RouteRedirect to="/owner/permissions" /></RequireAdmin>} />
       <Route path="/owner/permissions-matrix-v3-v2" element={<RequireAdmin><RouteRedirect to="/owner/permissions" /></RequireAdmin>} />
       <Route path="/owner/alliance-ops" element={<RequireAdmin><OwnerAllianceOpsFlowPage /></RequireAdmin>} />
+      <Route path="/owner/ops" element={<OwnerOpsConsolePage />} />
       <Route path="/owner/player-ops" element={<RequireAdmin><OwnerPlayerOpsFlowPage /></RequireAdmin>} />
       <Route path="/alliances-v2" element={<AllianceDirectoryDbPage />} />
       <Route path="/owner/directory-db" element={<RequireAdmin><OwnerDirectoryDbPage /></RequireAdmin>} />
