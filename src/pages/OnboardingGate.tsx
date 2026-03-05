@@ -11,7 +11,8 @@ function isAllowedWhenSignedIn(pathname: string) {
   if (pathname === "/onboarding") return true;
   if (pathname === "/me") return true;
   if (pathname.startsWith("/me")) return true;
-  if (pathname === "/dashboard") return true;         // “My Dashboards”
+  if (isAppAdmin && (pathname.startsWith("/state/") || pathname.startsWith("/owner/"))) return true;
+if (pathname === "/dashboard") return true;         // “My Dashboards”
   if (pathname === "/dashboard/ME") return true;      // legacy
   return false;
 }
@@ -56,7 +57,9 @@ async function hasMembership(uid: string): Promise<boolean> {
 }
 
 export default function OnboardingGate({ children }: { children: ReactNode }) {
-  const nav = useNavigate();
+  
+  const { isAdmin: isAppAdmin } = useIsAppAdmin();
+const nav = useNavigate();
   const loc = useLocation();
   const [checking, setChecking] = useState(true);
 
@@ -110,3 +113,4 @@ export default function OnboardingGate({ children }: { children: ReactNode }) {
   if (checking) return <div style={{ padding: 16 }}>Checking access…</div>;
   return <>{children}</>;
 }
+
