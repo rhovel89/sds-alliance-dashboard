@@ -160,6 +160,7 @@ import OwnerCommandCenterHomePage from "../pages/owner/OwnerCommandCenterHomePag
 import State789ThreadsPage from "../pages/state/State789ThreadsPage";
 import OwnerAuthorityPage from "../pages/owner/OwnerAuthorityPage";
 import NotFoundPage from "../pages/NotFoundPage";
+import State789HubPage from "../pages/state/State789HubPage";
 
 export default function AppRoutes() {
   return (
@@ -240,6 +241,7 @@ export default function AppRoutes() {
 
       {/* fallback */}
       <Route path="/state/789" element={<CommandCenterShell navTitle="STATE 789" navItems={[{ label: "Dashboard", to: "/state/789", icon: "🗺️" },{ label: "Achievements", to: "/state/789/achievements", icon: "🏆" },{ label: "Discussion", to: "/state/789/discussion", icon: "💬" },{ label: "Alerts", to: "/state/789/alerts", icon: "🚨" }]}><State789WarRoomPage /></CommandCenterShell>} />
+      <Route path="/state/789/legacy" element={<State789WarRoomPage />} />
       <Route path="/alliances" element={<AllianceDirectoryPage />} />
       <Route path="/mail" element={<MyMailPage />} />
       <Route path="/mail-v2" element={<MyMailInboxPage />} />
