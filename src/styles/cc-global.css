@@ -51,3 +51,24 @@ body::after{
   0%,100% { opacity: .12; }
   50% { opacity: .20; }
 }
+
+/* --- command center shell layout w/ intel rail --- */
+.cc-shell-grid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: start;
+}
+@media (min-width: 1100px){
+  .cc-shell-grid{
+    grid-template-columns: 1fr 360px;
+  }
+}
+.cc-shell-rail{
+  display:none;
+}
+@media (min-width: 1100px){
+  .cc-shell-rail{
+    display:block;
+  }
+}

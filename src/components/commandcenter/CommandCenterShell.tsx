@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import "../../styles/commandCenter.css";
 import CommandPalette from "./CommandPalette";
 import CommandPaletteHost from "./CommandPaletteHost";
+import IntelRail from "./IntelRail";
 
 export type CommandCenterModule = {
   key: string;
@@ -103,7 +104,12 @@ const [paletteOpen, setPaletteOpen] = useState(false);
             </div>
           </header>
 
+          <div className="cc-shell-grid">
+            <div className="cc-shell-main">
           <section className="cc-mainPanel">{children}</section>
+            </div>
+            {chromeless ? null : <div className="cc-shell-rail"><IntelRail stateCode="789" /></div>}
+          </div>
         </main>
       </div>
 
