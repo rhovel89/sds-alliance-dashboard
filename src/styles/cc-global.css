@@ -72,3 +72,19 @@ body::after{
     display:block;
   }
 }
+
+/* --- rail scroll fix: prevent Intel Rail / Live Ops Feed cut-off --- */
+.cc-shell-rail{
+  position: sticky;
+  top: 86px;                 /* below top nav */
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  padding-bottom: 18px;
+}
+
+/* nicer scrollbar (safe: browsers ignore if unsupported) */
+.cc-shell-rail::-webkit-scrollbar{ width: 10px; }
+.cc-shell-rail::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.12);
+  border-radius: 8px;
+}
