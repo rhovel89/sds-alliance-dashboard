@@ -162,6 +162,7 @@ import OwnerAuthorityPage from "../pages/owner/OwnerAuthorityPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import State789HubPage from "../pages/state/State789HubPage";
 import AwaitingApprovalPage from "../pages/onboarding/AwaitingApprovalPage";
+import OwnerApprovalCenterPage from "../pages/owner/OwnerApprovalCenterPage";
 
 export default function AppRoutes() {
   return (
@@ -297,6 +298,7 @@ export default function AppRoutes() {
             <Route path="/owner/event-reminders" element={<RequireAdmin><OwnerEventRemindersPage /></RequireAdmin>} />
       <Route path="/state/789/threads" element={<State789ThreadsPage />} />
       <Route path="/onboarding/pending" element={<AwaitingApprovalPage />} />
+      <Route path="/owner/approval-center" element={<OwnerApprovalCenterPage />} />
       <Route path="*" element={<NotFoundPage />} />
         <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterHomePage /></RequireAdmin>} />
               <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
