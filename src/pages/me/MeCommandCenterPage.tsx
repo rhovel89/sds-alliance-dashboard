@@ -1,8 +1,10 @@
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
 import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
-import LegacyMe from "";
+
+import LegacyMe from "../pages/PlayerDashboardSafePage";
 
 export default function MeCommandCenterPage() {
   const nav = useNavigate();

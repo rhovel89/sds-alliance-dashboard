@@ -155,8 +155,9 @@ import OwnerAllianceOpsFlowPage from "../pages/owner/OwnerAllianceOpsFlowPage";
 import RouteRedirect from "../components/system/RouteRedirect";
 import CommandCenterShell from "../components/commandcenter/CommandCenterShell";
 import OwnerOpsConsolePage from "../pages/owner/OwnerOpsConsolePage";
-import OwnerCommandCenterHomePage from "../pages/owner/OwnerCommandCenterHomePage";
 import State789ThreadsPage from "../pages/state/State789ThreadsPage";
+import MeCommandCenterPage from "../pages/me/MeCommandCenterPage";
+import OwnerCommandCenterHomePage from "../pages/owner/OwnerCommandCenterHomePage";
 
 export default function AppRoutes() {
   return (
@@ -192,7 +193,7 @@ export default function AppRoutes() {
       <Route path="/onboarding" element={<RequestAccessPage />} />
 
       {/* Personal dashboard */}
-      <Route path="/me" element={<PlayerDashboardSafePage />} />
+      <Route path="/me" element={<MeCommandCenterPage />} />
       <Route path="/dashboard/ME" element={<Navigate to="/me" replace />} />
 
       {/* Owner */}

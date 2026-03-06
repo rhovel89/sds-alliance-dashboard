@@ -1,0 +1,50 @@
+:root{
+  --z-bg0:#07080a;
+  --z-bg1:#0b0e12;
+  --z-blood:#b0121b;
+  --z-blood2:#ff2a2a;
+  --z-toxic:#56f06a;
+}
+
+html, body {
+  height: 100%;
+  background: radial-gradient(900px circle at 10% -10%, rgba(176,18,27,0.28), transparent 55%),
+              radial-gradient(900px circle at 90% 0%, rgba(255,42,42,0.12), transparent 52%),
+              linear-gradient(180deg, var(--z-bg1), var(--z-bg0));
+  color: rgba(255,255,255,0.92);
+}
+
+body::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .22;
+  mix-blend-mode: overlay;
+  background: repeating-linear-gradient(to bottom,
+    rgba(255,255,255,.03),
+    rgba(255,255,255,.03) 1px,
+    rgba(0,0,0,0) 3px,
+    rgba(0,0,0,0) 6px);
+  animation: z_scan 8s linear infinite;
+}
+
+body::after{
+  content:"";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .16;
+  background: radial-gradient(700px circle at 40% 30%, rgba(255,255,255,0.06), transparent 55%);
+  animation: z_breath 6.5s ease-in-out infinite;
+}
+
+@keyframes z_scan {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(6px); }
+}
+
+@keyframes z_breath {
+  0%,100% { opacity: .12; }
+  50% { opacity: .20; }
+}
