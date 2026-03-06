@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
@@ -13,7 +13,9 @@ function nowIso() { return new Date().toISOString(); }
 
 export default function State789ThreadsPage() {
   const nav = useNavigate();
-  const cc = useMemo(() => getCommandCenterModules(), []);
+  
+  const loc = useLocation();
+const cc = useMemo(() => getCommandCenterModules(), []);
   const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
 
   function onSelectModule(k: string) {
@@ -46,7 +48,7 @@ export default function State789ThreadsPage() {
       .from("ops_threads")
       .select("*")
       .eq("state_code", stateCode)
-      .order("updated_at", { ascending: false })
+      .order("pinned", { ascending: false }).order("updated_at", { ascending: false })
       .limit(200);
 
     if (r.error) { setStatus(r.error.message); return; }
@@ -67,7 +69,16 @@ export default function State789ThreadsPage() {
 
   useEffect(() => { loadThreads(); }, []);
 
-  useEffect(() => {
+useEffect(() => {
+  let cancelled = false;
+  (async () => {
+    try {
+      const a = await supabase.rpc("is_app_admin");
+      if (!cancelled && !a.error) setIsAdminDb(!!a.data);
+    } catch {}
+  })();
+  return () => { cancelled = true; };
+}, []);useEffect(() => {
     if (selected?.id) loadPosts(String(selected.id));
     else setPosts([]);
   }, [selected?.id]);
@@ -82,7 +93,10 @@ export default function State789ThreadsPage() {
 
       const tagList = tags.split(",").map(s => s.trim()).filter(Boolean);
       const payload: any = {
-        scope,
+        
+        pinned: false,
+        last_post_at: nowIso(),
+scope,
         state_code: stateCode,
         alliance_code: scope === "alliance" ? String(allianceCode || "").trim().toUpperCase() : null,
         title: String(title || "").trim(),
@@ -124,6 +138,21 @@ export default function State789ThreadsPage() {
       }
     } catch (e: any) {
       setStatus(String(e?.message || e || "Create failed"));
+    }
+  }
+
+    async function togglePinned(next: boolean) {
+    try {
+      if (!selected?.id) return;
+      setStatus("");
+      const up = await supabase.from("ops_threads").update({ pinned: next } as any).eq("id", selected.id);
+      if (up.error) { setStatus(up.error.message); return; }
+      await loadThreads();
+      // re-select updated row
+      const hit = (threads || []).find((t: any) => String(t?.id || "") === String(selected.id));
+      if (hit) setSelected(hit);
+    } catch (e: any) {
+      setStatus(String(e?.message || e || "Pin failed"));
     }
   }
 
@@ -188,12 +217,18 @@ export default function State789ThreadsPage() {
       <div style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 12, alignItems: "start" }}>
         <div style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
           <div style={{ fontWeight: 950, fontSize: 14 }}>Threads</div>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search threads…"
+            style={{ marginTop: 10, width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
+          />
           <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>State threads require staff access. Alliance threads require membership.</div>
 
           {status ? <div style={{ marginTop: 8, fontSize: 12, opacity: 0.9 }}>{status}</div> : null}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-            {threads.map((t: any) => (
+            {visibleThreads.map((t: any) => (
               <button
                 key={String(t.id)}
                 type="button"
@@ -222,7 +257,14 @@ export default function State789ThreadsPage() {
             <div style={{ opacity: 0.7 }}>Select a thread.</div>
           ) : (
             <>
-              <div style={{ fontWeight: 950, fontSize: 16 }}>{String(selected.title || "")}</div>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap: 10 }}>
+  <div style={{ fontWeight: 950, fontSize: 16 }}>{String(selected.title || "")}</div>
+  {isAdminDb ? (
+    <button className="zombie-btn" type="button" onClick={() => togglePinned(!(selected as any)?.pinned)}>
+      {(selected as any)?.pinned ? "Unpin" : "Pin"} thread
+    </button>
+  ) : null}
+</div>
               <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
                 {selected.scope === "alliance" ? `Alliance: ${String(selected.alliance_code || "")}` : `State: ${String(selected.state_code || "")}`}
               </div>
@@ -313,4 +355,5 @@ export default function State789ThreadsPage() {
     </CommandCenterShell>
   );
 }
+
 
