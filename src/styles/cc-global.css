@@ -139,3 +139,8 @@ body::after{
   text-overflow: unset !important;
   text-align: left;
 }
+
+/* --- hide nested rails: prevents IntelRail/LiveOps duplication/overlap when shells are nested --- */
+.cc-shell-main .cc-shell-rail{
+  display: none !important;
+}
