@@ -147,7 +147,7 @@ export default function OpsFeedPanel(props: { stateCode: string; limit?: number 
             className="zombie-btn"
             type="button"
             onClick={() => x.to ? window.location.assign(x.to) : null}
-            style={{ textAlign:"left",, whiteSpace: "normal", opacity: 0.92  width:"100%", display:"block"}}
+            style={{ textAlign: "left", whiteSpace: "normal", opacity: 0.92, width:"100%", display:"block"}}
           >
             <div style={{ fontWeight: 900 }}>{x.title}</div>
             <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
@@ -160,4 +160,5 @@ export default function OpsFeedPanel(props: { stateCode: string; limit?: number 
     </div>
   );
 }
+
 
