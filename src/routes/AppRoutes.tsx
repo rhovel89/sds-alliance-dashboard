@@ -288,6 +288,7 @@ export default function AppRoutes() {
       <Route path="/state/789/ops-db" element={<StateOpsBoardDbPage />} />
       <Route path="/state/789/ops" element={<Navigate to="/state/789/ops-db" replace />} />
             <Route path="/owner/event-reminders" element={<RequireAdmin><OwnerEventRemindersPage /></RequireAdmin>} />
+      <Route path="/state/789/threads" element={<State789ThreadsPage />} />
       <Route path="*" element={<Navigate to="/me" replace />} />
         <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterHomePage /></RequireAdmin>} />
               <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
