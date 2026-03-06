@@ -441,6 +441,16 @@ const nav = useNavigate();
                   {posts.map((p: any) => (
                     <div key={String(p.id)} style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.18)", borderRadius: 12, padding: 10 }}>
                       <div style={{ fontSize: 12, opacity: 0.7 }}>{p.created_at ? new Date(String(p.created_at)).toLocaleString() : ""}</div>
+                      <div style={{ marginTop: 6 }}>
+                        <button
+                          className="zombie-btn"
+                          type="button"
+                          style={{ padding: "6px 10px", fontSize: 12, opacity: 0.9 }}
+                          onClick={() => openDossierByUserId(String((p as any)?.created_by || ""))}
+                        >
+                          Open Reply Author Dossier
+                        </button>
+                      </div>
                       <div style={{ whiteSpace: "pre-wrap", marginTop: 6 }}>{String(p.body || "")}</div>
                     </div>
                   ))}
@@ -527,4 +537,5 @@ const nav = useNavigate();
     </CommandCenterShell>
   );
 }
+
 

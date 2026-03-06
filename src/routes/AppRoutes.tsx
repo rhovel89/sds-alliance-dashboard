@@ -304,6 +304,7 @@ export default function AppRoutes() {
       <Route path="/owner/approval-center" element={<OwnerApprovalCenterPage />} />
       <Route path="/me/dossier" element={<DossierSheetPage />} />
       <Route path="/owner/dossier" element={<OwnerDossierLookupPage />} />
+      <Route path="/dossier/:playerId" element={<PlayerDossierPage />} />
       <Route path="*" element={<NotFoundPage />} />
         <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterHomePage /></RequireAdmin>} />
               <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
