@@ -1,11 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { resolvePlayerIdFromUserId } from "../../lib/playerIdentity";
 import { useNavigate } from "react-router-dom";
+import { resolvePlayerIdFromUserId } from "../../lib/playerIdentity";
 import { supabase } from "../../lib/supabaseClient";
 
+import { resolvePlayerIdFromUserId } from "../../lib/playerIdentity";
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
+import { resolvePlayerIdFromUserId } from "../../lib/playerIdentity";
 import ActionDrawer from "../../components/commandcenter/ActionDrawer";
+import { resolvePlayerIdFromUserId } from "../../lib/playerIdentity";
 import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 
+import { resolvePlayerIdFromUserId } from "../../lib/playerIdentity";
 type AnyRow = any;
 
 function nowIso() { return new Date().toISOString(); }
@@ -30,7 +36,17 @@ function TagPill(props: { t: string }) {
 }
 
 export default function State789ThreadsPage() {
-  const nav = useNavigate();
+  
+  async function openDossierByUserId(userId: string) {
+    try {
+      const pid = await resolvePlayerIdFromUserId(userId);
+      if (!pid) { alert("No player_id found for that user."); return; }
+      nav(`/dossier/${encodeURIComponent(pid)}`);
+    } catch (e: any) {
+      alert(String(e?.message || e || "Dossier lookup failed"));
+    }
+  }
+const nav = useNavigate();
   const stateCode = "789";
 
   const cc = useMemo(() => getCommandCenterModules(), []);
@@ -399,6 +415,9 @@ export default function State789ThreadsPage() {
                     {((selected as any)?.pinned === true) ? "Unpin" : "Pin"}
                   </button>
                   <button className="zombie-btn" type="button" onClick={openEdit}>Edit</button>
+                  <button className="zombie-btn" type="button" onClick={() => openDossierByUserId(String((selected as any)?.created_by || ""))}>
+                    Open Creator Dossier
+                  </button>
                   <button className="zombie-btn" type="button" onClick={deleteThread}>Delete</button>
                 </div>
               </div>
@@ -508,3 +527,4 @@ export default function State789ThreadsPage() {
     </CommandCenterShell>
   );
 }
+

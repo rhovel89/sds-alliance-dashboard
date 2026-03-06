@@ -59,3 +59,34 @@ export async function listMyAllianceMemberships(playerId: string) {
     return [];
   }
 }
+
+export async function resolvePlayerIdFromUserId(userId: string): Promise<string | null> {
+  const uid = String(userId || "").trim();
+  if (!uid) return null;
+
+  // 1) Canonical link
+  try {
+    const link = await supabase
+      .from("player_auth_links")
+      .select("player_id,user_id")
+      .eq("user_id", uid)
+      .maybeSingle();
+
+    if (!link.error && link.data?.player_id) return String(link.data.player_id);
+  } catch {}
+
+  // 2) Fallback: players(auth_user_id) oldest
+  try {
+    const p = await supabase
+      .from("players")
+      .select("id,auth_user_id,created_at")
+      .eq("auth_user_id", uid)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!p.error && p.data?.id) return String(p.data.id);
+  } catch {}
+
+  return null;
+}
