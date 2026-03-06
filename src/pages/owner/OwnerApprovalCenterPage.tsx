@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
 import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 
-import ApprovalsPane from "";
-import AssignPane from "";
+import ApprovalsPane from "./OwnerAccessRequestsPage";
+import AssignPane from "./OwnerPlayerIntakePage";
 
 export default function OwnerApprovalCenterPage() {
   const nav = useNavigate();
@@ -30,21 +30,19 @@ export default function OwnerApprovalCenterPage() {
         </div>
       }
     >
-      <div style={{ display:"grid", gridTemplateColumns:"1fr", gap: 12 }}>
-        <div style={{ opacity: 0.75, fontSize: 12 }}>
-          Workflow: approve request → assign alliance/role → done. RLS enforces all access.
+      <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 10 }}>
+        Workflow: approve request → assign alliance/role → done. RLS enforces all access.
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap: 12, alignItems:"start" }}>
+        <div style={{ border:"1px solid rgba(255,255,255,0.08)", background:"rgba(255,255,255,0.03)", borderRadius: 14, padding: 10 }}>
+          <div style={{ fontWeight: 950, marginBottom: 8 }}>Approve</div>
+          {tab === "approve" ? <ApprovalsPane /> : <div style={{ opacity: 0.7 }}>Switch to Approvals tab.</div>}
         </div>
 
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap: 12, alignItems:"start" }}>
-          <div style={{ border:"1px solid rgba(255,255,255,0.08)", background:"rgba(255,255,255,0.03)", borderRadius: 14, padding: 10 }}>
-            <div style={{ fontWeight: 950, marginBottom: 8 }}>Approve</div>
-            {tab === "approve" ? <ApprovalsPane /> : <div style={{ opacity: 0.7 }}>Switch to Approvals tab.</div>}
-          </div>
-
-          <div style={{ border:"1px solid rgba(255,255,255,0.08)", background:"rgba(255,255,255,0.03)", borderRadius: 14, padding: 10 }}>
-            <div style={{ fontWeight: 950, marginBottom: 8 }}>Assign</div>
-            {tab === "assign" ? <AssignPane /> : <div style={{ opacity: 0.7 }}>Switch to Assign tab.</div>}
-          </div>
+        <div style={{ border:"1px solid rgba(255,255,255,0.08)", background:"rgba(255,255,255,0.03)", borderRadius: 14, padding: 10 }}>
+          <div style={{ fontWeight: 950, marginBottom: 8 }}>Assign</div>
+          {tab === "assign" ? <AssignPane /> : <div style={{ opacity: 0.7 }}>Switch to Assign tab.</div>}
         </div>
       </div>
     </CommandCenterShell>
