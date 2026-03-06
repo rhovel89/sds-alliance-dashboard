@@ -4,14 +4,17 @@
   --z-blood:#b0121b;
   --z-blood2:#ff2a2a;
   --z-toxic:#56f06a;
+  --z-text:rgba(255,255,255,.92);
+  --z-muted:rgba(255,255,255,.62);
 }
 
 html, body {
   height: 100%;
-  background: radial-gradient(900px circle at 10% -10%, rgba(176,18,27,0.28), transparent 55%),
-              radial-gradient(900px circle at 90% 0%, rgba(255,42,42,0.12), transparent 52%),
-              linear-gradient(180deg, var(--z-bg1), var(--z-bg0));
-  color: rgba(255,255,255,0.92);
+  background:
+    radial-gradient(900px circle at 10% -10%, rgba(176,18,27,0.28), transparent 55%),
+    radial-gradient(900px circle at 90% 0%, rgba(255,42,42,0.12), transparent 52%),
+    linear-gradient(180deg, var(--z-bg1), var(--z-bg0));
+  color: var(--z-text);
 }
 
 body::before{
