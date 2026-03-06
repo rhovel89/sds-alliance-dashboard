@@ -329,7 +329,6 @@ export default function State789ThreadsPage() {
       const obj: any = (!existing.error && existing.data) ? existing.data : {};
       const payload: any = { state_code: stateCode, threads_channel_id: cid };
 
-      // satisfy NOT NULL alerts_channel_id if present
       payload.alerts_channel_id = obj?.alerts_channel_id ? obj.alerts_channel_id : cid;
 
       const up = await supabase.from("state_discord_defaults").upsert(payload as any, { onConflict: "state_code" } as any);
@@ -349,36 +348,23 @@ export default function State789ThreadsPage() {
       modules={modules}
       activeModuleKey="threads"
       onSelectModule={onSelectModule}
-      topRight={
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button className="zombie-btn" type="button" onClick={() => setDrawer(true)}>+ New Thread</button>
-        </div>
-      }
+      topRight={<button className="zombie-btn" type="button" onClick={() => setDrawer(true)}>+ New Thread</button>}
     >
       <div style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 12, alignItems: "start" }}>
         <div style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
           <div style={{ fontWeight: 950, fontSize: 14 }}>Threads</div>
           <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>Search, select, reply. (RLS enforced.)</div>
 
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search threads…"
-            style={{ marginTop: 10, width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
-          />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search threads…"
+            style={{ marginTop: 10, width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }} />
 
           {status ? <div style={{ marginTop: 10, fontSize: 12, opacity: 0.9 }}>{status}</div> : null}
           {loading ? <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>Loading…</div> : null}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
             {visibleThreads.map((t: any) => (
-              <button
-                key={String(t.id)}
-                type="button"
-                className="zombie-btn"
-                onClick={() => setSelected(t)}
-                style={{ textAlign: "left", whiteSpace: "normal", opacity: selected?.id === t.id ? 1 : 0.85 }}
-              >
+              <button key={String(t.id)} type="button" className="zombie-btn" onClick={() => setSelected(t)}
+                style={{ textAlign: "left", whiteSpace: "normal", opacity: selected?.id === t.id ? 1 : 0.85 }}>
                 <div style={{ display:"flex", gap: 8, alignItems:"center", justifyContent:"space-between" }}>
                   <div style={{ fontWeight: 900, minWidth: 0 }}>{String(t.title || "Thread")}</div>
                   {(t as any)?.pinned ? <span style={{ fontSize: 11, opacity: 0.8 }}>📌</span> : null}
@@ -447,11 +433,8 @@ export default function State789ThreadsPage() {
                     <input type="checkbox" checked={notifyDiscord} onChange={(e) => setNotifyDiscord(e.target.checked)} /> Notify Discord
                   </label>
 
-                  <select
-                    value={discordChannelId}
-                    onChange={(e) => setDiscordChannelId(e.target.value)}
-                    style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)", minWidth: 260 }}
-                  >
+                  <select value={discordChannelId} onChange={(e) => setDiscordChannelId(e.target.value)}
+                    style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)", minWidth: 260 }}>
                     <option value="">Discord Channel (state) — optional</option>
                     {(discordChannels || []).map((c: any) => (
                       <option key={String(c.id || c.channel_id)} value={String(c.channel_id || "")}>
@@ -466,16 +449,9 @@ export default function State789ThreadsPage() {
                 </div>
 
                 <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                  <textarea
-                    value={reply}
-                    onChange={(e) => setReply(e.target.value)}
-                    placeholder="Write a reply…"
-                    rows={4}
-                    style={{ flex: 1, padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)", color: "rgba(255,255,255,0.92)" }}
-                  />
-                  <button className="zombie-btn" type="button" onClick={postReply} style={{ whiteSpace: "nowrap" }}>
-                    Post
-                  </button>
+                  <textarea value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Write a reply…" rows={4}
+                    style={{ flex: 1, padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)", color: "rgba(255,255,255,0.92)" }} />
+                  <button className="zombie-btn" type="button" onClick={postReply} style={{ whiteSpace: "nowrap" }}>Post</button>
                 </div>
               </div>
             </>
@@ -487,46 +463,26 @@ export default function State789ThreadsPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={{ fontSize: 12, opacity: 0.85 }}>
             Scope
-            <select
-              value={scope}
-              onChange={(e) => setScope(e.target.value as any)}
-              style={{ marginLeft: 8, padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
-            >
+            <select value={scope} onChange={(e) => setScope(e.target.value as any)}
+              style={{ marginLeft: 8, padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}>
               <option value="state">State</option>
               <option value="alliance">Alliance</option>
             </select>
           </label>
 
           {scope === "alliance" ? (
-            <input
-              value={allianceCode}
-              onChange={(e) => setAllianceCode(e.target.value)}
-              placeholder="Alliance code (e.g. WOC)"
-              style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
-            />
+            <input value={allianceCode} onChange={(e) => setAllianceCode(e.target.value)} placeholder="Alliance code (e.g. WOC)"
+              style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }} />
           ) : null}
 
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title"
-            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
-          />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title"
+            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }} />
 
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Body"
-            rows={6}
-            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)", color: "rgba(255,255,255,0.92)" }}
-          />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Body" rows={6}
+            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)", color: "rgba(255,255,255,0.92)" }} />
 
-          <input
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="Tags (comma separated)"
-            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
-          />
+          <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags (comma separated)"
+            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }} />
 
           <div style={{ display: "flex", gap: 10 }}>
             <button className="zombie-btn" type="button" onClick={createThread}>Create</button>
