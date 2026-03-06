@@ -109,3 +109,33 @@ body::after{
 .cc-shell-rail button.zombie-btn{
   line-height: 1.15;
 }
+
+/* --- clipfix rail v2: stop intel/live ops clipping --- */
+.cc-shell-grid > .cc-shell-main,
+.cc-shell-grid > .cc-shell-rail{
+  min-width: 0;
+}
+
+.cc-shell-rail{
+  position: sticky;
+  top: 90px;                       /* below top nav */
+  height: calc(100vh - 118px);     /* FIXED height so it can scroll */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 18px;
+  overscroll-behavior: contain;
+}
+
+.cc-shell-rail *{
+  min-width: 0;
+}
+
+.cc-shell-rail .zombie-btn{
+  width: 100% !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow: hidden !important;
+  text-overflow: unset !important;
+  text-align: left;
+}
