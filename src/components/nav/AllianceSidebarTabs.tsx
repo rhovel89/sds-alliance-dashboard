@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { NavLink } from "react-router-dom";
+import { getAllianceSidebarTabs } from "../../navigation/navRegistry";
 
 type Props = {
   allianceCode: string;

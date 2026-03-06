@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "../../styles/commandCenter.css";
 import CommandPalette from "./CommandPalette";
+import CommandPaletteHost from "./CommandPaletteHost";
 
 export type CommandCenterModule = {
   key: string;

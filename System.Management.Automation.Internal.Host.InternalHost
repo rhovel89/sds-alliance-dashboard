@@ -1,0 +1,36 @@
+import React, { useEffect, useMemo, useState } from "react";
+import CommandPalette from "./CommandPalette";
+import { getCommandPaletteItems } from "../../navigation/navRegistry";
+
+export default function CommandPaletteHost() {
+  const [open, setOpen] = useState(false);
+  const items = useMemo(() => getCommandPaletteItems(), []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const isK = (e.key || "").toLowerCase() === "k";
+      const combo = (e.ctrlKey || e.metaKey) && isK;
+
+      if (combo) {
+        e.preventDefault();
+        setOpen((v) => !v);
+      }
+      if (open && e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  function pick(to: string) {
+    setOpen(false);
+    // Use SPA navigation if possible; fallback to hard nav
+    try {
+      window.history.pushState({}, "", to);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    } catch {
+      window.location.assign(to);
+    }
+  }
+
+  return <CommandPalette open={open} items={items} onClose={() => setOpen(false)} onPick={pick} />;
+}

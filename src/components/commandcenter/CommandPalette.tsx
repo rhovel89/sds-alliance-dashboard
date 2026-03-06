@@ -1,80 +1,128 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { CommandCenterModule } from "./CommandCenterShell";
+import React, { useEffect, useMemo, useState } from "react";
+import type { NavItem } from "../../navigation/navRegistry";
 
-export function CommandPalette(props: {
+export default function CommandPalette(props: {
   open: boolean;
-  title?: string;
-  modules: CommandCenterModule[];
-  onSelect: (key: string) => void;
+  items: NavItem[];
   onClose: () => void;
+  onPick: (to: string) => void;
 }) {
-  const { open, title, modules, onSelect, onClose } = props;
+  const open = !!props.open;
+  const items = props.items || [];
   const [q, setQ] = useState("");
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (!open) return;
-    setQ("");
-    const t = window.setTimeout(() => inputRef.current?.focus(), 10);
-    return () => window.clearTimeout(t);
+    if (open) setQ("");
   }, [open]);
 
   const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return modules;
-    return modules.filter((m) => {
-      const hay = (m.label + " " + (m.hint || "") + " " + m.key).toLowerCase();
-      return hay.includes(needle);
+    const term = String(q || "").trim().toLowerCase();
+    if (!term) return items;
+    return items.filter((x) => {
+      const s = `${x.label} ${x.hint || ""} ${x.group || ""}`.toLowerCase();
+      return s.includes(term);
     });
-  }, [q, modules]);
+  }, [items, q]);
 
   useEffect(() => {
-    if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-      if (e.key === "Enter" && filtered[0]) onSelect(filtered[0].key);
+      if (!open) return;
+      if (e.key === "Escape") props.onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, filtered, onClose, onSelect]);
+  }, [open]);
 
   if (!open) return null;
 
   return (
-    <div className="cc-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
-      <div className="cc-palette" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="cc-paletteHeader">
-          <div className="cc-paletteTitle">{title || "COMMAND PALETTE"}</div>
-          <div className="cc-paletteHint">Esc to close • Enter to open</div>
+    <div
+      onMouseDown={() => props.onClose()}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: "rgba(0,0,0,0.55)",
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        paddingTop: 90,
+      }}
+    >
+      <div
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{
+          width: 760,
+          maxWidth: "calc(100vw - 28px)",
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: "linear-gradient(180deg, rgba(12,15,19,.98), rgba(7,8,10,.98))",
+          boxShadow: "0 22px 70px rgba(0,0,0,.62)",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ padding: 12, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ fontWeight: 950, letterSpacing: 0.6, textTransform: "uppercase", fontSize: 12, opacity: 0.9 }}>
+            Command Palette
+          </div>
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Type to search…"
+            style={{
+              marginTop: 10,
+              width: "100%",
+              padding: "12px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.25)",
+              color: "rgba(255,255,255,0.92)",
+              outline: "none",
+            }}
+          />
+          <div style={{ marginTop: 8, fontSize: 12, opacity: 0.65 }}>
+            Tip: Ctrl/Cmd + K to open • Esc to close
+          </div>
         </div>
 
-        <input
-          ref={inputRef}
-          className="cc-paletteInput"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Type to filter modules…"
-        />
-
-        <div className="cc-paletteList" role="list">
-          {filtered.map((m) => (
+        <div style={{ maxHeight: "62vh", overflow: "auto" }}>
+          {filtered.map((x) => (
             <button
-              key={m.key}
+              key={x.key}
               type="button"
-              className="cc-paletteItem"
-              onClick={() => onSelect(m.key)}
+              className="zombie-btn"
+              onClick={() => props.onPick(x.to)}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                borderRadius: 0,
+                padding: "12px 12px",
+                borderLeft: "none",
+                borderRight: "none",
+                borderTop: "none",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                background: "rgba(0,0,0,0.12)",
+              }}
             >
-              <div className="cc-paletteItemLabel">{m.label}</div>
-              {m.hint ? <div className="cc-paletteItemHint">{m.hint}</div> : null}
+              <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 900 }}>
+                    {x.icon ? `${x.icon} ` : ""}{x.label}
+                  </div>
+                  {x.hint ? <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{x.hint}</div> : null}
+                </div>
+                {x.group ? (
+                  <div style={{ fontSize: 11, opacity: 0.7, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>
+                    {x.group}
+                  </div>
+                ) : null}
+              </div>
             </button>
           ))}
-          {filtered.length === 0 ? (
-            <div className="cc-paletteEmpty">No matches.</div>
-          ) : null}
+          {!filtered.length ? <div style={{ padding: 12, opacity: 0.7 }}>No matches.</div> : null}
         </div>
       </div>
     </div>
   );
 }
-
-export default CommandPalette;
