@@ -1,347 +1,242 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "../../lib/supabaseBrowserClient";
+import { useNavigate } from "react-router-dom";
+import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
+import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
+import { supabase } from "../../lib/supabaseClient";
 
-type PlayerRow = { id: string; name: string | null; game_name: string | null };
-type AchRow = {
-  id: string;
-  state_code: string;
-  player_id: string;
-  title: string;
-  status: string;
-  progress_percent: number | null;
-  note: string | null;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-};
+function s(v: any) { return v === null || v === undefined ? "" : String(v); }
 
-function labelForPlayer(p: PlayerRow) {
-  const a = (p.game_name || "").trim();
-  const b = (p.name || "").trim();
-  if (a && b && a.toLowerCase() !== b.toLowerCase()) return `${a} (${b})`;
-  return a || b || p.id.slice(0, 8);
-}
+type PlayerRow = { id: string; name?: string | null; game_name?: string | null };
+type TypeRow = { id: string; state_code?: string | null; name?: string | null; active?: boolean | null };
+type OptionRow = { id: string; achievement_type_id?: string | null; label?: string | null; active?: boolean | null };
 
 export default function OwnerStateAchievementsRosterPage() {
+  const nav = useNavigate();
   const stateCode = "789";
 
+  const cc = useMemo(() => getCommandCenterModules(), []);
+  const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
+  function onSelectModule(k: string) { const to = cc.find((m) => m.key === k)?.to; if (to) nav(to); }
+
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const [playerQ, setPlayerQ] = useState("");
   const [players, setPlayers] = useState<PlayerRow[]>([]);
-  
-  const [newGameName, setNewGameName] = useState<string>("");
-  const [newAllianceCode, setNewAllianceCode] = useState<string>("");
-  const [newNote, setNewNote] = useState<string>("");const [playerId, setPlayerId] = useState<string>("");
+  const [selected, setSelected] = useState<PlayerRow | null>(null);
 
-  const [rows, setRows] = useState<AchRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [statusMsg, setStatusMsg] = useState<string>("");
+  const [types, setTypes] = useState<TypeRow[]>([]);
+  const [options, setOptions] = useState<OptionRow[]>([]);
+  const [typeId, setTypeId] = useState("");
+  const [optionId, setOptionId] = useState("");
+  const [customTitle, setCustomTitle] = useState("");
+  const [notes, setNotes] = useState("");
 
-  const [title, setTitle] = useState("");
-  const [achStatus, setAchStatus] = useState<"in_progress" | "completed" | "revoked">("completed");
-  const [progress, setProgress] = useState<string>("100");
-  const [note, setNote] = useState("");
+  const [awards, setAwards] = useState<any[]>([]);
 
-  const selectedPlayer = useMemo(() => players.find(p => p.id === playerId) ?? null, [players, playerId]);
+  const filteredPlayers = useMemo(() => {
+    const t = s(playerQ).trim().toLowerCase();
+    if (!t) return players.slice(0, 80);
+    return players.filter(p => (`${s(p.game_name)} ${s(p.name)} ${p.id}`).toLowerCase().includes(t)).slice(0, 80);
+  }, [players, playerQ]);
 
-  async function loadPlayers() {
-    const res = await supabase
-      .from("players")
-      .select("id, name, game_name")
-      .order("game_name", { ascending: true });
+  const filteredOptions = useMemo(() => {
+    const tid = s(typeId).trim();
+    if (!tid) return [];
+    return options.filter(o => String(o.achievement_type_id || "") === tid && (o.active !== false));
+  }, [options, typeId]);
 
-    if (res.error) {
-      setStatusMsg(res.error.message);
-      setPlayers([]);
-      return;
-    }
-
-    const list = (res.data ?? []) as any as PlayerRow[];
-    setPlayers(list);
-
-    if (!playerId && list.length) setPlayerId(list[0].id);
+  async function loadCatalog() {
+    const t = await supabase.from("state_achievement_types").select("*").eq("state_code", stateCode).order("name", { ascending: true });
+    if (!t.error) setTypes((t.data || []) as any[]);
+    const o = await supabase.from("state_achievement_options").select("*").order("label", { ascending: true });
+    if (!o.error) setOptions((o.data || []) as any[]);
   }
 
-  async function loadAchievements(pid: string) {
+  async function loadPlayers() {
     setLoading(true);
-    setStatusMsg("");
+    const r = await supabase.from("players").select("id,name,game_name").order("created_at", { ascending: false }).limit(500);
+    setLoading(false);
+    if (r.error) { setStatus(r.error.message); return; }
+    setPlayers((r.data || []) as any[]);
+  }
 
-    const res = await supabase
+  async function loadAwards(pid: string) {
+    const r = await supabase
       .from("state_player_achievements")
       .select("*")
       .eq("state_code", stateCode)
       .eq("player_id", pid)
-      .order("created_at", { ascending: false });
+      .order("awarded_at", { ascending: false })
+      .limit(200);
 
-    setLoading(false);
-
-    if (res.error) {
-      setStatusMsg(res.error.message);
-      setRows([]);
-      return;
-    }
-
-    setRows((res.data ?? []) as any);
+    if (r.error) { setStatus(r.error.message); setAwards([]); return; }
+    setAwards((r.data || []) as any[]);
   }
 
-  useEffect(() => { void loadPlayers(); /* eslint-disable-next-line */ }, []);
-  useEffect(() => { if (playerId) void loadAchievements(playerId); /* eslint-disable-next-line */ }, [playerId]);
+  useEffect(() => {
+    (async () => {
+      setStatus("");
+      await loadCatalog();
+      await loadPlayers();
+    })();
+  }, []);
 
-  async function addAchievement() {
-    const t = title.trim();
-    if (!t) return alert("Title required.");
+  useEffect(() => {
+    if (selected?.id) loadAwards(selected.id);
+    else setAwards([]);
+  }, [selected?.id]);
 
-    const u = await supabase.auth.getUser();
-    const uid = u.data.user?.id ?? "";
-    if (!uid) return alert("Please sign in.");
+  async function award() {
+    try {
+      setStatus("");
+      if (!selected?.id) { setStatus("Select a player first."); return; }
 
-    const pp = progress.trim();
-    const pInt = pp ? Number(pp) : null;
-    const progress_percent = Number.isFinite(pInt as any) ? Math.max(0, Math.min(100, Math.floor(pInt as any))) : null;
+      const u = await supabase.auth.getUser();
+      const uid = u.data?.user?.id;
 
-    setStatusMsg("Saving…");
+      const title =
+        s(customTitle).trim() ||
+        (types.find(t => String(t.id) === String(typeId))?.name ? String(types.find(t => String(t.id) === String(typeId))?.name) : "Achievement");
 
-    const ins = await supabase.from("state_player_achievements").insert({
-      state_code: stateCode,
-      player_id: playerId,
-      title: t,
-      status: achStatus,
-      progress_percent,
-      note: note.trim() || null,
-      created_by: uid,
-    } as any);
+      const payload: any = {
+        state_code: stateCode,
+        player_id: selected.id,
+        player_name: s(selected.game_name || selected.name),
+        achievement_type_id: typeId || null,
+        option_id: optionId || null,
+        title,
+        notes: s(notes).trim() || null,
+        status: "completed",
+        awarded_by: uid || null,
+        awarded_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
 
-    if (ins.error) {
-      setStatusMsg(ins.error.message);
-      return;
+      const ins = await supabase.from("state_player_achievements").insert(payload).select("*").maybeSingle();
+      if (ins.error) { setStatus(ins.error.message); return; }
+
+      setCustomTitle("");
+      setNotes("");
+      setStatus("Awarded ✅");
+      window.setTimeout(() => setStatus(""), 900);
+
+      await loadAwards(selected.id);
+    } catch (e: any) {
+      setStatus(String(e?.message || e || "Award failed"));
     }
-
-    setTitle("");
-    setAchStatus("completed");
-    setProgress("100");
-    setNote("");
-    setStatusMsg("Saved ✅");
-    await loadAchievements(playerId);
-    window.setTimeout(() => setStatusMsg(""), 1200);
   }
 
-  async function updateRow(id: string, patch: Partial<AchRow>) {
-    setStatusMsg("Updating…");
-    const up = await supabase.from("state_player_achievements").update({
-      status: patch.status,
-      progress_percent: patch.progress_percent,
-      note: patch.note,
-      updated_at: new Date().toISOString(),
-    } as any).eq("id", id);
-
-    if (up.error) { setStatusMsg(up.error.message); return; }
-    setStatusMsg("Updated ✅");
-    await loadAchievements(playerId);
-    window.setTimeout(() => setStatusMsg(""), 1200);
-  }
-
-  async function removeRow(id: string) {
-    const ok = confirm("Delete this achievement record?");
-    if (!ok) return;
-    setStatusMsg("Deleting…");
-    const del = await supabase.from("state_player_achievements").delete().eq("id", id);
-    if (del.error) { setStatusMsg(del.error.message); return; }
-    setStatusMsg("Deleted ✅");
-    await loadAchievements(playerId);
-    window.setTimeout(() => setStatusMsg(""), 1200);
-  }
-  async function addPlaceholderPlayer() {
-    const gn = newGameName.trim();
-    if (!gn) return alert("Game name required.");
-
-    setStatusMsg("Creating placeholder player…");
-
-    // Create player row (auth_user_id stays NULL until you link later)
-    let payload: any = { game_name: gn, name: gn };
-    const nt = newNote.trim();
-    if (nt) payload.note = nt;
-
-    let ins = await supabase
-      .from("players")
-      .insert(payload)
-      .select("id")
-      .single();
-
-    // If note column doesn't exist in this environment, retry without it
-    if (ins.error && payload.note) {
-      delete payload.note;
-      ins = await supabase
-        .from("players")
-        .insert(payload)
-        .select("id")
-        .single();
+  async function remove(id: string) {
+    try {
+      if (!confirm("Delete this awarded achievement?")) return;
+      const del = await supabase.from("state_player_achievements").delete().eq("id", id);
+      if (del.error) { setStatus(del.error.message); return; }
+      if (selected?.id) await loadAwards(selected.id);
+    } catch (e: any) {
+      setStatus(String(e?.message || e || "Delete failed"));
     }
-
-    if (ins.error) {
-      setStatusMsg("Player create failed: " + ins.error.message);
-      return;
-    }
-
-    const newId = String((ins.data as any)?.id || "");
-    if (!newId) {
-      setStatusMsg("Player create failed: missing id");
-      return;
-    }
-
-    // Optional: assign alliance membership
-    const ac = newAllianceCode.trim().toUpperCase();
-    if (ac) {
-      // Validate alliance exists (prevents FK failure)
-      const chk = await supabase.from("alliances").select("code").eq("code", ac).maybeSingle();
-      if (chk.error) {
-        setStatusMsg("Player created ✅ but alliance check failed: " + chk.error.message);
-      } else if (!chk.data?.code) {
-        setStatusMsg("Player created ✅ but alliance code not found in DB: " + ac);
-      } else {
-        const mem = await supabase.from("player_alliances").insert({
-          player_id: newId,
-          alliance_code: ac,
-          role: "member"
-        } as any);
-
-        if (mem.error) {
-          setStatusMsg("Player created ✅ but membership failed: " + mem.error.message);
-        }
-      }
-    }
-
-    // refresh list + select new player
-    await loadPlayers();
-    setPlayerId(newId);
-
-    setNewGameName("");
-    setNewAllianceCode("");
-    setNewNote("");
-    window.setTimeout(() => setStatusMsg(""), 1400);
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>🏆 State {stateCode} Achievements Roster</h1>
-        <div style={{ opacity: 0.8, fontSize: 12 }}>{statusMsg || "Record achievements for any player (does not affect your /me unless you select yourself)."}</div>
-      </div>
+    <CommandCenterShell
+      title="Owner • State Achievements Roster"
+      subtitle="Award achievements directly to players (shows on their dossier)"
+      modules={modules}
+      activeModuleKey="owner"
+      onSelectModule={onSelectModule}
+      topRight={
+        <div style={{ display:"flex", gap: 8, flexWrap:"wrap" }}>
+          <button className="zombie-btn" type="button" onClick={() => nav("/owner/state-achievements")}>Legacy</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/owner/dossier")}>Dossier Lookup</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/dashboard")}>Dashboard</button>
+        </div>
+      }
+    >
+      {status ? <div style={{ marginBottom: 10, border:"1px solid rgba(176,18,27,0.35)", background:"rgba(176,18,27,0.12)", borderRadius: 12, padding: 10 }}>{status}</div> : null}
+      {loading ? <div style={{ opacity: 0.75 }}>Loading…</div> : null}
 
-      <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "360px 1fr", gap: 14 }}>
-        <div style={{ border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: 12 }}>          <div style={{ fontWeight: 900, marginBottom: 8 }}>Add placeholder player</div>
-          <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
-            <input
-              value={newGameName}
-              onChange={(e) => setNewGameName(e.target.value)}
-              placeholder="Game name (required)"
-            />
-            <input
-              value={newAllianceCode}
-              onChange={(e) => setNewAllianceCode(e.target.value)}
-              placeholder="Alliance code (optional, e.g. OZ)"
-            />
-            <textarea
-              value={newNote}
-              onChange={(e) => setNewNote(e.target.value)}
-              placeholder="Note (optional)"
-              rows={3}
-            />
-            <button
-              onClick={addPlaceholderPlayer}
-              disabled={!newGameName.trim()}
-              style={{ padding: "10px 12px", borderRadius: 10 }}
-            >
-              Add player to roster
-            </button>
+      <div style={{ display:"grid", gridTemplateColumns:"420px 1fr", gap: 12, alignItems:"start" }}>
+        <div style={{ border:"1px solid rgba(255,255,255,0.10)", background:"rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+          <div style={{ fontWeight: 950 }}>Pick Player</div>
+          <input value={playerQ} onChange={(e)=>setPlayerQ(e.target.value)} placeholder="Search player…"
+            style={{ marginTop: 10, width:"100%", padding:"10px 12px", borderRadius: 12, border:"1px solid rgba(255,255,255,0.12)", background:"rgba(0,0,0,0.25)", color:"rgba(255,255,255,0.92)" }} />
+
+          <div style={{ display:"flex", flexDirection:"column", gap: 8, marginTop: 10, maxHeight: 520, overflow:"auto" }}>
+            {filteredPlayers.map(p => (
+              <button key={p.id} className="zombie-btn" type="button" style={{ textAlign:"left", whiteSpace:"normal", opacity: selected?.id === p.id ? 1 : 0.86 }}
+                onClick={() => setSelected(p)}>
+                <div style={{ fontWeight: 900 }}>{s(p.game_name || p.name || "Player")}</div>
+                <div style={{ fontSize: 12, opacity: 0.7 }}>{p.id}</div>
+              </button>
+            ))}
           </div>
-
-
-          <div style={{ fontWeight: 900, marginBottom: 8 }}>Select player</div>
-          <select value={playerId} onChange={(e) => setPlayerId(e.target.value)} style={{ width: "100%", padding: 10, borderRadius: 10 }}>
-            {players.map((p) => <option key={p.id} value={p.id}>{labelForPlayer(p)}</option>)}
-          </select>
-
-          <div style={{ marginTop: 14, fontWeight: 900 }}>Add achievement</div>
-
-          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Achievement title" />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <select value={achStatus} onChange={(e) => setAchStatus(e.target.value as any)} style={{ padding: 10, borderRadius: 10 }}>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="revoked">Revoked</option>
-              </select>
-              <input value={progress} onChange={(e) => setProgress(e.target.value)} placeholder="Progress % (0-100)" style={{ width: 160 }} />
-            </div>
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" rows={4} />
-            <button onClick={addAchievement} disabled={!playerId || !title.trim()} style={{ padding: "10px 12px", borderRadius: 10 }}>
-              Add to roster
-            </button>
-          </div>
-
-          {selectedPlayer ? (
-            <div style={{ marginTop: 12, opacity: 0.75, fontSize: 12 }}>
-              Target: <b>{labelForPlayer(selectedPlayer)}</b>
-            </div>
-          ) : null}
         </div>
 
-        <div style={{ border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ fontWeight: 900 }}>Records</div>
-            <button onClick={() => playerId && loadAchievements(playerId)} disabled={!playerId}>Refresh</button>
+        <div style={{ display:"flex", flexDirection:"column", gap: 12 }}>
+          <div style={{ border:"1px solid rgba(255,255,255,0.10)", background:"rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+            <div style={{ fontWeight: 950 }}>Award Achievement</div>
+            <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
+              Select type/option or enter a custom title.
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap: 10, marginTop: 10 }}>
+              <select value={typeId} onChange={(e)=>{ setTypeId(e.target.value); setOptionId(""); }}
+                style={{ padding:"10px 12px", borderRadius: 12, border:"1px solid rgba(255,255,255,0.12)", background:"rgba(0,0,0,0.25)", color:"rgba(255,255,255,0.92)" }}>
+                <option value="">Type (optional)</option>
+                {types.filter(t => t.active !== false).map(t => (
+                  <option key={t.id} value={t.id}>{s(t.name || "Type")}</option>
+                ))}
+              </select>
+
+              <select value={optionId} onChange={(e)=>setOptionId(e.target.value)}
+                style={{ padding:"10px 12px", borderRadius: 12, border:"1px solid rgba(255,255,255,0.12)", background:"rgba(0,0,0,0.25)", color:"rgba(255,255,255,0.92)" }}>
+                <option value="">Option (optional)</option>
+                {filteredOptions.map(o => (
+                  <option key={o.id} value={o.id}>{s(o.label || "Option")}</option>
+                ))}
+              </select>
+
+              <input value={customTitle} onChange={(e)=>setCustomTitle(e.target.value)} placeholder="Custom title (optional)"
+                style={{ gridColumn:"1 / -1", padding:"10px 12px", borderRadius: 12, border:"1px solid rgba(255,255,255,0.12)", background:"rgba(0,0,0,0.25)", color:"rgba(255,255,255,0.92)" }} />
+
+              <textarea value={notes} onChange={(e)=>setNotes(e.target.value)} placeholder="Notes (optional)" rows={3}
+                style={{ gridColumn:"1 / -1", padding:"10px 12px", borderRadius: 12, border:"1px solid rgba(255,255,255,0.12)", background:"rgba(0,0,0,0.20)", color:"rgba(255,255,255,0.92)" }} />
+            </div>
+
+            <div style={{ display:"flex", gap: 10, marginTop: 10, flexWrap:"wrap" }}>
+              <button className="zombie-btn" type="button" onClick={award}>Award</button>
+              {selected?.id ? (
+                <button className="zombie-btn" type="button" onClick={() => nav(`/dossier/${encodeURIComponent(selected.id)}`)}>
+                  Open Dossier
+                </button>
+              ) : null}
+            </div>
           </div>
 
-          {loading ? (
-            <div style={{ padding: 10 }}>Loading…</div>
-          ) : rows.length === 0 ? (
-            <div style={{ padding: 10, opacity: 0.85 }}>No achievement records for this player yet.</div>
-          ) : (
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              {rows.map((r) => (
-                <div key={r.id} style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                    <div style={{ fontWeight: 900 }}>{r.title}</div>
-                    <div style={{ opacity: 0.7, fontSize: 12 }}>
-                      {r.created_at ? new Date(r.created_at).toLocaleString() : ""}
-                    </div>
-                  </div>
+          <div style={{ border:"1px solid rgba(255,255,255,0.10)", background:"rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+            <div style={{ fontWeight: 950 }}>Awarded to selected player</div>
+            {!selected ? <div style={{ opacity: 0.75, marginTop: 8 }}>Select a player.</div> : null}
 
-                  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                    <select
-                      value={(r.status || "completed") as any}
-                      onChange={(e) => updateRow(r.id, { status: e.target.value as any, progress_percent: r.progress_percent, note: r.note })}
-                      style={{ padding: "8px 10px", borderRadius: 10 }}
-                    >
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="revoked">Revoked</option>
-                    </select>
-
-                    <input
-                      value={r.progress_percent ?? ""}
-                      onChange={(e) => {
-                        const v = e.target.value.trim();
-                        const n = v ? Math.max(0, Math.min(100, Math.floor(Number(v)))) : null;
-                        updateRow(r.id, { status: r.status as any, progress_percent: Number.isFinite(n as any) ? (n as any) : null, note: r.note });
-                      }}
-                      placeholder="%"
-                      style={{ width: 90, padding: "8px 10px", borderRadius: 10 }}
-                    />
-
-                    <button onClick={() => removeRow(r.id)} style={{ padding: "8px 10px", borderRadius: 10 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap: 8, marginTop: 10 }}>
+              {awards.map((a: any) => (
+                <div key={String(a.id)} style={{ border:"1px solid rgba(255,255,255,0.08)", background:"rgba(0,0,0,0.18)", borderRadius: 12, padding: 10 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", gap: 10 }}>
+                    <div style={{ fontWeight: 900 }}>{String(a.title || a.achievement_name || "Achievement")}</div>
+                    <button className="zombie-btn" type="button" style={{ padding:"6px 10px", fontSize: 12 }} onClick={() => remove(String(a.id))}>
                       Delete
                     </button>
                   </div>
-
-                  {r.note ? <div style={{ marginTop: 8, whiteSpace: "pre-wrap", opacity: 0.9 }}>{r.note}</div> : null}
+                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+                    {a.awarded_at ? new Date(String(a.awarded_at)).toLocaleString() : ""}
+                  </div>
                 </div>
               ))}
+              {selected && !awards.length ? <div style={{ opacity: 0.75 }}>No awards yet.</div> : null}
             </div>
-          )}
+          </div>
         </div>
       </div>
-    </div>
+    </CommandCenterShell>
   );
 }
-
-
-

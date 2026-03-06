@@ -1,133 +1,92 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { getCanonicalPlayerIdForUser } from "../../utils/getCanonicalPlayerId";
+import { resolveMyPlayerIdentity } from "../../lib/playerIdentity";
 
-type Row = Record<string, any>;
+type AnyRow = any;
 
 export default function MyAchievementsSummaryPanel() {
-  
-  const [playerId, setPlayerId] = useState<string>("");
-const [requests, setRequests] = useState<Row[]>([]);
-  const [adminRows, setAdminRows] = useState<Row[]>([]);
-  const [status, setStatus] = useState<string>("");
+  const [status, setStatus] = useState("");
+  const [requests, setRequests] = useState<AnyRow[]>([]);
+  const [adminRows, setAdminRows] = useState<AnyRow[]>([]);
 
-  async function load() {
-    setStatus("Loading…");
-    try {
-      const u = await supabase.auth.getUser();
-      const uid = u.data?.user?.id || null;
-      if (!uid) { setStatus("Not logged in."); setRequests([]); setAdminRows([]); return; }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setStatus("");
 
-      // Requests (what YOU submitted)
+      // 1) Requests (by name typically; keep existing behavior)
       const r = await supabase
         .from("state_achievement_requests")
         .select("*")
-        .eq("requester_user_id", uid)
         .order("created_at", { ascending: false })
         .limit(25);
 
-      if (!r.error) setRequests((r.data ?? []) as any);
+      if (!cancelled && !r.error) setRequests((r.data || []) as any[]);
 
-      // Admin-added achievements (what STAFF assigned to YOUR player_id)
-      const pid = await getCanonicalPlayerIdForUser(uid);
-      if (pid) {
-        const a = await supabase
-          .from("state_player_achievements")
-          .select("*")
-          .eq("player_id", pid)
-          .order("created_at", { ascending: false })
-          .limit(25);
-        if (!a.error) setAdminRows((a.data ?? []) as any);
-      } else {
-        setAdminRows([]);
+      // 2) Admin-awarded achievements (by canonical player_id)
+      const id = await resolveMyPlayerIdentity();
+      if (!id.playerId) {
+        if (!cancelled) setAdminRows([]);
+        return;
       }
 
-      setStatus("");
-    } catch (e: any) {
-      setStatus(String(e?.message || e || "Error"));
-      setRequests([]);
-      setAdminRows([]);
-    }
-  }
+      const a = await supabase
+        .from("state_player_achievements")
+        .select("*")
+        .eq("player_id", id.playerId)
+        .order("awarded_at", { ascending: false })
+        .limit(20);
 
-  useEffect(() => { void load(); }, []);
+      if (!cancelled) {
+        if (a.error) setStatus(a.error.message);
+        else setAdminRows((a.data || []) as any[]);
+      }
+    })();
 
-  const reqCounts = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const r of requests) {
-      const s = String(r.status || r.state || "unknown").toLowerCase();
-      c[s] = (c[s] || 0) + 1;
-    }
-    return c;
-  }, [requests]);
-
-  const adminCounts = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const r of adminRows) {
-      const s = String(r.status || "tracked").toLowerCase();
-      c[s] = (c[s] || 0) + 1;
-    }
-    return c;
-  }, [adminRows]);
+    return () => { cancelled = true; };
+  }, []);
 
   return (
-    <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ fontWeight: 950 }}>🏆 My Achievements</div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <a href="/state/789/achievements" style={{ textDecoration: "none" }}><button className="zombie-btn" type="button">Open State Achievements</button></a>
-          <button className="zombie-btn" type="button" onClick={() => void load()}>Refresh</button>
-        </div>
+    <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+      <div style={{ fontWeight: 950 }}>🏆 My Achievements</div>
+      {status ? <div style={{ marginTop: 8, fontSize: 12, opacity: 0.85 }}>{status}</div> : null}
+
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <a href="/state/789/achievements" style={{ textDecoration: "none" }}>
+          <button className="zombie-btn" type="button">Open State Achievements</button>
+        </a>
+        <a href="/me/dossier" style={{ textDecoration: "none" }}>
+          <button className="zombie-btn" type="button">Open Dossier Sheet</button>
+        </a>
       </div>
 
-      <div style={{ marginTop: 6, opacity: 0.85, fontSize: 12 }}>
-        {status ? status : `Requests: ${requests.length} • Admin-added: ${adminRows.length}`}
+      <div style={{ marginTop: 12, fontWeight: 900, opacity: 0.9 }}>Admin-awarded</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+        {adminRows.map((r: any, i: number) => (
+          <div key={String(r.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.18)", borderRadius: 12, padding: 10 }}>
+            <div style={{ fontWeight: 900 }}>{String(r.title || r.achievement_name || "Achievement")}</div>
+            <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+              {r.awarded_at ? new Date(String(r.awarded_at)).toLocaleString() : ""}
+              {r.alliance_code ? ` • ${String(r.alliance_code)}` : ""}
+            </div>
+          </div>
+        ))}
+        {!adminRows.length ? <div style={{ opacity: 0.75, fontSize: 12 }}>No admin-awarded achievements yet.</div> : null}
       </div>
 
-      <div style={{ marginTop: 10, display: "grid", gap: 12 }}>
-        <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 10 }}>
-          <div style={{ fontWeight: 900 }}>My Requests</div>
-          <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
-            {Object.keys(reqCounts).length ? Object.entries(reqCounts).map(([k,v]) => `${k}:${v}`).join("  ") : "No requests yet."}
+      <div style={{ marginTop: 12, fontWeight: 900, opacity: 0.9 }}>Recent requests</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+        {requests.slice(0, 8).map((r: any, i: number) => (
+          <div key={String(r.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.14)", borderRadius: 12, padding: 10 }}>
+            <div style={{ fontWeight: 900 }}>{String(r.title || r.achievement_name || r.type_name || "Request")}</div>
+            <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+              {r.created_at ? new Date(String(r.created_at)).toLocaleString() : ""}
+              {r.status ? ` • ${String(r.status)}` : ""}
+            </div>
           </div>
-          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-            {requests.slice(0, 5).map((r) => (
-              <div key={String(r.id)} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 10 }}>
-                <div style={{ fontWeight: 900 }}>
-                  {String(r.achievement_name || r.type_name || r.title || r.kind || "Achievement")}
-                  <span style={{ opacity: 0.75, fontSize: 12 }}>  •  {String(r.status || "unknown")}</span>
-                </div>
-                <div style={{ marginTop: 6, opacity: 0.8, fontSize: 12 }}>
-                  State: {String(r.state_code || r.state || "—")}  •  Progress: {String(r.progress_count ?? r.progress ?? "—")}/{String(r.required_count ?? r.required ?? "—")}
-                </div>
-              </div>
-            ))}
-            {!requests.length && !status ? <div style={{ opacity: 0.8 }}>No requests yet.</div> : null}
-          </div>
-        </div>
-
-        <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 10 }}>
-          <div style={{ fontWeight: 900 }}>Admin-added / Tracked For Me</div>
-          <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
-            {Object.keys(adminCounts).length ? Object.entries(adminCounts).map(([k,v]) => `${k}:${v}`).join("  ") : "No admin-added items yet."}
-          </div>
-          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-            {adminRows.slice(0, 5).map((r) => (
-              <div key={String(r.id)} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 10 }}>
-                <div style={{ fontWeight: 900 }}>{String(r.title || r.achievement_name || r.type_name || "Achievement")}</div>
-                <div style={{ marginTop: 6, opacity: 0.8, fontSize: 12 }}>
-                  State: {String(r.state_code || "—")}  •  Status: <b>{String(r.status || "tracked")}</b>
-                  {typeof r.progress_percent === "number" ? <span style={{ opacity: 0.75 }}>  •  {r.progress_percent}%</span> : null}
-                </div>
-                {r.note ? <div style={{ marginTop: 6, opacity: 0.8, fontSize: 12 }}>{String(r.note)}</div> : null}
-              </div>
-            ))}
-            {!adminRows.length && !status ? <div style={{ opacity: 0.8 }}>No admin-added achievements yet.</div> : null}
-          </div>
-        </div>
+        ))}
+        {!requests.length ? <div style={{ opacity: 0.75, fontSize: 12 }}>No requests yet.</div> : null}
       </div>
     </div>
   );
 }
-
-
