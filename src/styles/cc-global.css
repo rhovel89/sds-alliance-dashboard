@@ -144,3 +144,31 @@ body::after{
 .cc-shell-main .cc-shell-rail{
   display: none !important;
 }
+
+/* --- rail responsive override v3: NO overlap at 100% zoom --- */
+/* Default: stack rail UNDER main (prevents overlap on mid-width viewports) */
+.cc-shell-grid{
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+.cc-shell-rail{
+  display: block !important;
+  position: relative !important;
+  top: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Wide screens only: enable SIDE rail layout */
+@media (min-width: 1500px){
+  .cc-shell-grid{
+    grid-template-columns: minmax(0, 1fr) 420px !important;
+  }
+  .cc-shell-rail{
+    position: sticky !important;
+    top: 90px !important;
+    height: calc(100vh - 118px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+}
