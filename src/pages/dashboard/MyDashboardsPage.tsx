@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { getCanonicalPlayerIdForUser } from "../../utils/getCanonicalPlayerId";
+import OpsFeedPanel from "../../components/commandcenter/OpsFeedPanel";
 
 type Membership = { alliance_code: string; role: string | null };
 
