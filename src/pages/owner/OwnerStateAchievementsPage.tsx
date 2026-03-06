@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 import StateAchievementsExportPanel from "../../components/state/StateAchievementsExportPanel";
-
 type AnyRow = Record<string, any>;
 
 function nowUtc() { return new Date().toISOString(); }
@@ -737,3 +736,4 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
