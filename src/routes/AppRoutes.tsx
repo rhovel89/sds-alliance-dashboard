@@ -164,8 +164,8 @@ import State789HubPage from "../pages/state/State789HubPage";
 import AwaitingApprovalPage from "../pages/onboarding/AwaitingApprovalPage";
 import OwnerApprovalCenterPage from "../pages/owner/OwnerApprovalCenterPage";
 import DossierSheetPage from "../pages/me/DossierSheetPage";
-import PlayerDossierPage from "../pages/player/PlayerDossierPage";
 import OwnerDossierLookupPage from "../pages/owner/OwnerDossierLookupPage";
+import PlayerDossierPage from "../pages/player/PlayerDossierPage";
 
 export default function AppRoutes() {
   return (
