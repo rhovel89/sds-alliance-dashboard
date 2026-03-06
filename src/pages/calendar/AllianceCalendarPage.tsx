@@ -380,10 +380,120 @@ export default function AllianceCalendarPage() {
     await refetch();
   };
 
-  const deleteEvent = async (id: string) => {
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+  const toLocalIsoFromUtc = (utcString: string) => {
+    try {
+      const d = new Date(String(utcString || ""));
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    } catch {
+      return "";
+    }
+  };
+  const prevIsoDay = (iso: string) => {
+    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    const y = Number(m[1]); const mo = Number(m[2]); const da = Number(m[3]);
+    const d = new Date(y, mo - 1, da);
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  };
+  const isRecurringEvent = (e: any) => {
+    const rt = String(e?.recurrence_type ?? e?.frequency ?? "").toLowerCase();
+    if (rt && rt !== "none" && rt !== "single") return true;
+    if (Array.isArray(e?.recurrence_days) && e.recurrence_days.length) return true;
+    if (Array.isArray(e?.daysOfWeek) && e.daysOfWeek.length) return true;
+    const interval = Number(e?.recurrence_interval ?? e?.interval ?? 0);
+    if (Number.isFinite(interval) && interval > 0) return true;
+    return false;
+  };
+
+  const trySkipOccurrence = async (eventId: string, occurrenceIso: string) => {
+    const attempts: any[] = [
+      { event_id: eventId, occurrence_iso: occurrenceIso, kind: "skip" },
+      { event_id: eventId, occurrence_date: occurrenceIso, kind: "skip" },
+      { event_id: eventId, date_iso: occurrenceIso, kind: "skip" },
+      { event_id: eventId, occurrence_iso: occurrenceIso, action: "skip" },
+      { event_id: eventId, occurrence_date: occurrenceIso, action: "skip" },
+    ];
+
+    let lastErr: any = null;
+    for (const payload of attempts) {
+      const ins = await supabase.from("alliance_event_exceptions").insert(payload as any);
+      if (!ins.error) return;
+      lastErr = ins.error;
+      const msg = String(ins.error.message || "").toLowerCase();
+      if (msg.includes("column") && (msg.includes("does not exist") || msg.includes("unknown"))) continue;
+      if (msg.includes("relation") && msg.includes("does not exist")) break;
+      continue;
+    }
+    throw lastErr || new Error("Could not create occurrence exception.");
+  };
+
+  const tryTruncateSeries = async (eventId: string, occurrenceIso: string) => {
+    const prev = prevIsoDay(occurrenceIso);
+    if (!prev) throw new Error("Could not compute previous day for truncation.");
+    const attempts: any[] = [
+      { recurrence_end_date: prev },
+      { recurrence_until: prev },
+      { until_date: prev },
+      { recurrence_end: prev },
+    ];
+
+    let lastErr: any = null;
+    for (const patch of attempts) {
+      const up = await supabase.from("alliance_events").update(patch as any).eq("id", eventId);
+      if (!up.error) return;
+      lastErr = up.error;
+      const msg = String(up.error.message || "").toLowerCase();
+      if (msg.includes("column") && msg.includes("does not exist")) continue;
+      continue;
+    }
+    throw lastErr || new Error("Could not truncate recurring series.");
+  };
+
+  const deleteEvent = async (arg: any) => {
     if (!canEdit && !isOwner) return;
-    if (!confirm("Delete this event?")) return;
-    await supabase.from("alliance_events").delete().eq("id", id);
+
+    const id = typeof arg === "string" ? arg : getDeleteId(arg);
+    const e = typeof arg === "string" ? { id } : arg;
+
+    if (!id) return;
+
+    const recurring = isRecurringEvent(e);
+    const utc = String(getEventStartUtc(e) || "");
+    const occurrenceIso = utc ? toLocalIsoFromUtc(utc) : "";
+
+    // Non-recurring: keep old behavior
+    if (!recurring || !occurrenceIso) {
+      if (!confirm("Delete this event?")) return;
+      await supabase.from("alliance_events").delete().eq("id", id);
+      await refetch();
+      return;
+    }
+
+    const choice = window.prompt(
+      "Recurring event delete:\n\n1 = Delete THIS occurrence only\n2 = Delete THIS and ALL FUTURE\n3 = Delete ENTIRE SERIES\n\nEnter 1 / 2 / 3",
+      "1"
+    );
+
+    if (!choice) return;
+    const v = String(choice).trim();
+
+    try {
+      if (v === "3") {
+        if (!confirm("Delete ENTIRE series?")) return;
+        await supabase.from("alliance_events").delete().eq("id", id);
+      } else if (v === "2") {
+        if (!confirm("Delete this occurrence and ALL FUTURE occurrences?")) return;
+        await tryTruncateSeries(id, occurrenceIso);
+      } else {
+        if (!confirm("Delete THIS occurrence only?")) return;
+        await trySkipOccurrence(id, occurrenceIso);
+      }
+    } catch (err: any) {
+      alert(String(err?.message || err || "Delete failed"));
+    }
+
     await refetch();
   };
 
@@ -475,7 +585,7 @@ export default function AllianceCalendarPage() {
                   }}
                   onClick={(evt) => {
                     evt.stopPropagation();
-                    if (canEdit) deleteEvent(getDeleteId(e));
+                    if (canEdit) deleteEvent(e);
                   }}
                   title={canEdit ? "Click to delete" : undefined}
                 >
@@ -656,6 +766,7 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
 
 
 
