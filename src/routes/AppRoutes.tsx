@@ -163,6 +163,7 @@ import NotFoundPage from "../pages/NotFoundPage";
 import State789HubPage from "../pages/state/State789HubPage";
 import AwaitingApprovalPage from "../pages/onboarding/AwaitingApprovalPage";
 import OwnerApprovalCenterPage from "../pages/owner/OwnerApprovalCenterPage";
+import DossierSheetPage from "../pages/me/DossierSheetPage";
 
 export default function AppRoutes() {
   return (
@@ -299,6 +300,7 @@ export default function AppRoutes() {
       <Route path="/state/789/threads" element={<State789ThreadsPage />} />
       <Route path="/onboarding/pending" element={<AwaitingApprovalPage />} />
       <Route path="/owner/approval-center" element={<OwnerApprovalCenterPage />} />
+      <Route path="/me/dossier" element={<DossierSheetPage />} />
       <Route path="*" element={<NotFoundPage />} />
         <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterHomePage /></RequireAdmin>} />
               <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
