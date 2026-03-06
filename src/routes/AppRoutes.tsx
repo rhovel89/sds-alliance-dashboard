@@ -158,6 +158,7 @@ import OwnerOpsConsolePage from "../pages/owner/OwnerOpsConsolePage";
 import MeCommandCenterPage from "../pages/me/MeCommandCenterPage";
 import OwnerCommandCenterHomePage from "../pages/owner/OwnerCommandCenterHomePage";
 import State789ThreadsPage from "../pages/state/State789ThreadsPage";
+import OwnerAuthorityPage from "../pages/owner/OwnerAuthorityPage";
 
 export default function AppRoutes() {
   return (
@@ -176,6 +177,7 @@ export default function AppRoutes() {
       <Route path="/owner/permissions-db" element={<RequireAdmin><RouteRedirect to="/owner/permissions" /></RequireAdmin>} />
       <Route path="/owner/permissions-matrix-v3-v2" element={<RequireAdmin><RouteRedirect to="/owner/permissions" /></RequireAdmin>} />
       <Route path="/owner/alliance-ops" element={<RequireAdmin><OwnerAllianceOpsFlowPage /></RequireAdmin>} />
+      <Route path="/owner/authority" element={<OwnerAuthorityPage />} />
       <Route path="/owner/ops" element={<OwnerOpsConsolePage />} />
       <Route path="/owner/player-ops" element={<RequireAdmin><OwnerPlayerOpsFlowPage /></RequireAdmin>} />
       <Route path="/alliances-v2" element={<AllianceDirectoryDbPage />} />
