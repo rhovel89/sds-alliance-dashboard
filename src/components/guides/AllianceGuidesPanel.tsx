@@ -682,7 +682,7 @@ export default function AllianceGuidesPanel() {
                   <div style={{ color: MUTED }}>No entries yet.</div>
                 ) : (
                   <div style={{ display: "grid", gap: 10 }}>
-                    {entries.map((e) => {
+                    {filteredEntries.map((e) => {
                       const isEditing = editingEntryId === e.id;
                       return (
                         <div key={e.id} style={{ border: "1px solid #333", borderRadius: 10, padding: 10 }}>
@@ -805,3 +805,4 @@ export default function AllianceGuidesPanel() {
     </div>
   );
 }
+
