@@ -130,6 +130,11 @@ setPlayerId(pid);
     <div style={{ padding: 16, maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>📌 My Dashboards</h2>
+<div style={{ marginTop: 12, marginBottom: 12 }}>
+  <div style={{ fontWeight: 950, marginBottom: 8 }}>State 789 — Live Ops Feed</div>
+  <div style={{ opacity: 0.72, fontSize: 12, marginBottom: 10 }}>Realtime intel (threads + achievements). Click to jump.</div>
+  <OpsFeedPanel stateCode="789" limit={8} />
+</div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Link to="/" style={{ opacity: 0.85 }}>Home</Link>
           <Link to="/me" style={{ opacity: 0.85 }}>ME</Link>
@@ -211,5 +216,6 @@ setPlayerId(pid);
     </div>
   );
 }
+
 
 
