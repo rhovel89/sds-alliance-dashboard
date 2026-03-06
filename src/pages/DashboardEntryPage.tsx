@@ -3,6 +3,7 @@ import AuthCallback from "./AuthCallback";
 import MyDashboardsPage from "./dashboard/MyDashboardsPage";
 import { useNavigate } from "react-router-dom";
 import CommandCenterShell from "../components/commandCenter/CommandCenterShell";
+import DashboardCommandCenterPage from "./dashboard/DashboardCommandCenterPage";
 
 function looksLikeAuthCallback(): boolean {
   try {
@@ -33,6 +34,7 @@ export default function DashboardEntryPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 

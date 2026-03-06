@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import MyAlliance from "./MyAlliance";
+import AllianceCommandCenterHomePage from "./dashboard/AllianceCommandCenterHomePage";
 
 function upper(v: any) {
   return String(v ?? "").trim().toUpperCase();
@@ -105,3 +106,4 @@ export default function DashboardGate() {
 
   return <MyAlliance />;
 }
+
