@@ -88,3 +88,24 @@ body::after{
   background: rgba(255,255,255,0.12);
   border-radius: 8px;
 }
+
+/* --- rail width/wrap fix: prevent Intel Rail / Live Ops text cut-off --- */
+@media (min-width: 1100px){
+  .cc-shell-grid{
+    grid-template-columns: 1fr 440px;  /* wider rail */
+  }
+}
+
+/* Override any .zombie-btn nowrap/ellipsis in the rail */
+.cc-shell-rail .zombie-btn{
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  text-align: left;
+}
+
+/* Make rail cards/buttons breathe */
+.cc-shell-rail button.zombie-btn{
+  line-height: 1.15;
+}
