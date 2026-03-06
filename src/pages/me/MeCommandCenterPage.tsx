@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
 import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 
-import LegacyMe from "../pages/PlayerDashboardSafePage";
+import LegacyMe from "./MeDashboardPage";
 
 export default function MeCommandCenterPage() {
   const nav = useNavigate();
