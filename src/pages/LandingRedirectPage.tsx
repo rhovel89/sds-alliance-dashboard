@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { useIsAppAdmin } from "../hooks/useIsAppAdmin";
 
 export default function LandingRedirectPage() {
-  const nav = useNavigate();
+  
+  const { isAdmin: isAppAdmin } = useIsAppAdmin();
+const nav = useNavigate();
   const { isAdmin, loading: adminLoading } = useIsAppAdmin();
   const [status, setStatus] = useState<"loading" | "signed_out">("loading");
 
@@ -53,7 +55,7 @@ export default function LandingRedirectPage() {
           return;
         }
 
-        nav("/me", { replace: true });
+        if (!isAppAdmin) nav("/onboarding/pending", { replace: true }); else nav("/dashboard", { replace: true });
       } catch {
         nav("/onboarding", { replace: true });
       }
@@ -75,3 +77,4 @@ export default function LandingRedirectPage() {
 
   return <div style={{ padding: 24 }}>Loading…</div>;
 }
+

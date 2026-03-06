@@ -161,6 +161,7 @@ import State789ThreadsPage from "../pages/state/State789ThreadsPage";
 import OwnerAuthorityPage from "../pages/owner/OwnerAuthorityPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import State789HubPage from "../pages/state/State789HubPage";
+import AwaitingApprovalPage from "../pages/onboarding/AwaitingApprovalPage";
 
 export default function AppRoutes() {
   return (
@@ -295,6 +296,7 @@ export default function AppRoutes() {
       <Route path="/state/789/ops" element={<Navigate to="/state/789/ops-db" replace />} />
             <Route path="/owner/event-reminders" element={<RequireAdmin><OwnerEventRemindersPage /></RequireAdmin>} />
       <Route path="/state/789/threads" element={<State789ThreadsPage />} />
+      <Route path="/onboarding/pending" element={<AwaitingApprovalPage />} />
       <Route path="*" element={<NotFoundPage />} />
         <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterHomePage /></RequireAdmin>} />
               <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
