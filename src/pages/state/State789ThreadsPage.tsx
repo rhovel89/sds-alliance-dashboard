@@ -12,7 +12,22 @@ type PostRow = any;
 function nowIso() { return new Date().toISOString(); }
 
 export default function State789ThreadsPage() {
-  const nav = useNavigate();
+    function TagPill(props: { t: string }) {
+    return (
+      <span style={{
+        display:"inline-block",
+        padding:"4px 8px",
+        borderRadius:999,
+        border:"1px solid rgba(255,255,255,0.12)",
+        background:"rgba(0,0,0,0.18)",
+        fontSize:11,
+        opacity:0.9
+      }}>
+        #{String(props.t || "").trim()}
+      </span>
+    );
+  }
+const nav = useNavigate();
   
   const loc = useLocation();
 const cc = useMemo(() => getCommandCenterModules(), []);
@@ -31,7 +46,12 @@ const cc = useMemo(() => getCommandCenterModules(), []);
   const [posts, setPosts] = useState<PostRow[]>([]);
 
   const [drawer, setDrawer] = useState(false);
-  const [title, setTitle] = useState("");
+  
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [editTags, setEditTags] = useState("");
+const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tags, setTags] = useState("");
   const [scope, setScope] = useState<"state" | "alliance">("state");
@@ -82,6 +102,40 @@ useEffect(() => {
     if (selected?.id) loadPosts(String(selected.id));
     else setPosts([]);
   }, [selected?.id]);
+
+    async function openEdit() {
+    if (!selected) return;
+    setEditTitle(String((selected as any).title || ""));
+    setEditBody(String((selected as any).body || ""));
+    const t = (selected as any).tags;
+    const list = Array.isArray(t) ? t : [];
+    setEditTags(list.map((x: any) => String(x || "")).join(", "));
+    setEditOpen(true);
+  }
+
+  async function saveEdit() {
+    try {
+      if (!selected?.id) return;
+      const tagList = String(editTags || "").split(",").map(s => s.trim()).filter(Boolean);
+      const patch: any = { title: String(editTitle||"").trim(), body: String(editBody||"").trim(), tags: tagList };
+      const up = await supabase.from("ops_threads").update(patch).eq("id", selected.id);
+      if (up.error) { setStatus(up.error.message); return; }
+      setEditOpen(false);
+      await loadThreads();
+    } catch (e: any) { setStatus(String(e?.message || e || "Save failed")); }
+  }
+
+  async function deleteThread() {
+    try {
+      if (!selected?.id) return;
+      if (!confirm("Delete this thread and all replies?")) return;
+      const del = await supabase.from("ops_threads").delete().eq("id", selected.id);
+      if (del.error) { setStatus(del.error.message); return; }
+      setSelected(null);
+      setPosts([]);
+      await loadThreads();
+    } catch (e: any) { setStatus(String(e?.message || e || "Delete failed")); }
+  }
 
   async function createThread() {
     try {
@@ -351,9 +405,23 @@ scope,
             <button className="zombie-btn" type="button" onClick={() => setDrawer(false)}>Cancel</button>
           </div>
         </div>
-      </ActionDrawer>
-    </CommandCenterShell>
+        <ActionDrawer open={editOpen} title="Edit Thread" onClose={() => setEditOpen(false)}>
+    <div style={{ display:"flex", flexDirection:"column", gap: 10 }}>
+      <input value={editTitle} onChange={(e)=>setEditTitle(e.target.value)} placeholder="Title"
+        style={{ padding:"10px 12px", borderRadius:12, border:"1px solid rgba(255,255,255,0.10)", background:"rgba(0,0,0,0.25)", color:"rgba(255,255,255,0.92)" }} />
+      <textarea value={editBody} onChange={(e)=>setEditBody(e.target.value)} placeholder="Body" rows={6}
+        style={{ padding:"10px 12px", borderRadius:12, border:"1px solid rgba(255,255,255,0.10)", background:"rgba(0,0,0,0.20)", color:"rgba(255,255,255,0.92)" }} />
+      <input value={editTags} onChange={(e)=>setEditTags(e.target.value)} placeholder="Tags (comma separated)"
+        style={{ padding:"10px 12px", borderRadius:12, border:"1px solid rgba(255,255,255,0.10)", background:"rgba(0,0,0,0.25)", color:"rgba(255,255,255,0.92)" }} />
+      <div style={{ display:"flex", gap: 10 }}>
+        <button className="zombie-btn" type="button" onClick={saveEdit}>Save</button>
+        <button className="zombie-btn" type="button" onClick={() => setEditOpen(false)}>Cancel</button>
+      </div>
+    </div>
+  </ActionDrawer>
+</CommandCenterShell>
   );
 }
+
 
 
