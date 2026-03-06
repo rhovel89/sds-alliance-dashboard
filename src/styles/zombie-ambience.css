@@ -1,0 +1,100 @@
+/* Zombie Ambience (CSS-only): animated grit + blood + subtle flicker */
+/* Safe overlay: pointer-events none, low opacity, respects reduced motion */
+
+:root{
+  --z-ink: rgba(0,0,0,0.85);
+  --z-red: rgba(176,18,27,0.85);
+  --z-red2: rgba(210,20,33,0.55);
+  --z-grit: rgba(255,255,255,0.06);
+  --z-grit2: rgba(0,0,0,0.22);
+  --z-flicker: 0.06;
+}
+
+/* Make sure main app can sit above overlays */
+#root{
+  position: relative;
+  z-index: 1;
+}
+
+body{
+  background-color: #06060a;
+}
+
+/* Grit + scanline + vignette */
+body::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  /* layered grit using gradients (no external assets) */
+  background-image:
+    radial-gradient(1200px 900px at 20% 10%, rgba(176,18,27,0.08), transparent 60%),
+    radial-gradient(900px 700px at 80% 30%, rgba(210,20,33,0.05), transparent 55%),
+    radial-gradient(1200px 900px at 50% 80%, rgba(0,0,0,0.45), transparent 60%),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.02) 0px,
+      rgba(255,255,255,0.02) 1px,
+      rgba(0,0,0,0.02) 2px,
+      rgba(0,0,0,0.02) 4px
+    ),
+    radial-gradient(900px 650px at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%);
+
+  mix-blend-mode: screen;
+  opacity: 0.85;
+  animation: z-grit-shift 12s linear infinite;
+}
+
+/* Blood mist + drip band (subtle) */
+body::after{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  background-image:
+    radial-gradient(1000px 600px at 50% 0%, rgba(176,18,27,0.25), transparent 70%),
+    radial-gradient(900px 500px at 10% 0%, rgba(210,20,33,0.18), transparent 72%),
+    radial-gradient(900px 500px at 90% 0%, rgba(210,20,33,0.14), transparent 72%),
+    linear-gradient(to bottom, rgba(176,18,27,0.20), rgba(176,18,27,0.00) 22%);
+
+  opacity: 0.55;
+  filter: blur(0.6px);
+  animation: z-blood-pulse 9s ease-in-out infinite;
+}
+
+/* Subtle flicker hook (used by command-center screens if desired) */
+.z-flicker{
+  animation: z-flicker 4.6s infinite;
+}
+
+@keyframes z-grit-shift{
+  0%   { transform: translate3d(0,0,0); filter: contrast(1.02) brightness(1.00); }
+  25%  { transform: translate3d(-0.6px,0.4px,0); filter: contrast(1.05) brightness(1.01); }
+  50%  { transform: translate3d(0.8px,-0.5px,0); filter: contrast(1.03) brightness(0.99); }
+  75%  { transform: translate3d(-0.4px,-0.6px,0); filter: contrast(1.06) brightness(1.02); }
+  100% { transform: translate3d(0,0,0); filter: contrast(1.02) brightness(1.00); }
+}
+
+@keyframes z-blood-pulse{
+  0%,100% { opacity: 0.48; }
+  50%     { opacity: 0.62; }
+}
+
+@keyframes z-flicker{
+  0%, 100% { opacity: 1; }
+  45%      { opacity: 1; }
+  46%      { opacity: calc(1 - var(--z-flicker)); }
+  48%      { opacity: 1; }
+  85%      { opacity: 1; }
+  86%      { opacity: calc(1 - var(--z-flicker)); }
+  88%      { opacity: 1; }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce){
+  body::before, body::after, .z-flicker{ animation: none !important; }
+}

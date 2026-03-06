@@ -18,6 +18,7 @@ import "./styles/dashboard-zombie.css";
 import "./styles/command-center.css";
 import "./styles/hq-map.css";
 import "./styles/responsive.css";
+import "./styles/zombie-ambience.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <AppErrorBoundary>
