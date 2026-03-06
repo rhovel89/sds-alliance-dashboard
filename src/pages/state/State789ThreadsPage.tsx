@@ -1,81 +1,72 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
 import ActionDrawer from "../../components/commandcenter/ActionDrawer";
 import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 
-type ThreadRow = any;
-type PostRow = any;
+type AnyRow = any;
 
 function nowIso() { return new Date().toISOString(); }
+function s(v: any) { return v === null || v === undefined ? "" : String(v); }
 
 export default function State789ThreadsPage() {
-    function TagPill(props: { t: string }) {
-    return (
-      <span style={{
-        display:"inline-block",
-        padding:"4px 8px",
-        borderRadius:999,
-        border:"1px solid rgba(255,255,255,0.12)",
-        background:"rgba(0,0,0,0.18)",
-        fontSize:11,
-        opacity:0.9
-      }}>
-        #{String(props.t || "").trim()}
-      </span>
-    );
-  }
-const nav = useNavigate();
-  
-  const loc = useLocation();
-const cc = useMemo(() => getCommandCenterModules(), []);
-  const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
+  const nav = useNavigate();
+  const stateCode = "789";
 
+  const cc = useMemo(() => getCommandCenterModules(), []);
+  const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
   function onSelectModule(k: string) {
     const to = cc.find((m) => m.key === k)?.to;
     if (to) nav(to);
   }
 
-  const stateCode = "789";
-
   const [status, setStatus] = useState("");
-  const [threads, setThreads] = useState<ThreadRow[]>([]);
-  const [selected, setSelected] = useState<ThreadRow | null>(null);
-  const [posts, setPosts] = useState<PostRow[]>([]);
+  const [loading, setLoading] = useState(false);
 
+  const [threads, setThreads] = useState<AnyRow[]>([]);
+  const [selected, setSelected] = useState<AnyRow | null>(null);
+  const [posts, setPosts] = useState<AnyRow[]>([]);
+
+  const [q, setQ] = useState("");
+
+  // new thread drawer
   const [drawer, setDrawer] = useState(false);
-  
-  const [editOpen, setEditOpen] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editBody, setEditBody] = useState("");
-  const [editTags, setEditTags] = useState("");
-const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [tags, setTags] = useState("");
   const [scope, setScope] = useState<"state" | "alliance">("state");
   const [allianceCode, setAllianceCode] = useState("");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [tags, setTags] = useState("");
 
-  const [notifyDiscord, setNotifyDiscord] = useState(true);
-  const [discordChannelId, setDiscordChannelId] = useState("");
-
+  // reply
   const [reply, setReply] = useState("");
 
+  // discord notify
+  const [notifyDiscord, setNotifyDiscord] = useState(true);
+  const [discordChannels, setDiscordChannels] = useState<any[]>([]);
+  const [discordChannelId, setDiscordChannelId] = useState("");
+
   async function loadThreads() {
+    setLoading(true);
     setStatus("");
+
+    // Threads table created with updated_at; keep ordering safe (no pinned sort)
     const r = await supabase
       .from("ops_threads")
       .select("*")
       .eq("state_code", stateCode)
-      .order("pinned", { ascending: false }).order("updated_at", { ascending: false })
+      .order("updated_at", { ascending: false })
       .limit(200);
+
+    setLoading(false);
 
     if (r.error) { setStatus(r.error.message); return; }
     setThreads((r.data || []) as any[]);
   }
 
   async function loadPosts(threadId: string) {
+    setStatus("");
     const r = await supabase
       .from("ops_thread_posts")
       .select("*")
@@ -87,55 +78,61 @@ const [title, setTitle] = useState("");
     setPosts((r.data || []) as any[]);
   }
 
-  useEffect(() => { loadThreads(); }, []);
+  async function loadDiscordChannels() {
+    // schema-safe
+    const ch = await supabase
+      .from("state_discord_channels")
+      .select("*")
+      .eq("state_code", stateCode)
+      .order("channel_name", { ascending: true });
 
-useEffect(() => {
-  let cancelled = false;
-  (async () => {
-    try {
-      const a = await supabase.rpc("is_app_admin");
-      if (!cancelled && !a.error) setIsAdminDb(!!a.data);
-    } catch {}
-  })();
-  return () => { cancelled = true; };
-}, []);useEffect(() => {
+    if (!ch.error) setDiscordChannels((ch.data || []) as any[]);
+
+    // Try default threads channel if present; otherwise keep existing selection
+    const d = await supabase
+      .from("state_discord_defaults")
+      .select("*")
+      .eq("state_code", stateCode)
+      .maybeSingle();
+
+    if (!d.error && d.data) {
+      const obj: any = d.data || {};
+      const v = String(
+        obj.threads_channel_id ??
+        obj.achievements_export_channel_id ??
+        obj.reports_channel_id ??
+        obj.alerts_channel_id ??
+        ""
+      );
+      if (v && !discordChannelId) setDiscordChannelId(v);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await loadThreads();
+      if (!cancelled) await loadDiscordChannels();
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (selected?.id) loadPosts(String(selected.id));
     else setPosts([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id]);
 
-    async function openEdit() {
-    if (!selected) return;
-    setEditTitle(String((selected as any).title || ""));
-    setEditBody(String((selected as any).body || ""));
-    const t = (selected as any).tags;
-    const list = Array.isArray(t) ? t : [];
-    setEditTags(list.map((x: any) => String(x || "")).join(", "));
-    setEditOpen(true);
-  }
-
-  async function saveEdit() {
-    try {
-      if (!selected?.id) return;
-      const tagList = String(editTags || "").split(",").map(s => s.trim()).filter(Boolean);
-      const patch: any = { title: String(editTitle||"").trim(), body: String(editBody||"").trim(), tags: tagList };
-      const up = await supabase.from("ops_threads").update(patch).eq("id", selected.id);
-      if (up.error) { setStatus(up.error.message); return; }
-      setEditOpen(false);
-      await loadThreads();
-    } catch (e: any) { setStatus(String(e?.message || e || "Save failed")); }
-  }
-
-  async function deleteThread() {
-    try {
-      if (!selected?.id) return;
-      if (!confirm("Delete this thread and all replies?")) return;
-      const del = await supabase.from("ops_threads").delete().eq("id", selected.id);
-      if (del.error) { setStatus(del.error.message); return; }
-      setSelected(null);
-      setPosts([]);
-      await loadThreads();
-    } catch (e: any) { setStatus(String(e?.message || e || "Delete failed")); }
-  }
+  const visibleThreads = useMemo(() => {
+    const term = String(q || "").trim().toLowerCase();
+    if (!term) return threads;
+    return (threads || []).filter((t: any) => {
+      const blob =
+        `${s(t.title)} ${s(t.body)} ${s(t.scope)} ${s(t.alliance_code)} ${JSON.stringify(t.tags || [])}`.toLowerCase();
+      return blob.includes(term);
+    });
+  }, [threads, q]);
 
   async function createThread() {
     try {
@@ -145,12 +142,10 @@ useEffect(() => {
       const uid = u.data?.user?.id;
       if (!uid) { setStatus("Not signed in."); return; }
 
-      const tagList = tags.split(",").map(s => s.trim()).filter(Boolean);
+      const tagList = String(tags || "").split(",").map(x => x.trim()).filter(Boolean);
+
       const payload: any = {
-        
-        pinned: false,
-        last_post_at: nowIso(),
-scope,
+        scope,
         state_code: stateCode,
         alliance_code: scope === "alliance" ? String(allianceCode || "").trim().toUpperCase() : null,
         title: String(title || "").trim(),
@@ -168,13 +163,14 @@ scope,
       if (ins.error) { setStatus(ins.error.message); return; }
 
       const row = ins.data as any;
+
       setDrawer(false);
       setTitle(""); setBody(""); setTags(""); setAllianceCode("");
       await loadThreads();
       setSelected(row);
 
       if (notifyDiscord && discordChannelId) {
-        const link = `${window.location.origin}/state/789/threads#${encodeURIComponent(String(row?.id || ""))}`;
+        const link = `${window.location.origin}/state/${stateCode}/threads#${encodeURIComponent(String(row?.id || ""))}`;
         const msg =
           `🩸 **State ${stateCode} — New Thread**\n` +
           `**${payload.title}**\n` +
@@ -192,21 +188,6 @@ scope,
       }
     } catch (e: any) {
       setStatus(String(e?.message || e || "Create failed"));
-    }
-  }
-
-    async function togglePinned(next: boolean) {
-    try {
-      if (!selected?.id) return;
-      setStatus("");
-      const up = await supabase.from("ops_threads").update({ pinned: next } as any).eq("id", selected.id);
-      if (up.error) { setStatus(up.error.message); return; }
-      await loadThreads();
-      // re-select updated row
-      const hit = (threads || []).find((t: any) => String(t?.id || "") === String(selected.id));
-      if (hit) setSelected(hit);
-    } catch (e: any) {
-      setStatus(String(e?.message || e || "Pin failed"));
     }
   }
 
@@ -229,13 +210,15 @@ scope,
 
       if (ins.error) { setStatus(ins.error.message); return; }
 
+      // safe bump (trigger might also handle it)
       await supabase.from("ops_threads").update({ updated_at: nowIso() } as any).eq("id", selected.id);
+
       setReply("");
       await loadPosts(String(selected.id));
       await loadThreads();
 
       if (notifyDiscord && discordChannelId) {
-        const link = `${window.location.origin}/state/789/threads#${encodeURIComponent(String(selected?.id || ""))}`;
+        const link = `${window.location.origin}/state/${stateCode}/threads#${encodeURIComponent(String(selected?.id || ""))}`;
         const msg =
           `🧟 **Thread Reply**\n` +
           `**${String(selected?.title || "")}**\n` +
@@ -255,10 +238,41 @@ scope,
     }
   }
 
+  async function saveDefaultThreadsChannel() {
+    try {
+      const cid = String(discordChannelId || "").trim();
+      if (!cid) { setStatus("Pick a channel first."); return; }
+
+      const existing = await supabase
+        .from("state_discord_defaults")
+        .select("*")
+        .eq("state_code", stateCode)
+        .maybeSingle();
+
+      const obj: any = (!existing.error && existing.data) ? existing.data : {};
+      const payload: any = {
+        state_code: stateCode,
+        threads_channel_id: cid,
+      };
+
+      // satisfy NOT NULL alerts_channel_id if present and missing
+      if (obj && obj.alerts_channel_id) payload.alerts_channel_id = obj.alerts_channel_id;
+      else payload.alerts_channel_id = cid;
+
+      const up = await supabase.from("state_discord_defaults").upsert(payload as any, { onConflict: "state_code" } as any);
+      if (up.error) { setStatus(up.error.message); return; }
+
+      setStatus("Default saved ✅");
+      window.setTimeout(() => setStatus(""), 900);
+    } catch (e: any) {
+      setStatus(String(e?.message || e || "Save default failed"));
+    }
+  }
+
   return (
     <CommandCenterShell
       title="State 789 — Threads"
-      subtitle="In-app threads • Discord notify • no duplicated flows"
+      subtitle="Ops comms • Discord notify • schema-safe"
       modules={modules}
       activeModuleKey="threads"
       onSelectModule={onSelectModule}
@@ -271,15 +285,17 @@ scope,
       <div style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 12, alignItems: "start" }}>
         <div style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
           <div style={{ fontWeight: 950, fontSize: 14 }}>Threads</div>
+          <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>Search, select, reply. (RLS enforced.)</div>
+
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search threads…"
             style={{ marginTop: 10, width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
           />
-          <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>State threads require staff access. Alliance threads require membership.</div>
 
-          {status ? <div style={{ marginTop: 8, fontSize: 12, opacity: 0.9 }}>{status}</div> : null}
+          {status ? <div style={{ marginTop: 10, fontSize: 12, opacity: 0.9 }}>{status}</div> : null}
+          {loading ? <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>Loading…</div> : null}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
             {visibleThreads.map((t: any) => (
@@ -288,11 +304,7 @@ scope,
                 type="button"
                 className="zombie-btn"
                 onClick={() => setSelected(t)}
-                style={{
-                  textAlign: "left",
-                  whiteSpace: "normal",
-                  opacity: selected?.id === t.id ? 1 : 0.85,
-                }}
+                style={{ textAlign: "left", whiteSpace: "normal", opacity: selected?.id === t.id ? 1 : 0.85 }}
               >
                 <div style={{ fontWeight: 900 }}>{String(t.title || "Thread")}</div>
                 <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
@@ -302,7 +314,7 @@ scope,
                 </div>
               </button>
             ))}
-            {!threads.length ? <div style={{ opacity: 0.7, fontSize: 12 }}>No threads yet.</div> : null}
+            {!visibleThreads.length ? <div style={{ opacity: 0.7, fontSize: 12 }}>No threads.</div> : null}
           </div>
         </div>
 
@@ -311,17 +323,11 @@ scope,
             <div style={{ opacity: 0.7 }}>Select a thread.</div>
           ) : (
             <>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap: 10 }}>
-  <div style={{ fontWeight: 950, fontSize: 16 }}>{String(selected.title || "")}</div>
-  {isAdminDb ? (
-    <button className="zombie-btn" type="button" onClick={() => togglePinned(!(selected as any)?.pinned)}>
-      {(selected as any)?.pinned ? "Unpin" : "Pin"} thread
-    </button>
-  ) : null}
-</div>
+              <div style={{ fontWeight: 950, fontSize: 16 }}>{String(selected.title || "")}</div>
               <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
                 {selected.scope === "alliance" ? `Alliance: ${String(selected.alliance_code || "")}` : `State: ${String(selected.state_code || "")}`}
               </div>
+
               <div style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>{String(selected.body || "")}</div>
 
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.10)", marginTop: 12, paddingTop: 12 }}>
@@ -341,12 +347,23 @@ scope,
                   <label style={{ fontSize: 12, opacity: 0.85 }}>
                     <input type="checkbox" checked={notifyDiscord} onChange={(e) => setNotifyDiscord(e.target.checked)} /> Notify Discord
                   </label>
-                  <input
+
+                  <select
                     value={discordChannelId}
                     onChange={(e) => setDiscordChannelId(e.target.value)}
-                    placeholder="Discord Channel ID (optional)"
-                    style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)", minWidth: 240 }}
-                  />
+                    style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)", minWidth: 260 }}
+                  >
+                    <option value="">Discord Channel (state) — optional</option>
+                    {(discordChannels || []).map((c: any) => (
+                      <option key={String(c.id || c.channel_id)} value={String(c.channel_id || "")}>
+                        {String(c.channel_name || c.channel_id || "")}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button className="zombie-btn" type="button" onClick={saveDefaultThreadsChannel} style={{ whiteSpace: "nowrap" }}>
+                    Save as default
+                  </button>
                 </div>
 
                 <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
@@ -371,57 +388,53 @@ scope,
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={{ fontSize: 12, opacity: 0.85 }}>
             Scope
-            <select value={scope} onChange={(e) => setScope(e.target.value as any)}
-              style={{ marginLeft: 8, padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}>
+            <select
+              value={scope}
+              onChange={(e) => setScope(e.target.value as any)}
+              style={{ marginLeft: 8, padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
+            >
               <option value="state">State</option>
               <option value="alliance">Alliance</option>
             </select>
           </label>
 
           {scope === "alliance" ? (
-            <input value={allianceCode} onChange={(e) => setAllianceCode(e.target.value)} placeholder="Alliance code (e.g. WOC)"
-              style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }} />
+            <input
+              value={allianceCode}
+              onChange={(e) => setAllianceCode(e.target.value)}
+              placeholder="Alliance code (e.g. WOC)"
+              style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
+            />
           ) : null}
 
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title"
-            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }} />
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Title"
+            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
+          />
 
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Body" rows={6}
-            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)", color: "rgba(255,255,255,0.92)" }} />
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Body"
+            rows={6}
+            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)", color: "rgba(255,255,255,0.92)" }}
+          />
 
-          <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags (comma separated)"
-            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }} />
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <label style={{ fontSize: 12, opacity: 0.85 }}>
-              <input type="checkbox" checked={notifyDiscord} onChange={(e) => setNotifyDiscord(e.target.checked)} /> Notify Discord
-            </label>
-            <input value={discordChannelId} onChange={(e) => setDiscordChannelId(e.target.value)} placeholder="Discord Channel ID (optional)"
-              style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)", minWidth: 240 }} />
-          </div>
+          <input
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+            placeholder="Tags (comma separated)"
+            style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
+          />
 
           <div style={{ display: "flex", gap: 10 }}>
             <button className="zombie-btn" type="button" onClick={createThread}>Create</button>
             <button className="zombie-btn" type="button" onClick={() => setDrawer(false)}>Cancel</button>
           </div>
         </div>
-        <ActionDrawer open={editOpen} title="Edit Thread" onClose={() => setEditOpen(false)}>
-    <div style={{ display:"flex", flexDirection:"column", gap: 10 }}>
-      <input value={editTitle} onChange={(e)=>setEditTitle(e.target.value)} placeholder="Title"
-        style={{ padding:"10px 12px", borderRadius:12, border:"1px solid rgba(255,255,255,0.10)", background:"rgba(0,0,0,0.25)", color:"rgba(255,255,255,0.92)" }} />
-      <textarea value={editBody} onChange={(e)=>setEditBody(e.target.value)} placeholder="Body" rows={6}
-        style={{ padding:"10px 12px", borderRadius:12, border:"1px solid rgba(255,255,255,0.10)", background:"rgba(0,0,0,0.20)", color:"rgba(255,255,255,0.92)" }} />
-      <input value={editTags} onChange={(e)=>setEditTags(e.target.value)} placeholder="Tags (comma separated)"
-        style={{ padding:"10px 12px", borderRadius:12, border:"1px solid rgba(255,255,255,0.10)", background:"rgba(0,0,0,0.25)", color:"rgba(255,255,255,0.92)" }} />
-      <div style={{ display:"flex", gap: 10 }}>
-        <button className="zombie-btn" type="button" onClick={saveEdit}>Save</button>
-        <button className="zombie-btn" type="button" onClick={() => setEditOpen(false)}>Cancel</button>
-      </div>
-    </div>
-  </ActionDrawer>
-</CommandCenterShell>
+      </ActionDrawer>
+    </CommandCenterShell>
   );
 }
-
-
-
