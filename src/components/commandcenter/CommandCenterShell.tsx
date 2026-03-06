@@ -108,7 +108,7 @@ const [paletteOpen, setPaletteOpen] = useState(false);
             <div className="cc-shell-main">
           <section className="cc-mainPanel">{children}</section>
             </div>
-            {chromelessFlag ? null : <div className="cc-shell-rail"><IntelRail stateCode="789" /></div>}
+            {false ? null : <div className="cc-shell-rail"><IntelRail stateCode="789" /></div>}
           </div>
         </main>
       </div>
@@ -127,5 +127,6 @@ const [paletteOpen, setPaletteOpen] = useState(false);
 }
 
 export default CommandCenterShell;
+
 
 
