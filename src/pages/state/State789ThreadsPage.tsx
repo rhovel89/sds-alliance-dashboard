@@ -12,7 +12,6 @@ import { resolvePlayerIdFromUserId } from "../../lib/playerIdentity";
 import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 
 import { resolvePlayerIdFromUserId } from "../../lib/playerIdentity";
-import StateThreadsDefaultDiscordPanel from "../../components/state/StateThreadsDefaultDiscordPanel";
 type AnyRow = any;
 
 function nowIso() { return new Date().toISOString(); }
@@ -366,6 +365,7 @@ const nav = useNavigate();
       activeModuleKey="threads"
       onSelectModule={onSelectModule}
       topRight={<button className="zombie-btn" type="button" onClick={() => setDrawer(true)}>+ New Thread</button>}
+      <StateThreadsDefaultDiscordPanel stateCode="789" />
       <StateThreadsDefaultDiscordPanel stateCode="789" />
     >
       <div style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 12, alignItems: "start" }}>
