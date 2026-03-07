@@ -365,9 +365,8 @@ const nav = useNavigate();
       activeModuleKey="threads"
       onSelectModule={onSelectModule}
       topRight={<button className="zombie-btn" type="button" onClick={() => setDrawer(true)}>+ New Thread</button>}
-      <StateThreadsDefaultDiscordPanel stateCode="789" />
-      <StateThreadsDefaultDiscordPanel stateCode="789" />
     >
+      <StateThreadsDefaultDiscordPanel stateCode="789" />
       <div style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 12, alignItems: "start" }}>
         <div style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
           <div style={{ fontWeight: 950, fontSize: 14 }}>Threads</div>
