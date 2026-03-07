@@ -168,6 +168,7 @@ import OwnerDossierLookupPage from "../pages/owner/OwnerDossierLookupPage";
 import PlayerDossierPage from "../pages/player/PlayerDossierPage";
 import AllianceDiscordWebhooksPage from "../pages/dashboard/AllianceDiscordWebhooksPage";
 import MeDossierPage from "../pages/me/MeDossierPage";
+import OwnerRouteChecklistPage from "../pages/owner/OwnerRouteChecklistPage";
 
 export default function AppRoutes() {
   return (
@@ -308,6 +309,7 @@ export default function AppRoutes() {
       <Route path="/me/dossier" element={<DossierSheetPage />} />
       <Route path="/owner/dossier" element={<OwnerDossierLookupPage />} />
       <Route path="/dossier/:playerId" element={<PlayerDossierPage />} />
+        <Route path="/owner/route-check" element={<OwnerRouteChecklistPage />} />
       <Route path="*" element={<NotFoundPage />} />
         <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterHomePage /></RequireAdmin>} />
               <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
