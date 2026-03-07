@@ -494,53 +494,6 @@ export default function OwnerStateAchievementsPage() {
         {msg ? <div style={{ marginTop: 10, opacity: 0.9 }}>{msg}</div> : null}
       </div>
 
-      <StateAchievementsExportPanel stateCode={stateCode} requests={requests} />
-
-      <div className="zombie-card" style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="requests" ? 900 : 600 }} onClick={() => setTab("requests")}>Requests</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="types" ? 900 : 600 }} onClick={() => setTab("types")}>Types</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="options" ? 900 : 600 }} onClick={() => setTab("options")}>Options</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="access" ? 900 : 600 }} onClick={() => setTab("access")}>Access</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="export" ? 900 : 600 }} onClick={() => setTab("export")}>Export/Import</button>
-          <div style={{ marginLeft: "auto" }}>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={seedDefaults} disabled={!canAdmin}>Seed Defaults</button>
-          </div>
-        </div>
-      </div>
-
-      {tab === "requests" ? (
-        <div className="zombie-card" style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 900 }}>Requests Queue</div>
-          <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
-            Update counts/status/notes. Auto marks ✅ at 100%.
-          </div>
-
-          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-            {requests.slice(0, 200).map((r) => {
-              const req = reqRequired(r);
-              const cur = reqCurrent(r);
-              const done = (String(r.status) === "completed") || (cur >= req);
-              return (
-                <div key={String(r.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <div style={{ fontWeight: 900 }}>{String(r.player_name || "Player")} <span style={{ opacity: 0.7 }}>({String(r.alliance_name || "—")})</span></div>
-                    <div style={{ marginLeft: "auto", fontWeight: 900 }}>{cur}/{req}{done ? " ✅" : ""}</div>
-                  </div>
-
-                  <div style={{ opacity: 0.85, marginTop: 6 }}>
-                    {typeName(r.achievement_type_id)}{r.option_id ? (" — " + optionLabel(r.option_id)) : ""}
-                  </div>
-
-                  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <div style={{ opacity: 0.75, fontSize: 12 }}>Count</div>
-                    <input
-                      className="zombie-input"
-                      value={String(r.current_count ?? 0)}
-                      disabled={!canAdmin}
-                      onChange={(e) => setLocalRequests(r.id, { current_count: Math.max(0, asInt(e.target.value, 0)) })}
-                      style={{ padding: "8px 10px", width: 90 }}
-                    />
                     <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} disabled={!canAdmin} onClick={() => setLocalRequests(r.id, { current_count: cur + 1, status: "in_progress" })}>+1</button>
                     <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} disabled={!canAdmin} onClick={() => setLocalRequests(r.id, { current_count: req, status: "completed" })}>Set ✅</button>
 
