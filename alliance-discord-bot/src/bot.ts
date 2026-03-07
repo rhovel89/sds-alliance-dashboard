@@ -1,12 +1,15 @@
 import { Client, GatewayIntentBits } from "discord.js";
 import "dotenv/config";
+import { startQueueWorker } from "./queueWorker";
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
 });
 
 client.once("ready", () => {
-  console.log(`🤖 Bot online as ${client.user?.tag}`);
+  
+  try { startQueueWorker(client as any); } catch {}
+console.log(`🤖 Bot online as ${client.user?.tag}`);
 });
 
 if (!process.env.DISCORD_TOKEN) {
@@ -29,4 +32,5 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 });
+
 
