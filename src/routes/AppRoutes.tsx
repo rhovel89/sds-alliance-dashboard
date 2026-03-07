@@ -240,6 +240,7 @@ export default function AppRoutes() {
 
         <Route path="hq-map" element={<AllianceHQMap />} />
         <Route path="calendar" element={<RequireAllianceAccess><AllianceCalendarPage /></RequireAllianceAccess>} />
+            <Route path="discord-webhooks" element={<RequireAllianceAccess><AllianceDiscordWebhooksPage /></RequireAllianceAccess>} />
 
         <Route path="permissions" element={<RequireAlliance><PermissionsPage /></RequireAlliance>} />
         <Route path="events" element={<RequireAlliance><EventsPage /></RequireAlliance>} />
