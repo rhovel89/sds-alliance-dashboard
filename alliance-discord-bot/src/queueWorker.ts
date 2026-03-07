@@ -92,6 +92,33 @@ async function getWebhookUrlById(webhookId: string): Promise<string> {
   return url;
 }
 
+async function getDefaultWebhookId(allianceCode: string, kind: string): Promise<string> {
+  if (!supabase) throw new Error(Supabase service client not configured in worker env.);
+  const a = s(allianceCode).trim();
+  const k = s(kind).trim();
+  if (!a) throw new Error(lliance_code missing for default lookup.);
+  if (!k) throw new Error(kind missing for default lookup.);
+
+  const r = await supabase
+    .from(lliance_discord_webhook_defaults)
+    .select(webhook_id)
+    .eq(lliance_code, a)
+    .eq(kind, k)
+    .maybeSingle();
+
+  if (r.error) throw new Error(r.error.message);
+  const wid = s((r.data as any)?.webhook_id);
+  if (!wid) throw new Error(No default webhook set for  ().);
+  return wid;
+}
+
+function parseAllianceFromTarget(t: string): string {
+  const x = s(t);
+  if (x.startsWith(lliance:)) return x.slice(lliance:.length);
+  return `;
+}
+
+
 async function claimOne(): Promise<QueueRow | null> {
   if (!supabase) return null;
 
