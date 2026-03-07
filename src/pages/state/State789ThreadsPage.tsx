@@ -368,7 +368,7 @@ const nav = useNavigate();
       topRight={<button className="zombie-btn" type="button" onClick={() => setDrawer(true)}>+ New Thread</button>}
     >
       <StateThreadsDefaultDiscordPanel stateCode="789" />
-      <div style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 12, alignItems: "start" }}>
+      <div className="cc-grid-2" style={{ gap: 12, alignItems: "start" }}>
         <div style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
           <div style={{ fontWeight: 950, fontSize: 14 }}>Threads</div>
           <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>Search, select, reply. (RLS enforced.)</div>
@@ -539,5 +539,6 @@ const nav = useNavigate();
     </CommandCenterShell>
   );
 }
+
 
 

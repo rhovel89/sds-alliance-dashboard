@@ -17,3 +17,32 @@
   --cc-shadow: 0 14px 40px rgba(0,0,0,0.45);
   --cc-radius: 14px;
 }
+
+/* ---------------- Command Center Layout v2 ---------------- */
+/* Fix: overlap/cropping at 100% zoom by using responsive grid */
+.cc-grid-2{
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 1120px){
+  .cc-grid-2{
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Prevent flex/grid children from overflowing */
+.cc-grid-2 > * { min-width: 0; }
+
+/* Optional: panels that should scroll instead of cropping */
+.cc-panel-scroll{
+  max-height: calc(100vh - 240px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* Safety: avoid hidden overflow in common shell wrappers */
+.cc-shell, .command-center-shell, .command-center, [data-cc-shell]{
+  overflow: visible !important;
+}
