@@ -166,6 +166,7 @@ import OwnerApprovalCenterPage from "../pages/owner/OwnerApprovalCenterPage";
 import DossierSheetPage from "../pages/me/DossierSheetPage";
 import OwnerDossierLookupPage from "../pages/owner/OwnerDossierLookupPage";
 import PlayerDossierPage from "../pages/player/PlayerDossierPage";
+import AllianceDiscordWebhooksPage from "../pages/dashboard/AllianceDiscordWebhooksPage";
 
 export default function AppRoutes() {
   return (
