@@ -311,7 +311,7 @@ export default function AppRoutes() {
       <Route path="/owner/dossier" element={<OwnerDossierLookupPage />} />
       <Route path="/dossier/:playerId" element={<PlayerDossierPage />} />
         <Route path="/owner/route-check" element={<OwnerRouteChecklistPage />} />
-      <Route path="/owner/discord-webhook-requirements" element={<OwnerDiscordWebhookRequirementsPage />} />
+      <Route path="/owner/discord-webhook-requirements/*" element={<OwnerDiscordWebhookRequirementsPage />} />
       <Route path="*" element={<NotFoundPage />} />
         <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterHomePage /></RequireAdmin>} />
               <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
@@ -319,6 +319,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
