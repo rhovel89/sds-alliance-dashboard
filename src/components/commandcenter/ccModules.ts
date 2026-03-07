@@ -5,9 +5,8 @@ export type CommandCenterNavItem = {
   to: string;
 };
 
-export function getCommandCenterModules(): CommandCenterNavItem[] {
-  return [
-    { key: "dash", label: "Dashboard", hint: "Alliances + quick links", to: "/dashboard" },
+export function getCommandCenterModules(): CommandCenterNavItem[{ key: "dossier", label: "Dossier", hint: "Identity + defaults", to: "/me/dossier" }, ] {
+  return [{ key: "dossier", label: "Dossier", hint: "Identity + defaults", to: "/me/dossier" }, { key: "dash", label: "Dashboard", hint: "Alliances + quick links", to: "/dashboard" },
     { key: "state789", label: "State 789", hint: "War room hub", to: "/state/789" },
     { key: "ach789", label: "Achievements", hint: "Dossier + exports", to: "/state/789/achievements" },
     { key: "opsPlayers", label: "Player Ops", hint: "Intake + approvals", to: "/owner/player-ops" },
@@ -15,6 +14,7 @@ export function getCommandCenterModules(): CommandCenterNavItem[] {
     { key: "me", label: "My Profile", hint: "Your intel", to: "/me" },
   ];
 }
+
 
 
 
