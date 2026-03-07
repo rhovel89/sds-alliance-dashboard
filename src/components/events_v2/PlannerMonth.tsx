@@ -7,7 +7,6 @@ import { DayCell } from "./DayCell";
 import { AgendaPanel } from "./AgendaPanel";
 import { EventModal } from "./EventModal";
 import {
-import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
   deleteEvent,
   upsertEvent,
   listExceptionsForEventIds,
@@ -18,6 +17,7 @@ import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 type Props = {
   alliance_id: string;
 };
+import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 
 function isUuid(v: string): boolean {
   const { isAdmin: canEditCalendar } = useIsAppAdmin();
