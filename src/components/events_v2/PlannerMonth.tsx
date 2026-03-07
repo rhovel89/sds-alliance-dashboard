@@ -222,3 +222,4 @@ export function PlannerMonth({ alliance_id }: Props) {
     </div>
   );
 }
+

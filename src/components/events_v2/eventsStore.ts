@@ -5,7 +5,6 @@ import type { CalendarEvent, EventException } from "./types";
 /* ---------------- EVENTS ---------------- */
 
 export async function upsertEvent(event: CalendarEvent) {
-  const { isAdmin: canEditCalendar } = useIsAppAdmin();
   const { data, error } = await supabase
     .from("alliance_events")
     .upsert(event)
@@ -17,12 +16,9 @@ export async function upsertEvent(event: CalendarEvent) {
 }
 
 export async function deleteEvent(id: string) {
+  // Permission checks belong in the UI (RLS enforces server-side).
   const { error } = await supabase
     .from("alliance_events")
-     if (!canEditCalendar) {
-       window.alert("Calendar is locked (Owner/Admin only).");
-       return;
-     }
     .delete()
     .eq("id", id);
 
@@ -109,7 +105,6 @@ export async function runEventTemplate(templateId: string, runDate?: string) {
 }
 
 import { logAllianceActivity } from '../../lib/activityLogger';
-import { useIsAppAdmin } from "../../hooks/useIsAppAdmin";
 import { toLocalISODate } from "../../utils/dateLocal";
 export async function logEventCreated(alliance_id: string, title: string) {
   try {

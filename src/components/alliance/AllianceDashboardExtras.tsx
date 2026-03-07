@@ -2,8 +2,9 @@ import AllianceAnnouncementsPanel from "../announcements/AllianceAnnouncementsPa
 export default function AllianceDashboardExtras() {
   return (
     <>
-      <AllianceAnnouncementsPanel / data-sad-topbar="1">
+      <AllianceAnnouncementsPanel data-sad-topbar="1" />
       </>
   );
 }
+
 

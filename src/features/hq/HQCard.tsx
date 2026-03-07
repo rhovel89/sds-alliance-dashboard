@@ -1,60 +1,72 @@
+import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import type { PlayerHQ } from "./usePlayerHQs";
 
-export default function HQCard(props: { hq: PlayerHQ; allianceName?: string | null }) {
-  const { hq, allianceName } = props;
+function s(v: any) { return v === null || v === undefined ? "" : String(v); }
 
-  const title = allianceName ? \\ (\)\ : hq.allianceCode;
+export default function HQCard(props: { hq: any; allianceName?: string | null }) {
+  const hq = props.hq || {};
+  const allianceName = props.allianceName;
 
-  const coord = (hq.playerX != null && hq.playerY != null)
-    ? \(\, \)\
-    : "—";
+  const allianceCode = useMemo(() => {
+    return s(hq.allianceCode || hq.alliance_code || hq.alliance || hq.alliance_id).trim().toUpperCase();
+  }, [hq]);
 
-  const slot = (hq.slotNumber != null || (hq.slotX != null && hq.slotY != null))
-    ? (hq.slotNumber != null ? \Slot #\\ : \Slot (\, \)\)
-    : null;
+  const title = useMemo(() => {
+    return allianceName ? `${s(allianceName).trim()} — ${allianceCode || "HQ"}` : (allianceCode || "HQ");
+  }, [allianceName, allianceCode]);
+
+  const slotNumber = hq.slotNumber ?? hq.slot_number ?? hq.slot ?? null;
+  const slotLabel = slotNumber != null ? `Slot #${slotNumber}` : "";
+
+  const dashboardBase = allianceCode ? `/dashboard/${encodeURIComponent(allianceCode)}` : "/dashboard";
+  const hqMapLink = `${dashboardBase}/hq-map`;
+  const calLink = `${dashboardBase}/calendar`;
 
   return (
-    <div style={{
-      border: "1px solid rgba(255,255,255,0.12)",
-      borderRadius: 14,
-      padding: 12,
-      background: "rgba(0,0,0,0.18)",
-      boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
+    <div
+      style={{
+        border: "1px solid rgba(255,255,255,0.10)",
+        background: "rgba(255,255,255,0.03)",
+        borderRadius: 14,
+        padding: 12,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontWeight: 900, fontSize: 14 }}>{title}</div>
-          <div style={{ opacity: 0.8, fontSize: 12, marginTop: 2 }}>
-            HQ: <b>{hq.label || "Unnamed HQ"}</b>
+          <div style={{ fontWeight: 950 }}>{title}</div>
+          <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
+            {slotLabel ? slotLabel : "HQ"}
           </div>
         </div>
-        <div style={{ opacity: 0.7, fontSize: 12 }}>
-          {hq.source === "alliance_hq_map" ? "Map Slot" : "Position"}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link
+            to={hqMapLink}
+            style={{
+              opacity: 0.9,
+              textDecoration: "none",
+              border: "1px solid rgba(255,255,255,0.14)",
+              padding: "6px 10px",
+              borderRadius: 10,
+            }}
+          >
+            HQ Map →
+          </Link>
+          <Link
+            to={calLink}
+            style={{
+              opacity: 0.9,
+              textDecoration: "none",
+              border: "1px solid rgba(255,255,255,0.14)",
+              padding: "6px 10px",
+              borderRadius: 10,
+            }}
+          >
+            Calendar →
+          </Link>
         </div>
       </div>
 
-      <div style={{ marginTop: 10, display: "grid", gap: 6, fontSize: 13 }}>
-        <div style={{ opacity: 0.9 }}>
-          Player Coords: <b>{coord}</b>
-        </div>
-        {slot ? (
-          <div style={{ opacity: 0.8 }}>
-            {slot}
-          </div>
-        ) : null}
-      </div>
-
-      <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Link to={\/dashboard/\/hq-map\}
-          style={{ opacity: 0.9, textDecoration: "none", border: "1px solid rgba(255,255,255,0.14)", padding: "6px 10px", borderRadius: 10 }}>
-          View HQ Map
-        </Link>
-        <Link to={\/dashboard/\/calendar\}
-          style={{ opacity: 0.9, textDecoration: "none", border: "1px solid rgba(255,255,255,0.14)", padding: "6px 10px", borderRadius: 10 }}>
-          View Daily Events
-        </Link>
-      </div>
+      {hq.note ? <div style={{ marginTop: 10, opacity: 0.85 }}>{String(hq.note)}</div> : null}
     </div>
   );
 }
