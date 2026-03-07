@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { supabase } from "../../lib/supabaseClient";
 import StateDiscordChannelSelect from "../discord/StateDiscordChannelSelect";
+import SendToAllianceDefaultAchievementsButton from "./SendToAllianceDefaultAchievementsButton";
 
 type ReqRow = Record<string, any>;
 type ChannelRow = {
@@ -201,67 +202,12 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     }
   }
 
-  const canSendDefaultWebhook = (() => {
-    const a = String((allianceFilter as any) || `).trim();
-    if (!a) return false;
-    const x = a.toLowerCase();
-    if (x === ll || x === ll alliances) return false;
-    return true;
-  })();
-
-  async function sendDefaultWebhook() {
-    try {
-      setStatus("");
-      if (!canSendDefaultWebhook) {
-        setStatus("Pick an alliance filter (not All) to use per-alliance defaults.");
-        return;
-      }
-
-      const allianceCode = String((allianceFilter as any) || `).trim().toUpperCase();
-      const items = (Array.isArray(requests) ? requests : [])
-        .filter((r: any) => {
-          const ac = String(r?.alliance_code || r?.alliance || r?.alliance_name || `).trim().toUpperCase();
-          return !allianceCode || allianceCode === ac || String(r?.alliance_name || `).toUpperCase() === allianceCode;
-        })
-        .slice(0, 25);
-
-      const header = 🩸 State  — Achievements Intel ();
-      const body = items.map((r: any) => {
-        const title = String(r?.achievement_name || r?.title || r?.type_name || Achievement).trim();
-        const who = String(r?.player_name || r?.player || r?.name || `).trim();
-        const line = who ? • :  : • ;
-        return line;
-      }).join(\\n);
-
-      const msg = body ? (header + \\n + body) : header;
-
-      const q = await supabase.rpc(queue_discord_send, {
-        p_kind: discord_webhook,
-        p_target: lliance:,
-        p_channel_id: default:achievements,
-        p_content: msg,
-        p_meta: { state_code: stateCode, alliance_code: allianceCode, kind: chievements }
-      } as any);
-
-      if ((q as any)?.error) { setStatus((q as any).error.message || Queue failed); return; }
-      setStatus(Queued to alliance default webhook ✅);
-      window.setTimeout(() => setStatus(`), 1200);
-    } catch (e: any) {
-      setStatus(String(e?.message || e || Send failed));
-    }
-  }
-
   return (
     <div className="zombie-card" style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontWeight: 950 }}>🧟 Achievements Export</div>
-<div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8, alignItems: "center" }}>
-  <button className="zombie-btn" type="button" onClick={sendDefaultWebhook} disabled={!canSendDefaultWebhook}>
-    Send to Alliance Default (Achievements)
-  </button>
-  {!canSendDefaultWebhook ? <div style={{ opacity: 0.72, fontSize: 12 }}>Pick an alliance filter (not All) to use defaults.</div> : null}
-</div>
+    <SendToAllianceDefaultAchievementsButton stateCode={stateCode} allianceFilter={allianceFilter} requests={requests as any} />
           <div style={{ opacity: 0.75, fontSize: 12 }}>
             {status ? status : `State ${stateCode} • filtered: ${filtered.length} • completed: ${completed.length}`}
           </div>
