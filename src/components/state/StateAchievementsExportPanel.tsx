@@ -211,9 +211,9 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
   async function sendDefaultWebhook() {
     try {
-      setStatus(`);
+      setStatus("");
       if (!canSendDefaultWebhook) {
-        setStatus(Pick an alliance filter (not All) to use per-alliance defaults.);
+        setStatus("Pick an alliance filter (not All) to use per-alliance defaults.");
         return;
       }
 
@@ -256,6 +256,12 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontWeight: 950 }}>🧟 Achievements Export</div>
+<div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8, alignItems: "center" }}>
+  <button className="zombie-btn" type="button" onClick={sendDefaultWebhook} disabled={!canSendDefaultWebhook}>
+    Send to Alliance Default (Achievements)
+  </button>
+  {!canSendDefaultWebhook ? <div style={{ opacity: 0.72, fontSize: 12 }}>Pick an alliance filter (not All) to use defaults.</div> : null}
+</div>
           <div style={{ opacity: 0.75, fontSize: 12 }}>
             {status ? status : `State ${stateCode} • filtered: ${filtered.length} • completed: ${completed.length}`}
           </div>
@@ -361,4 +367,5 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
 
