@@ -478,7 +478,7 @@ export default function OwnerStateAchievementsPage() {
         </div>
       </div>
 
-      <StateAchievementsExportPanel stateCode={stateCode} requests={requests} />
+      <StateAchievementsExportPanel stateCode={stateCode} requests={requests} types={types} options={options} />
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -735,5 +735,6 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 

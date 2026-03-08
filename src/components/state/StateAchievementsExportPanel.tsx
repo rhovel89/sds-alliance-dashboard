@@ -33,18 +33,25 @@ function getPlayerName(r: any): string {
   return __norm(r?.player_name || r?.player || r?.game_name || r?.name || r?.player_display || r?.player_tag || "Unknown");
 }
 
-function getAchievementTypeName(r: any): string {
-  return __norm(
-    r?.achievement_name ||
-    r?.type_name ||
-    r?.title ||
-    r?.achievement ||
-    r?.label ||
-    r?.option_label ||
-    r?.option_name ||
-    r?.kind ||
-    ""
-  );
+function getAchievementTypeName(r: any, typeNameById?: Record<string, string>, optionNameById?: Record<string, string>): string {
+  const typeId = __norm(r?.achievement_type_id || r?.type_id);
+  const optionId = __norm(r?.option_id);
+
+  const direct =
+    __norm(
+      r?.achievement_name ||
+      r?.type_name ||
+      r?.title ||
+      r?.achievement ||
+      r?.label ||
+      r?.option_label ||
+      r?.option_name
+    );
+
+  if (direct) return direct;
+  if (optionId && optionNameById?.[optionId]) return optionNameById[optionId];
+  if (typeId && typeNameById?.[typeId]) return typeNameById[typeId];
+  return __norm(r?.kind || "");
 }
 function formatAchievementLine(r: any): string {
   const player = __norm(r?.player_name || r?.player || r?.game_name || r?.name || r?.player_display || r?.player_tag);
@@ -79,9 +86,11 @@ type ChannelRow = {
     channel_id: "default:achievements", // per-alliance default
 }
 
-export default function StateAchievementsExportPanel(props: { stateCode: string; requests?: ReqRow[] }) {
+export default function StateAchievementsExportPanel(props: { stateCode: string; requests?: ReqRow[]; types?: any[]; options?: any[] }) {
   const stateCode = norm(props.stateCode) || "789";
   const requests = Array.isArray(props.requests) ? props.requests : [];
+  const types = Array.isArray(props.types) ? props.types : [];
+  const options = Array.isArray(props.options) ? props.options : [];
 
   const [allianceFilter, setAllianceFilter] = useState<string>("ALL");
   const [achievementTypeFilter, setAchievementTypeFilter] = useState<string>("ALL");
@@ -89,6 +98,26 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
   const [channelId, setChannelId] = useState<string>("");
 
   const [status, setStatus] = useState<string>("");
+
+  const typeNameById = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const t of types) {
+      const id = String(t?.id || "").trim();
+      const name = String(t?.name || "").trim();
+      if (id && name) m[id] = name;
+    }
+    return m;
+  }, [types]);
+
+  const optionNameById = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const o of options) {
+      const id = String(o?.id || "").trim();
+      const label = String(o?.label || "").trim();
+      if (id && label) m[id] = label;
+    }
+    return m;
+  }, [options]);
   
 
   const [webhooks, setWebhooks] = useState<any[]>([]);
@@ -147,12 +176,24 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
   const achievementTypeOptions = useMemo(() => {
   const s = new Set<string>();
+
+  for (const t of types) {
+    const name = norm(t?.name);
+    if (name) s.add(name);
+  }
+
+  for (const o of options) {
+    const label = norm(o?.label);
+    if (label) s.add(label);
+  }
+
   for (const r of requests) {
-    const t = getAchievementTypeName(r);
+    const t = getAchievementTypeName(r, typeNameById, optionNameById);
     if (t) s.add(t);
   }
+
   return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
-}, [requests]);
+}, [requests, types, options, typeNameById, optionNameById]);
   const filtered = useMemo(() => {
     return requests.filter((r) => {
       const allianceOk =
@@ -160,7 +201,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
         allianceFilter === "ALL" ||
         normLower(r.alliance_name || r.alliance || r.allianceCode || r.alliance_code) === normLower(allianceFilter);
 
-      const rowType = getAchievementTypeName(r);
+      const rowType = getAchievementTypeName(r, typeNameById, optionNameById);
 
       const typeOk =
         !achievementTypeFilter ||
@@ -579,6 +620,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 // deploy check 2026-03-08T12:51:56
 
 // pages stamp 2026-03-08T12:58:58
+
 
 
 
