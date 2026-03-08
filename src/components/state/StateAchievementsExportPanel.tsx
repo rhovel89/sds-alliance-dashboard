@@ -7,16 +7,7 @@ import SendToAllianceDefaultAchievementsButton from "./SendToAllianceDefaultAchi
 type ReqRow = Record<string, any>;
 type ChannelRow = {
   id?: string;
-  channel_id: string;
-  channel_name: string | null;
-  is_default?: boolean | null;
-  active?: boolean | null;
-};
-
-function norm(s: any) { return String(s ?? "").trim(); }
-function normLower(s: any) { return String(s ?? "").trim().toLowerCase(); }
-function safeSlug(s: string) {
-  return normLower(s).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    channel_id: "default:achievements", // per-alliance default
 }
 
 export default function StateAchievementsExportPanel(props: { stateCode: string; requests?: ReqRow[] }) {
@@ -28,7 +19,45 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
   const [channelId, setChannelId] = useState<string>("");
 
   const [status, setStatus] = useState<string>("");
-  const [busy, setBusy] = useState(false);
+  
+
+  const [webhooks, setWebhooks] = useState<any[]>([]);
+  const [selectedWebhookIds, setSelectedWebhookIds] = useState<string[]>([]);
+
+  async function loadAllianceWebhooks(allianceCode: string) {
+    const a = String(allianceCode || "").toUpperCase().trim();
+    if (!a || a === "ALL") { setWebhooks([]); setSelectedWebhookIds([]); return; }
+    const { data, error } = await supabase
+      .from("alliance_discord_webhooks")
+      .select("id, name, webhook_url, alliance_code")
+      .eq("alliance_code", a)
+      .order("name", { ascending: true });
+    if (error) throw error;
+    setWebhooks(data || []);
+  }
+
+  function toggleWebhook(id: string) {
+    setSelectedWebhookIds((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  async function sendToSelectedWebhooks(message: string, meta: any) {
+    if (!selectedWebhookIds.length) {
+      setStatus("Pick at least one webhook/channel first.");
+      return;
+    }
+    setStatus("Queueing Discord sends...");
+    for (const wid of selectedWebhookIds) {
+      const { data, error } = await supabase.rpc("queue_discord_send", {
+        p_kind: "discord_webhook",
+        p_target: "alliance:" + String(allianceFilter || "").toUpperCase(),
+    p_channel_id: "default:achievements", // per-alliance default
+        p_content: message,
+        p_meta: meta
+      });
+      if (error) { setStatus("Queue error: " + error.message); return; }
+    }
+    setStatus("Queued ✅");
+  }const [busy, setBusy] = useState(false);
 
   const exportRef = useRef<HTMLDivElement | null>(null);
 
@@ -169,7 +198,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
         p_state_code: stateCode,
         p_alliance_code: "",
         p_kind: "state_achievements_export",
-        p_channel_id: cid,
+    p_channel_id: "default:achievements", // per-alliance default
         p_message: msg,
       });
 
@@ -313,5 +342,8 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
+
+
 
 

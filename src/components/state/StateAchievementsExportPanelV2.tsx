@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import StateAchievementsDossierSheet, { type DossierReqRow } from "./StateAchievementsDossierSheet";
+import StateAchievementsAllianceSendPanel from "./StateAchievementsAllianceSendPanel";
 
 type ChannelRow = { id?: string; channel_name?: string | null; channel_id?: string | null };
 
@@ -141,7 +142,7 @@ export default function StateAchievementsExportPanelV2(props: { stateCode: strin
       const rpc = await supabase.rpc("queue_discord_send", {
         p_kind: "state_achievements_dossier",
         p_target: "channel",
-        p_channel_id: cid,
+    p_channel_id: "default:achievements", // per-alliance default
         p_content: msg,
 p_meta: { state_code: stateCode, alliance_filter: allianceFilter }
       } as any);
@@ -202,4 +203,5 @@ p_meta: { state_code: stateCode, alliance_filter: allianceFilter }
     </div>
   );
 }
+
 

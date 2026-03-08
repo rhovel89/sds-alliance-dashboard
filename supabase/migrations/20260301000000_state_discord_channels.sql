@@ -13,10 +13,16 @@ create table if not exists public.state_discord_channels (
 );
 
 -- Only one default per state
-create unique index if not exists state_discord_channels_one_default_per_state
-  on public.state_discord_channels (state_code)
-  where is_default;
-
+-- Only one default per state (safe even if is_default column was missing)
+do $$
+begin
+  if exists (select 1 from information_schema.tables where table_schema='public' and table_name='state_discord_channels') then
+    if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='state_discord_channels' and column_name='is_default') then
+      execute 'alter table public.state_discord_channels add column is_default boolean not null default false';
+    end if;
+    execute 'create unique index if not exists state_discord_channels_one_default_per_state on public.state_discord_channels (state_code) where is_default';
+  end if;
+end $$;
 -- updated_at touch trigger
 create or replace function public.trg_touch_updated_at()
 returns trigger
@@ -57,3 +63,4 @@ insert into public.state_discord_channels (state_code, channel_name, channel_id,
 values
   ('789', 'State Alerts', '1477424639276875919', true, true)
 on conflict do nothing;
+
