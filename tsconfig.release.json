@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.app.json",
+  "include": [
+    "src/main.tsx",
+    "src/vite-env.d.ts",
+    "src/**/*.d.ts"
+  ],
+  "exclude": [
+    "src/**/_recovery_*",
+    "src/**/src-FINAL-*",
+    "src/**/src-pre-*",
+    "src/**/BACKUP_*",
+    "src/**/_SAFE_*",
+    "src/**/_auth_backup*",
+    "src/**/_route_fix_*",
+    "src/**/*.BACKUP.*",
+    "**/*.bak*",
+    "audit/**",
+    "docs/**"
+  ]
+}
