@@ -4,6 +4,10 @@ import { supabase } from "../../lib/supabaseClient";
 import StateDiscordChannelSelect from "../discord/StateDiscordChannelSelect";
 import SendToAllianceDefaultAchievementsButton from "./SendToAllianceDefaultAchievementsButton";
 
+// NOTE: local helper to avoid runtime crashes if upstream utils aren't imported
+const norm = (v: any) => String(v ?? "").trim();
+
+
 type ReqRow = Record<string, any>;
 type ChannelRow = {
   id?: string;
