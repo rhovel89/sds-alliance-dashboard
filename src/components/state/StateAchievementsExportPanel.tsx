@@ -203,6 +203,10 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stateCode]);
 
+  useEffect(() => {
+    void loadAllianceWebhooks(allianceFilter);
+  }, [allianceFilter]);
+
   async function exportPngDownload() {
     if (!exportRef.current) return;
     setBusy(true);
@@ -323,22 +327,82 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
         </select>
       </div>
 
-      <StateDiscordChannelSelect
-        stateCode={stateCode}
-        value={channelId}
-        onChange={setChannelId}
-        label="Discord Channel (Export Target)"
-      />
+      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <button
+            className="zombie-btn"
+            type="button"
+            style={{ padding: "10px 12px" }}
+            onClick={sendPngToDiscord}
+            disabled={busy || String(allianceFilter || "").toUpperCase() === "ALL"}
+          >
+            Send to Alliance Default (Achievements)
+          </button>
 
-      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportPngDownload} disabled={busy}>
-          ⬇️ Export PNG (download)
-        </button>
-        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendPngToDiscord} disabled={busy}>
-          📤 Export PNG → Discord
-        </button>
+          <button
+            className="zombie-btn"
+            type="button"
+            style={{ padding: "10px 12px" }}
+            onClick={() => void sendToSelectedWebhooks(
+              `🩸 **State ${stateCode} — Achievements Intel**` +
+              `\nAlliance: **${allianceFilter}**` +
+              `\nCompleted: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
+              {
+                state_code: stateCode,
+                alliance_code: String(allianceFilter || "").toUpperCase(),
+                kind: "achievements",
+                source: "StateAchievementsExportPanel"
+              }
+            )}
+            disabled={busy || !selectedWebhookIds.length || String(allianceFilter || "").toUpperCase() === "ALL"}
+          >
+            Send to Selected Webhooks
+          </button>
+
+          <button
+            className="zombie-btn"
+            type="button"
+            style={{ padding: "10px 12px" }}
+            onClick={() => void loadAllianceWebhooks(String(allianceFilter || ""))}
+            disabled={busy}
+          >
+            Reload Webhooks
+          </button>
+
+          <button
+            className="zombie-btn"
+            type="button"
+            style={{ padding: "10px 12px" }}
+            onClick={exportPngDownload}
+            disabled={busy}
+          >
+            ⬇️ Export PNG (download)
+          </button>
+        </div>
+
         <div style={{ opacity: 0.7, fontSize: 12 }}>
-          If Discord posting fails with “Missing Access”, the bot needs permissions in that channel.
+          Pick one alliance, then send to that alliance default webhook or to one or more selected webhooks.
+        </div>
+
+        <div style={{ display: "grid", gap: 6 }}>
+          {!webhooks.length ? (
+            <div style={{ opacity: 0.7, fontSize: 12 }}>
+              No webhooks found for this alliance. Add them in the alliance Discord webhooks page.
+            </div>
+          ) : webhooks.map((w: any) => {
+            const id = String(w.id || "");
+            const label = String(w.label || w.name || w.webhook_url || id);
+            return (
+              <label key={id} style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={selectedWebhookIds.includes(id)}
+                  onChange={() => toggleWebhook(id)}
+                />
+                <span>{label}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
 
@@ -405,6 +469,8 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
+
 
 
 
