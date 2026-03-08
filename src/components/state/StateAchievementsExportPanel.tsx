@@ -4,6 +4,28 @@ import { supabase } from "../../lib/supabaseClient";
 import StateDiscordChannelSelect from "../discord/StateDiscordChannelSelect";
 import SendToAllianceDefaultAchievementsButton from "./SendToAllianceDefaultAchievementsButton";
 
+const __norm = (v: any) => String(v ?? "").trim();
+const __normLower = (v: any) => __norm(v).toLowerCase();
+
+function formatAchievementLine(r: any): string {
+  const player = __norm(r?.player_name || r?.player || r?.game_name || r?.name || r?.player_display || r?.player_tag);
+  const ach = __norm(
+    r?.achievement_name ||
+    r?.type_name ||
+    r?.title ||
+    r?.achievement ||
+    r?.label ||
+    r?.option_label ||
+    r?.kind
+  );
+
+  // Prefer showing player name always
+  if (player && ach && __normLower(ach) !== "achievement") return `${player} — ${ach}`;
+  if (player) return player;
+  return ach || "Achievement";
+}
+
+
 // Local text helpers (keep UI resilient)
 const norm = (v: any) => String(v ?? "").trim();
 const normLower = (v: any) => norm(v).toLowerCase();
@@ -317,7 +339,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
               <div style={{ fontWeight: 900 }}>✅ Completed ({completed.length})</div>
               <div style={{ opacity: 0.85, fontSize: 12, marginTop: 4 }}>
                 {completed.slice(0, 12).map((r, i) => (
-                  <div key={i}>• {String(r.achievement_name || r.title || r.type_name || "Achievement")}</div>
+                  <div key={i}>• {formatAchievementLine(r)}</div>
                 ))}
                 {completed.length > 12 ? <div>… +{completed.length - 12} more</div> : null}
               </div>
@@ -327,7 +349,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
               <div style={{ fontWeight: 900 }}>🧬 In Progress ({progress.length})</div>
               <div style={{ opacity: 0.85, fontSize: 12, marginTop: 4 }}>
                 {progress.slice(0, 12).map((r, i) => (
-                  <div key={i}>• {String(r.achievement_name || r.title || r.type_name || "Achievement")}</div>
+                  <div key={i}>• {formatAchievementLine(r)}</div>
                 ))}
                 {progress.length > 12 ? <div>… +{progress.length - 12} more</div> : null}
               </div>
@@ -337,7 +359,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
               <div style={{ fontWeight: 900 }}>⏳ Pending ({pending.length})</div>
               <div style={{ opacity: 0.85, fontSize: 12, marginTop: 4 }}>
                 {pending.slice(0, 12).map((r, i) => (
-                  <div key={i}>• {String(r.achievement_name || r.title || r.type_name || "Achievement")}</div>
+                  <div key={i}>• {formatAchievementLine(r)}</div>
                 ))}
                 {pending.length > 12 ? <div>… +{pending.length - 12} more</div> : null}
               </div>
@@ -352,6 +374,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
 
 
 

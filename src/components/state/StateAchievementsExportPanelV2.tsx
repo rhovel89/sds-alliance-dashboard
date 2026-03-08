@@ -3,6 +3,28 @@ import { supabase } from "../../lib/supabaseClient";
 import StateAchievementsDossierSheet, { type DossierReqRow } from "./StateAchievementsDossierSheet";
 import StateAchievementsAllianceSendPanel from "./StateAchievementsAllianceSendPanel";
 
+const __norm = (v: any) => String(v ?? "").trim();
+const __normLower = (v: any) => __norm(v).toLowerCase();
+
+function formatAchievementLine(r: any): string {
+  const player = __norm(r?.player_name || r?.player || r?.game_name || r?.name || r?.player_display || r?.player_tag);
+  const ach = __norm(
+    r?.achievement_name ||
+    r?.type_name ||
+    r?.title ||
+    r?.achievement ||
+    r?.label ||
+    r?.option_label ||
+    r?.kind
+  );
+
+  // Prefer showing player name always
+  if (player && ach && __normLower(ach) !== "achievement") return `${player} — ${ach}`;
+  if (player) return player;
+  return ach || "Achievement";
+}
+
+
 // Local text helpers (keep UI resilient)
 const norm = (v: any) => String(v ?? "").trim();
 const normLower = (v: any) => norm(v).toLowerCase();
@@ -211,5 +233,6 @@ p_meta: { state_code: stateCode, alliance_filter: allianceFilter }
     </div>
   );
 }
+
 
 
