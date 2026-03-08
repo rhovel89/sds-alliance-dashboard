@@ -1,3 +1,4 @@
+import OwnerBriefSummaryPanel from "../../components/owner/OwnerBriefSummaryPanel";
 import React from "react";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 import OwnerCommandCenterHome from "../../components/owner/OwnerCommandCenterHome";
@@ -13,3 +14,4 @@ export default function OwnerDashboardPage() {
     </div>
   );
 }
+
