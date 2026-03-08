@@ -4,8 +4,14 @@ import { supabase } from "../../lib/supabaseClient";
 import StateDiscordChannelSelect from "../discord/StateDiscordChannelSelect";
 import SendToAllianceDefaultAchievementsButton from "./SendToAllianceDefaultAchievementsButton";
 
-// NOTE: local helper to avoid runtime crashes if upstream utils aren't imported
+// Local text helpers (keep UI resilient)
 const norm = (v: any) => String(v ?? "").trim();
+const normLower = (v: any) => norm(v).toLowerCase();
+const normUpper = (v: any) => norm(v).toUpperCase();
+
+
+
+
 
 
 type ReqRow = Record<string, any>;

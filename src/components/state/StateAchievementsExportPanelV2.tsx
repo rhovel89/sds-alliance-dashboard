@@ -3,6 +3,14 @@ import { supabase } from "../../lib/supabaseClient";
 import StateAchievementsDossierSheet, { type DossierReqRow } from "./StateAchievementsDossierSheet";
 import StateAchievementsAllianceSendPanel from "./StateAchievementsAllianceSendPanel";
 
+// Local text helpers (keep UI resilient)
+const norm = (v: any) => String(v ?? "").trim();
+const normLower = (v: any) => norm(v).toLowerCase();
+const normUpper = (v: any) => norm(v).toUpperCase();
+
+
+
+
 type ChannelRow = { id?: string; channel_name?: string | null; channel_id?: string | null };
 
 function safeSlug(s: string) {
