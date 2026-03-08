@@ -82,9 +82,9 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     if (!a || a === "ALL") { setWebhooks([]); setSelectedWebhookIds([]); return; }
     const { data, error } = await supabase
       .from("alliance_discord_webhooks")
-      .select("id, name, webhook_url, alliance_code")
+      .select("id, label, webhook_url, alliance_code")
       .eq("alliance_code", a)
-      .order("name", { ascending: true });
+      .order("label", { ascending: true });
     if (error) throw error;
     setWebhooks(data || []);
   }
@@ -469,6 +469,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
 
 
 
