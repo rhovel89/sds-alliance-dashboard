@@ -142,7 +142,7 @@ function parseAllianceFromTarget(t: string): string {
 async function claimOne(): Promise<QueueRow | null> {
   if (!supabase) return null;
 
-  console.log("[queueWorker] checking for queued rows"); console.log("[queueWorker] checking for queued rows"); const q = await supabase
+  console.log("[queueWorker] checking for queued rows"); console.log("[queueWorker] checking for queued rows"); console.log("[queueWorker] checking for queued rows"); const q = await supabase
     .from(QUEUE_TABLE)
     .select("*")
     .eq("status", "queued")
@@ -163,7 +163,7 @@ async function claimOne(): Promise<QueueRow | null> {
     .maybeSingle();
 
   if (lock.error || !lock.data?.id) return null;
-  console.log("[queueWorker] claimed row", row.id); return row;
+  console.log("[queueWorker] claimed row", row.id); console.log("[queueWorker] claimed row", row.id); return row;
 }
 
 async function markSent(id: string) {
@@ -241,6 +241,7 @@ export function startQueueWorker(discord: DiscordClient) {
   setTimeout(() => { void tick(); }, 1500);
   setInterval(() => { void tick(); }, 3500);
 }
+
 
 
 
