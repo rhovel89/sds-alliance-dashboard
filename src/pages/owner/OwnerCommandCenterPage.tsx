@@ -227,7 +227,8 @@ export default function OwnerCommandCenterPage() {
         <OwnerCard title="App Navigation" icon="🧭">
           <div style={{ display: "grid", gap: 8 }}>
             <Link to="/onboarding">📝 Onboarding</Link>
-            <Link to="/dashboard">🧟 My Dashboards</Link>
+            <Link to="/owner/morning-brief">🌅 Morning Brief</Link>
+              <Link to="/dashboard">🧟 My Dashboards</Link>
             <div style={{ fontSize: 12, opacity: 0.8 }}>
               Tip: alliance pages live under <code>/dashboard/&lt;CODE&gt;/calendar</code> and <code>/dashboard/&lt;CODE&gt;/hq-map</code>
             </div>
@@ -378,6 +379,7 @@ export default function OwnerCommandCenterPage() {
     </div>
   );
 }
+
 
 
 
