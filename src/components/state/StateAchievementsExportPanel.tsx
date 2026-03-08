@@ -248,11 +248,16 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
       setStatus("Queueing Discord send…");
       const q = await supabase.rpc("queue_discord_send" as any, {
-        p_state_code: stateCode,
-        p_alliance_code: "",
-        p_kind: "state_achievements_export",
-    p_channel_id: "default:achievements", // per-alliance default
-        p_message: msg,
+        p_kind: "discord_webhook",
+        p_target: "alliance:" + String(allianceFilter || "").toUpperCase(),
+        p_channel_id: "default:achievements", // per-alliance default
+        p_content: msg,
+        p_meta: {
+          state_code: stateCode,
+          alliance_code: String(allianceFilter || "").toUpperCase(),
+          kind: "achievements",
+          source: "StateAchievementsExportPanel",
+        },
       });
 
       if (q.error) throw q.error;
@@ -395,6 +400,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
 
 
 
