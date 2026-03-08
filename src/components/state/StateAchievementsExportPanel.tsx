@@ -53,6 +53,16 @@ function getAchievementTypeName(r: any, typeNameById?: Record<string, string>, o
   if (typeId && typeNameById?.[typeId]) return typeNameById[typeId];
   return __norm(r?.kind || "");
 }
+
+function getAchievementOptionName(r: any, optionNameById?: Record<string, string>): string {
+  const direct = __norm(r?.option_name || r?.option_label || r?.label || "");
+  if (direct) return direct;
+
+  const optionId = __norm(r?.option_id);
+  if (optionId && optionNameById?.[optionId]) return optionNameById[optionId];
+
+  return "";
+}
 function formatAchievementLine(r: any): string {
   const player = __norm(r?.player_name || r?.player || r?.game_name || r?.name || r?.player_display || r?.player_tag);
   const ach = __norm(
@@ -94,6 +104,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
   const [allianceFilter, setAllianceFilter] = useState<string>("ALL");
   const [achievementTypeFilter, setAchievementTypeFilter] = useState<string>("ALL");
+  const [achievementOptionFilter, setAchievementOptionFilter] = useState<string>("ALL");
   const [channels, setChannels] = useState<ChannelRow[]>([]);
   const [channelId, setChannelId] = useState<string>("");
 
@@ -182,11 +193,6 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     if (name) s.add(name);
   }
 
-  for (const o of options) {
-    const label = norm(o?.label);
-    if (label) s.add(label);
-  }
-
   for (const r of requests) {
     const t = getAchievementTypeName(r, typeNameById, optionNameById);
     if (t) s.add(t);
@@ -194,6 +200,22 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
   return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
 }, [requests, types, options, typeNameById, optionNameById]);
+
+const achievementOptionOptions = useMemo(() => {
+  const s = new Set<string>();
+
+  for (const o of options) {
+    const label = norm(o?.label);
+    if (label) s.add(label);
+  }
+
+  for (const r of requests) {
+    const label = getAchievementOptionName(r, optionNameById);
+    if (label) s.add(label);
+  }
+
+  return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
+}, [requests, options, optionNameById]);
   const filtered = useMemo(() => {
     return requests.filter((r) => {
       const allianceOk =
@@ -208,9 +230,16 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
         achievementTypeFilter === "ALL" ||
         normLower(rowType) === normLower(achievementTypeFilter);
 
-      return allianceOk && typeOk;
+      const rowOption = getAchievementOptionName(r, optionNameById);
+
+      const optionOk =
+        !achievementOptionFilter ||
+        achievementOptionFilter === "ALL" ||
+        normLower(rowOption) === normLower(achievementOptionFilter);
+
+      return allianceOk && typeOk && optionOk;
     });
-  }, [requests, allianceFilter, achievementTypeFilter]);
+  }, [requests, allianceFilter, achievementTypeFilter, achievementOptionFilter, optionNameById]);
 
   const completed = useMemo(() => {
     return filtered.filter((r) => {
@@ -331,7 +360,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
       const parts: string[] = [
         `🩸 **State ${stateCode} — Achievements Intel v3**`,
-        `Alliance: **${allianceFilter}** • Type: **${achievementTypeFilter}**`,
+        `Alliance: **${allianceFilter}** • Type: **${achievementTypeFilter}** • Option: **${achievementOptionFilter}**`,
         `Completed: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
       ];
 
@@ -394,7 +423,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
           <div style={{ fontWeight: 950 }}>🧟 Achievements Export</div>
     <SendToAllianceDefaultAchievementsButton stateCode={stateCode} allianceFilter={allianceFilter} requests={requests as any} />
           <div style={{ opacity: 0.75, fontSize: 12 }}>
-            {status ? status : `State ${stateCode} • alliance: ${allianceFilter} • type: ${achievementTypeFilter} • filtered: ${filtered.length} • completed: ${completed.length}`}
+            {status ? status : `State ${stateCode} • alliance: ${allianceFilter} • type: ${achievementTypeFilter} • option: ${achievementOptionFilter} • filtered: ${filtered.length} • completed: ${completed.length}`}
           </div>
         </div>
         <button className="zombie-btn" type="button" onClick={() => void loadChannelsAndDefaults()} disabled={busy}>
@@ -430,6 +459,20 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
         </select>
       </div>
 
+      <div style={{ marginTop: 10 }}>
+        <div style={{ fontWeight: 900, marginBottom: 6 }}>Achievement Option Filter</div>
+        <select
+          className="zombie-input"
+          value={achievementOptionFilter}
+          onChange={(e) => setAchievementOptionFilter(String(e.target.value || "ALL"))}
+          style={{ padding: "10px 12px", width: "100%" }}
+        >
+          {achievementOptionOptions.map((o) => (
+            <option key={o} value={o}>{o}</option>
+          ))}
+        </select>
+      </div>
+
       <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <button
@@ -449,7 +492,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
             onClick={() => void sendToSelectedWebhooks(
               [
                 `🩸 **State ${stateCode} — Achievements Intel v3**`,
-                `Alliance: **${allianceFilter}** • Type: **${achievementTypeFilter}**`,
+                `Alliance: **${allianceFilter}** • Type: **${achievementTypeFilter}** • Option: **${achievementOptionFilter}**`,
                 `Completed: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
                 ...(completed.length ? ["", "✅ **Completed**", ...completed.slice(0, 8).map((r) => `• ${formatAchievementLine(r)}`)] : []),
                 ...(progress.length ? ["", "🧬 **In Progress**", ...progress.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`)] : []),
@@ -535,7 +578,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     Z-OPS
   </div>
 </div>
-          <div style={{ opacity: 0.8, marginTop: 4, fontSize: 12 }}>Alliance: {allianceFilter} • Type: {achievementTypeFilter}</div>
+          <div style={{ opacity: 0.8, marginTop: 4, fontSize: 12 }}>Alliance: {allianceFilter} • Type: {achievementTypeFilter} • Option: {achievementOptionFilter}</div>
 
           <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
             <div>
@@ -620,6 +663,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 // deploy check 2026-03-08T12:51:56
 
 // pages stamp 2026-03-08T12:58:58
+
 
 
 
