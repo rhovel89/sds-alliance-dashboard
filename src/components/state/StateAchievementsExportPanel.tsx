@@ -70,6 +70,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
   const requests = Array.isArray(props.requests) ? props.requests : [];
 
   const [allianceFilter, setAllianceFilter] = useState<string>("ALL");
+  const [achievementTypeFilter, setAchievementTypeFilter] = useState<string>("ALL");
   const [channels, setChannels] = useState<ChannelRow[]>([]);
   const [channelId, setChannelId] = useState<string>("");
 
@@ -130,11 +131,47 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
   }, [requests]);
 
+  const achievementTypeOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of requests) {
+      const t = norm(
+        r.achievement_name ||
+        r.type_name ||
+        r.title ||
+        r.achievement ||
+        r.label ||
+        r.option_label ||
+        r.kind
+      );
+      if (t) s.add(t);
+    }
+    return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
+  }, [requests]);
   const filtered = useMemo(() => {
-    if (!allianceFilter || allianceFilter === "ALL") return requests;
-    const needle = normLower(allianceFilter);
-    return requests.filter((r) => normLower(r.alliance_name || r.alliance || r.allianceCode || r.alliance_code) === needle);
-  }, [requests, allianceFilter]);
+    return requests.filter((r) => {
+      const allianceOk =
+        !allianceFilter ||
+        allianceFilter === "ALL" ||
+        normLower(r.alliance_name || r.alliance || r.allianceCode || r.alliance_code) === normLower(allianceFilter);
+
+      const rowType = norm(
+        r.achievement_name ||
+        r.type_name ||
+        r.title ||
+        r.achievement ||
+        r.label ||
+        r.option_label ||
+        r.kind
+      );
+
+      const typeOk =
+        !achievementTypeFilter ||
+        achievementTypeFilter === "ALL" ||
+        normLower(rowType) === normLower(achievementTypeFilter);
+
+      return allianceOk && typeOk;
+    });
+  }, [requests, allianceFilter, achievementTypeFilter]);
 
   const completed = useMemo(() => {
     return filtered.filter((r) => {
@@ -340,6 +377,20 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
         </select>
       </div>
 
+      <div style={{ marginTop: 10 }}>
+        <div style={{ fontWeight: 900, marginBottom: 6 }}>Achievement Type Filter</div>
+        <select
+          className="zombie-input"
+          value={achievementTypeFilter}
+          onChange={(e) => setAchievementTypeFilter(String(e.target.value || "ALL"))}
+          style={{ padding: "10px 12px", width: "100%" }}
+        >
+          {achievementTypeOptions.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+      </div>
+
       <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <button
@@ -530,4 +581,5 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 // deploy check 2026-03-08T12:51:56
 
 // pages stamp 2026-03-08T12:58:58
+
 
