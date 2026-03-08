@@ -249,11 +249,18 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
       const url = pub?.data?.publicUrl;
       if (!url) throw new Error("Public URL missing (exports bucket)");
 
+      const completedLines = completed.slice(0, 8).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
+      const progressLines = progress.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
+      const pendingLines = pending.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
+
       const msg =
         `🩸 **State ${stateCode} — Achievements Intel**` +
         `\nAlliance: **${allianceFilter}**` +
         `\nCompleted: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**` +
-        `\n` + url;
+        (completedLines ? `\n\n✅ **Completed**\n${completedLines}` : "") +
+        (progressLines ? `\n\n🧬 **In Progress**\n${progressLines}` : "") +
+        (pendingLines ? `\n\n⏳ **Pending**\n${pendingLines}` : "") +
+        `\n\n📎 Export Image:\n${url}`;
 
       setStatus("Queueing Discord send…");
       const q = await supabase.rpc("queue_discord_send" as any, {
@@ -469,6 +476,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
 
 
 
