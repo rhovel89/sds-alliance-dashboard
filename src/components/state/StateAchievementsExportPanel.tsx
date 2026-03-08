@@ -132,21 +132,13 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
   }, [requests]);
 
   const achievementTypeOptions = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of requests) {
-      const t = norm(
-        r.achievement_name ||
-        r.type_name ||
-        r.title ||
-        r.achievement ||
-        r.label ||
-        r.option_label ||
-        r.kind
-      );
-      if (t) s.add(t);
-    }
-    return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
-  }, [requests]);
+  const s = new Set<string>();
+  for (const r of requests) {
+    const t = getAchievementTypeName(r);
+    if (t) s.add(t);
+  }
+  return ["ALL", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
+}, [requests]);
   const filtered = useMemo(() => {
     return requests.filter((r) => {
       const allianceOk =
@@ -154,15 +146,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
         allianceFilter === "ALL" ||
         normLower(r.alliance_name || r.alliance || r.allianceCode || r.alliance_code) === normLower(allianceFilter);
 
-      const rowType = norm(
-        r.achievement_name ||
-        r.type_name ||
-        r.title ||
-        r.achievement ||
-        r.label ||
-        r.option_label ||
-        r.kind
-      );
+      const rowType = getAchievementTypeName(r);
 
       const typeOk =
         !achievementTypeFilter ||
@@ -581,6 +565,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 // deploy check 2026-03-08T12:51:56
 
 // pages stamp 2026-03-08T12:58:58
+
 
 
 
