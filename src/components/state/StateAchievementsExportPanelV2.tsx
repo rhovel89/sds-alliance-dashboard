@@ -8,6 +8,9 @@ const norm = (v: any) => String(v ?? "").trim();
 const normLower = (v: any) => norm(v).toLowerCase();
 
 
+// Local helpers (stable + avoids runtime crashes)
+
+
 const __norm = (v: any) => String(v ?? "").trim();
 const __normLower = (v: any) => __norm(v).toLowerCase();
 
@@ -236,6 +239,7 @@ p_meta: { state_code: stateCode, alliance_filter: allianceFilter }
     </div>
   );
 }
+
 
 
 
