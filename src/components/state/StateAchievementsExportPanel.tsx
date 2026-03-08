@@ -4,6 +4,11 @@ import { supabase } from "../../lib/supabaseClient";
 import StateDiscordChannelSelect from "../discord/StateDiscordChannelSelect";
 import SendToAllianceDefaultAchievementsButton from "./SendToAllianceDefaultAchievementsButton";
 
+// Local helpers (stable + avoids runtime crashes)
+const norm = (v: any) => String(v ?? "").trim();
+const normLower = (v: any) => norm(v).toLowerCase();
+
+
 const __norm = (v: any) => String(v ?? "").trim();
 const __normLower = (v: any) => __norm(v).toLowerCase();
 
@@ -27,8 +32,6 @@ function formatAchievementLine(r: any): string {
 
 
 // Local text helpers (keep UI resilient)
-const norm = (v: any) => String(v ?? "").trim();
-const normLower = (v: any) => norm(v).toLowerCase();
 const normUpper = (v: any) => norm(v).toUpperCase();
 
 
@@ -374,6 +377,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
 
 
 

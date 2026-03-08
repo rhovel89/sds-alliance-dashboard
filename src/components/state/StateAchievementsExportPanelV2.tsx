@@ -3,6 +3,11 @@ import { supabase } from "../../lib/supabaseClient";
 import StateAchievementsDossierSheet, { type DossierReqRow } from "./StateAchievementsDossierSheet";
 import StateAchievementsAllianceSendPanel from "./StateAchievementsAllianceSendPanel";
 
+// Local helpers (stable + avoids runtime crashes)
+const norm = (v: any) => String(v ?? "").trim();
+const normLower = (v: any) => norm(v).toLowerCase();
+
+
 const __norm = (v: any) => String(v ?? "").trim();
 const __normLower = (v: any) => __norm(v).toLowerCase();
 
@@ -26,8 +31,6 @@ function formatAchievementLine(r: any): string {
 
 
 // Local text helpers (keep UI resilient)
-const norm = (v: any) => String(v ?? "").trim();
-const normLower = (v: any) => norm(v).toLowerCase();
 const normUpper = (v: any) => norm(v).toUpperCase();
 
 
