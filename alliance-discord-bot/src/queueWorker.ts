@@ -196,9 +196,9 @@ async function processOne(discord: DiscordClient): Promise<boolean> {
     if (kind === "discord_webhook") {
       const webhookId = await resolveWebhookIdForQueueRow(row);
       const webhookUrl = await getWebhookUrlById(webhookId);
-      await postWebhook(webhookUrl, row.content);
+      await postWebhook(webhookUrl, s((row as any).content || (row as any).message));
     } else {
-      await sendToChannel(discord, row.channel_id, row.content);
+      await sendToChannel(discord, row.channel_id, s((row as any).content || (row as any).message));
     }
     await markSent(row.id);
   } catch (e: any) {
@@ -236,6 +236,7 @@ export function startQueueWorker(discord: DiscordClient) {
   setTimeout(() => { void tick(); }, 1500);
   setInterval(() => { void tick(); }, 3500);
 }
+
 
 
 
