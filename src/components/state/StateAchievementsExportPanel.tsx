@@ -255,7 +255,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
       const q = await supabase.rpc("queue_discord_send" as any, {
         p_kind: "discord_webhook",
         p_target: "alliance:" + String(allianceFilter || "").toUpperCase(),
-        p_channel_id: "default:achievements", // per-alliance default
+        p_channel_id: String(wid),
         p_content: msg,
         p_meta: {
           state_code: stateCode,
@@ -405,6 +405,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
 
 
 
