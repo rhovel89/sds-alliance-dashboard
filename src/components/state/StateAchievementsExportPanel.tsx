@@ -292,7 +292,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
       const parts: string[] = [
         `🩸 **State ${stateCode} — Achievements Intel v3**`,
-        `Alliance: **${allianceFilter}**`,
+        `Alliance: **${allianceFilter}** • Type: **${achievementTypeFilter}**`,
         `Completed: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
       ];
 
@@ -355,7 +355,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
           <div style={{ fontWeight: 950 }}>🧟 Achievements Export</div>
     <SendToAllianceDefaultAchievementsButton stateCode={stateCode} allianceFilter={allianceFilter} requests={requests as any} />
           <div style={{ opacity: 0.75, fontSize: 12 }}>
-            {status ? status : `State ${stateCode} • filtered: ${filtered.length} • completed: ${completed.length}`}
+            {status ? status : `State ${stateCode} • alliance: ${allianceFilter} • type: ${achievementTypeFilter} • filtered: ${filtered.length} • completed: ${completed.length}`}
           </div>
         </div>
         <button className="zombie-btn" type="button" onClick={() => void loadChannelsAndDefaults()} disabled={busy}>
@@ -410,7 +410,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
             onClick={() => void sendToSelectedWebhooks(
               [
                 `🩸 **State ${stateCode} — Achievements Intel v3**`,
-                `Alliance: **${allianceFilter}**`,
+                `Alliance: **${allianceFilter}** • Type: **${achievementTypeFilter}**`,
                 `Completed: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
                 ...(completed.length ? ["", "✅ **Completed**", ...completed.slice(0, 8).map((r) => `• ${formatAchievementLine(r)}`)] : []),
                 ...(progress.length ? ["", "🧬 **In Progress**", ...progress.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`)] : []),
@@ -496,7 +496,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     Z-OPS
   </div>
 </div>
-          <div style={{ opacity: 0.8, marginTop: 4, fontSize: 12 }}>Alliance: {allianceFilter}</div>
+          <div style={{ opacity: 0.8, marginTop: 4, fontSize: 12 }}>Alliance: {allianceFilter} • Type: {achievementTypeFilter}</div>
 
           <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
             <div>
@@ -581,5 +581,6 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 // deploy check 2026-03-08T12:51:56
 
 // pages stamp 2026-03-08T12:58:58
+
 
 
