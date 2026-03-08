@@ -32,6 +32,20 @@ const __normLower = (v: any) => __norm(v).toLowerCase();
 function getPlayerName(r: any): string {
   return __norm(r?.player_name || r?.player || r?.game_name || r?.name || r?.player_display || r?.player_tag || "Unknown");
 }
+
+function getAchievementTypeName(r: any): string {
+  return __norm(
+    r?.achievement_name ||
+    r?.type_name ||
+    r?.title ||
+    r?.achievement ||
+    r?.label ||
+    r?.option_label ||
+    r?.option_name ||
+    r?.kind ||
+    ""
+  );
+}
 function formatAchievementLine(r: any): string {
   const player = __norm(r?.player_name || r?.player || r?.game_name || r?.name || r?.player_display || r?.player_tag);
   const ach = __norm(
@@ -565,6 +579,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 // deploy check 2026-03-08T12:51:56
 
 // pages stamp 2026-03-08T12:58:58
+
 
 
 
