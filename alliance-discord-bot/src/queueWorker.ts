@@ -189,12 +189,21 @@ async function processOne(discord: DiscordClient): Promise<boolean> {
 
   try {
     const kind = s(row.kind).toLowerCase();
+      console.log("[queueWorker] processing row", {
+        id: row.id,
+        kind,
+        channel_id: row.channel_id,
+        target: row.target,
+        meta: row.meta,
+      });
     if (kind === "discord_webhook") {
+        console.log("[queueWorker] using webhook transport", row.id);
       const webhookId = await resolveWebhookIdForQueueRow(row);
       const webhookUrl = await getWebhookUrlById(webhookId);
       await postWebhook(webhookUrl, s((row as any).content || (row as any).message));
     } else {
-      await sendToChannel(discord, row.channel_id, s((row as any).content || (row as any).message));
+      console.log("[queueWorker] using channel transport", row.id);
+        await sendToChannel(discord, row.channel_id, s((row as any).content || (row as any).message));
     }
     await markSent(row.id);
   } catch (e: any) {
@@ -232,6 +241,10 @@ export function startQueueWorker(discord: DiscordClient) {
   setTimeout(() => { void tick(); }, 1500);
   setInterval(() => { void tick(); }, 3500);
 }
+
+
+
+
 
 
 
