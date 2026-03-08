@@ -91,7 +91,7 @@ export default function StateAchievementsAllianceSendPanel(props: {
       p_webhook_id: webhookId,
       p_content: content,
       p_payload_kind: "achievements",
-      p_meta: { alliance_code: alliance,  state_code: stateCode, alliance_code: alliance }
+      p_meta: { alliance_code: alliance, state_code: stateCode }
     };
 
     const r = await supabase.rpc("queue_discord_webhook_send", payload as any);
@@ -180,4 +180,6 @@ export default function StateAchievementsAllianceSendPanel(props: {
     </div>
   );
 }
+
+
 
