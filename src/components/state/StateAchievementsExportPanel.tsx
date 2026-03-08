@@ -1,5 +1,3 @@
-import { formatAchievementLine, getAchievementName, getPlayerName } from "@/features/state/achievements/exportFormat";
-import { norm, normLower, safeSlug } from "@/utils/text";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { supabase } from "../../lib/supabaseClient";
@@ -30,6 +28,10 @@ const safeSlug = (v: any) => {
 const __norm = (v: any) => String(v ?? "").trim();
 const __normLower = (v: any) => __norm(v).toLowerCase();
 
+
+function getPlayerName(r: any): string {
+  return __norm(r?.player_name || r?.player || r?.game_name || r?.name || r?.player_display || r?.player_tag || "Unknown");
+}
 function formatAchievementLine(r: any): string {
   const player = __norm(r?.player_name || r?.player || r?.game_name || r?.name || r?.player_display || r?.player_tag);
   const ach = __norm(
@@ -511,4 +513,5 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
 
 // deploy tick 2026-03-08T12:06:12
+
 
