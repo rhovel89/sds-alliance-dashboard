@@ -4,9 +4,22 @@ import { supabase } from "../../lib/supabaseClient";
 import StateDiscordChannelSelect from "../discord/StateDiscordChannelSelect";
 import SendToAllianceDefaultAchievementsButton from "./SendToAllianceDefaultAchievementsButton";
 
-// Local helpers (stable + avoids runtime crashes)
+// Helpers (local, avoid runtime crashes)
 const norm = (v: any) => String(v ?? "").trim();
 const normLower = (v: any) => norm(v).toLowerCase();
+const safeSlug = (v: any) => {
+  const s = normLower(v);
+  const slug = s
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return (slug.length ? slug.slice(0, 60) : "x");
+};
+
+
+// Local helpers (stable + avoids runtime crashes)
 
 
 // Local helpers (stable + avoids runtime crashes)

@@ -1,0 +1,55 @@
+Dashboard route report: 2026-03-04T22:36:00
+
+== Matches: /dashboard ==
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/components/CRTOverlay.tsx:2: import '../styles/dashboard-crt.css';
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/components/player/PlayerMeProfileAndHqsPanel.tsx:446: href={`/dashboard/${encodeURIComponent(upper(selectedAlliance))}`}
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/components/player/PlayerMeProfileAndHqsPanel.tsx:471: href={`/dashboard/${encodeURIComponent(upper(selectedAlliance))}/announcements${viewSuffix}`}
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/components/player/PlayerMeProfileAndHqsPanel.tsx:519: href={`/dashboard/${encodeURIComponent(upper(selectedAlliance))}/guides${viewSuffix}`}
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/components/player/PlayerMeProfileAndHqsPanel.tsx:687: <a href={`/dashboard/${encodeURIComponent(upper(selectedAlliance))}/calendar${viewSuffix}`} style={{ textDecoration: "none" }}>
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/components/player/PlayerMeProfileAndHqsPanel.tsx:690: <a href={`/dashboard/${encodeURIComponent(upper(selectedAlliance))}/hq-map${viewSuffix}`} style={{ textDecoration: "none" }}>
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/layout/Sidebar.tsx:13: <NavLink to="/dashboard/hq-map" className="nav-item">
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/layout/Sidebar.tsx:17: <NavLink to="/dashboard/events">Events</NavLink>
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/layout/Sidebar.tsx:22: <NavLink to={`/dashboard/${alliance_id}/profile`}>🧍 My Profile</NavLink>
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/layouts/DashboardLayout.tsx:13: const isAllianceArea = path.startsWith("/dashboard/") && !!alliance_id && path !== "/dashboard";
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/navigation/Sidebar.tsx:6: const base = alliance_id ? `/dashboard/${alliance_id}` : "";
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/AllianceCalendarViewPage.tsx:105: <Link to={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ opacity: 0.85 }}>
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/AllianceHQMapViewPage.tsx:80: <Link to={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ opacity: 0.85 }}>
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/AuthCallback.tsx:34: navigate(`/dashboard/${membership.alliance_code}`, { replace: true });
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/AuthLandingPage.tsx:37: options: { redirectTo: `${window.location.origin}/dashboard` },
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/DashboardEntryPage.tsx:3: import MyDashboardsPage from "./dashboard/MyDashboardsPage";
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/DashboardGate.tsx:17: * - Only Owners/R4/R5 (or app admin) can view the alliance dashboard ROOT: /dashboard/:code
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/DashboardGate.tsx:19: * - IMPORTANT: this does NOT block /dashboard/:code/hq-map or /calendar or /announcements etc
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/InviteAccept.tsx:60: navigate('/dashboard');
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/LandingRedirectPage.tsx:29: nav("/dashboard", { replace: true });
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Login.tsx:7: options: { redirectTo: `${window.location.origin}/dashboard` },
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/MePage.tsx:444: Tip: Alliance dashboards are under <code>/dashboard/&lt;ALLIANCE&gt;</code>. This page saves your personal profile per alliance.
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx:62: if (code) navigate("/dashboard", { replace: true });
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx:107: options: { redirectTo: `${window.location.origin}/dashboard` },
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/Onboarding.tsx:158: <button onClick={() => nav("/dashboard")} style={{ padding: "10px 14px", borderRadius: 10 }}>
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx:14: if (pathname === "/dashboard") return true;         // “My Dashboards”
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx:15: if (pathname === "/dashboard/ME") return true;      // legacy
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OnboardingGate.tsx:84: // signed in users can always reach /me + /dashboard (no more loops)
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OwnerDashboardSelect.tsx:25: onClick={() => navigate("/dashboard/" + String((alliances?.[0]?.code) || "").toUpperCase() + "")}
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/OwnerDashboardSelect.tsx:36: onClick={() => navigate("/dashboard/" + a.code)}
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerProfilePage.tsx:345: <Link to={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ opacity: 0.85 }}>
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerProfilePage.tsx:350: <Link to={`/dashboard/${encodeURIComponent(allianceCode)}/hq-map-view`} style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)" }}>
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerProfilePage.tsx:353: <Link to={`/dashboard/${encodeURIComponent(allianceCode)}/calendar-view`} style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)" }}>
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerProfilePage.tsx:356: <Link to={`/dashboard/${encodeURIComponent(allianceCode)}/guides`} style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)" }}>
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/PlayerProfilePage.tsx:375: to={`/dashboard/${encodeURIComponent(String(m.alliance_code))}`}
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/SystemStatusPage.tsx:38: const m = (pathname || "").match(/^\/dashboard\/([^\/]+)/);
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/routes/AppRoutes.tsx:2: import DashboardLayout from "../layouts/DashboardLayout";
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/routes/AppRoutes.tsx:16: import MyDashboardsPage from "../pages/dashboard/MyDashboardsPage";
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/routes/AppRoutes.tsx:25: import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/routes/AppRoutes.tsx:26: import PermissionsPage from "../pages/dashboard/Permissions";
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/routes/AppRoutes.tsx:185: <Route path="/dashboard" element={<DashboardEntry />} />
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/routes/AppRoutes.tsx:192: <Route path="/dashboard/ME" element={<Navigate to="/me" replace />} />
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/routes/AppRoutes.tsx:217: <Route path="/dashboard/:alliance_id" element={<DashboardLayout />}>
+
+== Matches: DashboardGate / PlayerDashboardPage ==
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/DashboardEntryPage.tsx:3: import MyDashboardsPage from "./dashboard/MyDashboardsPage";
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/DashboardEntryPage.tsx:20: return isCb ? <AuthCallback /> : <MyDashboardsPage />;
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/DashboardGate.tsx:16: * DashboardGate
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/DashboardGate.tsx:21: export default function DashboardGate() {
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/routes/AppRoutes.tsx:16: import MyDashboardsPage from "../pages/dashboard/MyDashboardsPage";
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/routes/AppRoutes.tsx:36: import PlayerDashboardPage from "../pages/PlayerDashboardPage";
+/Users/raymondhovel/Documents/State Alliance Dashboard/src/routes/AppRoutes.tsx:71: return hasAuth ? <AuthCallback /> : <MyDashboardsPage />;

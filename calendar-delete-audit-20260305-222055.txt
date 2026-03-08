@@ -1,0 +1,1846 @@
+Calendar delete audit: 2026-03-05T22:20:55
+
+===== delete(...) calls =====
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:386 ---
+    setForm(makeEmptyForm());
+    await refetch();
+  };
+
+  const deleteEvent = async (id: string) => {
+    if (!canEdit && !isOwner) return;
+    if (!confirm("Delete this event?")) return;
+    await supabase.from("alliance_events").delete().eq("id", id);
+    await refetch();
+  };
+
+  const monthLabel = useMemo(() => {
+    return new Date(year, month).toLocaleString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+  }, [month, year]);
+
+  // Calendar day match using local conversion from UTC instant
+  const isSameDay = (utcString: string, y: number, m: number, d: number) => {
+    const local = new Date(utcString);
+    return (
+      local.getFullYear() === y &&
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:26 ---
+export async function deleteEvent(id: string) {
+  const { error } = await supabase
+    .from("alliance_events")
+     if (!canEditCalendar) {
+       window.alert("Calendar is locked (Owner/Admin only).");
+       return;
+     }
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+/* ---------------- EXCEPTIONS ---------------- */
+
+export async function listExceptionsForEventIds(eventIds: string[]) {
+  if (eventIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .select("*")
+    .in("event_id", eventIds);
+
+
+===== .delete() calls =====
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:386 ---
+    setForm(makeEmptyForm());
+    await refetch();
+  };
+
+  const deleteEvent = async (id: string) => {
+    if (!canEdit && !isOwner) return;
+    if (!confirm("Delete this event?")) return;
+    await supabase.from("alliance_events").delete().eq("id", id);
+    await refetch();
+  };
+
+  const monthLabel = useMemo(() => {
+    return new Date(year, month).toLocaleString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+  }, [month, year]);
+
+  // Calendar day match using local conversion from UTC instant
+  const isSameDay = (utcString: string, y: number, m: number, d: number) => {
+    const local = new Date(utcString);
+    return (
+      local.getFullYear() === y &&
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:26 ---
+export async function deleteEvent(id: string) {
+  const { error } = await supabase
+    .from("alliance_events")
+     if (!canEditCalendar) {
+       window.alert("Calendar is locked (Owner/Admin only).");
+       return;
+     }
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+/* ---------------- EXCEPTIONS ---------------- */
+
+export async function listExceptionsForEventIds(eventIds: string[]) {
+  if (eventIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .select("*")
+    .in("event_id", eventIds);
+
+
+===== delete handlers =====
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:383 ---
+    }
+
+    setShowModal(false);
+    setForm(makeEmptyForm());
+    await refetch();
+  };
+
+  const deleteEvent = async (id: string) => {
+    if (!canEdit && !isOwner) return;
+    if (!confirm("Delete this event?")) return;
+    await supabase.from("alliance_events").delete().eq("id", id);
+    await refetch();
+  };
+
+  const monthLabel = useMemo(() => {
+    return new Date(year, month).toLocaleString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+  }, [month, year]);
+
+  // Calendar day match using local conversion from UTC instant
+  const isSameDay = (utcString: string, y: number, m: number, d: number) => {
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:478 ---
+                  style={{
+                    marginTop: 6,
+                    fontSize: 12,
+                    cursor: canEdit ? "pointer" : "default",
+                  }}
+                  onClick={(evt) => {
+                    evt.stopPropagation();
+                    if (canEdit) deleteEvent(getDeleteId(e));
+                  }}
+                  title={canEdit ? "Click to delete" : undefined}
+                >
+                  {new Date(String(getEventStartUtc(e) || "")).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  - {e.title}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:29 ---
+  isOpen: boolean;
+  mode: 'create' | 'edit';
+  selectedIso: string;           // day clicked
+  initial?: CalendarEvent | null; // rule event
+  alliances: UserAlliance[];
+  onClose: () => void;
+  onSave: (draft: Draft) => void;
+  onDelete?: () => void;
+
+  // Exceptions (edit mode for recurring)
+  occurrenceIso?: string; // day clicked (same as selectedIso, but explicit)
+  onSkipOccurrence?: (occurrenceIso: string) => void;
+  onMoveOccurrence?: (args: {
+    occurrenceIso: string;
+    newDate: string;
+    newStartTime?: string | null;
+    newEndTime?: string | null;
+    newTitle?: string | null;
+    newDescription?: string | null;
+  }) => void;
+};
+
+const DOW_LABELS: Array<{ n: number; label: string }> = [
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:67 ---
+  isOpen,
+  mode,
+  selectedIso,
+  initial,
+  alliances,
+  onClose,
+  onSave,
+  onDelete,
+  occurrenceIso,
+  onSkipOccurrence,
+  onMoveOccurrence,
+}: Props) {
+  const defaultDraft: Draft = useMemo(() => {
+    const initialFreq =
+      (initial?.frequency && initial.frequency !== 'none'
+        ? initial.frequency
+        : 'weekly') as Frequency;
+
+    const selectedDate = new Date(selectedIso + 'T00:00:00');
+    const selectedDow = selectedDate.getDay();
+
+    const defaultDays =
+      initial?.daysOfWeek && initial.daysOfWeek.length > 0
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:132 ---
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const titleText = mode === 'edit' ? 'Edit Event' : 'Create Event';
+
+  function update<K extends keyof Draft>(key: K, value: Draft[K]) {
+    setDraft((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function toggleDow(n: number) {
+    setDraft((prev) => {
+      const has = prev.daysOfWeek.includes(n);
+      const next = has ? prev.daysOfWeek.filter((x) => x !== n) : [...prev.daysOfWeek, n];
+      return { ...prev, daysOfWeek: uniqSorted(next) };
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:357 ---
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="v2-modal__footer">
+          {mode === 'edit' && onDelete ? (
+            <button type="button" className="v2-btn v2-btn--danger" onClick={onDelete}>
+              Delete
+            </button>
+          ) : (
+            <span />
+          )}
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="button" className="v2-btn" onClick={onClose}>Cancel</button>
+            <button type="button" className="v2-btn v2-btn--primary" onClick={handleSave}>Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:358 ---
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="v2-modal__footer">
+          {mode === 'edit' && onDelete ? (
+            <button type="button" className="v2-btn v2-btn--danger" onClick={onDelete}>
+              Delete
+            </button>
+          ) : (
+            <span />
+          )}
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="button" className="v2-btn" onClick={onClose}>Cancel</button>
+            <button type="button" className="v2-btn v2-btn--primary" onClick={handleSave}>Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:19 ---
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteEvent(id: string) {
+  const { error } = await supabase
+    .from("alliance_events")
+     if (!canEditCalendar) {
+       window.alert("Calendar is locked (Owner/Admin only).");
+       return;
+     }
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+/* ---------------- EXCEPTIONS ---------------- */
+
+export async function listExceptionsForEventIds(eventIds: string[]) {
+
+===== recurrence end fields =====
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:102 ---
+    start_date: "",
+    start_time: "",
+    end_date: "",
+    end_time: "",
+    recurring_enabled: false,
+    recurrence_type: "weekly",
+    recurrence_days: [] as string[],
+    recurrence_end_date: "",
+  });
+
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [form, setForm] = useState(makeEmptyForm());
+
+  const today = new Date();
+  const [month, setMonth] = useState(today.getMonth());
+  const [year, setYear] = useState(today.getFullYear());
+
+  const daysInMonth = useMemo(
+    () => new Date(year, month + 1, 0).getDate(),
+    [month, year]
+  );
+
+  // Expand recurring events for the visible month (client-side)
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:324 ---
+      start_time: form.start_time,
+      end_time: form.end_time,
+
+      // Recurrence
+      recurring_enabled: form.recurring_enabled,
+      recurrence_type: form.recurrence_type || null,
+      recurrence_days: form.recurrence_days,
+      recurrence_end_date: form.recurrence_end_date || null,
+    };
+
+    const wantRecurring = form.recurring_enabled && form.recurrence_type !== "none";
+
+    const payloadA = {
+      ...basePayload,
+      ...(wantRecurring
+        ? { recurrence_type: form.recurrence_type, recurrence_days: form.recurrence_days }
+        : { recurrence_type: null, recurrence_days: null }),
+    };
+
+    const resA = await supabase.from("alliance_events").insert(payloadA).select("id").single();
+
+    if (resA.error) {
+      const msg = (resA.error.message || "").toLowerCase();
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/utils/recurrence.ts:34 ---
+  end_date?: string | null;   // YYYY-MM-DD
+  end_time?: string | null;   // HH:mm
+
+  // recurrence
+  recurring_enabled?: boolean | null;
+  recurrence_type?: RecurrenceType | string | null;
+  recurrence_days?: string[] | null;
+  recurrence_end_date?: string | null; // YYYY-MM-DD
+
+  // fallback names some older schemas use
+  recurrence?: string | null;
+  days_of_week?: string[] | null;
+
+  // meta for expanded instances (virtual occurrences)
+  instance_id?: string | null;
+  _source_event_id?: string;
+  _occurrence_time_utc?: string;
+};
+
+const DAY_MAP: Record<string, number> = {
+  sun: 0, sunday: 0,
+  mon: 1, monday: 1,
+  tue: 2, tues: 2, tuesday: 2,
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/utils/recurrence.ts:136 ---
+    const baseIso = getEventStartUtc(ev);
+    if (!baseIso) continue;
+
+    const base = new Date(baseIso);
+    const enabled = !!ev.recurring_enabled;
+    const rtype = String(ev.recurrence_type ?? "").toLowerCase() as RecurrenceType;
+
+    const endClamp = parseEndClamp(ev.recurrence_end_date);
+
+    // Include base row (mark meta)
+    out.push({
+      ...(ev as any),
+      start_time_utc: base.toISOString(),
+      _source_event_id: ev.id,
+      _occurrence_time_utc: base.toISOString(),
+    });
+
+    if (!enabled || !rtype) continue;
+
+    const baseH = base.getUTCHours();
+    const baseM = base.getUTCMinutes();
+    const baseS = base.getUTCSeconds();
+    const baseMs = base.getUTCMilliseconds();
+
+===== exceptions / occurrence handling =====
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:31 ---
+  selectedIso: string;           // day clicked
+  initial?: CalendarEvent | null; // rule event
+  alliances: UserAlliance[];
+  onClose: () => void;
+  onSave: (draft: Draft) => void;
+  onDelete?: () => void;
+
+  // Exceptions (edit mode for recurring)
+  occurrenceIso?: string; // day clicked (same as selectedIso, but explicit)
+  onSkipOccurrence?: (occurrenceIso: string) => void;
+  onMoveOccurrence?: (args: {
+    occurrenceIso: string;
+    newDate: string;
+    newStartTime?: string | null;
+    newEndTime?: string | null;
+    newTitle?: string | null;
+    newDescription?: string | null;
+  }) => void;
+};
+
+const DOW_LABELS: Array<{ n: number; label: string }> = [
+  { n: 0, label: 'Sun' },
+  { n: 1, label: 'Mon' },
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:32 ---
+  initial?: CalendarEvent | null; // rule event
+  alliances: UserAlliance[];
+  onClose: () => void;
+  onSave: (draft: Draft) => void;
+  onDelete?: () => void;
+
+  // Exceptions (edit mode for recurring)
+  occurrenceIso?: string; // day clicked (same as selectedIso, but explicit)
+  onSkipOccurrence?: (occurrenceIso: string) => void;
+  onMoveOccurrence?: (args: {
+    occurrenceIso: string;
+    newDate: string;
+    newStartTime?: string | null;
+    newEndTime?: string | null;
+    newTitle?: string | null;
+    newDescription?: string | null;
+  }) => void;
+};
+
+const DOW_LABELS: Array<{ n: number; label: string }> = [
+  { n: 0, label: 'Sun' },
+  { n: 1, label: 'Mon' },
+  { n: 2, label: 'Tue' },
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:33 ---
+  alliances: UserAlliance[];
+  onClose: () => void;
+  onSave: (draft: Draft) => void;
+  onDelete?: () => void;
+
+  // Exceptions (edit mode for recurring)
+  occurrenceIso?: string; // day clicked (same as selectedIso, but explicit)
+  onSkipOccurrence?: (occurrenceIso: string) => void;
+  onMoveOccurrence?: (args: {
+    occurrenceIso: string;
+    newDate: string;
+    newStartTime?: string | null;
+    newEndTime?: string | null;
+    newTitle?: string | null;
+    newDescription?: string | null;
+  }) => void;
+};
+
+const DOW_LABELS: Array<{ n: number; label: string }> = [
+  { n: 0, label: 'Sun' },
+  { n: 1, label: 'Mon' },
+  { n: 2, label: 'Tue' },
+  { n: 3, label: 'Wed' },
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:34 ---
+  onClose: () => void;
+  onSave: (draft: Draft) => void;
+  onDelete?: () => void;
+
+  // Exceptions (edit mode for recurring)
+  occurrenceIso?: string; // day clicked (same as selectedIso, but explicit)
+  onSkipOccurrence?: (occurrenceIso: string) => void;
+  onMoveOccurrence?: (args: {
+    occurrenceIso: string;
+    newDate: string;
+    newStartTime?: string | null;
+    newEndTime?: string | null;
+    newTitle?: string | null;
+    newDescription?: string | null;
+  }) => void;
+};
+
+const DOW_LABELS: Array<{ n: number; label: string }> = [
+  { n: 0, label: 'Sun' },
+  { n: 1, label: 'Mon' },
+  { n: 2, label: 'Tue' },
+  { n: 3, label: 'Wed' },
+  { n: 4, label: 'Thu' },
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:35 ---
+  onSave: (draft: Draft) => void;
+  onDelete?: () => void;
+
+  // Exceptions (edit mode for recurring)
+  occurrenceIso?: string; // day clicked (same as selectedIso, but explicit)
+  onSkipOccurrence?: (occurrenceIso: string) => void;
+  onMoveOccurrence?: (args: {
+    occurrenceIso: string;
+    newDate: string;
+    newStartTime?: string | null;
+    newEndTime?: string | null;
+    newTitle?: string | null;
+    newDescription?: string | null;
+  }) => void;
+};
+
+const DOW_LABELS: Array<{ n: number; label: string }> = [
+  { n: 0, label: 'Sun' },
+  { n: 1, label: 'Mon' },
+  { n: 2, label: 'Tue' },
+  { n: 3, label: 'Wed' },
+  { n: 4, label: 'Thu' },
+  { n: 5, label: 'Fri' },
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:68 ---
+  mode,
+  selectedIso,
+  initial,
+  alliances,
+  onClose,
+  onSave,
+  onDelete,
+  occurrenceIso,
+  onSkipOccurrence,
+  onMoveOccurrence,
+}: Props) {
+  const defaultDraft: Draft = useMemo(() => {
+    const initialFreq =
+      (initial?.frequency && initial.frequency !== 'none'
+        ? initial.frequency
+        : 'weekly') as Frequency;
+
+    const selectedDate = new Date(selectedIso + 'T00:00:00');
+    const selectedDow = selectedDate.getDay();
+
+    const defaultDays =
+      initial?.daysOfWeek && initial.daysOfWeek.length > 0
+        ? uniqSorted(initial.daysOfWeek)
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:69 ---
+  selectedIso,
+  initial,
+  alliances,
+  onClose,
+  onSave,
+  onDelete,
+  occurrenceIso,
+  onSkipOccurrence,
+  onMoveOccurrence,
+}: Props) {
+  const defaultDraft: Draft = useMemo(() => {
+    const initialFreq =
+      (initial?.frequency && initial.frequency !== 'none'
+        ? initial.frequency
+        : 'weekly') as Frequency;
+
+    const selectedDate = new Date(selectedIso + 'T00:00:00');
+    const selectedDow = selectedDate.getDay();
+
+    const defaultDays =
+      initial?.daysOfWeek && initial.daysOfWeek.length > 0
+        ? uniqSorted(initial.daysOfWeek)
+        : [selectedDow];
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:70 ---
+  initial,
+  alliances,
+  onClose,
+  onSave,
+  onDelete,
+  occurrenceIso,
+  onSkipOccurrence,
+  onMoveOccurrence,
+}: Props) {
+  const defaultDraft: Draft = useMemo(() => {
+    const initialFreq =
+      (initial?.frequency && initial.frequency !== 'none'
+        ? initial.frequency
+        : 'weekly') as Frequency;
+
+    const selectedDate = new Date(selectedIso + 'T00:00:00');
+    const selectedDow = selectedDate.getDay();
+
+    const defaultDays =
+      initial?.daysOfWeek && initial.daysOfWeek.length > 0
+        ? uniqSorted(initial.daysOfWeek)
+        : [selectedDow];
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:106 ---
+        ? (initial?.alliance_id ?? firstalliance_id)
+        : null,
+    };
+  }, [initial, selectedIso, alliances]);
+
+  const [draft, setDraft] = useState<Draft>(defaultDraft);
+
+  // Move occurrence UI state
+  const [showMove, setShowMove] = useState<boolean>(false);
+  const [moveDate, setMoveDate] = useState<string>(occurrenceIso || selectedIso);
+  const [moveStart, setMoveStart] = useState<string>('');
+  const [moveEnd, setMoveEnd] = useState<string>('');
+  const [moveTitle, setMoveTitle] = useState<string>('');
+  const [moveDesc, setMoveDesc] = useState<string>('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setDraft(defaultDraft);
+      setShowMove(false);
+      setMoveDate(occurrenceIso || selectedIso);
+      setMoveStart('');
+      setMoveEnd('');
+      setMoveTitle('');
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:108 ---
+    };
+  }, [initial, selectedIso, alliances]);
+
+  const [draft, setDraft] = useState<Draft>(defaultDraft);
+
+  // Move occurrence UI state
+  const [showMove, setShowMove] = useState<boolean>(false);
+  const [moveDate, setMoveDate] = useState<string>(occurrenceIso || selectedIso);
+  const [moveStart, setMoveStart] = useState<string>('');
+  const [moveEnd, setMoveEnd] = useState<string>('');
+  const [moveTitle, setMoveTitle] = useState<string>('');
+  const [moveDesc, setMoveDesc] = useState<string>('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setDraft(defaultDraft);
+      setShowMove(false);
+      setMoveDate(occurrenceIso || selectedIso);
+      setMoveStart('');
+      setMoveEnd('');
+      setMoveTitle('');
+      setMoveDesc('');
+    }
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:118 ---
+  const [moveTitle, setMoveTitle] = useState<string>('');
+  const [moveDesc, setMoveDesc] = useState<string>('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setDraft(defaultDraft);
+      setShowMove(false);
+      setMoveDate(occurrenceIso || selectedIso);
+      setMoveStart('');
+      setMoveEnd('');
+      setMoveTitle('');
+      setMoveDesc('');
+    }
+  }, [isOpen, defaultDraft, occurrenceIso, selectedIso]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:124 ---
+      setShowMove(false);
+      setMoveDate(occurrenceIso || selectedIso);
+      setMoveStart('');
+      setMoveEnd('');
+      setMoveTitle('');
+      setMoveDesc('');
+    }
+  }, [isOpen, defaultDraft, occurrenceIso, selectedIso]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const titleText = mode === 'edit' ? 'Edit Event' : 'Create Event';
+
+  function update<K extends keyof Draft>(key: K, value: Draft[K]) {
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:193 ---
+  }
+
+  const isRecurringRule =
+    mode === 'edit' &&
+    !!initial &&
+    (initial.frequency && initial.frequency !== 'none');
+
+  const occIso = occurrenceIso || selectedIso;
+
+  return (
+    <div className="v2-modalOverlay" role="presentation" onMouseDown={onClose}>
+      <div className="v2-modal" role="dialog" aria-modal="true" aria-label={titleText} onMouseDown={(e) => e.stopPropagation()}>
+        <div className="v2-modal__header">
+          <div className="v2-modal__title">{titleText}</div>
+          <button type="button" className="v2-iconBtn" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+
+        <div className="v2-modal__body">
+          <div className="v2-formRow">
+            <label className="v2-label">Title</label>
+            <input className="v2-input" value={draft.title} onChange={(e) => update('title', e.target.value)} placeholder="Event title" autoFocus />
+          </div>
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:280 ---
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {isRecurringRule ? (
+            <div className="v2-formRow">
+              <label className="v2-label">Exceptions for {occIso}</label>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="v2-btn v2-btn--danger"
+                  onClick={() => onSkipOccurrence && onSkipOccurrence(occIso)}
+                  disabled={!onSkipOccurrence}
+                >
+                  Skip this occurrence
+                </button>
+
+                <button
+                  type="button"
+                  className="v2-btn"
+                  onClick={() => setShowMove((v) => !v)}
+                  disabled={!onMoveOccurrence}
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:285 ---
+          {isRecurringRule ? (
+            <div className="v2-formRow">
+              <label className="v2-label">Exceptions for {occIso}</label>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="v2-btn v2-btn--danger"
+                  onClick={() => onSkipOccurrence && onSkipOccurrence(occIso)}
+                  disabled={!onSkipOccurrence}
+                >
+                  Skip this occurrence
+                </button>
+
+                <button
+                  type="button"
+                  className="v2-btn"
+                  onClick={() => setShowMove((v) => !v)}
+                  disabled={!onMoveOccurrence}
+                >
+                  {showMove ? 'Cancel move' : 'Move this occurrence'}
+                </button>
+              </div>
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:286 ---
+            <div className="v2-formRow">
+              <label className="v2-label">Exceptions for {occIso}</label>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="v2-btn v2-btn--danger"
+                  onClick={() => onSkipOccurrence && onSkipOccurrence(occIso)}
+                  disabled={!onSkipOccurrence}
+                >
+                  Skip this occurrence
+                </button>
+
+                <button
+                  type="button"
+                  className="v2-btn"
+                  onClick={() => setShowMove((v) => !v)}
+                  disabled={!onMoveOccurrence}
+                >
+                  {showMove ? 'Cancel move' : 'Move this occurrence'}
+                </button>
+              </div>
+
+              {showMove ? (
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:288 ---
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="v2-btn v2-btn--danger"
+                  onClick={() => onSkipOccurrence && onSkipOccurrence(occIso)}
+                  disabled={!onSkipOccurrence}
+                >
+                  Skip this occurrence
+                </button>
+
+                <button
+                  type="button"
+                  className="v2-btn"
+                  onClick={() => setShowMove((v) => !v)}
+                  disabled={!onMoveOccurrence}
+                >
+                  {showMove ? 'Cancel move' : 'Move this occurrence'}
+                </button>
+              </div>
+
+              {showMove ? (
+                <div style={{ marginTop: '10px', display: 'grid', gap: '10px' }}>
+                  <div className="v2-formGrid">
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:295 ---
+                  Skip this occurrence
+                </button>
+
+                <button
+                  type="button"
+                  className="v2-btn"
+                  onClick={() => setShowMove((v) => !v)}
+                  disabled={!onMoveOccurrence}
+                >
+                  {showMove ? 'Cancel move' : 'Move this occurrence'}
+                </button>
+              </div>
+
+              {showMove ? (
+                <div style={{ marginTop: '10px', display: 'grid', gap: '10px' }}>
+                  <div className="v2-formGrid">
+                    <div className="v2-formRow">
+                      <label className="v2-label">New date</label>
+                      <input type="date" className="v2-input" value={moveDate} onChange={(e) => setMoveDate(e.target.value)} />
+                    </div>
+                    <div className="v2-formRow">
+                      <label className="v2-label">New start time (optional)</label>
+                      <input type="time" className="v2-input" value={moveStart} onChange={(e) => setMoveStart(e.target.value)} />
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:297 ---
+
+                <button
+                  type="button"
+                  className="v2-btn"
+                  onClick={() => setShowMove((v) => !v)}
+                  disabled={!onMoveOccurrence}
+                >
+                  {showMove ? 'Cancel move' : 'Move this occurrence'}
+                </button>
+              </div>
+
+              {showMove ? (
+                <div style={{ marginTop: '10px', display: 'grid', gap: '10px' }}>
+                  <div className="v2-formGrid">
+                    <div className="v2-formRow">
+                      <label className="v2-label">New date</label>
+                      <input type="date" className="v2-input" value={moveDate} onChange={(e) => setMoveDate(e.target.value)} />
+                    </div>
+                    <div className="v2-formRow">
+                      <label className="v2-label">New start time (optional)</label>
+                      <input type="time" className="v2-input" value={moveStart} onChange={(e) => setMoveStart(e.target.value)} />
+                    </div>
+                    <div className="v2-formRow">
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:335 ---
+                  </div>
+
+                  <div>
+                    <button
+                      type="button"
+                      className="v2-btn v2-btn--primary"
+                      onClick={() =>
+                        onMoveOccurrence &&
+                        onMoveOccurrence({
+                          occurrenceIso: occIso,
+                          newDate: moveDate,
+                          newStartTime: moveStart ? moveStart : null,
+                          newEndTime: moveEnd ? moveEnd : null,
+                          newTitle: moveTitle ? moveTitle : null,
+                          newDescription: moveDesc ? moveDesc : null,
+                        })
+                      }
+                      disabled={!onMoveOccurrence || !moveDate}
+                    >
+                      Apply move
+                    </button>
+                  </div>
+                </div>
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:336 ---
+
+                  <div>
+                    <button
+                      type="button"
+                      className="v2-btn v2-btn--primary"
+                      onClick={() =>
+                        onMoveOccurrence &&
+                        onMoveOccurrence({
+                          occurrenceIso: occIso,
+                          newDate: moveDate,
+                          newStartTime: moveStart ? moveStart : null,
+                          newEndTime: moveEnd ? moveEnd : null,
+                          newTitle: moveTitle ? moveTitle : null,
+                          newDescription: moveDesc ? moveDesc : null,
+                        })
+                      }
+                      disabled={!onMoveOccurrence || !moveDate}
+                    >
+                      Apply move
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:337 ---
+                  <div>
+                    <button
+                      type="button"
+                      className="v2-btn v2-btn--primary"
+                      onClick={() =>
+                        onMoveOccurrence &&
+                        onMoveOccurrence({
+                          occurrenceIso: occIso,
+                          newDate: moveDate,
+                          newStartTime: moveStart ? moveStart : null,
+                          newEndTime: moveEnd ? moveEnd : null,
+                          newTitle: moveTitle ? moveTitle : null,
+                          newDescription: moveDesc ? moveDesc : null,
+                        })
+                      }
+                      disabled={!onMoveOccurrence || !moveDate}
+                    >
+                      Apply move
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/EventModal.tsx:345 ---
+                          newDate: moveDate,
+                          newStartTime: moveStart ? moveStart : null,
+                          newEndTime: moveEnd ? moveEnd : null,
+                          newTitle: moveTitle ? moveTitle : null,
+                          newDescription: moveDesc ? moveDesc : null,
+                        })
+                      }
+                      disabled={!onMoveOccurrence || !moveDate}
+                    >
+                      Apply move
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="v2-modal__footer">
+          {mode === 'edit' && onDelete ? (
+            <button type="button" className="v2-btn v2-btn--danger" onClick={onDelete}>
+              Delete
+            </button>
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:3 ---
+import { useParams } from "react-router-dom";
+import { supabase } from "../../lib/supabaseClient";
+import type { CalendarEvent, EventException } from "./types";
+
+/* ---------------- EVENTS ---------------- */
+
+export async function upsertEvent(event: CalendarEvent) {
+  const { isAdmin: canEditCalendar } = useIsAppAdmin();
+  const { data, error } = await supabase
+    .from("alliance_events")
+    .upsert(event)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:32 ---
+     }
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+/* ---------------- EXCEPTIONS ---------------- */
+
+export async function listExceptionsForEventIds(eventIds: string[]) {
+  if (eventIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .select("*")
+    .in("event_id", eventIds);
+
+  if (error) throw error;
+  return data as EventException[];
+}
+
+export async function upsertExceptionSkip(eventId: string, occurrenceDate: string) {
+  const { data, error } = await supabase
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:34 ---
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+/* ---------------- EXCEPTIONS ---------------- */
+
+export async function listExceptionsForEventIds(eventIds: string[]) {
+  if (eventIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .select("*")
+    .in("event_id", eventIds);
+
+  if (error) throw error;
+  return data as EventException[];
+}
+
+export async function upsertExceptionSkip(eventId: string, occurrenceDate: string) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:38 ---
+
+/* ---------------- EXCEPTIONS ---------------- */
+
+export async function listExceptionsForEventIds(eventIds: string[]) {
+  if (eventIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .select("*")
+    .in("event_id", eventIds);
+
+  if (error) throw error;
+  return data as EventException[];
+}
+
+export async function upsertExceptionSkip(eventId: string, occurrenceDate: string) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: eventId,
+      occurrence_date: occurrenceDate,
+      action: "skip",
+    })
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:43 ---
+
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .select("*")
+    .in("event_id", eventIds);
+
+  if (error) throw error;
+  return data as EventException[];
+}
+
+export async function upsertExceptionSkip(eventId: string, occurrenceDate: string) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: eventId,
+      occurrence_date: occurrenceDate,
+      action: "skip",
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:46 ---
+    .select("*")
+    .in("event_id", eventIds);
+
+  if (error) throw error;
+  return data as EventException[];
+}
+
+export async function upsertExceptionSkip(eventId: string, occurrenceDate: string) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: eventId,
+      occurrence_date: occurrenceDate,
+      action: "skip",
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertExceptionOverride(payload: {
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:48 ---
+
+  if (error) throw error;
+  return data as EventException[];
+}
+
+export async function upsertExceptionSkip(eventId: string, occurrenceDate: string) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: eventId,
+      occurrence_date: occurrenceDate,
+      action: "skip",
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertExceptionOverride(payload: {
+  eventId: string;
+  occurrenceDate: string;
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:51 ---
+}
+
+export async function upsertExceptionSkip(eventId: string, occurrenceDate: string) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: eventId,
+      occurrence_date: occurrenceDate,
+      action: "skip",
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertExceptionOverride(payload: {
+  eventId: string;
+  occurrenceDate: string;
+  newDate: string;
+  newStartTime?: string | null;
+  newEndTime?: string | null;
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:52 ---
+
+export async function upsertExceptionSkip(eventId: string, occurrenceDate: string) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: eventId,
+      occurrence_date: occurrenceDate,
+      action: "skip",
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertExceptionOverride(payload: {
+  eventId: string;
+  occurrenceDate: string;
+  newDate: string;
+  newStartTime?: string | null;
+  newEndTime?: string | null;
+  newTitle?: string | null;
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:61 ---
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertExceptionOverride(payload: {
+  eventId: string;
+  occurrenceDate: string;
+  newDate: string;
+  newStartTime?: string | null;
+  newEndTime?: string | null;
+  newTitle?: string | null;
+  newDescription?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: payload.eventId,
+      occurrence_date: payload.occurrenceDate,
+      action: "override",
+      new_date: payload.newDate,
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:63 ---
+
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertExceptionOverride(payload: {
+  eventId: string;
+  occurrenceDate: string;
+  newDate: string;
+  newStartTime?: string | null;
+  newEndTime?: string | null;
+  newTitle?: string | null;
+  newDescription?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: payload.eventId,
+      occurrence_date: payload.occurrenceDate,
+      action: "override",
+      new_date: payload.newDate,
+      new_start_time: payload.newStartTime,
+      new_end_time: payload.newEndTime,
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:71 ---
+  newDate: string;
+  newStartTime?: string | null;
+  newEndTime?: string | null;
+  newTitle?: string | null;
+  newDescription?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: payload.eventId,
+      occurrence_date: payload.occurrenceDate,
+      action: "override",
+      new_date: payload.newDate,
+      new_start_time: payload.newStartTime,
+      new_end_time: payload.newEndTime,
+      new_title: payload.newTitle,
+      new_description: payload.newDescription,
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:74 ---
+  newTitle?: string | null;
+  newDescription?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: payload.eventId,
+      occurrence_date: payload.occurrenceDate,
+      action: "override",
+      new_date: payload.newDate,
+      new_start_time: payload.newStartTime,
+      new_end_time: payload.newEndTime,
+      new_title: payload.newTitle,
+      new_description: payload.newDescription,
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+/* ---------------- TEMPLATE RUN ---------------- */
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/utils/recurrence.ts:5 ---
+export type RecurrenceType = "daily" | "weekly" | "biweekly" | "monthly";
+
+/**
+ * Broad shape used by calendar. Keep fields optional so we don't break older rows.
+ * We also include meta fields for virtual (expanded) occurrences.
+ */
+export type CalendarEventRow = {
+  id: string;
+
+  // common event columns your calendar UI uses
+  title?: string | null;
+  event_type?: string | null;
+  event_name?: string | null;
+
+  created_by?: string | null;
+  alliance_id?: string | null;
+
+  duration_minutes?: number | null;
+  timezone_origin?: string | null;
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/utils/recurrence.ts:40 ---
+  recurrence_days?: string[] | null;
+  recurrence_end_date?: string | null; // YYYY-MM-DD
+
+  // fallback names some older schemas use
+  recurrence?: string | null;
+  days_of_week?: string[] | null;
+
+  // meta for expanded instances (virtual occurrences)
+  instance_id?: string | null;
+  _source_event_id?: string;
+  _occurrence_time_utc?: string;
+};
+
+const DAY_MAP: Record<string, number> = {
+  sun: 0, sunday: 0,
+  mon: 1, monday: 1,
+  tue: 2, tues: 2, tuesday: 2,
+  wed: 3, wednesday: 3,
+  thu: 4, thur: 4, thurs: 4, thursday: 4,
+  fri: 5, friday: 5,
+  sat: 6, saturday: 6,
+};
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/utils/recurrence.ts:43 ---
+  // fallback names some older schemas use
+  recurrence?: string | null;
+  days_of_week?: string[] | null;
+
+  // meta for expanded instances (virtual occurrences)
+  instance_id?: string | null;
+  _source_event_id?: string;
+  _occurrence_time_utc?: string;
+};
+
+const DAY_MAP: Record<string, number> = {
+  sun: 0, sunday: 0,
+  mon: 1, monday: 1,
+  tue: 2, tues: 2, tuesday: 2,
+  wed: 3, wednesday: 3,
+  thu: 4, thur: 4, thurs: 4, thursday: 4,
+  fri: 5, friday: 5,
+  sat: 6, saturday: 6,
+};
+
+function toDow(v: string): number | null {
+  const k = String(v ?? "").trim().toLowerCase();
+  return k in DAY_MAP ? DAY_MAP[k] : null;
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/utils/recurrence.ts:91 ---
+    }
+  }
+
+  return null;
+}
+
+/**
+ * For expanded (virtual) occurrences, delete should target the original event id.
+ */
+export function getDeleteId(e: CalendarEventRow): string {
+  return String((e as any)._source_event_id ?? e.id);
+}
+
+function daysInUtcMonth(y: number, m: number) {
+  return new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+}
+
+function startOfUtcWeek(d: Date) {
+  const day = d.getUTCDay();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
+}
+
+function parseEndClamp(endDate: any): Date | null {
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/utils/recurrence.ts:114 ---
+  if (!endDate) return null;
+  const [yy, mm, dd] = String(endDate).split("-").map(Number);
+  if (!yy || !mm || !dd) return null;
+  return new Date(Date.UTC(yy, mm - 1, dd, 23, 59, 59, 999));
+}
+
+/**
+ * Expand recurring events into occurrences for the requested month.
+ * Output events include meta fields:
+ *   _source_event_id, _occurrence_time_utc
+ */
+export function expandEventsForMonth<T extends CalendarEventRow>(
+  events: T[],
+  year: number,
+  month: number
+): T[] {
+  const monthStart = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
+  const monthEnd = new Date(Date.UTC(year, month, daysInUtcMonth(year, month), 23, 59, 59, 999));
+
+  const out: T[] = [];
+
+  for (const ev of events) {
+    const baseIso = getEventStartUtc(ev);
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/utils/recurrence.ts:116 ---
+  if (!yy || !mm || !dd) return null;
+  return new Date(Date.UTC(yy, mm - 1, dd, 23, 59, 59, 999));
+}
+
+/**
+ * Expand recurring events into occurrences for the requested month.
+ * Output events include meta fields:
+ *   _source_event_id, _occurrence_time_utc
+ */
+export function expandEventsForMonth<T extends CalendarEventRow>(
+  events: T[],
+  year: number,
+  month: number
+): T[] {
+  const monthStart = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
+  const monthEnd = new Date(Date.UTC(year, month, daysInUtcMonth(year, month), 23, 59, 59, 999));
+
+  const out: T[] = [];
+
+  for (const ev of events) {
+    const baseIso = getEventStartUtc(ev);
+    if (!baseIso) continue;
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/utils/recurrence.ts:143 ---
+    const endClamp = parseEndClamp(ev.recurrence_end_date);
+
+    // Include base row (mark meta)
+    out.push({
+      ...(ev as any),
+      start_time_utc: base.toISOString(),
+      _source_event_id: ev.id,
+      _occurrence_time_utc: base.toISOString(),
+    });
+
+    if (!enabled || !rtype) continue;
+
+    const baseH = base.getUTCHours();
+    const baseM = base.getUTCMinutes();
+    const baseS = base.getUTCSeconds();
+    const baseMs = base.getUTCMilliseconds();
+
+    const rawDays = Array.isArray(ev.recurrence_days) ? ev.recurrence_days : [];
+    const parsedDays = rawDays.map(toDow).filter((x): x is number => x !== null);
+
+    const allowedDays =
+      (rtype === "weekly" || rtype === "biweekly")
+        ? (parsedDays.length ? parsedDays : [base.getUTCDay()])
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/utils/recurrence.ts:190 ---
+        const dim = daysInUtcMonth(cand.getUTCFullYear(), cand.getUTCMonth());
+        const effectiveDay = Math.min(baseDay, dim);
+        if (cand.getUTCDate() !== effectiveDay) continue;
+      } else {
+        continue;
+      }
+
+      // skip base timestamp duplicate
+      if (cand.toISOString() === base.toISOString()) continue;
+
+      out.push({
+        ...(ev as any),
+        start_time_utc: cand.toISOString(),
+        _source_event_id: ev.id,
+        _occurrence_time_utc: cand.toISOString(),
+      });
+    }
+  }
+
+  return out;
+}
+
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/utils/recurrence.ts:197 ---
+      // skip base timestamp duplicate
+      if (cand.toISOString() === base.toISOString()) continue;
+
+      out.push({
+        ...(ev as any),
+        start_time_utc: cand.toISOString(),
+        _source_event_id: ev.id,
+        _occurrence_time_utc: cand.toISOString(),
+      });
+    }
+  }
+
+  return out;
+}
+
+
+
+===== table hints =====
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:133 ---
+    })();
+  }, []);
+
+  const refetch = async () => {
+    if (!upperAlliance) return;
+
+    const { data, error } = await supabase
+      .from("alliance_events")
+      .select("*")
+      .eq("alliance_id", upperAlliance)
+      .order("start_time_utc", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setEvents((data || []) as any);
+  };
+
+  const loadEventTypes = async () => {
+    if (!upperAlliance) return;
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:151 ---
+  };
+
+  const loadEventTypes = async () => {
+    if (!upperAlliance) return;
+
+    try {
+      const res = await supabase
+        .from("alliance_event_types")
+        .select("id,alliance_code,category,name")
+        .eq("alliance_code", upperAlliance)
+        .order("category", { ascending: true })
+        .order("name", { ascending: true });
+
+      if (res.error) throw res.error;
+
+      const rows = (res.data || []) as EventTypeRow[];
+      setEventTypes(rows);
+      setTypesOk(true);
+
+      // Seed defaults if empty AND canEdit
+      if (rows.length === 0 && canEdit) {
+        const seed = DEFAULT_EVENT_TYPES.map((n) => ({
+          alliance_code: upperAlliance,
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:174 ---
+          category: "Alliance",
+          name: n,
+          created_by: userId ?? null,
+        })) as any[];
+
+        // requires unique index -> upsert is safe
+        const up = await supabase
+  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
+
+        if (!up.error) {
+          setTypesHint("Seeded default event types ✅");
+          setTimeout(() => setTypesHint(null), 1500);
+
+          const again = await supabase
+            .from("alliance_event_types")
+            .select("id,alliance_code,category,name")
+            .eq("alliance_code", upperAlliance)
+            .order("category", { ascending: true })
+            .order("name", { ascending: true });
+
+          if (!again.error) setEventTypes((again.data || []) as any);
+        }
+      }
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:181 ---
+  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
+
+        if (!up.error) {
+          setTypesHint("Seeded default event types ✅");
+          setTimeout(() => setTypesHint(null), 1500);
+
+          const again = await supabase
+            .from("alliance_event_types")
+            .select("id,alliance_code,category,name")
+            .eq("alliance_code", upperAlliance)
+            .order("category", { ascending: true })
+            .order("name", { ascending: true });
+
+          if (!again.error) setEventTypes((again.data || []) as any);
+        }
+      }
+    } catch (e: any) {
+      // Table missing or RLS blocking -> fallback to defaults
+      console.warn("Event types catalog not available:", e?.message ?? e);
+      setTypesOk(false);
+      setEventTypes([]);
+    }
+  };
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:246 ---
+      category: cat,
+      name,
+      created_by: userId ?? null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const res = await supabase
+  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
+
+    if (res.error) {
+      // fallback: still allow event to save with the raw name
+      console.warn("Could not save new event type:", res.error);
+      return name;
+    }
+
+    // refresh list
+    await loadEventTypes();
+    return name;
+  };
+
+  const saveEvent = async () => {
+    if (!canEdit && !isOwner) return;
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:275 ---
+      const n = String((form as any).new_event_type ?? "").trim();
+      if (!n) return alert("Enter a new event type name.");
+      eventType = n;
+
+      // Best-effort: save event type (do NOT crash if DB rejects)
+      try {
+        await supabase
+  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
+        await loadEventTypes();
+      } catch (e) {
+        console.warn("Event type save failed (continuing):", e);
+      }
+    }if (!cleanTitle) return alert("Event Title required.");
+    if (!userId) return alert("No user session.");
+
+    const startLocal = new Date(`${form.start_date}T${form.start_time}`);
+    const endLocal = new Date(`${form.end_date}T${form.end_time}`);
+
+    if (Number.isNaN(startLocal.getTime()) || Number.isNaN(endLocal.getTime()))
+      return alert("Start/End date & time required.");
+
+    if (endLocal <= startLocal) return alert("End must be after start.");
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:336 ---
+    const payloadA = {
+      ...basePayload,
+      ...(wantRecurring
+        ? { recurrence_type: form.recurrence_type, recurrence_days: form.recurrence_days }
+        : { recurrence_type: null, recurrence_days: null }),
+    };
+
+    const resA = await supabase.from("alliance_events").insert(payloadA).select("id").single();
+
+    if (resA.error) {
+      const msg = (resA.error.message || "").toLowerCase();
+
+      // If event_category column isn't present, retry without it (safety)
+      const missingEventCategory = msg.includes("column") && msg.includes("event_category");
+
+      // If recurrence columns missing, fallback to legacy recurrence fields
+      const missingRecCols =
+        msg.includes("column") &&
+        (msg.includes("recurrence_type") || msg.includes("recurrence_days"));
+
+      if (missingEventCategory) {
+        const payloadNoCat = { ...payloadA };
+        delete payloadNoCat.event_category;
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:352 ---
+      const missingRecCols =
+        msg.includes("column") &&
+        (msg.includes("recurrence_type") || msg.includes("recurrence_days"));
+
+      if (missingEventCategory) {
+        const payloadNoCat = { ...payloadA };
+        delete payloadNoCat.event_category;
+        const retry = await supabase.from("alliance_events").insert(payloadNoCat).select("id").single();
+        if (retry.error) {
+          console.error(retry.error);
+          alert(retry.error.message);
+          return;
+        }
+      } else if (missingRecCols) {
+        const payloadB = {
+          ...basePayload,
+          ...(wantRecurring
+            ? { recurrence: form.recurrence_type, days_of_week: form.recurrence_days }
+            : { recurrence: null, days_of_week: null }),
+        };
+        const resB = await supabase.from("alliance_events").insert(payloadB).select("id").single();
+        if (resB.error) {
+          console.error(resB.error);
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:365 ---
+      } else if (missingRecCols) {
+        const payloadB = {
+          ...basePayload,
+          ...(wantRecurring
+            ? { recurrence: form.recurrence_type, days_of_week: form.recurrence_days }
+            : { recurrence: null, days_of_week: null }),
+        };
+        const resB = await supabase.from("alliance_events").insert(payloadB).select("id").single();
+        if (resB.error) {
+          console.error(resB.error);
+          alert(resB.error.message);
+          return;
+        }
+      } else {
+        console.error(resA.error);
+        alert(resA.error.message);
+        return;
+      }
+    }
+
+    setShowModal(false);
+    setForm(makeEmptyForm());
+    await refetch();
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:386 ---
+    setForm(makeEmptyForm());
+    await refetch();
+  };
+
+  const deleteEvent = async (id: string) => {
+    if (!canEdit && !isOwner) return;
+    if (!confirm("Delete this event?")) return;
+    await supabase.from("alliance_events").delete().eq("id", id);
+    await refetch();
+  };
+
+  const monthLabel = useMemo(() => {
+    return new Date(year, month).toLocaleString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+  }, [month, year]);
+
+  // Calendar day match using local conversion from UTC instant
+  const isSameDay = (utcString: string, y: number, m: number, d: number) => {
+    const local = new Date(utcString);
+    return (
+      local.getFullYear() === y &&
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/pages/calendar/AllianceCalendarPage.tsx:418 ---
+
+  // Manager tools: delete type
+  const deleteType = async (id: string) => {
+    if (!canEdit && !isOwner) return;
+    if (!typesOk) return alert("Event type catalog is not available (fallback mode).");
+    if (!confirm("Delete this event type?")) return;
+
+  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
+
+    await loadEventTypes();
+  };
+
+  return (
+    <div style={{ padding: 24 }}>
+      <h2>📅 Alliance Calendar - {upperAlliance}</h2>
+
+      {canEdit && (
+        <button onClick={() => { setForm(makeEmptyForm()); setShowModal(true); }}>
+          + Create Event
+        </button>
+      )}
+
+      {typesHint ? <div style={{ marginTop: 10, opacity: 0.85 }}>{typesHint}</div> : null}
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:10 ---
+import type { CalendarEvent, EventException } from "./types";
+
+/* ---------------- EVENTS ---------------- */
+
+export async function upsertEvent(event: CalendarEvent) {
+  const { isAdmin: canEditCalendar } = useIsAppAdmin();
+  const { data, error } = await supabase
+    .from("alliance_events")
+    .upsert(event)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteEvent(id: string) {
+  const { error } = await supabase
+    .from("alliance_events")
+     if (!canEditCalendar) {
+       window.alert("Calendar is locked (Owner/Admin only).");
+       return;
+     }
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:21 ---
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteEvent(id: string) {
+  const { error } = await supabase
+    .from("alliance_events")
+     if (!canEditCalendar) {
+       window.alert("Calendar is locked (Owner/Admin only).");
+       return;
+     }
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+/* ---------------- EXCEPTIONS ---------------- */
+
+export async function listExceptionsForEventIds(eventIds: string[]) {
+  if (eventIds.length === 0) return [];
+
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:38 ---
+
+/* ---------------- EXCEPTIONS ---------------- */
+
+export async function listExceptionsForEventIds(eventIds: string[]) {
+  if (eventIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .select("*")
+    .in("event_id", eventIds);
+
+  if (error) throw error;
+  return data as EventException[];
+}
+
+export async function upsertExceptionSkip(eventId: string, occurrenceDate: string) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: eventId,
+      occurrence_date: occurrenceDate,
+      action: "skip",
+    })
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:48 ---
+
+  if (error) throw error;
+  return data as EventException[];
+}
+
+export async function upsertExceptionSkip(eventId: string, occurrenceDate: string) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: eventId,
+      occurrence_date: occurrenceDate,
+      action: "skip",
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertExceptionOverride(payload: {
+  eventId: string;
+  occurrenceDate: string;
+--- /Users/raymondhovel/Documents/State Alliance Dashboard/src/components/events_v2/eventsStore.ts:71 ---
+  newDate: string;
+  newStartTime?: string | null;
+  newEndTime?: string | null;
+  newTitle?: string | null;
+  newDescription?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from("alliance_event_exceptions")
+    .upsert({
+      event_id: payload.eventId,
+      occurrence_date: payload.occurrenceDate,
+      action: "override",
+      new_date: payload.newDate,
+      new_start_time: payload.newStartTime,
+      new_end_time: payload.newEndTime,
+      new_title: payload.newTitle,
+      new_description: payload.newDescription,
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
