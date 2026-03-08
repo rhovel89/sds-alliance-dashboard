@@ -1,3 +1,5 @@
+import { formatAchievementLine, getAchievementName, getPlayerName } from "@/features/state/achievements/exportFormat";
+import { norm, normLower, safeSlug } from "@/utils/text";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { supabase } from "../../lib/supabaseClient";
@@ -393,6 +395,10 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
+
+
+
 
 
 

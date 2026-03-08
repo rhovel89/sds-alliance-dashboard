@@ -52,7 +52,7 @@ export default function SendToAllianceDefaultAchievementsButton(props: {
         p_target: `alliance:${allianceCode}`,
         p_channel_id: "default:achievements",
         p_content: msg,
-        p_meta: { state_code: stateCode, alliance_code: allianceCode, kind: "achievements" },
+        p_meta: { alliance_code: allianceCode,  state_code: stateCode, alliance_code: allianceCode, kind: "achievements" },
       } as any);
 
       if ((q as any)?.error) {
@@ -81,3 +81,4 @@ export default function SendToAllianceDefaultAchievementsButton(props: {
     </div>
   );
 }
+

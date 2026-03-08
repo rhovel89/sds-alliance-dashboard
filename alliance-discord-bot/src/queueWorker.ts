@@ -91,24 +91,48 @@ async function getWebhookUrlById(webhookId: string): Promise<string> {
   if (!url) throw new Error("Webhook URL not found.");
   return url;
 }
+async function resolveWebhookIdForQueueRow(row: QueueRow): Promise<string> {
+  const raw = s(row.channel_id);
+  if (!raw) throw new Error("channel_id missing.");
+
+  if (!raw.startsWith("default:")) {
+    return raw;
+  }
+
+  const kind = s(raw.slice("default:".length)).toLowerCase();
+  const meta = (row.meta || {}) as any;
+  const allianceCode = s(
+    meta.alliance_code ??
+    meta.allianceCode ??
+    meta.target_alliance_code ??
+    row.alliance_code
+  );
+
+  if (!allianceCode) {
+    throw new Error(`Cannot resolve ${raw}: alliance_code missing in queue row/meta.`);
+  }
+
+  return await getDefaultWebhookId(allianceCode, kind);
+}
 
 async function getDefaultWebhookId(allianceCode: string, kind: string): Promise<string> {
-  if (!supabase) throw new Error(Supabase service client not configured in worker env.);
-  const a = s(allianceCode).trim();
-  const k = s(kind).trim();
-  if (!a) throw new Error(lliance_code missing for default lookup.);
-  if (!k) throw new Error(kind missing for default lookup.);
+  const ac = s(allianceCode);
+  const k = s(kind).toLowerCase();
+  if (!ac) throw new Error("allianceCode missing.");
+  if (!k) throw new Error("kind missing.");
 
-  const r = await supabase
-    .from(lliance_discord_webhook_defaults)
-    .select(webhook_id)
-    .eq(lliance_code, a)
-    .eq(kind, k)
+  const r = await sb
+    .from("alliance_discord_webhook_defaults")
+    .select("webhook_id")
+    .eq("alliance_code", ac)
+    .eq("kind", k)
     .maybeSingle();
 
-  if (r.error) throw new Error(r.error.message);
+  if (r.error) throw r.error;
+
   const wid = s((r.data as any)?.webhook_id);
-  if (!wid) throw new Error(No default webhook set for  ().);
+  if (!wid) throw new Error(`No default webhook set for ${ac} (${k}).`);
+
   return wid;
 }
 
@@ -170,7 +194,7 @@ async function processOne(discord: DiscordClient): Promise<boolean> {
   try {
     const kind = s(row.kind).toLowerCase();
     if (kind === "discord_webhook") {
-      const webhookId = s(row.channel_id); // UI stored webhook_id here
+      const webhookId = await resolveWebhookIdForQueueRow(row);
       const webhookUrl = await getWebhookUrlById(webhookId);
       await postWebhook(webhookUrl, row.content);
     } else {
@@ -212,5 +236,9 @@ export function startQueueWorker(discord: DiscordClient) {
   setTimeout(() => { void tick(); }, 1500);
   setInterval(() => { void tick(); }, 3500);
 }
+
+
+
+
 
 
