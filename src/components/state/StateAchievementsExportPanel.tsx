@@ -249,9 +249,9 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
       const pub = supabase.storage.from("exports").getPublicUrl(name);
       const url = pub?.data?.publicUrl;
-      const completedLines = completed.slice(0, 8).map((r) => `• ${getPlayerName(r)}`).join("\n");
-      const progressLines = progress.slice(0, 5).map((r) => `• ${getPlayerName(r)}`).join("\n");
-      const pendingLines = pending.slice(0, 5).map((r) => `• ${getPlayerName(r)}`).join("\n");
+      const completedLines = completed.slice(0, 8).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
+      const progressLines = progress.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
+      const pendingLines = pending.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
 
       const parts: string[] = [
         `🩸 **State ${stateCode} — Achievements Intel v3**`,
@@ -361,9 +361,9 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
                 `🩸 **State ${stateCode} — Achievements Intel v3**`,
                 `Alliance: **${allianceFilter}**`,
                 `Completed: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
-                ...(completed.length ? ["", "✅ **Completed**", ...completed.slice(0, 8).map((r) => `• ${getPlayerName(r)}`)] : []),
-                ...(progress.length ? ["", "🧬 **In Progress**", ...progress.slice(0, 5).map((r) => `• ${getPlayerName(r)}`)] : []),
-                ...(pending.length ? ["", "⏳ **Pending**", ...pending.slice(0, 5).map((r) => `• ${getPlayerName(r)}`)] : []),
+                ...(completed.length ? ["", "✅ **Completed**", ...completed.slice(0, 8).map((r) => `• ${formatAchievementLine(r)}`)] : []),
+                ...(progress.length ? ["", "🧬 **In Progress**", ...progress.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`)] : []),
+                ...(pending.length ? ["", "⏳ **Pending**", ...pending.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`)] : []),
               ].join("\n"),
               {
                 state_code: stateCode,
@@ -530,3 +530,4 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 // deploy check 2026-03-08T12:51:56
 
 // pages stamp 2026-03-08T12:58:58
+
