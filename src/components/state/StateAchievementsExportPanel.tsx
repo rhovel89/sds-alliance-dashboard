@@ -391,7 +391,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
             </div>
           ) : webhooks.map((w: any) => {
             const id = String(w.id || "");
-            const label = String(w.label || w.name || w.webhook_url || id);
+            const label = String((w.label || w.name || "Webhook") + " • " + id);
             return (
               <label key={id} style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
                 <input
@@ -469,6 +469,8 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     </div>
   );
 }
+
+
 
 
 

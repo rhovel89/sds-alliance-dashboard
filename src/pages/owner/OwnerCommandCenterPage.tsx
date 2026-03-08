@@ -220,7 +220,7 @@ export default function OwnerCommandCenterPage() {
             <Link to="/owner/players-link">🔗 Players — Link/Unlink Auth</Link>
             <Link to="/owner/membership">🧬 Membership Manager</Link>
             <Link to="/owner/alliances">🏷️ Alliances (Add/Edit/Delete)</Link>
-            <Link to="/owner/discord">📣 Discord Settings (Owner Dashboard)</Link>
+            <Link to="/dashboard/WOC/discord-webhooks">📣 Discord Settings (Owner Dashboard)</Link>
           </div>
         </OwnerCard>
 
@@ -334,7 +334,7 @@ export default function OwnerCommandCenterPage() {
         <OwnerCard title="Discord Settings Snapshot (masked)" icon="📣">
           {discord.length === 0 ? (
             <div style={{ opacity: 0.75 }}>
-              No discord settings rows found (or RLS blocked). Use <Link to="/owner/discord">Discord Settings</Link>.
+              No discord settings rows found (or RLS blocked). Use <Link to="/dashboard/WOC/discord-webhooks">Discord Settings</Link>.
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10, maxWidth: 1100 }}>
@@ -367,7 +367,7 @@ export default function OwnerCommandCenterPage() {
           )}
 
           <div style={{ marginTop: 10 }}>
-            <Link to="/owner/discord">Open full Discord settings →</Link>
+            <Link to="/dashboard/WOC/discord-webhooks">Open full Discord settings →</Link>
           </div>
         </OwnerCard>
       </div>
@@ -378,6 +378,8 @@ export default function OwnerCommandCenterPage() {
     </div>
   );
 }
+
+
 
 
 

@@ -91,6 +91,26 @@ async function getWebhookUrlById(webhookId: string): Promise<string> {
   if (!url) throw new Error("Webhook URL not found.");
   return url;
 }
+async function getDefaultWebhookId(allianceCode: string, kind: string): Promise<string> {
+  if (!supabase) throw new Error("Supabase service client not configured in worker env.");
+  const ac = s(allianceCode);
+  const k = s(kind).toLowerCase();
+  if (!ac) throw new Error("allianceCode missing.");
+  if (!k) throw new Error("kind missing.");
+
+  const r = await supabase
+    .from("alliance_discord_webhook_defaults")
+    .select("webhook_id")
+    .eq("alliance_code", ac)
+    .eq("kind", k)
+    .maybeSingle();
+
+  if (r.error) throw new Error(r.error.message);
+  const wid = s((r.data as any)?.webhook_id);
+  if (!wid) throw new Error(`No default webhook set for ${ac} (${k}).`);
+  return wid;
+}
+
 async function resolveWebhookIdForQueueRow(row: QueueRow): Promise<string> {
   const raw = s(row.channel_id);
   if (!raw) throw new Error("channel_id missing.");
@@ -108,38 +128,14 @@ async function resolveWebhookIdForQueueRow(row: QueueRow): Promise<string> {
     row.alliance_code
   );
 
-  if (!allianceCode) {
-    throw new Error(`Cannot resolve ${raw}: alliance_code missing in queue row/meta.`);
-  }
-
   return await getDefaultWebhookId(allianceCode, kind);
 }
 
-async function getDefaultWebhookId(allianceCode: string, kind: string): Promise<string> {
-  const ac = s(allianceCode);
-  const k = s(kind).toLowerCase();
-  if (!ac) throw new Error("allianceCode missing.");
-  if (!k) throw new Error("kind missing.");
-
-  const r = await sb
-    .from("alliance_discord_webhook_defaults")
-    .select("webhook_id")
-    .eq("alliance_code", ac)
-    .eq("kind", k)
-    .maybeSingle();
-
-  if (r.error) throw r.error;
-
-  const wid = s((r.data as any)?.webhook_id);
-  if (!wid) throw new Error(`No default webhook set for ${ac} (${k}).`);
-
-  return wid;
-}
 
 function parseAllianceFromTarget(t: string): string {
   const x = s(t);
-  if (x.startsWith(lliance:)) return x.slice(lliance:.length);
-  return `;
+  if (x.startsWith("alliance:")) return x.slice("alliance:".Length);
+  return "";
 }
 
 
@@ -236,6 +232,10 @@ export function startQueueWorker(discord: DiscordClient) {
   setTimeout(() => { void tick(); }, 1500);
   setInterval(() => { void tick(); }, 3500);
 }
+
+
+
+
 
 
 
