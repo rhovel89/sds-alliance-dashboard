@@ -249,12 +249,12 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
       const url = pub?.data?.publicUrl;
       if (!url) throw new Error("Public URL missing (exports bucket)");
 
-      const completedLines = completed.slice(0, 8).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
-      const progressLines = progress.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
-      const pendingLines = pending.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
+      const completedLines = completed.slice(0, 8).map((r) => `• ${getPlayerName(r)}`).join("\n");
+      const progressLines = progress.slice(0, 5).map((r) => `• ${getPlayerName(r)}`).join("\n");
+      const pendingLines = pending.slice(0, 5).map((r) => `• ${getPlayerName(r)}`).join("\n");
 
       const msg =
-        `🩸 **State ${stateCode} — Achievements Intel**` +
+        `🩸 **State ${stateCode} — Achievements Intel v2**` +
         `\nAlliance: **${allianceFilter}**` +
         `\nCompleted: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**` +
         (completedLines ? `\n\n✅ **Completed**\n${completedLines}` : "") +
@@ -351,7 +351,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
             type="button"
             style={{ padding: "10px 12px" }}
             onClick={() => void sendToSelectedWebhooks(
-              `🩸 **State ${stateCode} — Achievements Intel**` +
+              `🩸 **State ${stateCode} — Achievements Intel v2**` +
               `\nAlliance: **${allianceFilter}**` +
               `\nCompleted: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
               {
@@ -511,3 +511,4 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
 
 // deploy tick 2026-03-08T12:06:12
+
