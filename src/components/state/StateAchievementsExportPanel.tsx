@@ -259,23 +259,14 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
         `Completed: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
       ];
 
-      if (completedLines) {
-        parts.push("", "✅ **Completed**", completedLines);
-      }
-
-      if (progressLines) {
-        parts.push("", "🧬 **In Progress**", progressLines);
-      }
-
-      if (pendingLines) {
-        parts.push("", "⏳ **Pending**", pendingLines);
-      }
+      if (completedLines) parts.push("", "✅ **Completed**", completedLines);
+      if (progressLines) parts.push("", "🧬 **In Progress**", progressLines);
+      if (pendingLines) parts.push("", "⏳ **Pending**", pendingLines);
 
       parts.push("", "📎 Export Image:", url);
 
       const msg = parts.join("\n");
-        (pendingLines ? `\n\n⏳ **Pending**\n${pendingLines}` : "") +
-        `\n\n📎 Export Image:\n${url}`;
+
 
       setStatus("Queueing Discord send…");
       const q = await supabase.rpc("queue_discord_send" as any, {
