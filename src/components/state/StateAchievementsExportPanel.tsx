@@ -357,9 +357,14 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
             type="button"
             style={{ padding: "10px 12px" }}
             onClick={() => void sendToSelectedWebhooks(
-              `🩸 **State ${stateCode} — Achievements Intel v2**` +
-              `\nAlliance: **${allianceFilter}**` +
-              `\nCompleted: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
+              [
+                `🩸 **State ${stateCode} — Achievements Intel v3**`,
+                `Alliance: **${allianceFilter}**`,
+                `Completed: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
+                ...(completed.length ? ["", "✅ **Completed**", ...completed.slice(0, 8).map((r) => `• ${getPlayerName(r)}`)] : []),
+                ...(progress.length ? ["", "🧬 **In Progress**", ...progress.slice(0, 5).map((r) => `• ${getPlayerName(r)}`)] : []),
+                ...(pending.length ? ["", "⏳ **Pending**", ...pending.slice(0, 5).map((r) => `• ${getPlayerName(r)}`)] : []),
+              ].join("\n"),
               {
                 state_code: stateCode,
                 alliance_code: String(allianceFilter || "").toUpperCase(),
