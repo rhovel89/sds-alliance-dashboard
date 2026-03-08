@@ -249,18 +249,31 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
 
       const pub = supabase.storage.from("exports").getPublicUrl(name);
       const url = pub?.data?.publicUrl;
-      if (!url) throw new Error("Public URL missing (exports bucket)");
-
       const completedLines = completed.slice(0, 8).map((r) => `• ${getPlayerName(r)}`).join("\n");
       const progressLines = progress.slice(0, 5).map((r) => `• ${getPlayerName(r)}`).join("\n");
       const pendingLines = pending.slice(0, 5).map((r) => `• ${getPlayerName(r)}`).join("\n");
 
-      const msg =
-        `🩸 **State ${stateCode} — Achievements Intel v2**` +
-        `\nAlliance: **${allianceFilter}**` +
-        `\nCompleted: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**` +
-        (completedLines ? `\n\n✅ **Completed**\n${completedLines}` : "") +
-        (progressLines ? `\n\n🧬 **In Progress**\n${progressLines}` : "") +
+      const parts: string[] = [
+        `🩸 **State ${stateCode} — Achievements Intel v3**`,
+        `Alliance: **${allianceFilter}**`,
+        `Completed: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
+      ];
+
+      if (completedLines) {
+        parts.push("", "✅ **Completed**", completedLines);
+      }
+
+      if (progressLines) {
+        parts.push("", "🧬 **In Progress**", progressLines);
+      }
+
+      if (pendingLines) {
+        parts.push("", "⏳ **Pending**", pendingLines);
+      }
+
+      parts.push("", "📎 Export Image:", url);
+
+      const msg = parts.join("\n");
         (pendingLines ? `\n\n⏳ **Pending**\n${pendingLines}` : "") +
         `\n\n📎 Export Image:\n${url}`;
 
