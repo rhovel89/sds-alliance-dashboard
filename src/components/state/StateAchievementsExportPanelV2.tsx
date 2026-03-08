@@ -3,9 +3,22 @@ import { supabase } from "../../lib/supabaseClient";
 import StateAchievementsDossierSheet, { type DossierReqRow } from "./StateAchievementsDossierSheet";
 import StateAchievementsAllianceSendPanel from "./StateAchievementsAllianceSendPanel";
 
-// Local helpers (stable + avoids runtime crashes)
+// Helpers (local, avoid runtime crashes)
 const norm = (v: any) => String(v ?? "").trim();
 const normLower = (v: any) => norm(v).toLowerCase();
+const safeSlug = (v: any) => {
+  const s = normLower(v);
+  const slug = s
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return (slug.length ? slug.slice(0, 60) : "x");
+};
+
+
+// Local helpers (stable + avoids runtime crashes)
 
 
 // Local helpers (stable + avoids runtime crashes)
@@ -41,13 +54,6 @@ const normUpper = (v: any) => norm(v).toUpperCase();
 
 type ChannelRow = { id?: string; channel_name?: string | null; channel_id?: string | null };
 
-function safeSlug(s: string) {
-  return String(s || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-+|-+$)/g, "") || "all";
-}
 
 async function capturePng(el: HTMLElement): Promise<Blob> {
   // html2canvas is commonly used in this repo; import dynamically to avoid build-time issues if unused elsewhere.
