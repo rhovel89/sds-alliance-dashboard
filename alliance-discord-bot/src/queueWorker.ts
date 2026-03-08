@@ -142,7 +142,7 @@ function parseAllianceFromTarget(t: string): string {
 async function claimOne(): Promise<QueueRow | null> {
   if (!supabase) return null;
 
-  const q = await supabase
+  console.log("[queueWorker] checking for queued rows"); console.log("[queueWorker] checking for queued rows"); const q = await supabase
     .from(QUEUE_TABLE)
     .select("*")
     .eq("status", "queued")
@@ -154,16 +154,16 @@ async function claimOne(): Promise<QueueRow | null> {
   if (!row?.id) return null;
 
   // lock (best-effort CAS)
-  const lock = await supabase
+  console.log("[queueWorker] attempting lock", row.id); const lock = await supabase
     .from(QUEUE_TABLE)
-    .update({ status: "sending", locked_at: nowIso(), locked_by: WORKER_ID } as any)
+    .update({ status: "sending", locked_at: nowIso() } as any)
     .eq("id", row.id)
     .eq("status", "queued")
     .select("id")
     .maybeSingle();
 
   if (lock.error || !lock.data?.id) return null;
-  return row;
+  console.log("[queueWorker] claimed row", row.id); return row;
 }
 
 async function markSent(id: string) {
@@ -188,7 +188,7 @@ async function processOne(discord: DiscordClient): Promise<boolean> {
   if (!row) return false;
 
   try {
-    const kind = s(row.kind).toLowerCase();
+    const kind = s(row.kind).toLowerCase(); console.log("[queueWorker-kind]", kind, row.channel_id, JSON.stringify(row.meta));
       console.log("[queueWorker] processing row", {
         id: row.id,
         kind,
@@ -196,12 +196,12 @@ async function processOne(discord: DiscordClient): Promise<boolean> {
         target: row.target,
         meta: row.meta,
       });
-    if (kind === "discord_webhook") {
+    if (kind === "discord_webhook") { console.log("[WEBHOOK BRANCH]", row.id, row.channel_id);
         console.log("[queueWorker] using webhook transport", row.id);
       const webhookId = await resolveWebhookIdForQueueRow(row);
       const webhookUrl = await getWebhookUrlById(webhookId);
       await postWebhook(webhookUrl, s((row as any).content || (row as any).message));
-    } else {
+    } else { console.log("[CHANNEL BRANCH]", row.id, row.channel_id);
       console.log("[queueWorker] using channel transport", row.id);
         await sendToChannel(discord, row.channel_id, s((row as any).content || (row as any).message));
     }
@@ -241,6 +241,12 @@ export function startQueueWorker(discord: DiscordClient) {
   setTimeout(() => { void tick(); }, 1500);
   setInterval(() => { void tick(); }, 3500);
 }
+
+
+
+
+
+
 
 
 
