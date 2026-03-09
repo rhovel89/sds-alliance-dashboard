@@ -53,10 +53,12 @@ export default function MyMailPage() {
   const [items, setItems] = useState<InboxRow[]>([]);
 
   const [toUserId, setToUserId] = useState("");
+  const [recipientSearch, setRecipientSearch] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
   const [filterKind, setFilterKind] = useState("");
+  const [mailTab, setMailTab] = useState("all");
   const [q, setQ] = useState("");
 
   async function loadRecipients() {
@@ -131,17 +133,39 @@ export default function MyMailPage() {
     setLoading(false);
   }
 
+  const filteredRecipients = useMemo(() => {
+    const needle = s(recipientSearch).trim().toLowerCase();
+    if (!needle) return recipients;
+
+    return recipients.filter((r) => {
+      const text = `${recipientLabel(r)} ${s(r.display_name)} ${s(r.game_name)} ${s(r.alliance_code)}`.toLowerCase();
+      return text.includes(needle);
+    });
+  }, [recipients, recipientSearch]);
+
   const filtered = useMemo(() => {
     const needle = s(q).trim().toLowerCase();
 
     return items.filter((m) => {
-      const kindOk = !filterKind || s(m.kind) === filterKind;
+      const kind = s(m.kind);
+      const direction = s(m.direction);
+
+      const kindOk = !filterKind || kind === filterKind;
+
+      const tabOk =
+        mailTab === "all" ? true :
+        mailTab === "inbox" ? direction !== "out" :
+        mailTab === "sent" ? direction === "out" :
+        mailTab === "broadcast" ? kind === "alliance_broadcast" || kind === "state_broadcast" :
+        true;
+
       const text =
         `${s(m.subject)} ${s(m.body)} ${s(m.from_display_name)} ${s(m.sender_display_name)} ${s(m.peer_display_name)}`.toLowerCase();
       const textOk = !needle || text.includes(needle);
-      return kindOk && textOk;
+
+      return kindOk && tabOk && textOk;
     });
-  }, [items, filterKind, q]);
+  }, [items, filterKind, mailTab, q]);
 
   function recipientLabel(r: RecipientRow) {
     const name = s(r.display_name || r.game_name || r.user_id || r.id || "Unknown");
@@ -246,8 +270,15 @@ export default function MyMailPage() {
             <div style={{ fontWeight: 900, marginBottom: 10 }}>Compose Direct Mail</div>
 
             <div style={{ display: "grid", gap: 10 }}>
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>Recipient</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>Recipient</div>
+                <input
+                  className="zombie-input"
+                  value={recipientSearch}
+                  onChange={(e) => setRecipientSearch(e.target.value)}
+                  placeholder="Search recipient..."
+                  style={{ width: "100%", padding: "10px 12px" }}
+                />
                 <select
                   className="zombie-input"
                   value={toUserId}
@@ -255,7 +286,7 @@ export default function MyMailPage() {
                   style={{ width: "100%", padding: "10px 12px" }}
                 >
                   <option value="">Select player…</option>
-                  {recipients.map((r, i) => {
+                  {filteredRecipients.map((r, i) => {
                     const id = s(r.user_id || r.id);
                     return (
                       <option key={`${id}-${i}`} value={id}>
@@ -352,13 +383,18 @@ export default function MyMailPage() {
             <div style={{ fontWeight: 900 }}>Inbox Preview</div>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="zombie-btn" type="button" onClick={() => setMailTab("all")}>All</button>
+              <button className="zombie-btn" type="button" onClick={() => setMailTab("inbox")}>Inbox</button>
+              <button className="zombie-btn" type="button" onClick={() => setMailTab("sent")}>Sent</button>
+              <button className="zombie-btn" type="button" onClick={() => setMailTab("broadcast")}>Broadcast</button>
+
               <select
                 className="zombie-input"
                 value={filterKind}
                 onChange={(e) => setFilterKind(e.target.value)}
                 style={{ padding: "10px 12px" }}
               >
-                <option value="">All</option>
+                <option value="">All kinds</option>
                 <option value="direct">Direct</option>
                 <option value="alliance_broadcast">Alliance Broadcast</option>
                 <option value="state_broadcast">State Broadcast</option>
@@ -476,6 +512,8 @@ export default function MyMailPage() {
     </div>
   );
 }
+
+
 
 
 
