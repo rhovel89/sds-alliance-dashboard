@@ -10,6 +10,8 @@ type RecipientRow = {
   alliance_code?: string;
 };
 
+const MAIL_HOME_DRAFT_KEY = "sad_mail_home_draft_v1";
+
 type InboxRow = {
   id?: string;
   created_at?: string;
@@ -34,6 +36,27 @@ function buildMailThreadLink(threadKey: string): string {
   return `/mail-threads?${params.toString()}`;
 }
 
+function loadMailHomeDraft() {
+  try {
+    const raw = localStorage.getItem(MAIL_HOME_DRAFT_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveMailHomeDraft(next: any) {
+  try {
+    localStorage.setItem(MAIL_HOME_DRAFT_KEY, JSON.stringify(next || {}));
+  } catch {}
+}
+
+function clearMailHomeDraft() {
+  try {
+    localStorage.removeItem(MAIL_HOME_DRAFT_KEY);
+  } catch {}
+}
+
 function niceDate(v: any) {
   try {
     return new Date(String(v || "")).toLocaleString();
@@ -52,10 +75,12 @@ export default function MyMailPage() {
   const [recipients, setRecipients] = useState<RecipientRow[]>([]);
   const [items, setItems] = useState<InboxRow[]>([]);
 
-  const [toUserId, setToUserId] = useState("");
-  const [recipientSearch, setRecipientSearch] = useState("");
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+  const initialDraft = loadMailHomeDraft();
+
+  const [toUserId, setToUserId] = useState(() => s(initialDraft?.toUserId));
+  const [recipientSearch, setRecipientSearch] = useState(() => s(initialDraft?.recipientSearch));
+  const [subject, setSubject] = useState(() => s(initialDraft?.subject));
+  const [body, setBody] = useState(() => s(initialDraft?.body));
 
   const [filterKind, setFilterKind] = useState("");
   const [mailTab, setMailTab] = useState("all");
@@ -105,6 +130,15 @@ export default function MyMailPage() {
     void loadAll();
   }, []);
 
+  useEffect(() => {
+    saveMailHomeDraft({
+      toUserId,
+      recipientSearch,
+      subject,
+      body,
+    });
+  }, [toUserId, recipientSearch, subject, body]);
+
   async function sendDirectMail() {
     if (!userId) return setStatus("You must be signed in.");
     if (!toUserId) return setStatus("Select a player recipient.");
@@ -126,8 +160,10 @@ export default function MyMailPage() {
       return;
     }
 
+    setRecipientSearch("");
     setSubject("");
     setBody("");
+    clearMailHomeDraft();
     setStatus("Mail sent ✅");
     await refreshInbox();
     setLoading(false);
@@ -336,8 +372,11 @@ export default function MyMailPage() {
                   disabled={loading}
                   onClick={() => {
                     setToUserId("");
+                    setRecipientSearch("");
                     setSubject("");
                     setBody("");
+                    clearMailHomeDraft();
+                    setStatus("Draft cleared.");
                   }}
                 >
                   Clear
@@ -512,6 +551,10 @@ export default function MyMailPage() {
     </div>
   );
 }
+
+
+
+
 
 
 
