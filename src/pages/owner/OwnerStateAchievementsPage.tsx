@@ -491,12 +491,13 @@ export default function OwnerStateAchievementsPage() {
         <div style={{ opacity: 0.75, fontSize: 12, marginTop: 8 }}>
           {loading ? "Loading…" : `types=${types.length} • options=${options.length} • requests=${requests.length} • access=${access.length}`}
         </div>
-        {(initialAllianceFromQuery || initialTypeFromQuery || initialPlayerFromQuery) ? (
+        {(initialAllianceFromQuery || initialTypeFromQuery || initialPlayerFromQuery || initialStatusFromQuery) ? (
         <div style={{ marginBottom: 10, border:"1px solid rgba(255,255,255,0.10)", background:"rgba(255,255,255,0.04)", borderRadius: 12, padding: 10 }}>
           Deep link filters active
           {initialAllianceFromQuery ? ` • Alliance: ${initialAllianceFromQuery}` : ""}
           {initialTypeFromQuery ? ` • Type: ${initialTypeFromQuery}` : ""}
           {initialPlayerFromQuery ? ` • Player: ${initialPlayerFromQuery}` : ""}
+          {initialStatusFromQuery ? ` • Status: ${initialStatusFromQuery}` : ""}
         </div>
       ) : null}
       {msg ? <div style={{ marginTop: 10, opacity: 0.9 }}>{msg}</div> : null}
@@ -743,6 +744,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
