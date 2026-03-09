@@ -256,7 +256,14 @@ export default function MyMailThreadsPage() {
   return (
     <div style={{ padding: 16, maxWidth: 1400, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>My Mail — Threads</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <h2 style={{ margin: 0 }}>My Mail — Threads</h2>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={() => nav("/mail")}>Mail Home</button>
+            <button className="zombie-btn" type="button" onClick={() => nav("/mail-v2")}>Inbox</button>
+            <button className="zombie-btn" type="button" onClick={() => nav("/owner/mail-broadcast")}>Broadcast</button>
+          </div>
+        </div>
         <SupportBundleButton />
       </div>
 
@@ -343,6 +350,7 @@ export default function MyMailThreadsPage() {
     </div>
   );
 }
+
 
 
 

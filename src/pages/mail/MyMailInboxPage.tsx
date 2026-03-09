@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseBrowserClient";
 import { useTranslation } from "react-i18next";
 
@@ -26,6 +27,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 export default function MyMailInboxPage() {
+  const nav = useNavigate();
   const { t } = useTranslation();
   const [userId, setUserId] = useState<string>("");
   const [items, setItems] = useState<MailItem[]>([]);
@@ -116,7 +118,14 @@ export default function MyMailInboxPage() {
 
   return (
     <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900 }}>{t("mailInbox.title")}</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>{t("mailInbox.title")}</h1>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="zombie-btn" type="button" onClick={() => nav("/mail")}>Mail Home</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/mail-threads")}>Threads</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/owner/mail-broadcast")}>Broadcast</button>
+        </div>
+      </div>
       <div style={{ opacity: 0.8, marginTop: 6 }}>
         {userId ? "✅" : ""}{loading ? " • " + t("common.loading") : ""}{status ? " • " + status : ""}
       </div>
@@ -183,3 +192,4 @@ export default function MyMailInboxPage() {
     </div>
   );
 }
+

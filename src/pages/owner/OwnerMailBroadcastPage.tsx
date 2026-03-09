@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseBrowserClient";
 
 type Kind = "alliance_broadcast" | "state_broadcast";
@@ -9,6 +10,7 @@ async function copyToClipboard(text: string) {
 }
 
 export default function OwnerMailBroadcastPage() {
+  const nav = useNavigate();
   const [userId, setUserId] = useState<string>("");
   const [kind, setKind] = useState<Kind>("alliance_broadcast");
   const [allianceCode, setAllianceCode] = useState("");
@@ -61,7 +63,14 @@ export default function OwnerMailBroadcastPage() {
 
   return (
     <div style={{ padding: 16, maxWidth: 900, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900 }}>Owner Mail Broadcast</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>Owner Mail Broadcast</h1>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="zombie-btn" type="button" onClick={() => nav("/mail")}>Mail Home</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/mail-v2")}>Inbox</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/mail-threads")}>Threads</button>
+        </div>
+      </div>
       <div style={{ opacity: 0.8, marginTop: 6 }}>
         Creates DB mail items for players to read in <code>/mail-v2</code>. {status ? " • " + status : ""}
       </div>
@@ -101,3 +110,4 @@ export default function OwnerMailBroadcastPage() {
     </div>
   );
 }
+
