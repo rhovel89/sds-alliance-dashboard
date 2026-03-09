@@ -22,6 +22,13 @@ function buildPlayerAchievementsLink(player: string): string {
   return `/owner/state-achievements?${params.toString()}`;
 }
 
+function buildPlayerTypeAchievementsLink(player: string, typeName: string): string {
+  const params = new URLSearchParams();
+  if (String(player || "").trim()) params.set("player", String(player || "").trim());
+  if (String(typeName || "").trim()) params.set("type", String(typeName || "").trim());
+  return `/owner/state-achievements?${params.toString()}`;
+}
+
 export default function OwnerPlayerProgressComparePage() {
   const nav = useNavigate();
   const cc = useMemo(() => getCommandCenterModules(), []);
@@ -32,13 +39,31 @@ export default function OwnerPlayerProgressComparePage() {
     if (to) nav(to);
   }
 
+  async function copyCompareViewLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setStatus("Compare view link copied ✅");
+    } catch {
+      setStatus("Copy failed.");
+    }
+  }
+
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [requests, setRequests] = useState<AnyRow[]>([]);
   const [types, setTypes] = useState<AnyRow[]>([]);
-  const [q1, setQ1] = useState("");
-  const [q2, setQ2] = useState("");
-  const [q3, setQ3] = useState("");
+  const [q1, setQ1] = useState(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    return String(p.get("p1") || "");
+  });
+  const [q2, setQ2] = useState(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    return String(p.get("p2") || "");
+  });
+  const [q3, setQ3] = useState(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    return String(p.get("p3") || "");
+  });
 
   async function loadAll() {
     try {
@@ -80,6 +105,16 @@ export default function OwnerPlayerProgressComparePage() {
   }, [requests]);
 
   const selectedPlayers = [q1, q2, q3].map((x) => String(x || "").trim()).filter(Boolean);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (String(q1 || "").trim()) params.set("p1", String(q1 || "").trim());
+    if (String(q2 || "").trim()) params.set("p2", String(q2 || "").trim());
+    if (String(q3 || "").trim()) params.set("p3", String(q3 || "").trim());
+
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `/owner/player-progress-compare?${qs}` : "/owner/player-progress-compare");
+  }, [q1, q2, q3]);
 
   const typeNameById = useMemo(() => {
     const m: Record<string, string> = {};
@@ -153,6 +188,7 @@ export default function OwnerPlayerProgressComparePage() {
       topRight={
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="zombie-btn" type="button" onClick={() => nav("/owner/player-progress")}>Player Progress</button>
+          <button className="zombie-btn" type="button" onClick={() => void copyCompareViewLink()}>Copy Compare Link</button>
           <button className="zombie-btn" type="button" onClick={() => void loadAll()} disabled={loading}>Refresh</button>
         </div>
       }
@@ -205,7 +241,15 @@ export default function OwnerPlayerProgressComparePage() {
                 <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Unique Strengths</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {(uniqueStrengthsByPlayer[x.player] || []).length === 0 ? <span style={{ opacity: 0.65 }}>None</span> : (uniqueStrengthsByPlayer[x.player] || []).slice(0, 10).map((name) => (
-                    <span key={name} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>{name}</span>
+                    <button
+                      key={name}
+                      className="zombie-btn"
+                      type="button"
+                      style={{ fontSize: 12, padding: "4px 8px" }}
+                      onClick={() => nav(buildPlayerTypeAchievementsLink(x.player, name))}
+                    >
+                      {name}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -214,7 +258,15 @@ export default function OwnerPlayerProgressComparePage() {
                 <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Missing Types</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {x.missingTypeNames.length === 0 ? <span style={{ opacity: 0.65 }}>None</span> : x.missingTypeNames.slice(0, 12).map((name) => (
-                    <span key={name} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>{name}</span>
+                    <button
+                      key={name}
+                      className="zombie-btn"
+                      type="button"
+                      style={{ fontSize: 12, padding: "4px 8px" }}
+                      onClick={() => nav(buildPlayerTypeAchievementsLink(x.player, name))}
+                    >
+                      {name}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -226,7 +278,15 @@ export default function OwnerPlayerProgressComparePage() {
               <div style={{ fontWeight: 900, marginBottom: 8 }}>Shared Completed Types</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {sharedCompletedTypes.length === 0 ? <span style={{ opacity: 0.65 }}>None</span> : sharedCompletedTypes.map((name) => (
-                  <span key={name} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>{name}</span>
+                  <button
+                      key={name}
+                      className="zombie-btn"
+                      type="button"
+                      style={{ fontSize: 12, padding: "4px 8px" }}
+                      onClick={() => nav(buildPlayerTypeAchievementsLink(x.player, name))}
+                    >
+                      {name}
+                    </button>
                 ))}
               </div>
             </div>
@@ -236,5 +296,9 @@ export default function OwnerPlayerProgressComparePage() {
     </CommandCenterShell>
   );
 }
+
+
+
+
 
 
