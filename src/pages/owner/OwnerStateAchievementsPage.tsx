@@ -5,6 +5,22 @@ import SupportBundleButton from "../../components/system/SupportBundleButton";
 import StateAchievementsExportPanel from "../../components/state/StateAchievementsExportPanel";
 type AnyRow = Record<string, any>;
 
+function loadBulkDiscordPresets(): any[] {
+  try {
+    const raw = localStorage.getItem("bulkDiscordPresets");
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveBulkDiscordPresets(arr: any[]) {
+  try {
+    localStorage.setItem("bulkDiscordPresets", JSON.stringify(Array.isArray(arr) ? arr : []));
+  } catch {}
+}
+
 function nowUtc() { return new Date().toISOString(); }
 function norm(s: any) { return String(s || "").trim(); }
 function normLower(s: any) { return String(s || "").trim().toLowerCase(); }
@@ -64,6 +80,9 @@ export default function OwnerStateAchievementsPage() {
   const [bulkDiscordWebhookId, setBulkDiscordWebhookId] = useState("");
   const [bulkDiscordWebhooks, setBulkDiscordWebhooks] = useState<AnyRow[]>([]);
   const [bulkDiscordPreview, setBulkDiscordPreview] = useState("");
+  const [bulkDiscordPresets, setBulkDiscordPresets] = useState<any[]>([]);
+  const [selectedBulkDiscordPreset, setSelectedBulkDiscordPreset] = useState("");
+  const [newBulkDiscordPresetName, setNewBulkDiscordPresetName] = useState("");
 
   const typeById = useMemo(() => {
     const m: Record<string, AnyRow> = {};
@@ -237,6 +256,10 @@ export default function OwnerStateAchievementsPage() {
     void loadBulkDiscordWebhooks(bulkDiscordAlliance);
   }, [bulkDiscordAlliance]);
 
+  useEffect(() => {
+    setBulkDiscordPresets(loadBulkDiscordPresets());
+  }, []);
+
   function selectAllVisibleRequests() {
     const ids = requests.slice(0, 200).map((r) => String(r?.id || "")).filter(Boolean);
     setSelectedRequestIds(ids);
@@ -292,6 +315,58 @@ export default function OwnerStateAchievementsPage() {
     const cur = reqCurrent(r);
 
     return `• ${player} — ${type}${option ? ` — ${option}` : ""} (${cur}/${req}, ${status}, ${alliance})`;
+  }
+
+  function saveCurrentBulkDiscordPreset() {
+    const name = String(newBulkDiscordPresetName || "").trim();
+    if (!name) {
+      setMsg("Enter a bulk Discord preset name first.");
+      return;
+    }
+
+    const preset = {
+      name,
+      bulkDiscordAlliance,
+      bulkDiscordWebhookId,
+    };
+
+    const next = [
+      ...bulkDiscordPresets.filter((x) => String(x?.name || "").trim().toLowerCase() !== name.toLowerCase()),
+      preset,
+    ].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+
+    setBulkDiscordPresets(next);
+    saveBulkDiscordPresets(next);
+    setSelectedBulkDiscordPreset(name);
+    setNewBulkDiscordPresetName("");
+    setMsg("Bulk Discord preset saved ✅");
+  }
+
+  function applySelectedBulkDiscordPreset() {
+    const name = String(selectedBulkDiscordPreset || "").trim();
+    const preset = bulkDiscordPresets.find((x) => String(x?.name || "").trim() === name);
+    if (!preset) {
+      setMsg("Pick a bulk Discord preset first.");
+      return;
+    }
+
+    setBulkDiscordAlliance(String(preset?.bulkDiscordAlliance || "WOC"));
+    setBulkDiscordWebhookId(String(preset?.bulkDiscordWebhookId || ""));
+    setMsg("Bulk Discord preset loaded ✅");
+  }
+
+  function deleteSelectedBulkDiscordPreset() {
+    const name = String(selectedBulkDiscordPreset || "").trim();
+    if (!name) {
+      setMsg("Pick a bulk Discord preset first.");
+      return;
+    }
+
+    const next = bulkDiscordPresets.filter((x) => String(x?.name || "").trim() !== name);
+    setBulkDiscordPresets(next);
+    saveBulkDiscordPresets(next);
+    setSelectedBulkDiscordPreset("");
+    setMsg("Bulk Discord preset deleted ✅");
   }
 
   async function previewBulkSendSelectedToDiscord() {
@@ -971,6 +1046,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
