@@ -139,6 +139,32 @@ export default function MyMailPage() {
     });
   }, [toUserId, recipientSearch, subject, body]);
 
+  async function openNewestThreadForRecipient(targetUserId: string) {
+    try {
+      const res = await supabase
+        .from("v_my_mail_threads")
+        .select("*")
+        .order("last_message_at", { ascending: false });
+
+      if (res.error) return;
+
+      const rows = (res.data ?? []) as any[];
+      const match = rows.find((r) => {
+        const a = String(r?.peer_user_id || r?.other_user_id || r?.to_user_id || "");
+        const b = String(r?.from_user_id || "");
+        return a === String(targetUserId || "") || b === String(targetUserId || "");
+      });
+
+      if (match?.thread_key) {
+        nav(`/mail-threads?thread=${encodeURIComponent(String(match.thread_key))}`);
+      } else {
+        nav("/mail-threads");
+      }
+    } catch {
+      nav("/mail-threads");
+    }
+  }
+
   async function sendDirectMail() {
     if (!userId) return setStatus("You must be signed in.");
     if (!toUserId) return setStatus("Select a player recipient.");
@@ -146,6 +172,8 @@ export default function MyMailPage() {
 
     setLoading(true);
     setStatus("Sending…");
+
+    const targetUserId = toUserId;
 
     const r = await supabase.rpc("mail_send_message", {
       p_to_user_id: toUserId,
@@ -167,6 +195,7 @@ export default function MyMailPage() {
     setStatus("Mail sent ✅");
     await refreshInbox();
     setLoading(false);
+    await openNewestThreadForRecipient(targetUserId);
   }
 
   const filteredRecipients = useMemo(() => {
@@ -551,6 +580,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
