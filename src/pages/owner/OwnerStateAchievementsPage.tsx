@@ -80,6 +80,7 @@ export default function OwnerStateAchievementsPage() {
   const [bulkDiscordWebhookId, setBulkDiscordWebhookId] = useState("");
   const [bulkDiscordWebhooks, setBulkDiscordWebhooks] = useState<AnyRow[]>([]);
   const [bulkDiscordPreview, setBulkDiscordPreview] = useState("");
+  const [bulkDiscordMessageStyle, setBulkDiscordMessageStyle] = useState("detailed");
   const [bulkDiscordPresets, setBulkDiscordPresets] = useState<any[]>([]);
   const [selectedBulkDiscordPreset, setSelectedBulkDiscordPreset] = useState("");
   const [newBulkDiscordPresetName, setNewBulkDiscordPresetName] = useState("");
@@ -328,6 +329,7 @@ export default function OwnerStateAchievementsPage() {
       name,
       bulkDiscordAlliance,
       bulkDiscordWebhookId,
+      bulkDiscordMessageStyle,
     };
 
     const next = [
@@ -352,6 +354,7 @@ export default function OwnerStateAchievementsPage() {
 
     setBulkDiscordAlliance(String(preset?.bulkDiscordAlliance || "WOC"));
     setBulkDiscordWebhookId(String(preset?.bulkDiscordWebhookId || ""));
+    setBulkDiscordMessageStyle(String(preset?.bulkDiscordMessageStyle || "detailed"));
     setMsg("Bulk Discord preset loaded ✅");
   }
 
@@ -391,12 +394,27 @@ export default function OwnerStateAchievementsPage() {
       const parts: string[] = [
         `🩸 **State ${stateCode} — Selected Achievements**`,
         `Alliance: **${alliance}**`,
+        `Style: **${bulkDiscordMessageStyle}**`,
         `Selected Rows: **${selected.length}** • Submitted: **${submitted.length}** • In Progress: **${inProgress.length}** • Completed: **${completed.length}**`,
       ];
 
-      if (completed.length) parts.push("", "✅ **Completed**", ...completed.slice(0, 10).map((r) => formatBulkDiscordAchievementLine(r)));
-      if (inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgress.slice(0, 10).map((r) => formatBulkDiscordAchievementLine(r)));
-      if (submitted.length) parts.push("", "⏳ **Submitted**", ...submitted.slice(0, 10).map((r) => formatBulkDiscordAchievementLine(r)));
+      const completedLines = completed.map((r) => formatBulkDiscordAchievementLine(r));
+      const inProgressLines = inProgress.map((r) => formatBulkDiscordAchievementLine(r));
+      const submittedLines = submitted.map((r) => formatBulkDiscordAchievementLine(r));
+
+      if (bulkDiscordMessageStyle === "brief") {
+        if (completed.length) parts.push("", "✅ **Completed**", ...completed.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
+        if (inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgress.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
+        if (submitted.length) parts.push("", "⏳ **Submitted**", ...submitted.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
+      } else if (bulkDiscordMessageStyle === "compact") {
+        if (completed.length) parts.push("", "✅ **Completed**", ...completedLines.slice(0, 5));
+        if (inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgressLines.slice(0, 5));
+        if (submitted.length) parts.push("", "⏳ **Submitted**", ...submittedLines.slice(0, 5));
+      } else {
+        if (completed.length) parts.push("", "✅ **Completed**", ...completedLines.slice(0, 10));
+        if (inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgressLines.slice(0, 10));
+        if (submitted.length) parts.push("", "⏳ **Submitted**", ...submittedLines.slice(0, 10));
+      }
 
       setBulkDiscordPreview(parts.join("\n"));
       setMsg("Preview ready ✅");
@@ -1046,6 +1064,9 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
+
+
 
 
 
