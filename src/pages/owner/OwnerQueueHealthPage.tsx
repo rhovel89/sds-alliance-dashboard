@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
 import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 import { supabase } from "../../lib/supabaseClient";
@@ -22,6 +22,7 @@ function parseDate(v: any): number | null {
 
 export default function OwnerQueueHealthPage() {
   const nav = useNavigate();
+  const location = useLocation();
   const cc = useMemo(() => getCommandCenterModules(), []);
   const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
   function onSelectModule(k: string) {
@@ -33,7 +34,10 @@ export default function OwnerQueueHealthPage() {
   const [status, setStatus] = useState("");
   const [rows, setRows] = useState<AnyRow[]>([]);
 
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    return String(p.get("status") || "ALL");
+  });
   const [kindFilter, setKindFilter] = useState("ALL");
   const [targetFilter, setTargetFilter] = useState("");
 
@@ -353,3 +357,4 @@ export default function OwnerQueueHealthPage() {
     </CommandCenterShell>
   );
 }
+
