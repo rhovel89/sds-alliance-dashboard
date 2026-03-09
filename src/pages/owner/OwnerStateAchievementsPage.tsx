@@ -85,6 +85,7 @@ export default function OwnerStateAchievementsPage() {
   const [bulkDiscordWebhooks, setBulkDiscordWebhooks] = useState<AnyRow[]>([]);
   const [bulkDiscordPreview, setBulkDiscordPreview] = useState("");
   const [bulkDiscordMessageStyle, setBulkDiscordMessageStyle] = useState("detailed");
+  const [bulkDiscordTargetMode, setBulkDiscordTargetMode] = useState("grouped");
   const [bulkIncludeSubmitted, setBulkIncludeSubmitted] = useState(true);
   const [bulkIncludeInProgress, setBulkIncludeInProgress] = useState(true);
   const [bulkIncludeCompleted, setBulkIncludeCompleted] = useState(true);
@@ -386,6 +387,7 @@ export default function OwnerStateAchievementsPage() {
       bulkDiscordAlliance,
       bulkDiscordWebhookId,
       bulkDiscordMessageStyle,
+      bulkDiscordTargetMode,
       bulkIncludeSubmitted,
       bulkIncludeInProgress,
       bulkIncludeCompleted,
@@ -414,6 +416,7 @@ export default function OwnerStateAchievementsPage() {
     setBulkDiscordAlliance(String(preset?.bulkDiscordAlliance || "WOC"));
     setBulkDiscordWebhookId(String(preset?.bulkDiscordWebhookId || ""));
     setBulkDiscordMessageStyle(String(preset?.bulkDiscordMessageStyle || "detailed"));
+    setBulkDiscordTargetMode(String(preset?.bulkDiscordTargetMode || "grouped"));
     setBulkIncludeSubmitted(Boolean(preset?.bulkIncludeSubmitted ?? true));
     setBulkIncludeInProgress(Boolean(preset?.bulkIncludeInProgress ?? true));
     setBulkIncludeCompleted(Boolean(preset?.bulkIncludeCompleted ?? true));
@@ -506,12 +509,13 @@ export default function OwnerStateAchievementsPage() {
 
       const grouped: Record<string, AnyRow[]> = {};
       for (const r of selected) {
-        const alliance = String(r?.alliance_code || r?.alliance_name || bulkDiscordAlliance || "WOC").trim().toUpperCase();
+        const rowAlliance = String(r?.alliance_code || r?.alliance_name || bulkDiscordAlliance || "WOC").trim().toUpperCase();
+        const alliance = bulkDiscordTargetMode === "single" ? String(bulkDiscordAlliance || rowAlliance).trim().toUpperCase() : rowAlliance;
         if (!grouped[alliance]) grouped[alliance] = [];
         grouped[alliance].push(r);
       }
 
-      if (!window.confirm(`Queue Discord sends for ${selected.length} selected rows across ${Object.keys(grouped).length} alliance group(s)?`)) return;
+      if (!window.confirm(`Queue Discord sends for ${selected.length} selected rows across ${Object.keys(grouped).length} target group(s)?`)) return;
 
       setBulkBusy(true);
       setMsg("Queueing grouped Discord sends...");
@@ -1160,6 +1164,9 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
+
+
 
 
 
