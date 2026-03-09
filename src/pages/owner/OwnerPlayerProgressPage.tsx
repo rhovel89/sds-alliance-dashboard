@@ -6,6 +6,22 @@ import { supabase } from "../../lib/supabaseClient";
 
 type AnyRow = any;
 
+function loadPlayerProgressPresets(): any[] {
+  try {
+    const raw = localStorage.getItem("playerProgressPresets");
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePlayerProgressPresets(arr: any[]) {
+  try {
+    localStorage.setItem("playerProgressPresets", JSON.stringify(Array.isArray(arr) ? arr : []));
+  } catch {}
+}
+
 function s(v: any) {
   return v === null || v === undefined ? "" : String(v);
 }
@@ -43,6 +59,9 @@ export default function OwnerPlayerProgressPage() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [progressFilter, setProgressFilter] = useState("all");
+  const [playerProgressPresets, setPlayerProgressPresets] = useState<any[]>([]);
+  const [selectedPlayerProgressPreset, setSelectedPlayerProgressPreset] = useState("");
+  const [newPlayerProgressPresetName, setNewPlayerProgressPresetName] = useState("");
   const [q, setQ] = useState(() => {
     const p = new URLSearchParams(window.location.search || "");
     return String(p.get("player") || "");
@@ -99,6 +118,7 @@ export default function OwnerPlayerProgressPage() {
 
   useEffect(() => {
     void loadAll();
+    setPlayerProgressPresets(loadPlayerProgressPresets());
   }, []);
 
   const typeById = useMemo(() => {
@@ -123,6 +143,58 @@ export default function OwnerPlayerProgressPage() {
     const vals = Array.from(new Set(requests.map((r) => getPlayerName(r)).filter(Boolean)));
     return vals.sort((a, b) => a.localeCompare(b));
   }, [requests]);
+
+  function saveCurrentPlayerProgressPreset() {
+    const name = String(newPlayerProgressPresetName || "").trim();
+    if (!name) {
+      setStatus("Enter a player progress preset name first.");
+      return;
+    }
+
+    const preset = {
+      name,
+      q,
+      progressFilter,
+    };
+
+    const next = [
+      ...playerProgressPresets.filter((x) => String(x?.name || "").trim().toLowerCase() !== name.toLowerCase()),
+      preset,
+    ].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+
+    setPlayerProgressPresets(next);
+    savePlayerProgressPresets(next);
+    setSelectedPlayerProgressPreset(name);
+    setNewPlayerProgressPresetName("");
+    setStatus("Player progress preset saved ✅");
+  }
+
+  function applySelectedPlayerProgressPreset() {
+    const name = String(selectedPlayerProgressPreset || "").trim();
+    const preset = playerProgressPresets.find((x) => String(x?.name || "").trim() === name);
+    if (!preset) {
+      setStatus("Pick a player progress preset first.");
+      return;
+    }
+
+    setQ(String(preset?.q || ""));
+    setProgressFilter(String(preset?.progressFilter || "all"));
+    setStatus("Player progress preset loaded ✅");
+  }
+
+  function deleteSelectedPlayerProgressPreset() {
+    const name = String(selectedPlayerProgressPreset || "").trim();
+    if (!name) {
+      setStatus("Pick a player progress preset first.");
+      return;
+    }
+
+    const next = playerProgressPresets.filter((x) => String(x?.name || "").trim() !== name);
+    setPlayerProgressPresets(next);
+    savePlayerProgressPresets(next);
+    setSelectedPlayerProgressPreset("");
+    setStatus("Player progress preset deleted ✅");
+  }
 
   const needle = normLower(q);
 
@@ -286,6 +358,56 @@ export default function OwnerPlayerProgressPage() {
             color: "rgba(255,255,255,0.92)"
           }}
         />
+
+        <div style={{ display: "grid", gap: 8 }}>
+          <input
+            value={newPlayerProgressPresetName}
+            onChange={(e) => setNewPlayerProgressPresetName(String(e.target.value || ""))}
+            placeholder="New player progress preset name..."
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.25)",
+              color: "rgba(255,255,255,0.92)"
+            }}
+          />
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={() => saveCurrentPlayerProgressPreset()}>
+              Save View Preset
+            </button>
+          </div>
+
+          <select
+            value={selectedPlayerProgressPreset}
+            onChange={(e) => setSelectedPlayerProgressPreset(String(e.target.value || ""))}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.25)",
+              color: "rgba(255,255,255,0.92)"
+            }}
+          >
+            <option value="">Select saved player progress preset...</option>
+            {playerProgressPresets.map((p) => (
+              <option key={String(p?.name || "")} value={String(p?.name || "")}>
+                {String(p?.name || "")}
+              </option>
+            ))}
+          </select>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={() => applySelectedPlayerProgressPreset()} disabled={!selectedPlayerProgressPreset}>
+              Load View Preset
+            </button>
+            <button className="zombie-btn" type="button" onClick={() => deleteSelectedPlayerProgressPreset()} disabled={!selectedPlayerProgressPreset}>
+              Delete View Preset
+            </button>
+          </div>
+        </div>
         <datalist id="player-progress-options">
           {playerOptions.slice(0, 200).map((x) => (
             <option key={x} value={x} />
@@ -422,6 +544,7 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
