@@ -1,5 +1,4 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useLocation, useNavigate } from "react-router-dom";
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
@@ -100,7 +99,8 @@ function ReplyBox(props: { threadKey: string; onSent: () => void }) {
     ? "Finding peer…"
     : "";
 
-    // Realtime: reload inbox/threads when any mail_items changeuseEffect(() => {
+    // Realtime: reload inbox/threads when any mail_items change
+  useEffect(() => {
     let ch: any = null;
     let alive = true;
 
@@ -343,6 +343,11 @@ export default function MyMailThreadsPage() {
     </div>
   );
 }
+
+
+
+
+
 
 
 
