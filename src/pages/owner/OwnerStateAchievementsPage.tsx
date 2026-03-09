@@ -64,10 +64,6 @@ export default function OwnerStateAchievementsPage() {
   const [bulkDiscordWebhookId, setBulkDiscordWebhookId] = useState("");
   const [bulkDiscordWebhooks, setBulkDiscordWebhooks] = useState<AnyRow[]>([]);
   const [bulkDiscordPreview, setBulkDiscordPreview] = useState("");
-  const [bulkDiscordAlliance, setBulkDiscordAlliance] = useState("WOC");
-  const [bulkDiscordWebhookId, setBulkDiscordWebhookId] = useState("");
-  const [bulkDiscordWebhooks, setBulkDiscordWebhooks] = useState<AnyRow[]>([]);
-  const [bulkDiscordPreview, setBulkDiscordPreview] = useState("");
 
   const typeById = useMemo(() => {
     const m: Record<string, AnyRow> = {};
