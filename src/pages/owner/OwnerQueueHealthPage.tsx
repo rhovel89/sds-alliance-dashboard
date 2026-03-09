@@ -20,6 +20,15 @@ function parseDate(v: any): number | null {
   return Number.isFinite(t) ? t : null;
 }
 
+function buildQueueSourceLink(r: AnyRow): string {
+  const kind = String(r?.kind || "").toLowerCase();
+  const metaKind = String(r?.meta?.kind || "").toLowerCase();
+
+  if (metaKind === "achievements" || kind === "discord_webhook") return "/owner/state-achievements";
+  if (metaKind === "morning_brief") return "/owner/morning-brief";
+  return "/owner/search";
+}
+
 export default function OwnerQueueHealthPage() {
   const nav = useNavigate();
   const location = useLocation();
@@ -290,6 +299,12 @@ export default function OwnerQueueHealthPage() {
                     <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => void copyText(String(r?.id || ""))}>
                       Copy ID
                     </button>
+                    <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => nav(buildQueueSourceLink(r))}>
+                      Open Source
+                    </button>
+                    <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => nav(buildQueueSourceLink(r))}>
+                      Open Source
+                    </button>
                   </div>
                 </div>
               </div>
@@ -319,6 +334,12 @@ export default function OwnerQueueHealthPage() {
                     </button>
                     <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => void copyText(String(r?.id || ""))}>
                       Copy ID
+                    </button>
+                    <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => nav(buildQueueSourceLink(r))}>
+                      Open Source
+                    </button>
+                    <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => nav(buildQueueSourceLink(r))}>
+                      Open Source
                     </button>
                   </div>
                 </div>
@@ -357,4 +378,5 @@ export default function OwnerQueueHealthPage() {
     </CommandCenterShell>
   );
 }
+
 
