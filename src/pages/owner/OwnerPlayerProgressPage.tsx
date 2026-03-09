@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
 import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 import { supabase } from "../../lib/supabaseClient";
@@ -24,6 +24,7 @@ function getAllianceCode(r: AnyRow): string {
 
 export default function OwnerPlayerProgressPage() {
   const nav = useNavigate();
+  const location = useLocation();
   const cc = useMemo(() => getCommandCenterModules(), []);
   const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
 
@@ -34,7 +35,10 @@ export default function OwnerPlayerProgressPage() {
 
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    return String(p.get("player") || "");
+  });
   const [types, setTypes] = useState<AnyRow[]>([]);
   const [options, setOptions] = useState<AnyRow[]>([]);
   const [requests, setRequests] = useState<AnyRow[]>([]);
@@ -255,3 +259,4 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
