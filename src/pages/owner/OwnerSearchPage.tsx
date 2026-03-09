@@ -6,6 +6,22 @@ import { supabase } from "../../lib/supabaseClient";
 
 type AnyRow = any;
 
+function loadRecentSearches(): string[] {
+  try {
+    const raw = localStorage.getItem("ownerRecentSearches");
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.map((x) => String(x || "")).filter(Boolean).slice(0, 8) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentSearches(arr: string[]) {
+  try {
+    localStorage.setItem("ownerRecentSearches", JSON.stringify((arr || []).slice(0, 8)));
+  } catch {}
+}
+
 function s(v: any) {
   return v === null || v === undefined ? "" : String(v);
 }
@@ -50,6 +66,7 @@ export default function OwnerSearchPage() {
 
   const [q, setQ] = useState("");
   const [resultType, setResultType] = useState("all");
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState<AnyRow[]>([]);
   const [queueRows, setQueueRows] = useState<AnyRow[]>([]);
@@ -93,6 +110,7 @@ export default function OwnerSearchPage() {
 
   useEffect(() => {
     void loadAll();
+    setRecentSearches(loadRecentSearches());
   }, []);
 
   const needle = normLower(q);
@@ -117,6 +135,10 @@ export default function OwnerSearchPage() {
       `${s(p?.id)} ${s(p?.name)} ${s(p?.game_name)}`.toLowerCase().includes(needle)
     ).slice(0, 20);
   }, [players, needle]);
+
+  const requestCount = requestResults.length;
+  const playerCount = playerResults.length;
+  const queueCount = queueResults.length;
 
   return (
     <CommandCenterShell
@@ -148,6 +170,23 @@ export default function OwnerSearchPage() {
 
       {loading ? <div style={{ opacity: 0.75, marginTop: 12 }}>Loading…</div> : null}
 
+      {recentSearches.length ? (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+          <div style={{ fontSize: 12, opacity: 0.7, alignSelf: "center" }}>Recent:</div>
+          {recentSearches.map((x) => (
+            <button
+              key={x}
+              className="zombie-btn"
+              type="button"
+              style={{ padding: "6px 10px", fontSize: 12 }}
+              onClick={() => setQ(x)}
+            >
+              {x}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
         <button className="zombie-btn" type="button" onClick={() => setResultType("all")}>All</button>
         <button className="zombie-btn" type="button" onClick={() => setResultType("requests")}>Requests</button>
@@ -157,7 +196,7 @@ export default function OwnerSearchPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 14 }}>
         {(resultType === "all" || resultType === "requests") ? <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
-          <div style={{ fontWeight: 950, marginBottom: 8 }}>Achievement Requests</div>
+          <div style={{ fontWeight: 950, marginBottom: 8 }}>Achievement Requests {needle ? `(${requestCount})` : ""}</div>
           <div style={{ display: "grid", gap: 8 }}>
             {!needle ? <div style={{ opacity: 0.7 }}>Type to search.</div> : requestResults.length === 0 ? <div style={{ opacity: 0.7 }}>No request matches.</div> : requestResults.map((r, i) => (
               <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10, background: "rgba(0,0,0,0.12)" }}>
@@ -202,7 +241,7 @@ export default function OwnerSearchPage() {
         </section> : null}
 
         {(resultType === "all" || resultType === "players") ? <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
-          <div style={{ fontWeight: 950, marginBottom: 8 }}>Players</div>
+          <div style={{ fontWeight: 950, marginBottom: 8 }}>Players {needle ? `(${playerCount})` : ""}</div>
           <div style={{ display: "grid", gap: 8 }}>
             {!needle ? <div style={{ opacity: 0.7 }}>Type to search.</div> : playerResults.length === 0 ? <div style={{ opacity: 0.7 }}>No player matches.</div> : playerResults.map((p, i) => (
               <div key={String(p?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10, background: "rgba(0,0,0,0.12)" }}>
@@ -237,7 +276,7 @@ export default function OwnerSearchPage() {
         </section> : null}
 
         {(resultType === "all" || resultType === "queue") ? <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
-          <div style={{ fontWeight: 950, marginBottom: 8 }}>Discord Queue</div>
+          <div style={{ fontWeight: 950, marginBottom: 8 }}>Discord Queue {needle ? `(${queueCount})` : ""}</div>
           <div style={{ display: "grid", gap: 8 }}>
             {!needle ? <div style={{ opacity: 0.7 }}>Type to search.</div> : queueResults.length === 0 ? <div style={{ opacity: 0.7 }}>No queue matches.</div> : queueResults.map((r, i) => (
               <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10, background: "rgba(0,0,0,0.12)" }}>
@@ -284,6 +323,7 @@ export default function OwnerSearchPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
