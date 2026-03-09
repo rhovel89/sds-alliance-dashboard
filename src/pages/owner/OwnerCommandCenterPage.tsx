@@ -229,6 +229,7 @@ export default function OwnerCommandCenterPage() {
             <Link to="/onboarding">📝 Onboarding</Link>
             <Link to="/owner/morning-brief">🌅 Morning Brief</Link>
               <Link to="/owner/queue-health">🩺 Queue Health</Link>
+              <Link to="/owner/search">🔎 Search Everywhere</Link>
               <Link to="/dashboard">🧟 My Dashboards</Link>
             <div style={{ fontSize: 12, opacity: 0.8 }}>
               Tip: alliance pages live under <code>/dashboard/&lt;CODE&gt;/calendar</code> and <code>/dashboard/&lt;CODE&gt;/hq-map</code>
@@ -380,6 +381,7 @@ export default function OwnerCommandCenterPage() {
     </div>
   );
 }
+
 
 
 
