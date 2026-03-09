@@ -98,11 +98,26 @@ export default function OwnerSearchPage() {
     if (to) nav(to);
   }
 
-  const [q, setQ] = useState("");
-  const [resultType, setResultType] = useState("all");
-  const [allianceFilter, setAllianceFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [q, setQ] = useState(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    return String(p.get("q") || "");
+  });
+  const [resultType, setResultType] = useState(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    return String(p.get("resultType") || "all");
+  });
+  const [allianceFilter, setAllianceFilter] = useState(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    return String(p.get("alliance") || "ALL");
+  });
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    return String(p.get("status") || "ALL");
+  });
+  const [typeFilter, setTypeFilter] = useState(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    return String(p.get("type") || "ALL");
+  });
   const [searchPresets, setSearchPresets] = useState<any[]>([]);
   const [selectedSearchPreset, setSelectedSearchPreset] = useState("");
   const [newSearchPresetName, setNewSearchPresetName] = useState("");
@@ -115,6 +130,12 @@ export default function OwnerSearchPage() {
   async function copyText(txt: string) {
     try {
       await navigator.clipboard.writeText(String(txt || ""));
+    } catch {}
+  }
+
+  async function copyCurrentSearchLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
     } catch {}
   }
 
@@ -201,6 +222,19 @@ export default function OwnerSearchPage() {
   }
 
   const needle = normLower(q);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (String(q || "").trim()) params.set("q", String(q || "").trim());
+    if (String(resultType || "all") !== "all") params.set("resultType", String(resultType || "all"));
+    if (String(allianceFilter || "ALL") !== "ALL") params.set("alliance", String(allianceFilter || "ALL"));
+    if (String(statusFilter || "ALL") !== "ALL") params.set("status", String(statusFilter || "ALL"));
+    if (String(typeFilter || "ALL") !== "ALL") params.set("type", String(typeFilter || "ALL"));
+
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `/owner/search?${qs}` : "/owner/search");
+  }, [q, resultType, allianceFilter, statusFilter, typeFilter]);
 
   const allianceOptions = useMemo(() => {
     const vals = Array.from(new Set(requests.map((r) => getAllianceCode(r)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
@@ -410,6 +444,7 @@ export default function OwnerSearchPage() {
         <button className="zombie-btn" type="button" onClick={() => setResultType("requests")}>Requests</button>
         <button className="zombie-btn" type="button" onClick={() => setResultType("players")}>Players</button>
         <button className="zombie-btn" type="button" onClick={() => setResultType("queue")}>Queue</button>
+        <button className="zombie-btn" type="button" onClick={() => void copyCurrentSearchLink()}>Copy Current Search Link</button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 12 }}>
@@ -593,6 +628,9 @@ export default function OwnerSearchPage() {
     </CommandCenterShell>
   );
 }
+
+
+
 
 
 
