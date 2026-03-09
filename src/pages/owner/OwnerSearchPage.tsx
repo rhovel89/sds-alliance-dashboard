@@ -29,6 +29,7 @@ export default function OwnerSearchPage() {
   const nav = useNavigate();
   const cc = useMemo(() => getCommandCenterModules(), []);
   const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
+
   function onSelectModule(k: string) {
     const to = cc.find((m) => m.key === k)?.to;
     if (to) nav(to);
