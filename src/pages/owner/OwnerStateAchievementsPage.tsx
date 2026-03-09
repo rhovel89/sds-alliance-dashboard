@@ -450,12 +450,6 @@ export default function OwnerStateAchievementsPage() {
         return;
       }
 
-      const alliance = String(bulkDiscordAlliance || "").trim().toUpperCase();
-      if (!alliance) {
-        setMsg("Pick an alliance target first.");
-        return;
-      }
-
       const selected = requests.filter((r) => ids.includes(String(r?.id || "")));
       if (!selected.length) {
         setMsg("No selected requests found.");
@@ -467,29 +461,69 @@ export default function OwnerStateAchievementsPage() {
         return;
       }
 
-      if (!window.confirm(`Queue Discord send for ${selected.length} selected rows to ${alliance}?`)) return;
+      const grouped: Record<string, AnyRow[]> = {};
+      for (const r of selected) {
+        const alliance = String(r?.alliance_code || r?.alliance_name || bulkDiscordAlliance || "WOC").trim().toUpperCase();
+        if (!grouped[alliance]) grouped[alliance] = [];
+        grouped[alliance].push(r);
+      }
+
+      if (!window.confirm(`Queue Discord sends for ${selected.length} selected rows across ${Object.keys(grouped).length} alliance group(s)?`)) return;
 
       setBulkBusy(true);
-      setMsg("Queueing selected requests to Discord...");
+      setMsg("Queueing grouped Discord sends...");
 
-      const q = await supabase.rpc("queue_discord_send" as any, {
-        p_kind: "discord_webhook",
-        p_target: "alliance:" + alliance,
-        p_channel_id: String(bulkDiscordWebhookId || "default:achievements"),
-        p_content: bulkDiscordPreview,
-        p_meta: {
-          kind: "achievements_bulk_selected",
-          source: "OwnerStateAchievementsPage",
-          state_code: stateCode,
-          alliance_code: alliance,
-          webhook_id: String(bulkDiscordWebhookId || ""),
-          selected_ids: selected.map((r) => String(r?.id || "")),
-        },
-      });
+      for (const alliance of Object.keys(grouped)) {
+        const rows = grouped[alliance];
+        const submitted = rows.filter((r) => String(r?.status || "").toLowerCase() === "submitted");
+        const inProgress = rows.filter((r) => String(r?.status || "").toLowerCase() === "in_progress");
+        const completed = rows.filter((r) => String(r?.status || "").toLowerCase() === "completed");
 
-      if (q.error) throw q.error;
+        const parts: string[] = [
+          `🩸 **State ${stateCode} — Selected Achievements**`,
+          `Alliance: **${alliance}**`,
+          `Style: **${bulkDiscordMessageStyle}**`,
+          `Selected Rows: **${rows.length}** • Submitted: **${submitted.length}** • In Progress: **${inProgress.length}** • Completed: **${completed.length}**`,
+        ];
 
-      setMsg(`Selected requests queued to Discord ✅ (${selected.length})`);
+        const completedLines = completed.map((r) => formatBulkDiscordAchievementLine(r));
+        const inProgressLines = inProgress.map((r) => formatBulkDiscordAchievementLine(r));
+        const submittedLines = submitted.map((r) => formatBulkDiscordAchievementLine(r));
+
+        if (bulkDiscordMessageStyle === "brief") {
+          if (bulkIncludeCompleted && completed.length) parts.push("", "✅ **Completed**", ...completed.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
+          if (bulkIncludeInProgress && inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgress.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
+          if (bulkIncludeSubmitted && submitted.length) parts.push("", "⏳ **Submitted**", ...submitted.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
+        } else if (bulkDiscordMessageStyle === "compact") {
+          if (bulkIncludeCompleted && completed.length) parts.push("", "✅ **Completed**", ...completedLines.slice(0, 5));
+          if (bulkIncludeInProgress && inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgressLines.slice(0, 5));
+          if (bulkIncludeSubmitted && submitted.length) parts.push("", "⏳ **Submitted**", ...submittedLines.slice(0, 5));
+        } else {
+          if (bulkIncludeCompleted && completed.length) parts.push("", "✅ **Completed**", ...completedLines.slice(0, 10));
+          if (bulkIncludeInProgress && inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgressLines.slice(0, 10));
+          if (bulkIncludeSubmitted && submitted.length) parts.push("", "⏳ **Submitted**", ...submittedLines.slice(0, 10));
+        }
+
+        const msg = parts.join("\n");
+
+        const q = await supabase.rpc("queue_discord_send" as any, {
+          p_kind: "discord_webhook",
+          p_target: "alliance:" + alliance,
+          p_channel_id: "default:achievements",
+          p_content: msg,
+          p_meta: {
+            kind: "achievements_bulk_selected_grouped",
+            source: "OwnerStateAchievementsPage",
+            state_code: stateCode,
+            alliance_code: alliance,
+            selected_ids: rows.map((r) => String(r?.id || "")),
+          },
+        });
+
+        if (q.error) throw q.error;
+      }
+
+      setMsg(`Grouped Discord sends queued ✅ (${selected.length} rows, ${Object.keys(grouped).length} alliance group(s))`);
       setBulkDiscordPreview("");
     } catch (e: any) {
       setMsg("Bulk Discord send failed: " + String(e?.message || e || "unknown error"));
@@ -1083,6 +1117,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
