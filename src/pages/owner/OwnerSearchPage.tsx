@@ -54,6 +54,13 @@ function buildAchievementSearchLink(r: AnyRow): string {
   return `/owner/state-achievements?${params.toString()}`;
 }
 
+function buildPlayerProgressLink(p: AnyRow): string {
+  const params = new URLSearchParams();
+  const player = String(p?.game_name || p?.name || p?.id || "").trim();
+  if (player) params.set("player", player);
+  return `/owner/player-progress?${params.toString()}`;
+}
+
 export default function OwnerSearchPage() {
   const nav = useNavigate();
   const cc = useMemo(() => getCommandCenterModules(), []);
@@ -323,17 +330,25 @@ export default function OwnerSearchPage() {
                       className="zombie-btn"
                       type="button"
                       style={{ padding: "6px 10px", fontSize: 12 }}
-                      onClick={() => nav(`/owner/dossier?q=${encodeURIComponent(String(p?.game_name || p?.name || p?.id || ""))}`)}
+                      onClick={() => nav(buildPlayerProgressLink(p))}
                     >
-                      Open
+                      Open Progress
                     </button>
                     <button
                       className="zombie-btn"
                       type="button"
                       style={{ padding: "6px 10px", fontSize: 12 }}
-                      onClick={() => void copyText(window.location.origin + `/owner/dossier?q=${encodeURIComponent(String(p?.game_name || p?.name || p?.id || ""))}`)}
+                      onClick={() => void copyText(window.location.origin + buildPlayerProgressLink(p))}
                     >
-                      Copy Link
+                      Copy Progress Link
+                    </button>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      style={{ padding: "6px 10px", fontSize: 12 }}
+                      onClick={() => nav(`/owner/dossier?q=${encodeURIComponent(String(p?.game_name || p?.name || p?.id || ""))}`)}
+                    >
+                      Dossier
                     </button>
                   </div>
                 </div>
@@ -390,6 +405,7 @@ export default function OwnerSearchPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
