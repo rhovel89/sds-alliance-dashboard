@@ -81,6 +81,9 @@ export default function OwnerStateAchievementsPage() {
   const [bulkDiscordWebhooks, setBulkDiscordWebhooks] = useState<AnyRow[]>([]);
   const [bulkDiscordPreview, setBulkDiscordPreview] = useState("");
   const [bulkDiscordMessageStyle, setBulkDiscordMessageStyle] = useState("detailed");
+  const [bulkIncludeSubmitted, setBulkIncludeSubmitted] = useState(true);
+  const [bulkIncludeInProgress, setBulkIncludeInProgress] = useState(true);
+  const [bulkIncludeCompleted, setBulkIncludeCompleted] = useState(true);
   const [bulkDiscordPresets, setBulkDiscordPresets] = useState<any[]>([]);
   const [selectedBulkDiscordPreset, setSelectedBulkDiscordPreset] = useState("");
   const [newBulkDiscordPresetName, setNewBulkDiscordPresetName] = useState("");
@@ -330,6 +333,9 @@ export default function OwnerStateAchievementsPage() {
       bulkDiscordAlliance,
       bulkDiscordWebhookId,
       bulkDiscordMessageStyle,
+      bulkIncludeSubmitted,
+      bulkIncludeInProgress,
+      bulkIncludeCompleted,
     };
 
     const next = [
@@ -355,6 +361,9 @@ export default function OwnerStateAchievementsPage() {
     setBulkDiscordAlliance(String(preset?.bulkDiscordAlliance || "WOC"));
     setBulkDiscordWebhookId(String(preset?.bulkDiscordWebhookId || ""));
     setBulkDiscordMessageStyle(String(preset?.bulkDiscordMessageStyle || "detailed"));
+    setBulkIncludeSubmitted(Boolean(preset?.bulkIncludeSubmitted ?? true));
+    setBulkIncludeInProgress(Boolean(preset?.bulkIncludeInProgress ?? true));
+    setBulkIncludeCompleted(Boolean(preset?.bulkIncludeCompleted ?? true));
     setMsg("Bulk Discord preset loaded ✅");
   }
 
@@ -403,17 +412,17 @@ export default function OwnerStateAchievementsPage() {
       const submittedLines = submitted.map((r) => formatBulkDiscordAchievementLine(r));
 
       if (bulkDiscordMessageStyle === "brief") {
-        if (completed.length) parts.push("", "✅ **Completed**", ...completed.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
-        if (inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgress.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
-        if (submitted.length) parts.push("", "⏳ **Submitted**", ...submitted.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
+        if (bulkIncludeCompleted && completed.length) parts.push("", "✅ **Completed**", ...completed.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
+        if (bulkIncludeInProgress && inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgress.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
+        if (bulkIncludeSubmitted && submitted.length) parts.push("", "⏳ **Submitted**", ...submitted.slice(0, 5).map((r) => `• ${String(r?.player_name || "Player")}`));
       } else if (bulkDiscordMessageStyle === "compact") {
-        if (completed.length) parts.push("", "✅ **Completed**", ...completedLines.slice(0, 5));
-        if (inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgressLines.slice(0, 5));
-        if (submitted.length) parts.push("", "⏳ **Submitted**", ...submittedLines.slice(0, 5));
+        if (bulkIncludeCompleted && completed.length) parts.push("", "✅ **Completed**", ...completedLines.slice(0, 5));
+        if (bulkIncludeInProgress && inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgressLines.slice(0, 5));
+        if (bulkIncludeSubmitted && submitted.length) parts.push("", "⏳ **Submitted**", ...submittedLines.slice(0, 5));
       } else {
-        if (completed.length) parts.push("", "✅ **Completed**", ...completedLines.slice(0, 10));
-        if (inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgressLines.slice(0, 10));
-        if (submitted.length) parts.push("", "⏳ **Submitted**", ...submittedLines.slice(0, 10));
+        if (bulkIncludeCompleted && completed.length) parts.push("", "✅ **Completed**", ...completedLines.slice(0, 10));
+        if (bulkIncludeInProgress && inProgress.length) parts.push("", "🧬 **In Progress**", ...inProgressLines.slice(0, 10));
+        if (bulkIncludeSubmitted && submitted.length) parts.push("", "⏳ **Submitted**", ...submittedLines.slice(0, 10));
       }
 
       setBulkDiscordPreview(parts.join("\n"));
@@ -1064,6 +1073,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
