@@ -6,6 +6,22 @@ import { supabase } from "../../lib/supabaseClient";
 
 type AnyRow = any;
 
+function loadSearchPresets(): any[] {
+  try {
+    const raw = localStorage.getItem("ownerSearchPresets");
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSearchPresets(arr: any[]) {
+  try {
+    localStorage.setItem("ownerSearchPresets", JSON.stringify(Array.isArray(arr) ? arr : []));
+  } catch {}
+}
+
 function rankSearchMatch(haystack: string, needle: string): number {
   const h = String(haystack || "").toLowerCase().trim();
   const n = String(needle || "").toLowerCase().trim();
@@ -87,6 +103,9 @@ export default function OwnerSearchPage() {
   const [allianceFilter, setAllianceFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
+  const [searchPresets, setSearchPresets] = useState<any[]>([]);
+  const [selectedSearchPreset, setSelectedSearchPreset] = useState("");
+  const [newSearchPresetName, setNewSearchPresetName] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState<AnyRow[]>([]);
@@ -132,7 +151,54 @@ export default function OwnerSearchPage() {
   useEffect(() => {
     void loadAll();
     setRecentSearches(loadRecentSearches());
+    setSearchPresets(loadSearchPresets());
   }, []);
+
+  function saveCurrentSearchPreset() {
+    const name = String(newSearchPresetName || "").trim();
+    if (!name) return;
+
+    const preset = {
+      name,
+      q,
+      resultType,
+      allianceFilter,
+      statusFilter,
+      typeFilter,
+    };
+
+    const next = [
+      ...searchPresets.filter((x) => String(x?.name || "").trim().toLowerCase() !== name.toLowerCase()),
+      preset,
+    ].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+
+    setSearchPresets(next);
+    saveSearchPresets(next);
+    setSelectedSearchPreset(name);
+    setNewSearchPresetName("");
+  }
+
+  function applySelectedSearchPreset() {
+    const name = String(selectedSearchPreset || "").trim();
+    const preset = searchPresets.find((x) => String(x?.name || "").trim() === name);
+    if (!preset) return;
+
+    setQ(String(preset?.q || ""));
+    setResultType(String(preset?.resultType || "all"));
+    setAllianceFilter(String(preset?.allianceFilter || "ALL"));
+    setStatusFilter(String(preset?.statusFilter || "ALL"));
+    setTypeFilter(String(preset?.typeFilter || "ALL"));
+  }
+
+  function deleteSelectedSearchPreset() {
+    const name = String(selectedSearchPreset || "").trim();
+    if (!name) return;
+
+    const next = searchPresets.filter((x) => String(x?.name || "").trim() !== name);
+    setSearchPresets(next);
+    saveSearchPresets(next);
+    setSelectedSearchPreset("");
+  }
 
   const needle = normLower(q);
 
@@ -269,6 +335,56 @@ export default function OwnerSearchPage() {
           color: "rgba(255,255,255,0.92)"
         }}
       />
+
+      <div style={{ display: "grid", gap: 8 }}>
+        <input
+          value={newSearchPresetName}
+          onChange={(e) => setNewSearchPresetName(String(e.target.value || ""))}
+          placeholder="New search preset name..."
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(255,255,255,0.92)"
+          }}
+        />
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="zombie-btn" type="button" onClick={() => saveCurrentSearchPreset()}>
+            Save Search Preset
+          </button>
+        </div>
+
+        <select
+          value={selectedSearchPreset}
+          onChange={(e) => setSelectedSearchPreset(String(e.target.value || ""))}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(255,255,255,0.92)"
+          }}
+        >
+          <option value="">Select saved search preset...</option>
+          {searchPresets.map((p) => (
+            <option key={String(p?.name || "")} value={String(p?.name || "")}>
+              {String(p?.name || "")}
+            </option>
+          ))}
+        </select>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="zombie-btn" type="button" onClick={() => applySelectedSearchPreset()} disabled={!selectedSearchPreset}>
+            Load Search Preset
+          </button>
+          <button className="zombie-btn" type="button" onClick={() => deleteSelectedSearchPreset()} disabled={!selectedSearchPreset}>
+            Delete Search Preset
+          </button>
+        </div>
+      </div>
 
       {loading ? <div style={{ opacity: 0.75, marginTop: 12 }}>Loading…</div> : null}
 
@@ -477,6 +593,9 @@ export default function OwnerSearchPage() {
     </CommandCenterShell>
   );
 }
+
+
+
 
 
 
