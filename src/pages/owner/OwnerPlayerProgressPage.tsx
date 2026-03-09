@@ -42,6 +42,7 @@ export default function OwnerPlayerProgressPage() {
 
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
+  const [progressFilter, setProgressFilter] = useState("all");
   const [q, setQ] = useState(() => {
     const p = new URLSearchParams(window.location.search || "");
     return String(p.get("player") || "");
@@ -185,13 +186,31 @@ export default function OwnerPlayerProgressPage() {
     });
   }, [types, selectedPlayerRows, optionById]);
 
-  const progressSummary = useMemo(() => {
-    const totalTypes = progressByType.length;
-    const completedTypes = progressByType.filter((x) => Number(x.missing || 0) <= 0).length;
-    const inProgressTypes = progressByType.filter((x) => Number(x.current || 0) > 0 && Number(x.missing || 0) > 0).length;
-    const submittedTypes = progressByType.filter((x) => Number(x.submitted || 0) > 0).length;
+  const filteredProgressByType = useMemo(() => {
+    return progressByType.filter((x) => {
+      const missing = Number(x.missing || 0);
+      const completed = missing <= 0;
+      const hasProgress = Number(x.current || 0) > 0;
+      const hasSubmitted = Number(x.submitted || 0) > 0;
+      const hasInProgress = Number(x.inProgress || 0) > 0;
 
-    const closest = progressByType
+      if (progressFilter === "completed") return completed;
+      if (progressFilter === "incomplete") return !completed;
+      if (progressFilter === "only_missing") return missing > 0;
+      if (progressFilter === "submitted") return hasSubmitted;
+      if (progressFilter === "in_progress") return hasInProgress || (hasProgress && !completed);
+
+      return true;
+    });
+  }, [progressByType, progressFilter]);
+
+  const progressSummary = useMemo(() => {
+    const totalTypes = filteredProgressByType.length;
+    const completedTypes = filteredProgressByType.filter((x) => Number(x.missing || 0) <= 0).length;
+    const inProgressTypes = filteredProgressByType.filter((x) => Number(x.current || 0) > 0 && Number(x.missing || 0) > 0).length;
+    const submittedTypes = filteredProgressByType.filter((x) => Number(x.submitted || 0) > 0).length;
+
+    const closest = filteredProgressByType
       .filter((x) => Number(x.missing || 0) > 0)
       .sort((a, b) => {
         if (Number(a.missing || 0) !== Number(b.missing || 0)) return Number(a.missing || 0) - Number(b.missing || 0);
@@ -206,7 +225,7 @@ export default function OwnerPlayerProgressPage() {
       closestTypeName: closest ? String(closest.typeName || "") : "",
       closestMissing: closest ? Number(closest.missing || 0) : 0,
     };
-  }, [progressByType]);
+  }, [filteredProgressByType]);
 
   return (
     <CommandCenterShell
@@ -296,7 +315,7 @@ export default function OwnerPlayerProgressPage() {
 
         {selectedPlayer ? (
           <div style={{ display: "grid", gap: 10 }}>
-            {progressByType.map((x) => (
+            {filteredProgressByType.map((x) => (
               <div key={String(x.typeId || x.typeName)} style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
                   <div style={{ fontWeight: 900 }}>{x.typeName}</div>
@@ -333,6 +352,7 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
