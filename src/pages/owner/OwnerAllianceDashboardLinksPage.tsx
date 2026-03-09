@@ -16,6 +16,10 @@ function normUpper(v: any) {
   return norm(v).toUpperCase();
 }
 
+function parseRolesCsv(v: any): string[] {
+  return String(v || "").split(",").map((x) => x.trim()).filter(Boolean);
+}
+
 export default function OwnerAllianceDashboardLinksPage() {
   const nav = useNavigate();
   const cc = useMemo(() => getCommandCenterModules(), []);
@@ -195,12 +199,20 @@ export default function OwnerAllianceDashboardLinksPage() {
                 </div>
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                  <input className="zombie-input" value={String(r?.roles_csv || "")} onChange={(e) => patchRow(r.id, { roles_csv: e.target.value })} placeholder="roles_csv" style={{ padding: "8px 10px", minWidth: 240, flex: 1 }} />
+                  <div style={{ minWidth: 240, flex: 1 }}>
+                    <input className="zombie-input" value={String(r?.roles_csv || "")} onChange={(e) => patchRow(r.id, { roles_csv: e.target.value })} placeholder="roles_csv" style={{ padding: "8px 10px", width: "100%" }} />
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                      {parseRolesCsv(r?.roles_csv).length === 0 ? <span style={{ opacity: 0.65, fontSize: 12 }}>Visible to all roles</span> : parseRolesCsv(r?.roles_csv).map((role) => (
+                        <span key={role} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>{role}</span>
+                      ))}
+                    </div>
+                  </div>
                   <input className="zombie-input" value={String(r?.sort ?? 0)} onChange={(e) => patchRow(r.id, { sort: e.target.value })} style={{ padding: "8px 10px", width: 100 }} />
                   <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <input type="checkbox" checked={!!r?.active} onChange={(e) => patchRow(r.id, { active: e.target.checked })} />
                     active
                   </label>
+                  <a className="zombie-btn" href={String(r?.url || "#")} target="_blank" rel="noreferrer" style={{ padding: "8px 10px", textDecoration: "none" }}>Preview</a>
                   <button className="zombie-btn" type="button" style={{ padding: "8px 10px" }} onClick={() => void saveRow(r)}>Save</button>
                   <button className="zombie-btn" type="button" style={{ padding: "8px 10px" }} onClick={() => void deleteRow(String(r?.id || ""))}>Delete</button>
                 </div>
@@ -212,3 +224,4 @@ export default function OwnerAllianceDashboardLinksPage() {
     </CommandCenterShell>
   );
 }
+
