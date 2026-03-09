@@ -185,6 +185,29 @@ export default function OwnerPlayerProgressPage() {
     });
   }, [types, selectedPlayerRows, optionById]);
 
+  const progressSummary = useMemo(() => {
+    const totalTypes = progressByType.length;
+    const completedTypes = progressByType.filter((x) => Number(x.missing || 0) <= 0).length;
+    const inProgressTypes = progressByType.filter((x) => Number(x.current || 0) > 0 && Number(x.missing || 0) > 0).length;
+    const submittedTypes = progressByType.filter((x) => Number(x.submitted || 0) > 0).length;
+
+    const closest = progressByType
+      .filter((x) => Number(x.missing || 0) > 0)
+      .sort((a, b) => {
+        if (Number(a.missing || 0) !== Number(b.missing || 0)) return Number(a.missing || 0) - Number(b.missing || 0);
+        return String(a.typeName || "").localeCompare(String(b.typeName || ""));
+      })[0];
+
+    return {
+      totalTypes,
+      completedTypes,
+      inProgressTypes,
+      submittedTypes,
+      closestTypeName: closest ? String(closest.typeName || "") : "",
+      closestMissing: closest ? Number(closest.missing || 0) : 0,
+    };
+  }, [progressByType]);
+
   return (
     <CommandCenterShell
       title="Owner • Player Progress"
@@ -238,6 +261,40 @@ export default function OwnerPlayerProgressPage() {
         )}
 
         {selectedPlayer ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+            <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+              <div style={{ opacity: 0.72, fontSize: 12 }}>Types Tracked</div>
+              <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{progressSummary.totalTypes}</div>
+            </div>
+
+            <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+              <div style={{ opacity: 0.72, fontSize: 12 }}>Completed Types</div>
+              <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{progressSummary.completedTypes}</div>
+            </div>
+
+            <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+              <div style={{ opacity: 0.72, fontSize: 12 }}>In Progress Types</div>
+              <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{progressSummary.inProgressTypes}</div>
+            </div>
+
+            <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+              <div style={{ opacity: 0.72, fontSize: 12 }}>Submitted Types</div>
+              <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{progressSummary.submittedTypes}</div>
+            </div>
+
+            <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+              <div style={{ opacity: 0.72, fontSize: 12 }}>Closest Remaining</div>
+              <div style={{ fontWeight: 900, fontSize: 16, marginTop: 6 }}>
+                {progressSummary.closestTypeName || "—"}
+              </div>
+              <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
+                {progressSummary.closestTypeName ? `Missing ${progressSummary.closestMissing}` : "No remaining types"}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {selectedPlayer ? (
           <div style={{ display: "grid", gap: 10 }}>
             {progressByType.map((x) => (
               <div key={String(x.typeId || x.typeName)} style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
@@ -276,5 +333,6 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
 
