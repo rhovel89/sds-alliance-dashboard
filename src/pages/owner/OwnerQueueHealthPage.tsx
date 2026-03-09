@@ -33,6 +33,10 @@ export default function OwnerQueueHealthPage() {
   const [status, setStatus] = useState("");
   const [rows, setRows] = useState<AnyRow[]>([]);
 
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [kindFilter, setKindFilter] = useState("ALL");
+  const [targetFilter, setTargetFilter] = useState("");
+
   async function loadAll() {
     try {
       setLoading(true);
@@ -57,8 +61,89 @@ export default function OwnerQueueHealthPage() {
     void loadAll();
   }, []);
 
+  async function copyText(txt: string) {
+    try {
+      await navigator.clipboard.writeText(String(txt || ""));
+      setStatus("Copied ✅");
+      window.setTimeout(() => setStatus(""), 1000);
+    } catch {}
+  }
+
+  async function retryFailedRow(row: AnyRow) {
+    try {
+      const id = String(row?.id || "");
+      if (!id) return;
+      if (!window.confirm("Retry this failed queue row?")) return;
+
+      const up = await supabase
+        .from("discord_send_queue")
+        .update({
+          status: "queued",
+          status_detail: null,
+          locked_at: null,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq("id", id);
+
+      if (up.error) throw up.error;
+
+      setStatus("Row re-queued ✅");
+      await loadAll();
+    } catch (e: any) {
+      setStatus("Retry failed: " + String(e?.message || e || "update failed"));
+    }
+  }
+
+  async function closeSendingRow(row: AnyRow) {
+    try {
+      const id = String(row?.id || "");
+      if (!id) return;
+      if (!window.confirm("Mark this sending row as failed/closed?")) return;
+
+      const up = await supabase
+        .from("discord_send_queue")
+        .update({
+          status: "failed",
+          status_detail: "Manually closed stale sending row",
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq("id", id);
+
+      if (up.error) throw up.error;
+
+      setStatus("Sending row closed ✅");
+      await loadAll();
+    } catch (e: any) {
+      setStatus("Close failed: " + String(e?.message || e || "update failed"));
+    }
+  }
+
   const now = Date.now();
   const last24h = now - 24 * 60 * 60 * 1000;
+
+  const statusOptions = useMemo(() => {
+    const vals = Array.from(new Set(rows.map((r) => s(r?.status)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    return ["ALL", ...vals];
+  }, [rows]);
+
+  const kindOptions = useMemo(() => {
+    const vals = Array.from(new Set(rows.map((r) => s(r?.kind)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    return ["ALL", ...vals];
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    const needle = normLower(targetFilter);
+    return rows.filter((r) => {
+      const statusOk = statusFilter === "ALL" || s(r?.status) === statusFilter;
+      const kindOk = kindFilter === "ALL" || s(r?.kind) === kindFilter;
+      const textOk =
+        !needle ||
+        `${s(r?.target)} ${s(r?.channel_name)} ${s(r?.channel_id)} ${s(r?.status_detail)} ${s(r?.kind)}`
+          .toLowerCase()
+          .includes(needle);
+      return statusOk && kindOk && textOk;
+    });
+  }, [rows, statusFilter, kindFilter, targetFilter]);
 
   const summary = useMemo(() => {
     const queued = rows.filter((r) => normLower(r?.status) === "queued").length;
@@ -69,30 +154,28 @@ export default function OwnerQueueHealthPage() {
       const ts = parseDate(r?.sent_at) ?? parseDate(r?.updated_at) ?? parseDate(r?.created_at);
       return ts !== null && ts >= last24h;
     }).length;
-
     return { queued, sending, failed, sent24h };
   }, [rows, last24h]);
 
   const failedRows = useMemo(
-    () => rows.filter((r) => normLower(r?.status) === "failed").slice(0, 20),
-    [rows]
+    () => filteredRows.filter((r) => normLower(r?.status) === "failed").slice(0, 20),
+    [filteredRows]
   );
 
   const sendingRows = useMemo(
-    () => rows.filter((r) => normLower(r?.status) === "sending").slice(0, 20),
-    [rows]
+    () => filteredRows.filter((r) => normLower(r?.status) === "sending").slice(0, 20),
+    [filteredRows]
   );
 
   const sentRows = useMemo(
-    () =>
-      rows.filter((r) => normLower(r?.status) === "sent").slice(0, 20),
-    [rows]
+    () => filteredRows.filter((r) => normLower(r?.status) === "sent").slice(0, 20),
+    [filteredRows]
   );
 
   return (
     <CommandCenterShell
       title="Owner • Queue Health"
-      subtitle="Discord send queue snapshot and recent delivery health"
+      subtitle="Discord send queue snapshot, filters, and recovery actions"
       modules={modules}
       activeModuleKey="owner"
       onSelectModule={onSelectModule}
@@ -132,18 +215,78 @@ export default function OwnerQueueHealthPage() {
         ))}
       </div>
 
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 14 }}>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(String(e.target.value || "ALL"))}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(255,255,255,0.92)"
+          }}
+        >
+          {statusOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+        </select>
+
+        <select
+          value={kindFilter}
+          onChange={(e) => setKindFilter(String(e.target.value || "ALL"))}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(255,255,255,0.92)"
+          }}
+        >
+          {kindOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+        </select>
+
+        <input
+          value={targetFilter}
+          onChange={(e) => setTargetFilter(String(e.target.value || ""))}
+          placeholder="Filter target / channel / error..."
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(255,255,255,0.92)"
+          }}
+        />
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
         <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
-          <div style={{ fontWeight: 950, marginBottom: 8 }}>Recent Failed Sends</div>
+          <div style={{ fontWeight: 950, marginBottom: 8 }}>Recent Failed Sends ({failedRows.length})</div>
           <div style={{ display: "grid", gap: 8 }}>
             {failedRows.length === 0 ? <div style={{ opacity: 0.7 }}>No failed rows.</div> : failedRows.map((r, i) => (
               <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 10 }}>
-                <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
-                <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
-                  {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
-                </div>
-                <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
-                  {norm(r?.status_detail || "Unknown failure")}
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
+                    <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
+                      {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
+                    </div>
+                    <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
+                      {norm(r?.status_detail || "Unknown failure")}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => void retryFailedRow(r)}>
+                      Retry
+                    </button>
+                    <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => void copyText(String(r?.status_detail || ""))}>
+                      Copy Error
+                    </button>
+                    <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => void copyText(String(r?.id || ""))}>
+                      Copy ID
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -151,16 +294,29 @@ export default function OwnerQueueHealthPage() {
         </section>
 
         <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
-          <div style={{ fontWeight: 950, marginBottom: 8 }}>Current Sending Rows</div>
+          <div style={{ fontWeight: 950, marginBottom: 8 }}>Current Sending Rows ({sendingRows.length})</div>
           <div style={{ display: "grid", gap: 8 }}>
             {sendingRows.length === 0 ? <div style={{ opacity: 0.7 }}>No sending rows.</div> : sendingRows.map((r, i) => (
               <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 10 }}>
-                <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
-                <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
-                  {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
-                </div>
-                <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
-                  Created: {norm(r?.created_at)}
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
+                    <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
+                      {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
+                    </div>
+                    <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
+                      Created: {norm(r?.created_at)}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => void closeSendingRow(r)}>
+                      Close Stale
+                    </button>
+                    <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => void copyText(String(r?.id || ""))}>
+                      Copy ID
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -169,16 +325,26 @@ export default function OwnerQueueHealthPage() {
       </div>
 
       <section style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
-        <div style={{ fontWeight: 950, marginBottom: 8 }}>Recent Successful Sends</div>
+        <div style={{ fontWeight: 950, marginBottom: 8 }}>Recent Successful Sends ({sentRows.length})</div>
         <div style={{ display: "grid", gap: 8 }}>
           {sentRows.length === 0 ? <div style={{ opacity: 0.7 }}>No sent rows.</div> : sentRows.map((r, i) => (
             <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 10 }}>
-              <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
-              <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
-                {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
-                Sent: {norm(r?.sent_at || r?.updated_at || r?.created_at)}
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
+                  <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
+                    {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
+                    Sent: {norm(r?.sent_at || r?.updated_at || r?.created_at)}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => void copyText(String(r?.id || ""))}>
+                    Copy ID
+                  </button>
+                </div>
               </div>
             </div>
           ))}
