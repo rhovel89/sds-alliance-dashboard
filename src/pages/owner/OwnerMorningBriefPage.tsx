@@ -85,6 +85,8 @@ export default function OwnerMorningBriefPage() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [briefTargetAlliance, setBriefTargetAlliance] = useState("WOC");
+  const [briefWebhookId, setBriefWebhookId] = useState("");
+  const [briefWebhooks, setBriefWebhooks] = useState<AnyRow[]>([]);
   const [sendingBrief, setSendingBrief] = useState(false);
 
   const [types, setTypes] = useState<AnyRow[]>([]);
@@ -111,6 +113,39 @@ export default function OwnerMorningBriefPage() {
     }
     return m;
   }, [options]);
+
+  async function loadBriefWebhooks(allianceCode: string) {
+    try {
+      const a = String(allianceCode || "").trim().toUpperCase();
+      if (!a) {
+        setBriefWebhooks([]);
+        setBriefWebhookId("");
+        return;
+      }
+
+      const r = await supabase
+        .from("alliance_discord_webhooks")
+        .select("id, alliance_code, label, active")
+        .eq("alliance_code", a)
+        .eq("active", true)
+        .order("label", { ascending: true });
+
+      if (r.error) throw r.error;
+
+      const rows = (r.data || []) as AnyRow[];
+      setBriefWebhooks(rows);
+
+      if (rows.length && !rows.some((x) => String(x?.id || "") === String(briefWebhookId || ""))) {
+        setBriefWebhookId(String(rows[0]?.id || ""));
+      }
+      if (!rows.length) {
+        setBriefWebhookId("");
+      }
+    } catch {
+      setBriefWebhooks([]);
+      setBriefWebhookId("");
+    }
+  }
 
   async function loadAll() {
     try {
@@ -170,6 +205,10 @@ export default function OwnerMorningBriefPage() {
   useEffect(() => {
     void loadAll();
   }, []);
+
+  useEffect(() => {
+    void loadBriefWebhooks(briefTargetAlliance);
+  }, [briefTargetAlliance]);
 
   const now = Date.now();
   const last24h = now - 24 * 60 * 60 * 1000;
@@ -327,13 +366,14 @@ export default function OwnerMorningBriefPage() {
       const q = await supabase.rpc("queue_discord_send" as any, {
         p_kind: "discord_webhook",
         p_target: "alliance:" + allianceCode,
-        p_channel_id: "default:announcements",
+        p_channel_id: String(briefWebhookId || "default:announcements"),
         p_content: message,
         p_meta: {
           kind: "morning_brief",
           source: "OwnerMorningBriefPage",
           state_code: stateCode,
           alliance_code: allianceCode,
+          webhook_id: String(briefWebhookId || ""),
         },
       });
 
@@ -371,6 +411,24 @@ export default function OwnerMorningBriefPage() {
           >
             {allianceSummary.map((a) => (
               <option key={a.alliance} value={a.alliance}>{a.alliance}</option>
+            ))}
+          </select>
+          <select
+            value={briefWebhookId}
+            onChange={(e) => setBriefWebhookId(String(e.target.value || ""))}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.25)",
+              color: "rgba(255,255,255,0.92)"
+            }}
+          >
+            <option value="">Alliance Default Channel</option>
+            {briefWebhooks.map((w) => (
+              <option key={String(w?.id || "")} value={String(w?.id || "")}>
+                {String(w?.label || w?.id || "Webhook")}
+              </option>
             ))}
           </select>
           <button className="zombie-btn" type="button" onClick={() => void sendMorningBriefToDiscord()} disabled={loading || sendingBrief}>
@@ -484,4 +542,5 @@ export default function OwnerMorningBriefPage() {
     </CommandCenterShell>
   );
 }
+
 
