@@ -140,7 +140,7 @@ function buildDiscordAchievementMessage(args: {
     if (briefCompleted.length) parts.push("", "✅ **Completed**", ...briefCompleted);
     if (briefProgress.length) parts.push("", "🧬 **In Progress**", ...briefProgress);
     if (briefPending.length) parts.push("", "⏳ **Pending**", ...briefPending);
-  } elseif (preset === "compact") {
+  } else if (preset === "compact") {
     if (compactCompleted.length) parts.push("", "✅ **Completed**", ...compactCompleted);
     if (compactProgress.length) parts.push("", "🧬 **In Progress**", ...compactProgress);
     if (compactPending.length) parts.push("", "⏳ **Pending**", ...compactPending);
@@ -737,6 +737,7 @@ const achievementOptionOptions = useMemo(() => {
 // deploy check 2026-03-08T12:51:56
 
 // pages stamp 2026-03-08T12:58:58
+
 
 
 
