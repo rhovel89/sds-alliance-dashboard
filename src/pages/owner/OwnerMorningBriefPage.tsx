@@ -84,6 +84,8 @@ export default function OwnerMorningBriefPage() {
 
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
+  const [briefTargetAlliance, setBriefTargetAlliance] = useState("WOC");
+  const [sendingBrief, setSendingBrief] = useState(false);
 
   const [types, setTypes] = useState<AnyRow[]>([]);
   const [options, setOptions] = useState<AnyRow[]>([]);
@@ -287,6 +289,63 @@ export default function OwnerMorningBriefPage() {
     };
   }, [requests, queueRows, allianceSummary, last24h]);
 
+
+  function buildMorningBriefMessage() {
+    const topPending = pendingRows.slice(0, 5).map((r) => `• ${getPlayerName(r)} — ${getTypeName(r, typeNameById, optionNameById)}`);
+    const topCompleted = completed24h.slice(0, 5).map((r) => `• ${getPlayerName(r)} — ${getTypeName(r, typeNameById, optionNameById)}`);
+    const failedTop = failedQueueRows.slice(0, 3).map((r) => `• ${norm(r?.kind || "queue")} — ${norm(r?.status_detail || "Unknown failure")}`);
+
+    const parts: string[] = [
+      `🌅 **State ${stateCode} — Morning Brief**`,
+      `Alliance Target: **${briefTargetAlliance}**`,
+      `Pending Now: **${summary.pendingCount}**`,
+      `Completed Last 24h: **${summary.completed24hCount}**`,
+      `Failed Discord Sends: **${summary.failedCount}**`,
+      `Active Alliances: **${summary.activeAlliances}**`,
+    ];
+
+    if (topPending.length) parts.push("", "📝 **New Pending**", ...topPending);
+    if (topCompleted.length) parts.push("", "✅ **Completed Last 24h**", ...topCompleted);
+    if (failedTop.length) parts.push("", "🚨 **Discord Failures**", ...failedTop);
+
+    return parts.join("\n");
+  }
+
+  async function sendMorningBriefToDiscord() {
+    try {
+      const allianceCode = String(briefTargetAlliance || "").trim().toUpperCase();
+      if (!allianceCode) {
+        setStatus("Pick a target alliance first.");
+        return;
+      }
+
+      setSendingBrief(true);
+      setStatus("Queueing Morning Brief…");
+
+      const message = buildMorningBriefMessage();
+
+      const q = await supabase.rpc("queue_discord_send" as any, {
+        p_kind: "discord_webhook",
+        p_target: "alliance:" + allianceCode,
+        p_channel_id: "default:announcements",
+        p_content: message,
+        p_meta: {
+          kind: "morning_brief",
+          source: "OwnerMorningBriefPage",
+          state_code: stateCode,
+          alliance_code: allianceCode,
+        },
+      });
+
+      if (q.error) throw q.error;
+
+      setStatus("Morning Brief queued ✅");
+    } catch (e: any) {
+      setStatus("Morning Brief failed: " + String(e?.message || e || "send failed"));
+    } finally {
+      setSendingBrief(false);
+    }
+  }
   return (
     <CommandCenterShell
       title="Owner • Morning Brief"
@@ -298,6 +357,24 @@ export default function OwnerMorningBriefPage() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="zombie-btn" type="button" onClick={() => nav("/owner/state-achievements")}>
             Achievements
+          </button>
+          <select
+            value={briefTargetAlliance}
+            onChange={(e) => setBriefTargetAlliance(String(e.target.value || "WOC"))}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.25)",
+              color: "rgba(255,255,255,0.92)"
+            }}
+          >
+            {allianceSummary.map((a) => (
+              <option key={a.alliance} value={a.alliance}>{a.alliance}</option>
+            ))}
+          </select>
+          <button className="zombie-btn" type="button" onClick={() => void sendMorningBriefToDiscord()} disabled={loading || sendingBrief}>
+            Send Brief → Discord
           </button>
           <button className="zombie-btn" type="button" onClick={() => void loadAll()} disabled={loading}>
             Refresh
@@ -407,3 +484,4 @@ export default function OwnerMorningBriefPage() {
     </CommandCenterShell>
   );
 }
+
