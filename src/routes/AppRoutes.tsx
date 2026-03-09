@@ -100,6 +100,7 @@ import OwnerAchievementRequestsPage from "../pages/owner/OwnerAchievementRequest
 import OwnerAchievementConfigPage from "../pages/owner/OwnerAchievementConfigPage";
 import OwnerAchievementAccessPage from "../pages/owner/OwnerAchievementAccessPage";
 import OwnerMorningBriefPage from "../pages/owner/OwnerMorningBriefPage";
+import OwnerQueueHealthPage from "../pages/owner/OwnerQueueHealthPage";
 import OwnerStateAchievementsPage from "../pages/owner/OwnerStateAchievementsPage";
 import State789AchievementsTrackerPage from "../pages/state/State789AchievementsTrackerPage";
 import State789AchievementsProgressPage from "../pages/state/State789AchievementsProgressPage";
@@ -319,9 +320,11 @@ export default function AppRoutes() {
               <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
         <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
               <Route path="/owner/morning-brief" element={<OwnerMorningBriefPage />} />
+              <Route path="/owner/queue-health" element={<OwnerQueueHealthPage />} />
       </Routes>
   );
 }
+
 
 
 

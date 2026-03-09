@@ -1,0 +1,189 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
+import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
+import { supabase } from "../../lib/supabaseClient";
+
+type AnyRow = any;
+
+function s(v: any) {
+  return v === null || v === undefined ? "" : String(v);
+}
+function norm(v: any) {
+  return s(v).trim();
+}
+function normLower(v: any) {
+  return norm(v).toLowerCase();
+}
+function parseDate(v: any): number | null {
+  const t = Date.parse(String(v || ""));
+  return Number.isFinite(t) ? t : null;
+}
+
+export default function OwnerQueueHealthPage() {
+  const nav = useNavigate();
+  const cc = useMemo(() => getCommandCenterModules(), []);
+  const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
+  function onSelectModule(k: string) {
+    const to = cc.find((m) => m.key === k)?.to;
+    if (to) nav(to);
+  }
+
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState("");
+  const [rows, setRows] = useState<AnyRow[]>([]);
+
+  async function loadAll() {
+    try {
+      setLoading(true);
+      setStatus("");
+
+      const q = await supabase
+        .from("discord_send_queue")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(300);
+
+      if (q.error) throw q.error;
+      setRows((q.data || []) as AnyRow[]);
+    } catch (e: any) {
+      setStatus(String(e?.message || e || "Load failed"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadAll();
+  }, []);
+
+  const now = Date.now();
+  const last24h = now - 24 * 60 * 60 * 1000;
+
+  const summary = useMemo(() => {
+    const queued = rows.filter((r) => normLower(r?.status) === "queued").length;
+    const sending = rows.filter((r) => normLower(r?.status) === "sending").length;
+    const failed = rows.filter((r) => normLower(r?.status) === "failed").length;
+    const sent24h = rows.filter((r) => {
+      if (normLower(r?.status) !== "sent") return false;
+      const ts = parseDate(r?.sent_at) ?? parseDate(r?.updated_at) ?? parseDate(r?.created_at);
+      return ts !== null && ts >= last24h;
+    }).length;
+
+    return { queued, sending, failed, sent24h };
+  }, [rows, last24h]);
+
+  const failedRows = useMemo(
+    () => rows.filter((r) => normLower(r?.status) === "failed").slice(0, 20),
+    [rows]
+  );
+
+  const sendingRows = useMemo(
+    () => rows.filter((r) => normLower(r?.status) === "sending").slice(0, 20),
+    [rows]
+  );
+
+  const sentRows = useMemo(
+    () =>
+      rows.filter((r) => normLower(r?.status) === "sent").slice(0, 20),
+    [rows]
+  );
+
+  return (
+    <CommandCenterShell
+      title="Owner • Queue Health"
+      subtitle="Discord send queue snapshot and recent delivery health"
+      modules={modules}
+      activeModuleKey="owner"
+      onSelectModule={onSelectModule}
+      topRight={
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="zombie-btn" type="button" onClick={() => nav("/owner/morning-brief")}>
+            Morning Brief
+          </button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/owner/state-achievements")}>
+            Achievements
+          </button>
+          <button className="zombie-btn" type="button" onClick={() => void loadAll()} disabled={loading}>
+            Refresh
+          </button>
+        </div>
+      }
+    >
+      {status ? (
+        <div style={{ marginBottom: 10, border: "1px solid rgba(176,18,27,0.35)", background: "rgba(176,18,27,0.12)", borderRadius: 12, padding: 10 }}>
+          {status}
+        </div>
+      ) : null}
+
+      {loading ? <div style={{ opacity: 0.8, marginBottom: 12 }}>Loading…</div> : null}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(180px, 1fr))", gap: 12 }}>
+        {[
+          { label: "Queued", value: summary.queued },
+          { label: "Sending", value: summary.sending },
+          { label: "Failed", value: summary.failed },
+          { label: "Sent Last 24h", value: summary.sent24h },
+        ].map((x) => (
+          <div key={x.label} style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+            <div style={{ opacity: 0.72, fontSize: 12 }}>{x.label}</div>
+            <div style={{ fontWeight: 950, fontSize: 28, marginTop: 6 }}>{x.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
+        <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+          <div style={{ fontWeight: 950, marginBottom: 8 }}>Recent Failed Sends</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {failedRows.length === 0 ? <div style={{ opacity: 0.7 }}>No failed rows.</div> : failedRows.map((r, i) => (
+              <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 10 }}>
+                <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
+                <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
+                  {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
+                  {norm(r?.status_detail || "Unknown failure")}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+          <div style={{ fontWeight: 950, marginBottom: 8 }}>Current Sending Rows</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {sendingRows.length === 0 ? <div style={{ opacity: 0.7 }}>No sending rows.</div> : sendingRows.map((r, i) => (
+              <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 10 }}>
+                <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
+                <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
+                  {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
+                  Created: {norm(r?.created_at)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <section style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+        <div style={{ fontWeight: 950, marginBottom: 8 }}>Recent Successful Sends</div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {sentRows.length === 0 ? <div style={{ opacity: 0.7 }}>No sent rows.</div> : sentRows.map((r, i) => (
+            <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 10 }}>
+              <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
+              <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
+                {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
+                Sent: {norm(r?.sent_at || r?.updated_at || r?.created_at)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </CommandCenterShell>
+  );
+}
