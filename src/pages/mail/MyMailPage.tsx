@@ -28,6 +28,12 @@ function s(v: any) {
   return v === null || v === undefined ? "" : String(v);
 }
 
+function buildMailThreadLink(threadKey: string): string {
+  const params = new URLSearchParams();
+  if (String(threadKey || "").trim()) params.set("thread", String(threadKey || "").trim());
+  return `/mail-threads?${params.toString()}`;
+}
+
 function niceDate(v: any) {
   try {
     return new Date(String(v || "")).toLocaleString();
@@ -390,9 +396,10 @@ export default function MyMailPage() {
                     <button
                       className="zombie-btn"
                       type="button"
-                      onClick={() => nav("/mail-threads")}
+                      onClick={() => nav(buildMailThreadLink(String(m.thread_key || "")))}
+                      disabled={!String(m.thread_key || "").trim()}
                     >
-                      Open Threads
+                      Open Thread
                     </button>
                   </div>
                 </div>
@@ -404,3 +411,4 @@ export default function MyMailPage() {
     </div>
   );
 }
+

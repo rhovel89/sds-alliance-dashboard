@@ -40,11 +40,25 @@ function ReplyBox(props: { threadKey: string; onSent: () => void }) {
   const [status, setStatus] = useState<string>("");
 
   useEffect(() => {
+    const params = new URLSearchParams();
+    if (String(selected || "").trim()) params.set("thread", String(selected || "").trim());
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `/mail-threads?${qs}` : "/mail-threads");
+  }, [selected]);
+
+  useEffect(() => {
     (async () => {
       const u = await supabase.auth.getUser();
       setMe(u.data?.user?.id || "");
     })();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (String(selected || "").trim()) params.set("thread", String(selected || "").trim());
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `/mail-threads?${qs}` : "/mail-threads");
+  }, [selected]);
 
   useEffect(() => {
     (async () => {
@@ -104,6 +118,13 @@ function ReplyBox(props: { threadKey: string; onSent: () => void }) {
 
     // Realtime: reload inbox/threads when any mail_items change
   useEffect(() => {
+    const params = new URLSearchParams();
+    if (String(selected || "").trim()) params.set("thread", String(selected || "").trim());
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `/mail-threads?${qs}` : "/mail-threads");
+  }, [selected]);
+
+  useEffect(() => {
     let ch: any = null;
     let alive = true;
 
@@ -158,6 +179,7 @@ return (
 }
 
 export default function MyMailThreadsPage() {
+  const location = useLocation();
   const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [msgs, setMsgs] = useState<MsgRow[]>([]);
@@ -202,10 +224,24 @@ export default function MyMailThreadsPage() {
   }
 
   useEffect(() => {
+    const params = new URLSearchParams();
+    if (String(selected || "").trim()) params.set("thread", String(selected || "").trim());
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `/mail-threads?${qs}` : "/mail-threads");
+  }, [selected]);
+
+  useEffect(() => {
     void loadPlayers();
     void loadThreads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (String(selected || "").trim()) params.set("thread", String(selected || "").trim());
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `/mail-threads?${qs}` : "/mail-threads");
+  }, [selected]);
 
   useEffect(() => {
     if (selected) void loadMsgs(selected);
@@ -331,5 +367,6 @@ export default function MyMailThreadsPage() {
     </div>
   );
 }
+
 
 
