@@ -628,8 +628,24 @@ export default function OwnerPlayerProgressPage() {
                 </div>
 
                 {x.options.length ? (
-                  <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
-                    Options: {x.options.join(", ")}
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Options</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {x.options.map((opt: string, idx: number) => (
+                        <span
+                          key={`${String(x.typeId || x.typeName)}-${idx}-${opt}`}
+                          style={{
+                            fontSize: 12,
+                            padding: "4px 8px",
+                            borderRadius: 999,
+                            border: "1px solid rgba(255,255,255,0.10)",
+                            background: "rgba(255,255,255,0.05)"
+                          }}
+                        >
+                          {opt}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -640,6 +656,7 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
