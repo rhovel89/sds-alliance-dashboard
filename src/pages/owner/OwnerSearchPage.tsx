@@ -25,6 +25,19 @@ function getTypeName(r: AnyRow): string {
   return norm(r?.achievement_name || r?.type_name || r?.title || r?.label || r?.option_label || r?.option_name || r?.kind || "Achievement");
 }
 
+function buildAchievementSearchLink(r: AnyRow): string {
+  const params = new URLSearchParams();
+  const player = getPlayerName(r);
+  const alliance = getAllianceCode(r);
+  const type = getTypeName(r);
+
+  if (player) params.set("player", player);
+  if (alliance && alliance !== "—") params.set("alliance", alliance);
+  if (type && type !== "Achievement") params.set("type", type);
+
+  return `/owner/state-achievements?${params.toString()}`;
+}
+
 export default function OwnerSearchPage() {
   const nav = useNavigate();
   const cc = useMemo(() => getCommandCenterModules(), []);
@@ -141,7 +154,7 @@ export default function OwnerSearchPage() {
           <div style={{ fontWeight: 950, marginBottom: 8 }}>Achievement Requests</div>
           <div style={{ display: "grid", gap: 8 }}>
             {!needle ? <div style={{ opacity: 0.7 }}>Type to search.</div> : requestResults.length === 0 ? <div style={{ opacity: 0.7 }}>No request matches.</div> : requestResults.map((r, i) => (
-              <button key={String(r?.id || i)} className="zombie-btn" type="button" style={{ textAlign: "left", whiteSpace: "normal" }} onClick={() => nav("/owner/state-achievements")}>
+              <button key={String(r?.id || i)} className="zombie-btn" type="button" style={{ textAlign: "left", whiteSpace: "normal" }} onClick={() => nav(buildAchievementSearchLink(r))}>
                 <div style={{ fontWeight: 800 }}>{getPlayerName(r)}</div>
                 <div style={{ fontSize: 12, opacity: 0.75 }}>{getAllianceCode(r)} • {getTypeName(r)} • {s(r?.status)}</div>
               </button>
@@ -153,7 +166,7 @@ export default function OwnerSearchPage() {
           <div style={{ fontWeight: 950, marginBottom: 8 }}>Players</div>
           <div style={{ display: "grid", gap: 8 }}>
             {!needle ? <div style={{ opacity: 0.7 }}>Type to search.</div> : playerResults.length === 0 ? <div style={{ opacity: 0.7 }}>No player matches.</div> : playerResults.map((p, i) => (
-              <button key={String(p?.id || i)} className="zombie-btn" type="button" style={{ textAlign: "left", whiteSpace: "normal" }} onClick={() => nav("/owner/dossier")}>
+              <button key={String(p?.id || i)} className="zombie-btn" type="button" style={{ textAlign: "left", whiteSpace: "normal" }} onClick={() => nav(`/owner/dossier?q=${encodeURIComponent(String(p?.game_name || p?.name || p?.id || ""))}`)}>
                 <div style={{ fontWeight: 800 }}>{s(p?.game_name || p?.name || "Player")}</div>
                 <div style={{ fontSize: 12, opacity: 0.75 }}>{s(p?.id)}</div>
               </button>
@@ -177,4 +190,5 @@ export default function OwnerSearchPage() {
     </CommandCenterShell>
   );
 }
+
 
