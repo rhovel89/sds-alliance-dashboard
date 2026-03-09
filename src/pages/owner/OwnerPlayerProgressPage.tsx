@@ -58,7 +58,10 @@ export default function OwnerPlayerProgressPage() {
 
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
-  const [progressFilter, setProgressFilter] = useState("all");
+  const [progressFilter, setProgressFilter] = useState(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    return String(p.get("filter") || "all");
+  });
   const [playerProgressPresets, setPlayerProgressPresets] = useState<any[]>([]);
   const [selectedPlayerProgressPreset, setSelectedPlayerProgressPreset] = useState("");
   const [newPlayerProgressPresetName, setNewPlayerProgressPresetName] = useState("");
@@ -209,6 +212,16 @@ export default function OwnerPlayerProgressPage() {
     if (exact) return exact;
     return playerRows.length ? getPlayerName(playerRows[0]) : "";
   }, [needle, playerOptions, playerRows]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (String(q || "").trim()) params.set("player", String(q || "").trim());
+    if (String(progressFilter || "").trim() && String(progressFilter || "") !== "all") {
+      params.set("filter", String(progressFilter || "").trim());
+    }
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `/owner/player-progress?${qs}` : "/owner/player-progress");
+  }, [q, progressFilter]);
 
   const selectedPlayerRows = useMemo(() => {
     if (!selectedPlayer) return [];
@@ -544,6 +557,7 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
