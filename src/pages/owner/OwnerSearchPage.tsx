@@ -6,6 +6,17 @@ import { supabase } from "../../lib/supabaseClient";
 
 type AnyRow = any;
 
+function rankSearchMatch(haystack: string, needle: string): number {
+  const h = String(haystack || "").toLowerCase().trim();
+  const n = String(needle || "").toLowerCase().trim();
+  if (!n) return 0;
+  if (h === n) return 100;
+  if (h.startsWith(n)) return 80;
+  if (h.includes(` ${n} `)) return 70;
+  if (h.includes(n)) return 50;
+  return 0;
+}
+
 function loadRecentSearches(): string[] {
   try {
     const raw = localStorage.getItem("ownerRecentSearches");
@@ -142,27 +153,87 @@ export default function OwnerSearchPage() {
 
   const requestResults = useMemo(() => {
     if (!needle) return [];
-    return requests.filter((r) => {
-      const textOk = `${getPlayerName(r)} ${getAllianceCode(r)} ${getTypeName(r)} ${s(r?.status)} ${s(r?.id)}`.toLowerCase().includes(needle);
-      const allianceOk = allianceFilter === "ALL" || getAllianceCode(r) === allianceFilter;
-      const statusOk = statusFilter === "ALL" || s(r?.status) === statusFilter;
-      const typeOk = typeFilter === "ALL" || getTypeName(r) === typeFilter;
-      return textOk && allianceOk && statusOk && typeOk;
-    }).slice(0, 20);
+
+    return requests
+      .map((r) => {
+        const player = getPlayerName(r);
+        const alliance = getAllianceCode(r);
+        const type = getTypeName(r);
+        const status = s(r?.status);
+
+        const textOk = `${player} ${alliance} ${type} ${status} ${s(r?.id)}`.toLowerCase().includes(needle);
+        const allianceOk = allianceFilter === "ALL" || alliance === allianceFilter;
+        const statusOk = statusFilter === "ALL" || status === statusFilter;
+        const typeOk = typeFilter === "ALL" || type === typeFilter;
+
+        if (!(textOk && allianceOk && statusOk && typeOk)) return null;
+
+        const score =
+          rankSearchMatch(player, needle) * 4 +
+          rankSearchMatch(alliance, needle) * 3 +
+          rankSearchMatch(type, needle) * 3 +
+          rankSearchMatch(status, needle);
+
+        return { row: r, score };
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => b.score - a.score || String(getPlayerName(a.row)).localeCompare(String(getPlayerName(b.row))))
+      .slice(0, 20)
+      .map((x: any) => x.row);
   }, [requests, needle, allianceFilter, statusFilter, typeFilter]);
 
   const queueResults = useMemo(() => {
     if (!needle) return [];
-    return queueRows.filter((r) =>
-      `${s(r?.kind)} ${s(r?.target)} ${s(r?.channel_name)} ${s(r?.channel_id)} ${s(r?.status)} ${s(r?.status_detail)}`.toLowerCase().includes(needle)
-    ).slice(0, 20);
+
+    return queueRows
+      .map((r) => {
+        const kind = s(r?.kind);
+        const target = s(r?.target);
+        const channel = s(r?.channel_name || r?.channel_id);
+        const status = s(r?.status);
+        const detail = s(r?.status_detail);
+        const text = `${kind} ${target} ${channel} ${status} ${detail}`.toLowerCase();
+
+        if (!text.includes(needle)) return null;
+
+        const score =
+          rankSearchMatch(target, needle) * 4 +
+          rankSearchMatch(channel, needle) * 3 +
+          rankSearchMatch(status, needle) * 2 +
+          rankSearchMatch(kind, needle) +
+          rankSearchMatch(detail, needle);
+
+        return { row: r, score };
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => b.score - a.score || String(a.row?.target || "").localeCompare(String(b.row?.target || "")))
+      .slice(0, 20)
+      .map((x: any) => x.row);
   }, [queueRows, needle]);
 
   const playerResults = useMemo(() => {
     if (!needle) return [];
-    return players.filter((p) =>
-      `${s(p?.id)} ${s(p?.name)} ${s(p?.game_name)}`.toLowerCase().includes(needle)
-    ).slice(0, 20);
+
+    return players
+      .map((p) => {
+        const gameName = s(p?.game_name);
+        const name = s(p?.name);
+        const id = s(p?.id);
+        const text = `${id} ${name} ${gameName}`.toLowerCase();
+
+        if (!text.includes(needle)) return null;
+
+        const score =
+          rankSearchMatch(gameName, needle) * 5 +
+          rankSearchMatch(name, needle) * 4 +
+          rankSearchMatch(id, needle);
+
+        return { row: p, score };
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => b.score - a.score || String(a.row?.game_name || a.row?.name || "").localeCompare(String(b.row?.game_name || b.row?.name || "")))
+      .slice(0, 20)
+      .map((x: any) => x.row);
   }, [players, needle]);
 
   const requestCount = requestResults.length;
@@ -406,6 +477,7 @@ export default function OwnerSearchPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
