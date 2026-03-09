@@ -326,27 +326,52 @@ export default function OwnerPlayerProgressPage() {
 
         {selectedPlayer ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-            <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+            <button
+              className="zombie-btn"
+              type="button"
+              style={{ textAlign: "left", whiteSpace: "normal" }}
+              onClick={() => setProgressFilter("all")}
+            >
               <div style={{ opacity: 0.72, fontSize: 12 }}>Types Tracked</div>
               <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{progressSummary.totalTypes}</div>
-            </div>
+            </button>
 
-            <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+            <button
+              className="zombie-btn"
+              type="button"
+              style={{ textAlign: "left", whiteSpace: "normal" }}
+              onClick={() => setProgressFilter("completed")}
+            >
               <div style={{ opacity: 0.72, fontSize: 12 }}>Completed Types</div>
               <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{progressSummary.completedTypes}</div>
-            </div>
+            </button>
 
-            <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+            <button
+              className="zombie-btn"
+              type="button"
+              style={{ textAlign: "left", whiteSpace: "normal" }}
+              onClick={() => setProgressFilter("in_progress")}
+            >
               <div style={{ opacity: 0.72, fontSize: 12 }}>In Progress Types</div>
               <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{progressSummary.inProgressTypes}</div>
-            </div>
+            </button>
 
-            <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+            <button
+              className="zombie-btn"
+              type="button"
+              style={{ textAlign: "left", whiteSpace: "normal" }}
+              onClick={() => setProgressFilter("submitted")}
+            >
               <div style={{ opacity: 0.72, fontSize: 12 }}>Submitted Types</div>
               <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{progressSummary.submittedTypes}</div>
-            </div>
+            </button>
 
-            <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+            <button
+              className="zombie-btn"
+              type="button"
+              style={{ textAlign: "left", whiteSpace: "normal" }}
+              onClick={() => setProgressFilter("only_missing")}
+            >
               <div style={{ opacity: 0.72, fontSize: 12 }}>Closest Remaining</div>
               <div style={{ fontWeight: 900, fontSize: 16, marginTop: 6 }}>
                 {progressSummary.closestTypeName || "—"}
@@ -354,7 +379,7 @@ export default function OwnerPlayerProgressPage() {
               <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
                 {progressSummary.closestTypeName ? `Missing ${progressSummary.closestMissing}` : "No remaining types"}
               </div>
-            </div>
+            </button>
           </div>
         ) : null}
 
@@ -397,6 +422,7 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
