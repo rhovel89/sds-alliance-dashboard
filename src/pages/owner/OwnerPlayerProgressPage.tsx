@@ -280,6 +280,17 @@ export default function OwnerPlayerProgressPage() {
         )}
 
         {selectedPlayer ? (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("all")}>All</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("completed")}>Completed</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("incomplete")}>Incomplete</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("only_missing")}>Only Missing</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("submitted")}>Submitted</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("in_progress")}>In Progress</button>
+          </div>
+        ) : null}
+
+        {selectedPlayer ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
               <div style={{ opacity: 0.72, fontSize: 12 }}>Types Tracked</div>
@@ -352,6 +363,7 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
