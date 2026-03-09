@@ -6,6 +6,22 @@ import { supabase } from "../../lib/supabaseClient";
 
 type AnyRow = any;
 
+function loadMorningBriefPresets(): any[] {
+  try {
+    const raw = localStorage.getItem("morningBriefPresets");
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveMorningBriefPresets(arr: any[]) {
+  try {
+    localStorage.setItem("morningBriefPresets", JSON.stringify(Array.isArray(arr) ? arr : []));
+  } catch {}
+}
+
 function s(v: any) {
   return v === null || v === undefined ? "" : String(v);
 }
@@ -87,6 +103,9 @@ export default function OwnerMorningBriefPage() {
   const [briefTargetAlliance, setBriefTargetAlliance] = useState("WOC");
   const [briefWebhookId, setBriefWebhookId] = useState("");
   const [briefWebhooks, setBriefWebhooks] = useState<AnyRow[]>([]);
+  const [briefPresets, setBriefPresets] = useState<any[]>([]);
+  const [selectedBriefPreset, setSelectedBriefPreset] = useState("");
+  const [newBriefPresetName, setNewBriefPresetName] = useState("");
   const [sendingBrief, setSendingBrief] = useState(false);
 
   const [types, setTypes] = useState<AnyRow[]>([]);
@@ -204,6 +223,7 @@ export default function OwnerMorningBriefPage() {
 
   useEffect(() => {
     void loadAll();
+    setBriefPresets(loadMorningBriefPresets());
   }, []);
 
   useEffect(() => {
@@ -328,6 +348,58 @@ export default function OwnerMorningBriefPage() {
     };
   }, [requests, queueRows, allianceSummary, last24h]);
 
+
+  function saveCurrentBriefPreset() {
+    const name = String(newBriefPresetName || "").trim();
+    if (!name) {
+      setStatus("Enter a Morning Brief preset name first.");
+      return;
+    }
+
+    const preset = {
+      name,
+      briefTargetAlliance,
+      briefWebhookId,
+    };
+
+    const next = [
+      ...briefPresets.filter((x) => String(x?.name || "").trim().toLowerCase() !== name.toLowerCase()),
+      preset,
+    ].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+
+    setBriefPresets(next);
+    saveMorningBriefPresets(next);
+    setSelectedBriefPreset(name);
+    setNewBriefPresetName("");
+    setStatus("Morning Brief preset saved ✅");
+  }
+
+  function applySelectedBriefPreset() {
+    const name = String(selectedBriefPreset || "").trim();
+    const preset = briefPresets.find((x) => String(x?.name || "").trim() === name);
+    if (!preset) {
+      setStatus("Pick a Morning Brief preset first.");
+      return;
+    }
+
+    setBriefTargetAlliance(String(preset?.briefTargetAlliance || "WOC"));
+    setBriefWebhookId(String(preset?.briefWebhookId || ""));
+    setStatus("Morning Brief preset loaded ✅");
+  }
+
+  function deleteSelectedBriefPreset() {
+    const name = String(selectedBriefPreset || "").trim();
+    if (!name) {
+      setStatus("Pick a Morning Brief preset first.");
+      return;
+    }
+
+    const next = briefPresets.filter((x) => String(x?.name || "").trim() !== name);
+    setBriefPresets(next);
+    saveMorningBriefPresets(next);
+    setSelectedBriefPreset("");
+    setStatus("Morning Brief preset deleted ✅");
+  }
 
   function buildMorningBriefMessage() {
     const topPending = pendingRows.slice(0, 5).map((r) => `• ${getPlayerName(r)} — ${getTypeName(r, typeNameById, optionNameById)}`);
@@ -462,6 +534,59 @@ export default function OwnerMorningBriefPage() {
         ))}
       </div>
 
+      <section style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+        <div style={{ fontWeight: 950, marginBottom: 8 }}>Saved Morning Brief Presets</div>
+        <div style={{ display: "grid", gap: 8 }}>
+          <input
+            value={newBriefPresetName}
+            onChange={(e) => setNewBriefPresetName(String(e.target.value || ""))}
+            placeholder="New Morning Brief preset name..."
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.25)",
+              color: "rgba(255,255,255,0.92)"
+            }}
+          />
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={() => saveCurrentBriefPreset()}>
+              Save Current Preset
+            </button>
+          </div>
+
+          <select
+            value={selectedBriefPreset}
+            onChange={(e) => setSelectedBriefPreset(String(e.target.value || ""))}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.25)",
+              color: "rgba(255,255,255,0.92)"
+            }}
+          >
+            <option value="">Select saved Morning Brief preset...</option>
+            {briefPresets.map((p) => (
+              <option key={String(p?.name || "")} value={String(p?.name || "")}>
+                {String(p?.name || "")}
+              </option>
+            ))}
+          </select>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={() => applySelectedBriefPreset()} disabled={!selectedBriefPreset}>
+              Load Preset
+            </button>
+            <button className="zombie-btn" type="button" onClick={() => deleteSelectedBriefPreset()} disabled={!selectedBriefPreset}>
+              Delete Preset
+            </button>
+          </div>
+        </div>
+      </section>
+
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 12, marginTop: 14 }}>
         <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
           <div style={{ fontWeight: 950, marginBottom: 8 }}>New Pending Achievements</div>
@@ -542,5 +667,6 @@ export default function OwnerMorningBriefPage() {
     </CommandCenterShell>
   );
 }
+
 
 
