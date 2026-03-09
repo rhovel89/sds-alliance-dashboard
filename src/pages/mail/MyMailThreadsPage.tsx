@@ -39,30 +39,12 @@ function ReplyBox(props: { threadKey: string; onSent: () => void }) {
   const [me, setMe] = useState<string>("");
   const [peer, setPeer] = useState<{ id: string; name: string } | null>(null);
   const [body, setBody] = useState<string>("");
-  const [status, setStatus] = useState<string>("");
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (String(selected || "").trim()) params.set("thread", String(selected || "").trim());
-    const qs = params.toString();
-    window.history.replaceState(null, "", qs ? `/mail-threads?${qs}` : "/mail-threads");
-  }, [selected]);
-
-  useEffect(() => {
+  const [status, setStatus] = useState<string>("");useEffect(() => {
     (async () => {
       const u = await supabase.auth.getUser();
       setMe(u.data?.user?.id || "");
     })();
-  }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (String(selected || "").trim()) params.set("thread", String(selected || "").trim());
-    const qs = params.toString();
-    window.history.replaceState(null, "", qs ? `/mail-threads?${qs}` : "/mail-threads");
-  }, [selected]);
-
-  useEffect(() => {
+  }, []);useEffect(() => {
     (async () => {
       setPeer(null);
       if (!props.threadKey || !isDmThread(props.threadKey) || !me) return;
@@ -118,15 +100,7 @@ function ReplyBox(props: { threadKey: string; onSent: () => void }) {
     ? "Finding peer…"
     : "";
 
-    // Realtime: reload inbox/threads when any mail_items change
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (String(selected || "").trim()) params.set("thread", String(selected || "").trim());
-    const qs = params.toString();
-    window.history.replaceState(null, "", qs ? `/mail-threads?${qs}` : "/mail-threads");
-  }, [selected]);
-
-  useEffect(() => {
+    // Realtime: reload inbox/threads when any mail_items changeuseEffect(() => {
     let ch: any = null;
     let alive = true;
 
@@ -369,6 +343,8 @@ export default function MyMailThreadsPage() {
     </div>
   );
 }
+
+
 
 
 
