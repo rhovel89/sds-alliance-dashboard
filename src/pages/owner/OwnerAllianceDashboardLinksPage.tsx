@@ -16,8 +16,22 @@ function normUpper(v: any) {
   return norm(v).toUpperCase();
 }
 
+const ROLE_OPTIONS = ["owner", "leader", "r4", "r3", "member", "public"];
+
 function parseRolesCsv(v: any): string[] {
   return String(v || "").split(",").map((x) => x.trim()).filter(Boolean);
+}
+
+function rolesToCsv(arr: string[]): string {
+  return Array.from(new Set((arr || []).map((x) => String(x || "").trim()).filter(Boolean))).join(",");
+}
+
+function toggleRoleInCsv(csv: string, role: string): string {
+  const current = parseRolesCsv(csv);
+  const next = current.includes(role)
+    ? current.filter((x) => x !== role)
+    : [...current, role];
+  return rolesToCsv(next);
 }
 
 export default function OwnerAllianceDashboardLinksPage() {
@@ -172,16 +186,47 @@ export default function OwnerAllianceDashboardLinksPage() {
             <input className="zombie-input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." style={{ padding: "10px 12px", minWidth: 280, flex: 2 }} />
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "grid", gap: 10 }}>
             <input className="zombie-input" value={rolesCsv} onChange={(e) => setRolesCsv(e.target.value)} placeholder="roles_csv (owner,leader,r4)" style={{ padding: "10px 12px", minWidth: 260, flex: 1 }} />
-            <input className="zombie-input" value={sort} onChange={(e) => setSort(e.target.value)} placeholder="sort" style={{ padding: "10px 12px", width: 100 }} />
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-              active
-            </label>
-            <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => void createLink()}>
-              Create
-            </button>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {ROLE_OPTIONS.map((role) => {
+                const checked = parseRolesCsv(rolesCsv).includes(role);
+                return (
+                  <label key={role} style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: checked ? "rgba(255,255,255,0.08)" : "transparent" }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => setRolesCsv(toggleRoleInCsv(rolesCsv, role))}
+                    />
+                    {role}
+                  </label>
+                );
+              })}
+              <button
+                className="zombie-btn"
+                type="button"
+                style={{ padding: "6px 10px" }}
+                onClick={() => setRolesCsv("")}
+              >
+                Clear Roles
+              </button>
+            </div>
+
+            <div style={{ fontSize: 12, opacity: 0.7 }}>
+              {parseRolesCsv(rolesCsv).length === 0 ? "Visible to all roles" : `Selected roles: ${parseRolesCsv(rolesCsv).join(", ")}`}
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <input className="zombie-input" value={sort} onChange={(e) => setSort(e.target.value)} placeholder="sort" style={{ padding: "10px 12px", width: 100 }} />
+              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+                active
+              </label>
+              <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => void createLink()}>
+                Create
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -201,6 +246,32 @@ export default function OwnerAllianceDashboardLinksPage() {
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                   <div style={{ minWidth: 240, flex: 1 }}>
                     <input className="zombie-input" value={String(r?.roles_csv || "")} onChange={(e) => patchRow(r.id, { roles_csv: e.target.value })} placeholder="roles_csv" style={{ padding: "8px 10px", width: "100%" }} />
+
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                      {ROLE_OPTIONS.map((role) => {
+                        const checked = parseRolesCsv(r?.roles_csv).includes(role);
+                        return (
+                          <label key={role} style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: checked ? "rgba(255,255,255,0.08)" : "transparent" }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => patchRow(r.id, { roles_csv: toggleRoleInCsv(String(r?.roles_csv || ""), role) })}
+                            />
+                            {role}
+                          </label>
+                        );
+                      })}
+
+                      <button
+                        className="zombie-btn"
+                        type="button"
+                        style={{ padding: "4px 8px", fontSize: 12 }}
+                        onClick={() => patchRow(r.id, { roles_csv: "" })}
+                      >
+                        Clear Roles
+                      </button>
+                    </div>
+
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                       {parseRolesCsv(r?.roles_csv).length === 0 ? <span style={{ opacity: 0.65, fontSize: 12 }}>Visible to all roles</span> : parseRolesCsv(r?.roles_csv).map((role) => (
                         <span key={role} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>{role}</span>
@@ -224,4 +295,7 @@ export default function OwnerAllianceDashboardLinksPage() {
     </CommandCenterShell>
   );
 }
+
+
+
 
