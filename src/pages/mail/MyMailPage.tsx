@@ -149,6 +149,34 @@ export default function MyMailPage() {
     return alliance ? `${name} (${alliance})` : name;
   }
 
+  function prefillReply(m: InboxRow) {
+    const directTarget = s(m.direction) === "out"
+      ? ""
+      : "";
+    const subjectText = s(m.subject).trim();
+    const nextSubject = subjectText
+      ? (subjectText.toLowerCase().startsWith("re:") ? subjectText : `Re: ${subjectText}`)
+      : "";
+
+    const possibleRecipient = recipients.find((r) => {
+      const label = recipientLabel(r);
+      return (
+        label === s(m.peer_display_name) ||
+        label === s(m.sender_display_name) ||
+        s(r.display_name) === s(m.peer_display_name) ||
+        s(r.display_name) === s(m.sender_display_name) ||
+        s(r.game_name) === s(m.peer_display_name) ||
+        s(r.game_name) === s(m.sender_display_name)
+      );
+    });
+
+    setToUserId(s(possibleRecipient?.user_id || possibleRecipient?.id || ""));
+    setSubject(nextSubject);
+    setBody("");
+    setStatus("Reply loaded into composer ✅");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function whoLine(m: InboxRow) {
     const sender = s(m.sender_display_name || m.from_display_name || "Unknown");
     const peer = s(m.peer_display_name || "Unknown");
@@ -366,8 +394,36 @@ export default function MyMailPage() {
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
                     <div>
-                      <div style={{ fontWeight: 900 }}>
-                        {s(m.subject) || "(no subject)"}
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        <div style={{ fontWeight: 900 }}>
+                          {s(m.subject) || "(no subject)"}
+                        </div>
+                        {Number(m.unread_count || 0) > 0 ? (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              padding: "3px 8px",
+                              borderRadius: 999,
+                              border: "1px solid rgba(255,255,255,0.10)",
+                              background: "rgba(255,255,255,0.08)"
+                            }}
+                          >
+                            Unread {Number(m.unread_count || 0)}
+                          </span>
+                        ) : null}
+                        {s(m.kind) ? (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              padding: "3px 8px",
+                              borderRadius: 999,
+                              border: "1px solid rgba(255,255,255,0.10)",
+                              background: "rgba(255,255,255,0.05)"
+                            }}
+                          >
+                            {s(m.kind)}
+                          </span>
+                        ) : null}
                       </div>
                       <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
                         {whoLine(m)}
@@ -401,6 +457,15 @@ export default function MyMailPage() {
                     >
                       Open Thread
                     </button>
+
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      onClick={() => prefillReply(m)}
+                      disabled={s(m.kind) !== "direct"}
+                    >
+                      Reply
+                    </button>
                   </div>
                 </div>
               ))
@@ -411,4 +476,6 @@ export default function MyMailPage() {
     </div>
   );
 }
+
+
 
