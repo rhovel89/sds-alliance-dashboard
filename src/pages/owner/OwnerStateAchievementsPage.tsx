@@ -269,6 +269,16 @@ export default function OwnerStateAchievementsPage() {
     setSelectedRequestIds(ids);
   }
 
+  function selectRequestsByStatus(status: string) {
+    const ids = requests
+      .slice(0, 200)
+      .filter((r) => String(r?.status || "").toLowerCase() === String(status || "").toLowerCase())
+      .map((r) => String(r?.id || ""))
+      .filter(Boolean);
+
+    setSelectedRequestIds(ids);
+  }
+
   async function bulkSetRequestStatus(nextStatus: string) {
     try {
       const ids = selectedRequestIds.slice();
@@ -1073,6 +1083,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
