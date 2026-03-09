@@ -375,6 +375,64 @@ export default function OwnerStateAchievementsPage() {
     return `• ${player} — ${type}${option ? ` — ${option}` : ""} (${cur}/${req}, ${status}, ${alliance})`;
   }
 
+  function saveCurrentBulkDiscordTemplate() {
+    const name = String(newBulkDiscordTemplateName || "").trim();
+    if (!name) {
+      setMsg("Enter a bulk Discord template name first.");
+      return;
+    }
+
+    const template = {
+      name,
+      bulkDiscordMessageStyle,
+      bulkDiscordTargetMode,
+      bulkIncludeSubmitted,
+      bulkIncludeInProgress,
+      bulkIncludeCompleted,
+    };
+
+    const next = [
+      ...bulkDiscordTemplates.filter((x) => String(x?.name || "").trim().toLowerCase() !== name.toLowerCase()),
+      template,
+    ].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+
+    setBulkDiscordTemplates(next);
+    saveBulkDiscordTemplates(next);
+    setSelectedBulkDiscordTemplate(name);
+    setNewBulkDiscordTemplateName("");
+    setMsg("Bulk Discord template saved ✅");
+  }
+
+  function applySelectedBulkDiscordTemplate() {
+    const name = String(selectedBulkDiscordTemplate || "").trim();
+    const template = bulkDiscordTemplates.find((x) => String(x?.name || "").trim() === name);
+    if (!template) {
+      setMsg("Pick a bulk Discord template first.");
+      return;
+    }
+
+    setBulkDiscordMessageStyle(String(template?.bulkDiscordMessageStyle || "detailed"));
+    setBulkDiscordTargetMode(String(template?.bulkDiscordTargetMode || "grouped"));
+    setBulkIncludeSubmitted(Boolean(template?.bulkIncludeSubmitted ?? true));
+    setBulkIncludeInProgress(Boolean(template?.bulkIncludeInProgress ?? true));
+    setBulkIncludeCompleted(Boolean(template?.bulkIncludeCompleted ?? true));
+    setMsg("Bulk Discord template loaded ✅");
+  }
+
+  function deleteSelectedBulkDiscordTemplate() {
+    const name = String(selectedBulkDiscordTemplate || "").trim();
+    if (!name) {
+      setMsg("Pick a bulk Discord template first.");
+      return;
+    }
+
+    const next = bulkDiscordTemplates.filter((x) => String(x?.name || "").trim() !== name);
+    setBulkDiscordTemplates(next);
+    saveBulkDiscordTemplates(next);
+    setSelectedBulkDiscordTemplate("");
+    setMsg("Bulk Discord template deleted ✅");
+  }
+
   function saveCurrentBulkDiscordPreset() {
     const name = String(newBulkDiscordPresetName || "").trim();
     if (!name) {
@@ -1164,6 +1222,8 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
+
 
 
 
