@@ -36,6 +36,7 @@ export default function OwnerSearchPage() {
   }
 
   const [q, setQ] = useState("");
+  const [resultType, setResultType] = useState("all");
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState<AnyRow[]>([]);
   const [queueRows, setQueueRows] = useState<AnyRow[]>([]);
@@ -128,44 +129,52 @@ export default function OwnerSearchPage() {
 
       {loading ? <div style={{ opacity: 0.75, marginTop: 12 }}>Loading…</div> : null}
 
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+        <button className="zombie-btn" type="button" onClick={() => setResultType("all")}>All</button>
+        <button className="zombie-btn" type="button" onClick={() => setResultType("requests")}>Requests</button>
+        <button className="zombie-btn" type="button" onClick={() => setResultType("players")}>Players</button>
+        <button className="zombie-btn" type="button" onClick={() => setResultType("queue")}>Queue</button>
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 14 }}>
-        <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+        {(resultType === "all" || resultType === "requests") ? <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
           <div style={{ fontWeight: 950, marginBottom: 8 }}>Achievement Requests</div>
           <div style={{ display: "grid", gap: 8 }}>
             {!needle ? <div style={{ opacity: 0.7 }}>Type to search.</div> : requestResults.length === 0 ? <div style={{ opacity: 0.7 }}>No request matches.</div> : requestResults.map((r, i) => (
-              <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10 }}>
+              <button key={String(r?.id || i)} className="zombie-btn" type="button" style={{ textAlign: "left", whiteSpace: "normal" }} onClick={() => nav("/owner/state-achievements")}>
                 <div style={{ fontWeight: 800 }}>{getPlayerName(r)}</div>
                 <div style={{ fontSize: 12, opacity: 0.75 }}>{getAllianceCode(r)} • {getTypeName(r)} • {s(r?.status)}</div>
-              </div>
+              </button>
             ))}
           </div>
-        </section>
+        </section> : null}
 
-        <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+        {(resultType === "all" || resultType === "players") ? <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
           <div style={{ fontWeight: 950, marginBottom: 8 }}>Players</div>
           <div style={{ display: "grid", gap: 8 }}>
             {!needle ? <div style={{ opacity: 0.7 }}>Type to search.</div> : playerResults.length === 0 ? <div style={{ opacity: 0.7 }}>No player matches.</div> : playerResults.map((p, i) => (
-              <div key={String(p?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10 }}>
+              <button key={String(p?.id || i)} className="zombie-btn" type="button" style={{ textAlign: "left", whiteSpace: "normal" }} onClick={() => nav("/owner/dossier")}>
                 <div style={{ fontWeight: 800 }}>{s(p?.game_name || p?.name || "Player")}</div>
                 <div style={{ fontSize: 12, opacity: 0.75 }}>{s(p?.id)}</div>
-              </div>
+              </button>
             ))}
           </div>
-        </section>
+        </section> : null}
 
-        <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+        {(resultType === "all" || resultType === "queue") ? <section style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
           <div style={{ fontWeight: 950, marginBottom: 8 }}>Discord Queue</div>
           <div style={{ display: "grid", gap: 8 }}>
             {!needle ? <div style={{ opacity: 0.7 }}>Type to search.</div> : queueResults.length === 0 ? <div style={{ opacity: 0.7 }}>No queue matches.</div> : queueResults.map((r, i) => (
-              <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10 }}>
+              <button key={String(r?.id || i)} className="zombie-btn" type="button" style={{ textAlign: "left", whiteSpace: "normal" }} onClick={() => nav("/owner/queue-health")}>
                 <div style={{ fontWeight: 800 }}>{s(r?.kind || "queue")}</div>
                 <div style={{ fontSize: 12, opacity: 0.75 }}>{s(r?.target || r?.channel_name || r?.channel_id || "—")}</div>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>{s(r?.status)}</div>
-              </div>
+              </button>
             ))}
           </div>
-        </section>
+        </section> : null}
       </div>
     </CommandCenterShell>
   );
 }
+
