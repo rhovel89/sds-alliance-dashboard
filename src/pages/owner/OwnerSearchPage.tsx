@@ -66,6 +66,9 @@ export default function OwnerSearchPage() {
 
   const [q, setQ] = useState("");
   const [resultType, setResultType] = useState("all");
+  const [allianceFilter, setAllianceFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState<AnyRow[]>([]);
@@ -115,12 +118,31 @@ export default function OwnerSearchPage() {
 
   const needle = normLower(q);
 
+  const allianceOptions = useMemo(() => {
+    const vals = Array.from(new Set(requests.map((r) => getAllianceCode(r)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    return ["ALL", ...vals];
+  }, [requests]);
+
+  const statusOptions = useMemo(() => {
+    const vals = Array.from(new Set(requests.map((r) => s(r?.status)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    return ["ALL", ...vals];
+  }, [requests]);
+
+  const typeOptions = useMemo(() => {
+    const vals = Array.from(new Set(requests.map((r) => getTypeName(r)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    return ["ALL", ...vals];
+  }, [requests]);
+
   const requestResults = useMemo(() => {
     if (!needle) return [];
-    return requests.filter((r) =>
-      `${getPlayerName(r)} ${getAllianceCode(r)} ${getTypeName(r)} ${s(r?.status)} ${s(r?.id)}`.toLowerCase().includes(needle)
-    ).slice(0, 20);
-  }, [requests, needle]);
+    return requests.filter((r) => {
+      const textOk = `${getPlayerName(r)} ${getAllianceCode(r)} ${getTypeName(r)} ${s(r?.status)} ${s(r?.id)}`.toLowerCase().includes(needle);
+      const allianceOk = allianceFilter === "ALL" || getAllianceCode(r) === allianceFilter;
+      const statusOk = statusFilter === "ALL" || s(r?.status) === statusFilter;
+      const typeOk = typeFilter === "ALL" || getTypeName(r) === typeFilter;
+      return textOk && allianceOk && statusOk && typeOk;
+    }).slice(0, 20);
+  }, [requests, needle, allianceFilter, statusFilter, typeFilter]);
 
   const queueResults = useMemo(() => {
     if (!needle) return [];
@@ -192,6 +214,50 @@ export default function OwnerSearchPage() {
         <button className="zombie-btn" type="button" onClick={() => setResultType("requests")}>Requests</button>
         <button className="zombie-btn" type="button" onClick={() => setResultType("players")}>Players</button>
         <button className="zombie-btn" type="button" onClick={() => setResultType("queue")}>Queue</button>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 12 }}>
+        <select
+          value={allianceFilter}
+          onChange={(e) => setAllianceFilter(String(e.target.value || "ALL"))}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(255,255,255,0.92)"
+          }}
+        >
+          {allianceOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+        </select>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(String(e.target.value || "ALL"))}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(255,255,255,0.92)"
+          }}
+        >
+          {statusOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+        </select>
+
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(String(e.target.value || "ALL"))}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.25)",
+            color: "rgba(255,255,255,0.92)"
+          }}
+        >
+          {typeOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+        </select>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 14 }}>
@@ -323,6 +389,7 @@ export default function OwnerSearchPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
