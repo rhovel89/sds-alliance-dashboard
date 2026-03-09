@@ -37,6 +37,8 @@ export default function OwnerStateAchievementsPage() {
   const [options, setOptions] = useState<AnyRow[]>([]);
   const [requests, setRequests] = useState<AnyRow[]>([]);
   const [access, setAccess] = useState<AnyRow[]>([]);
+  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const typeById = useMemo(() => {
     const m: Record<string, AnyRow> = {};
@@ -164,6 +166,61 @@ export default function OwnerStateAchievementsPage() {
       return res;
     }
     return res;
+  }
+
+  function toggleSelectedRequestId(id: string) {
+    const key = String(id || "");
+    if (!key) return;
+    setSelectedRequestIds((prev) => prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]);
+  }
+
+  function clearSelectedRequests() {
+    setSelectedRequestIds([]);
+  }
+
+  function selectAllVisibleRequests() {
+    const ids = requests.slice(0, 200).map((r) => String(r?.id || "")).filter(Boolean);
+    setSelectedRequestIds(ids);
+  }
+
+  async function bulkSetRequestStatus(nextStatus: string) {
+    try {
+      const ids = selectedRequestIds.slice();
+      if (!ids.length) {
+        setMsg("Select at least one request first.");
+        return;
+      }
+
+      if (!window.confirm(`Apply "${nextStatus}" to ${ids.length} selected requests?`)) return;
+
+      setBulkBusy(true);
+      setMsg(`Updating ${ids.length} requests...`);
+
+      for (const id of ids) {
+        const row = requests.find((x) => String(x?.id || "") === String(id));
+        if (!row) continue;
+
+        const req = reqRequired(row);
+        const patch: AnyRow = {
+          status: nextStatus,
+        };
+
+        if (String(nextStatus).toLowerCase() === "completed") {
+          patch.current_count = req;
+          patch.completed_at = nowUtc();
+        }
+
+        await safeUpdateRequest(String(id), patch);
+      }
+
+      setSelectedRequestIds([]);
+      setMsg(`Bulk update complete ✅ (${ids.length})`);
+      await loadAll();
+    } catch (e: any) {
+      setMsg("Bulk update failed: " + String(e?.message || e || "unknown error"));
+    } finally {
+      setBulkBusy(false);
+    }
   }
 
   async function saveRequestRow(r: AnyRow) {
@@ -532,6 +589,13 @@ export default function OwnerStateAchievementsPage() {
               return (
                 <div key={String(r.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedRequestIds.includes(String(r?.id || ""))}
+                        onChange={() => toggleSelectedRequestId(String(r?.id || ""))}
+                      />
+                    </label>
                     <div style={{ fontWeight: 900 }}>{String(r.player_name || "Player")} <span style={{ opacity: 0.7 }}>({String(r.alliance_name || "—")})</span></div>
                     <div style={{ marginLeft: "auto", fontWeight: 900 }}>{cur}/{req}{done ? " ✅" : ""}</div>
                   </div>
@@ -744,6 +808,9 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
+
+
 
 
 
