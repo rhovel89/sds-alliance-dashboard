@@ -177,14 +177,14 @@ type ChannelRow = {
     channel_id: "default:achievements", // per-alliance default
 }
 
-export default function StateAchievementsExportPanel(props: { stateCode: string; requests?: ReqRow[]; types?: any[]; options?: any[] }) {
+export default function StateAchievementsExportPanel(props: { stateCode: string; requests?: ReqRow[]; types?: any[]; options?: any[]; initialAllianceFilter?: string; initialTypeFilter?: string }) {
   const stateCode = norm(props.stateCode) || "789";
   const requests = Array.isArray(props.requests) ? props.requests : [];
   const types = Array.isArray(props.types) ? props.types : [];
   const options = Array.isArray(props.options) ? props.options : [];
 
-  const [allianceFilter, setAllianceFilter] = useState<string>("ALL");
-  const [achievementTypeFilter, setAchievementTypeFilter] = useState<string>("ALL");
+  const [allianceFilter, setAllianceFilter] = useState<string>(String(props.initialAllianceFilter || "ALL"));
+  const [achievementTypeFilter, setAchievementTypeFilter] = useState<string>(String(props.initialTypeFilter || "ALL"));
   const [achievementOptionFilter, setAchievementOptionFilter] = useState<string>("ALL");
   const [discordFormatPreset, setDiscordFormatPreset] = useState<string>("detailed");
   const [savedPresets, setSavedPresets] = useState<any[]>([]);
@@ -860,6 +860,7 @@ const achievementOptionOptions = useMemo(() => {
 // deploy check 2026-03-08T12:51:56
 
 // pages stamp 2026-03-08T12:58:58
+
 
 
 
