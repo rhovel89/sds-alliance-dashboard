@@ -47,6 +47,12 @@ function getAllianceCode(r: AnyRow): string {
 export default function OwnerBriefSummaryPanel(props: { stateCode?: string }) {
   const nav = useNavigate();
   const stateCode = norm(props.stateCode || "789");
+
+  async function copyText(txt: string) {
+    try {
+      await navigator.clipboard.writeText(String(txt || ""));
+    } catch {}
+  }
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState<AnyRow[]>([]);
   const [queueRows, setQueueRows] = useState<AnyRow[]>([]);
@@ -210,4 +216,5 @@ export default function OwnerBriefSummaryPanel(props: { stateCode?: string }) {
     </div>
   );
 }
+
 

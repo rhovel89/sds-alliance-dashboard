@@ -18,6 +18,18 @@ function buildAlliancePlayerProgressLink(alliance: string): string {
   return `/owner/player-progress?${params.toString()}`;
 }
 
+function buildPlayerProgressLink(player: string): string {
+  const params = new URLSearchParams();
+  if (String(player || "").trim()) params.set("player", String(player || "").trim());
+  return `/owner/player-progress?${params.toString()}`;
+}
+
+function buildTypeAchievementsLink(typeName: string): string {
+  const params = new URLSearchParams();
+  if (String(typeName || "").trim()) params.set("type", String(typeName || "").trim());
+  return `/owner/state-achievements?${params.toString()}`;
+}
+
 function loadMorningBriefPresets(): any[] {
   try {
     const raw = localStorage.getItem("morningBriefPresets");
@@ -100,6 +112,15 @@ function parseDate(v: any): number | null {
 }
 
 export default function OwnerMorningBriefPage() {
+
+  async function copyText(txt: string) {
+    try {
+      await navigator.clipboard.writeText(String(txt || ""));
+      setStatus("Copied ✅");
+    } catch {
+      setStatus("Copy failed.");
+    }
+  }
   const nav = useNavigate();
   const stateCode = "789";
 
@@ -716,6 +737,7 @@ export default function OwnerMorningBriefPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
