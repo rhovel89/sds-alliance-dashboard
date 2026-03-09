@@ -45,6 +45,21 @@ function buildPlayerTypeAchievementsLink(player: string, typeName: string): stri
   return `/owner/state-achievements?${params.toString()}`;
 }
 
+function buildPlayerProgressCurrentViewLink(player: string, filter: string): string {
+  const params = new URLSearchParams();
+  if (String(player || "").trim()) params.set("player", String(player || "").trim());
+  if (String(filter || "").trim() && String(filter || "") !== "all") params.set("filter", String(filter || "").trim());
+  const qs = params.toString();
+  return qs ? `/owner/player-progress?${qs}` : "/owner/player-progress";
+}
+
+function buildPlayerAchievementsLink(player: string, status: string): string {
+  const params = new URLSearchParams();
+  if (String(player || "").trim()) params.set("player", String(player || "").trim());
+  if (String(status || "").trim()) params.set("status", String(status || "").trim());
+  return `/owner/state-achievements?${params.toString()}`;
+}
+
 export default function OwnerPlayerProgressPage() {
   const nav = useNavigate();
   const location = useLocation();
@@ -54,6 +69,16 @@ export default function OwnerPlayerProgressPage() {
   function onSelectModule(k: string) {
     const to = cc.find((m) => m.key === k)?.to;
     if (to) nav(to);
+  }
+
+  async function copyCurrentViewLink() {
+    try {
+      const url = window.location.origin + buildPlayerProgressCurrentViewLink(q, progressFilter);
+      await navigator.clipboard.writeText(url);
+      setStatus("Current view link copied ✅");
+    } catch {
+      setStatus("Copy failed.");
+    }
   }
 
   const [loading, setLoading] = useState(false);
@@ -432,6 +457,37 @@ export default function OwnerPlayerProgressPage() {
             <div style={{ fontWeight: 950, fontSize: 22 }}>{selectedPlayer}</div>
             <div style={{ opacity: 0.75, marginTop: 4 }}>Alliance: {playerAlliance}</div>
             <div style={{ opacity: 0.75, marginTop: 4 }}>Rows: {selectedPlayerRows.length}</div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+              <button
+                className="zombie-btn"
+                type="button"
+                onClick={() => void copyCurrentViewLink()}
+              >
+                Copy Current View
+              </button>
+              <button
+                className="zombie-btn"
+                type="button"
+                onClick={() => nav(buildPlayerAchievementsLink(selectedPlayer, "submitted"))}
+              >
+                Open Submitted in Achievements
+              </button>
+              <button
+                className="zombie-btn"
+                type="button"
+                onClick={() => nav(buildPlayerAchievementsLink(selectedPlayer, "in_progress"))}
+              >
+                Open In Progress in Achievements
+              </button>
+              <button
+                className="zombie-btn"
+                type="button"
+                onClick={() => nav(buildPlayerAchievementsLink(selectedPlayer, "completed"))}
+              >
+                Open Completed in Achievements
+              </button>
+            </div>
           </div>
         ) : (
           <div style={{ opacity: 0.72 }}>Search for a player to see progress.</div>
@@ -557,6 +613,7 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
