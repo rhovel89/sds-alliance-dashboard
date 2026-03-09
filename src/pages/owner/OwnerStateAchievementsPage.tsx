@@ -55,6 +55,10 @@ export default function OwnerStateAchievementsPage() {
   const [options, setOptions] = useState<AnyRow[]>([]);
   const [requests, setRequests] = useState<AnyRow[]>([]);
   const [access, setAccess] = useState<AnyRow[]>([]);
+  const [requestAllianceFilter, setRequestAllianceFilter] = useState("ALL");
+  const [requestPlayerFilter, setRequestPlayerFilter] = useState("");
+  const [requestTypeFilter, setRequestTypeFilter] = useState("ALL");
+  const [requestStatusFilter, setRequestStatusFilter] = useState("ALL");
   const initialAllianceFromQuery = useMemo(() => {
     const p = new URLSearchParams(location.search || "");
     return String(p.get("alliance") || "").trim().toUpperCase();
@@ -87,6 +91,45 @@ export default function OwnerStateAchievementsPage() {
   const [bulkDiscordPresets, setBulkDiscordPresets] = useState<any[]>([]);
   const [selectedBulkDiscordPreset, setSelectedBulkDiscordPreset] = useState("");
   const [newBulkDiscordPresetName, setNewBulkDiscordPresetName] = useState("");
+
+  const allianceOptions = useMemo(() => {
+    const vals = Array.from(new Set(requests.map((r) => String(r?.alliance_name || r?.alliance_code || "").trim().toUpperCase()).filter(Boolean)));
+    return ["ALL", ...vals.sort((a, b) => a.localeCompare(b))];
+  }, [requests]);
+
+  const playerOptions = useMemo(() => {
+    const vals = Array.from(new Set(requests.map((r) => String(r?.player_name || "").trim()).filter(Boolean)));
+    return vals.sort((a, b) => a.localeCompare(b));
+  }, [requests]);
+
+  const typeOptions = useMemo(() => {
+    const vals = Array.from(new Set(requests.map((r) => {
+      const t = typeById[String(r?.achievement_type_id || "")];
+      return String(t?.name || "");
+    }).filter(Boolean)));
+    return ["ALL", ...vals.sort((a, b) => a.localeCompare(b))];
+  }, [requests, typeById]);
+
+  const statusOptions = useMemo(() => {
+    const vals = Array.from(new Set(requests.map((r) => String(r?.status || "").trim()).filter(Boolean)));
+    return ["ALL", ...vals.sort((a, b) => a.localeCompare(b))];
+  }, [requests]);
+
+  const filteredRequests = useMemo(() => {
+    return requests.filter((r) => {
+      const alliance = String(r?.alliance_name || r?.alliance_code || "").trim().toUpperCase();
+      const player = String(r?.player_name || "").trim().toLowerCase();
+      const typeName = String(typeById[String(r?.achievement_type_id || "")]?.name || "").trim();
+      const status = String(r?.status || "").trim();
+
+      const allianceOk = requestAllianceFilter === "ALL" || alliance === requestAllianceFilter;
+      const playerOk = !String(requestPlayerFilter || "").trim() || player.includes(String(requestPlayerFilter || "").trim().toLowerCase());
+      const typeOk = requestTypeFilter === "ALL" || typeName === requestTypeFilter;
+      const statusOk = requestStatusFilter === "ALL" || status === requestStatusFilter;
+
+      return allianceOk && playerOk && typeOk && statusOk;
+    });
+  }, [requests, typeById, requestAllianceFilter, requestPlayerFilter, requestTypeFilter, requestStatusFilter]);
 
   const typeById = useMemo(() => {
     const m: Record<string, AnyRow> = {};
@@ -265,12 +308,12 @@ export default function OwnerStateAchievementsPage() {
   }, []);
 
   function selectAllVisibleRequests() {
-    const ids = requests.slice(0, 200).map((r) => String(r?.id || "")).filter(Boolean);
+    const ids = filteredRequests.slice(0, 200).map((r) => String(r?.id || "")).filter(Boolean);
     setSelectedRequestIds(ids);
   }
 
   function selectRequestsByStatus(status: string) {
-    const ids = requests
+    const ids = filteredRequests
       .slice(0, 200)
       .filter((r) => String(r?.status || "").toLowerCase() === String(status || "").toLowerCase())
       .map((r) => String(r?.id || ""))
@@ -891,7 +934,7 @@ export default function OwnerStateAchievementsPage() {
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-            {requests.slice(0, 200).map((r) => {
+            {filteredRequests.slice(0, 200).map((r) => {
               const req = reqRequired(r);
               const cur = reqCurrent(r);
               const done = (String(r.status) === "completed") || (cur >= req);
@@ -953,7 +996,7 @@ export default function OwnerStateAchievementsPage() {
                 </div>
               );
             })}
-            {!loading && requests.length === 0 ? <div style={{ opacity: 0.75 }}>No requests.</div> : null}
+            {!loading && filteredRequests.length === 0 ? <div style={{ opacity: 0.75 }}>No matching requests.</div> : null}
           </div>
         </div>
       ) : null}
@@ -1117,6 +1160,10 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
+
+
+
 
 
 
