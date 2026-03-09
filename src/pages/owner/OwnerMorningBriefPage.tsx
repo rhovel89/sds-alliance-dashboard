@@ -270,6 +270,27 @@ export default function OwnerMorningBriefPage() {
     [queueRows]
   );
 
+  const topMovers = useMemo(() => {
+    return completed24h
+      .slice()
+      .sort((a, b) => String(getPlayerName(a)).localeCompare(String(getPlayerName(b))))
+      .slice(0, 8);
+  }, [completed24h]);
+
+  const topMissingTypes = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const r of pendingRows) {
+      const key = String(getTypeName(r, typeNameById, optionNameById) || "Achievement");
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([type, count]) => ({ type, count }))
+      .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type))
+      .slice(0, 8);
+  }, [pendingRows, typeNameById, optionNameById]);
+
   const allianceSummary = useMemo(() => {
     const m: Record<string, { pending: number; progress: number; completed24h: number; total: number }> = {};
 
@@ -694,6 +715,7 @@ export default function OwnerMorningBriefPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
