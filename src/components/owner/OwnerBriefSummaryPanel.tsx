@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
 type AnyRow = any;
@@ -44,6 +45,7 @@ function getAllianceCode(r: AnyRow): string {
 }
 
 export default function OwnerBriefSummaryPanel(props: { stateCode?: string }) {
+  const nav = useNavigate();
   const stateCode = norm(props.stateCode || "789");
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState<AnyRow[]>([]);
@@ -125,15 +127,56 @@ export default function OwnerBriefSummaryPanel(props: { stateCode?: string }) {
       {loading ? <div style={{ opacity: 0.7 }}>Loading summary…</div> : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-        {[
-          { label: "Pending Now", value: summary.pendingCount },
-          { label: "In Progress", value: summary.progressCount },
-          { label: "Completed 24h", value: summary.completed24hCount },
-          { label: "Discord Failures", value: summary.failedCount },
-          { label: "Active Alliances", value: summary.allianceCount },
-        ].map((x) => (
-          <div key={x.label} style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
-            <div style={{ opacity: 0.72, fontSize: 12 }}>{x.label}</div>
+  <button
+    className="zombie-btn"
+    type="button"
+    style={{ textAlign: "left", whiteSpace: "normal" }}
+    onClick={() => nav("/owner/state-achievements?status=pending")}
+  >
+    <div style={{ opacity: 0.72, fontSize: 12 }}>Pending Now</div>
+    <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{summary.pendingCount}</div>
+  </button>
+
+  <button
+    className="zombie-btn"
+    type="button"
+    style={{ textAlign: "left", whiteSpace: "normal" }}
+    onClick={() => nav("/owner/state-achievements?status=in_progress")}
+  >
+    <div style={{ opacity: 0.72, fontSize: 12 }}>In Progress</div>
+    <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{summary.progressCount}</div>
+  </button>
+
+  <button
+    className="zombie-btn"
+    type="button"
+    style={{ textAlign: "left", whiteSpace: "normal" }}
+    onClick={() => nav("/owner/state-achievements?status=completed")}
+  >
+    <div style={{ opacity: 0.72, fontSize: 12 }}>Completed 24h</div>
+    <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{summary.completed24hCount}</div>
+  </button>
+
+  <button
+    className="zombie-btn"
+    type="button"
+    style={{ textAlign: "left", whiteSpace: "normal" }}
+    onClick={() => nav("/owner/queue-health?status=failed")}
+  >
+    <div style={{ opacity: 0.72, fontSize: 12 }}>Discord Failures</div>
+    <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{summary.failedCount}</div>
+  </button>
+
+  <button
+    className="zombie-btn"
+    type="button"
+    style={{ textAlign: "left", whiteSpace: "normal" }}
+    onClick={() => nav("/owner/morning-brief")}
+  >
+    <div style={{ opacity: 0.72, fontSize: 12 }}>Active Alliances</div>
+    <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{summary.allianceCount}</div>
+  </button>
+</div>
             <div style={{ fontWeight: 950, fontSize: 26, marginTop: 6 }}>{x.value}</div>
           </div>
         ))}
@@ -167,3 +210,4 @@ export default function OwnerBriefSummaryPanel(props: { stateCode?: string }) {
     </div>
   );
 }
+
