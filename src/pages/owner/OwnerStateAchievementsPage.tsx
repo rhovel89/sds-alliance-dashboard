@@ -23,6 +23,7 @@ async function safeRpcBool(name: string): Promise<boolean> {
 }
 
 export default function OwnerStateAchievementsPage() {
+  const location = useLocation();
   const [stateCode, setStateCode] = useState("789");
   const [tab, setTab] = useState<"requests" | "types" | "options" | "access" | "export">("requests");
 
@@ -37,6 +38,25 @@ export default function OwnerStateAchievementsPage() {
   const [options, setOptions] = useState<AnyRow[]>([]);
   const [requests, setRequests] = useState<AnyRow[]>([]);
   const [access, setAccess] = useState<AnyRow[]>([]);
+  const initialAllianceFromQuery = useMemo(() => {
+    const p = new URLSearchParams(location.search || "");
+    return String(p.get("alliance") || "").trim().toUpperCase();
+  }, [location.search]);
+
+  const initialTypeFromQuery = useMemo(() => {
+    const p = new URLSearchParams(location.search || "");
+    return String(p.get("type") || "").trim();
+  }, [location.search]);
+
+  const initialPlayerFromQuery = useMemo(() => {
+    const p = new URLSearchParams(location.search || "");
+    return String(p.get("player") || "").trim();
+  }, [location.search]);
+
+  const initialStatusFromQuery = useMemo(() => {
+    const p = new URLSearchParams(location.search || "");
+    return String(p.get("status") || "").trim().toLowerCase();
+  }, [location.search]);
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
 
@@ -893,6 +913,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
