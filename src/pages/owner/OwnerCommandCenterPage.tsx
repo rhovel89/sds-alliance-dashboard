@@ -232,6 +232,7 @@ export default function OwnerCommandCenterPage() {
               <Link to="/owner/search">🔎 Search Everywhere</Link>
               <Link to="/owner/player-progress">👤 Player Progress</Link>
               <Link to="/owner/player-progress-compare">🆚 Player Compare</Link>
+              <Link to="/owner/state-achievements">🏆 State Achievements</Link>
               <Link to="/dashboard">🧟 My Dashboards</Link>
             <div style={{ fontSize: 12, opacity: 0.8 }}>
               Tip: alliance pages live under <code>/dashboard/&lt;CODE&gt;/calendar</code> and <code>/dashboard/&lt;CODE&gt;/hq-map</code>
@@ -383,6 +384,7 @@ export default function OwnerCommandCenterPage() {
     </div>
   );
 }
+
 
 
 

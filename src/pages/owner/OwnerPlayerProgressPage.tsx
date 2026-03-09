@@ -370,7 +370,9 @@ export default function OwnerPlayerProgressPage() {
       topRight={
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="zombie-btn" type="button" onClick={() => nav("/owner/search")}>Search</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/owner/morning-brief")}>Morning Brief</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/owner/state-achievements")}>Achievements</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/owner/player-progress-compare")}>Compare</button>
           <button className="zombie-btn" type="button" onClick={() => void loadAll()} disabled={loading}>Refresh</button>
         </div>
       }
@@ -656,6 +658,7 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 

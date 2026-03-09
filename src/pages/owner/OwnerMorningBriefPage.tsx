@@ -515,6 +515,7 @@ export default function OwnerMorningBriefPage() {
       onSelectModule={onSelectModule}
       topRight={
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="zombie-btn" type="button" onClick={() => nav("/owner/search")}>Search</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/owner/state-achievements")}>
             Achievements
           </button>
@@ -715,6 +716,7 @@ export default function OwnerMorningBriefPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 

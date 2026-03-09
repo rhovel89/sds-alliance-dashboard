@@ -181,6 +181,7 @@ export default function OwnerSearchPage() {
           <button className="zombie-btn" type="button" onClick={() => nav("/owner/morning-brief")}>Morning Brief</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/owner/queue-health")}>Queue Health</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/owner/player-progress")}>Player Progress</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/owner/player-progress-compare")}>Player Compare</button>
         </div>
       }
     >
@@ -405,6 +406,7 @@ export default function OwnerSearchPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
