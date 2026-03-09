@@ -204,6 +204,29 @@ export default function OwnerPlayerProgressPage() {
     });
   }, [progressByType, progressFilter]);
 
+  const progressFilterCounts = useMemo(() => {
+    const all = progressByType.length;
+    const completed = progressByType.filter((x) => Number(x.missing || 0) <= 0).length;
+    const incomplete = progressByType.filter((x) => Number(x.missing || 0) > 0).length;
+    const onlyMissing = progressByType.filter((x) => Number(x.missing || 0) > 0).length;
+    const submitted = progressByType.filter((x) => Number(x.submitted || 0) > 0).length;
+    const inProgress = progressByType.filter((x) => {
+      const missing = Number(x.missing || 0);
+      const hasProgress = Number(x.current || 0) > 0;
+      const hasInProgress = Number(x.inProgress || 0) > 0;
+      return hasInProgress || (hasProgress && missing > 0);
+    }).length;
+
+    return {
+      all,
+      completed,
+      incomplete,
+      onlyMissing,
+      submitted,
+      inProgress,
+    };
+  }, [progressByType]);
+
   const progressSummary = useMemo(() => {
     const totalTypes = filteredProgressByType.length;
     const completedTypes = filteredProgressByType.filter((x) => Number(x.missing || 0) <= 0).length;
@@ -281,23 +304,23 @@ export default function OwnerPlayerProgressPage() {
 
         {selectedPlayer ? (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("all")}>All</button>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("completed")}>Completed</button>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("incomplete")}>Incomplete</button>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("only_missing")}>Only Missing</button>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("submitted")}>Submitted</button>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("in_progress")}>In Progress</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("all")}>All ({progressFilterCounts.all})</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("completed")}>Completed ({progressFilterCounts.completed})</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("incomplete")}>Incomplete ({progressFilterCounts.incomplete})</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("only_missing")}>Only Missing ({progressFilterCounts.onlyMissing})</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("submitted")}>Submitted ({progressFilterCounts.submitted})</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("in_progress")}>In Progress ({progressFilterCounts.inProgress})</button>
           </div>
         ) : null}
 
         {selectedPlayer ? (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("all")}>All</button>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("completed")}>Completed</button>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("incomplete")}>Incomplete</button>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("only_missing")}>Only Missing</button>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("submitted")}>Submitted</button>
-            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("in_progress")}>In Progress</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("all")}>All ({progressFilterCounts.all})</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("completed")}>Completed ({progressFilterCounts.completed})</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("incomplete")}>Incomplete ({progressFilterCounts.incomplete})</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("only_missing")}>Only Missing ({progressFilterCounts.onlyMissing})</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("submitted")}>Submitted ({progressFilterCounts.submitted})</button>
+            <button className="zombie-btn" type="button" onClick={() => setProgressFilter("in_progress")}>In Progress ({progressFilterCounts.inProgress})</button>
           </div>
         ) : null}
 
@@ -374,6 +397,7 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
