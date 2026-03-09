@@ -594,10 +594,37 @@ export default function OwnerPlayerProgressPage() {
                 </div>
 
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                  <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>Completed: {x.completed}</span>
-                  <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>In Progress: {x.inProgress}</span>
-                  <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>Submitted: {x.submitted}</span>
-                  <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>Missing: {x.missing}</span>
+                  {Number(x.missing || 0) <= 0 ? (
+                    <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(80,180,120,0.16)" }}>
+                      Completed
+                    </span>
+                  ) : null}
+
+                  {Number(x.inProgress || 0) > 0 ? (
+                    <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(120,160,255,0.14)" }}>
+                      In Progress
+                    </span>
+                  ) : null}
+
+                  {Number(x.submitted || 0) > 0 ? (
+                    <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,210,80,0.12)" }}>
+                      Submitted
+                    </span>
+                  ) : null}
+
+                  {Number(x.missing || 0) > 0 ? (
+                    <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
+                      Missing {x.missing}
+                    </span>
+                  ) : null}
+
+                  <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>
+                    Completed Rows: {x.completed}
+                  </span>
+
+                  <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>
+                    Current: {x.current}/{x.requiredCount}
+                  </span>
                 </div>
 
                 {x.options.length ? (
@@ -613,6 +640,7 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
