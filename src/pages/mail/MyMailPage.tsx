@@ -224,6 +224,7 @@ export default function MyMailPage() {
     }
 
     pushRecentRecipient(targetUserId);
+    pushRecentRecipient(targetUserId);
     setRecipientSearch("");
     setSubject("");
     setBody("");
@@ -711,6 +712,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 

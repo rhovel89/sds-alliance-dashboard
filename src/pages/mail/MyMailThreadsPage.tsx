@@ -155,6 +155,7 @@ return (
 }
 
 export default function MyMailThreadsPage() {
+  const nav = useNavigate();
   const location = useLocation();
   const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -350,6 +351,7 @@ export default function MyMailThreadsPage() {
     </div>
   );
 }
+
 
 
 
