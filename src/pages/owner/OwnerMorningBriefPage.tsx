@@ -6,6 +6,18 @@ import { supabase } from "../../lib/supabaseClient";
 
 type AnyRow = any;
 
+function buildAllianceAchievementsLink(alliance: string): string {
+  const params = new URLSearchParams();
+  if (String(alliance || "").trim()) params.set("alliance", String(alliance || "").trim().toUpperCase());
+  return `/owner/state-achievements?${params.toString()}`;
+}
+
+function buildAlliancePlayerProgressLink(alliance: string): string {
+  const params = new URLSearchParams();
+  if (String(alliance || "").trim()) params.set("alliance", String(alliance || "").trim().toUpperCase());
+  return `/owner/player-progress?${params.toString()}`;
+}
+
 function loadMorningBriefPresets(): any[] {
   try {
     const raw = localStorage.getItem("morningBriefPresets");
@@ -422,6 +434,21 @@ export default function OwnerMorningBriefPage() {
     return parts.join("\n");
   }
 
+  async function copyMorningBriefForAlliance(allianceCode: string) {
+    try {
+      const prev = briefTargetAlliance;
+      setBriefTargetAlliance(String(allianceCode || "").trim().toUpperCase());
+
+      const message = buildMorningBriefMessage();
+      await navigator.clipboard.writeText(String(message || ""));
+      setStatus("Morning Brief copied ✅");
+
+      setBriefTargetAlliance(prev);
+    } catch {
+      setStatus("Copy failed.");
+    }
+  }
+
   async function sendMorningBriefToDiscord() {
     try {
       const allianceCode = String(briefTargetAlliance || "").trim().toUpperCase();
@@ -667,6 +694,9 @@ export default function OwnerMorningBriefPage() {
     </CommandCenterShell>
   );
 }
+
+
+
 
 
 
