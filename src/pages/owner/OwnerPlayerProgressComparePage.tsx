@@ -10,6 +10,18 @@ function s(v: any) { return v === null || v === undefined ? "" : String(v); }
 function norm(v: any) { return s(v).trim(); }
 function getPlayerName(r: AnyRow): string { return norm(r?.player_name || r?.game_name || r?.player || r?.name || "Unknown"); }
 
+function buildPlayerProgressLink(player: string): string {
+  const params = new URLSearchParams();
+  if (String(player || "").trim()) params.set("player", String(player || "").trim());
+  return `/owner/player-progress?${params.toString()}`;
+}
+
+function buildPlayerAchievementsLink(player: string): string {
+  const params = new URLSearchParams();
+  if (String(player || "").trim()) params.set("player", String(player || "").trim());
+  return `/owner/state-achievements?${params.toString()}`;
+}
+
 export default function OwnerPlayerProgressComparePage() {
   const nav = useNavigate();
   const cc = useMemo(() => getCommandCenterModules(), []);
@@ -69,29 +81,67 @@ export default function OwnerPlayerProgressComparePage() {
 
   const selectedPlayers = [q1, q2, q3].map((x) => String(x || "").trim()).filter(Boolean);
 
+  const typeNameById = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const t of types) {
+      const id = String(t?.id || "");
+      if (id) m[id] = String(t?.name || id);
+    }
+    return m;
+  }, [types]);
+
   const comparison = useMemo(() => {
     return selectedPlayers.map((player) => {
       const rows = requests.filter((r) => getPlayerName(r) === player);
 
-      const completedTypes = new Set<string>();
-      const activeTypes = new Set<string>();
+      const completedTypeIds = new Set<string>();
+      const activeTypeIds = new Set<string>();
 
       for (const r of rows) {
         const typeId = String(r?.achievement_type_id || "");
         if (!typeId) continue;
-        activeTypes.add(typeId);
-        if (String(r?.status || "").toLowerCase() === "completed") completedTypes.add(typeId);
+        activeTypeIds.add(typeId);
+        if (String(r?.status || "").toLowerCase() === "completed") completedTypeIds.add(typeId);
       }
+
+      const completedTypeNames = Array.from(completedTypeIds).map((id) => String(typeNameById[id] || id)).sort((a, b) => a.localeCompare(b));
+      const activeTypeNames = Array.from(activeTypeIds).map((id) => String(typeNameById[id] || id)).sort((a, b) => a.localeCompare(b));
+      const allTypeNames = types.map((t) => String(t?.name || "")).filter(Boolean);
+      const missingTypeNames = allTypeNames.filter((name) => !completedTypeNames.includes(name)).sort((a, b) => a.localeCompare(b));
 
       return {
         player,
         totalRows: rows.length,
-        completedTypes: completedTypes.size,
-        activeTypes: activeTypes.size,
-        missingTypes: Math.max(0, types.length - completedTypes.size),
+        completedTypes: completedTypeNames.length,
+        activeTypes: activeTypeNames.length,
+        missingTypes: missingTypeNames.length,
+        completedTypeNames,
+        activeTypeNames,
+        missingTypeNames,
       };
     });
-  }, [selectedPlayers, requests, types]);
+  }, [selectedPlayers, requests, types, typeNameById]);
+
+  const sharedCompletedTypes = useMemo(() => {
+    if (comparison.length < 2) return [];
+    const sets = comparison.map((x) => new Set(x.completedTypeNames));
+    const first = Array.from(sets[0]);
+    return first.filter((name) => sets.every((s) => s.has(name))).sort((a, b) => a.localeCompare(b));
+  }, [comparison]);
+
+  const uniqueStrengthsByPlayer = useMemo(() => {
+    const out: Record<string, string[]> = {};
+    for (const row of comparison) {
+      const otherCompleted = new Set(
+        comparison
+          .filter((x) => x.player !== row.player)
+          .flatMap((x) => x.completedTypeNames)
+      );
+
+      out[row.player] = row.completedTypeNames.filter((name) => !otherCompleted.has(name)).sort((a, b) => a.localeCompare(b));
+    }
+    return out;
+  }, [comparison]);
 
   return (
     <CommandCenterShell
@@ -141,10 +191,50 @@ export default function OwnerPlayerProgressComparePage() {
               <div style={{ marginTop: 4, opacity: 0.8 }}>Completed Types: {x.completedTypes}</div>
               <div style={{ marginTop: 4, opacity: 0.8 }}>Active Types: {x.activeTypes}</div>
               <div style={{ marginTop: 4, opacity: 0.8 }}>Missing Types: {x.missingTypes}</div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => nav(buildPlayerProgressLink(x.player))}>
+                  Open Progress
+                </button>
+                <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => nav(buildPlayerAchievementsLink(x.player))}>
+                  Open Achievements
+                </button>
+              </div>
+
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Unique Strengths</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {(uniqueStrengthsByPlayer[x.player] || []).length === 0 ? <span style={{ opacity: 0.65 }}>None</span> : (uniqueStrengthsByPlayer[x.player] || []).slice(0, 10).map((name) => (
+                    <span key={name} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>{name}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Missing Types</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {x.missingTypeNames.length === 0 ? <span style={{ opacity: 0.65 }}>None</span> : x.missingTypeNames.slice(0, 12).map((name) => (
+                    <span key={name} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>{name}</span>
+                  ))}
+                </div>
+              </div>
             </div>
           ))}
+
+          {comparison.length >= 2 ? (
+            <div style={{ gridColumn: "1 / -1", border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+              <div style={{ fontWeight: 900, marginBottom: 8 }}>Shared Completed Types</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {sharedCompletedTypes.length === 0 ? <span style={{ opacity: 0.65 }}>None</span> : sharedCompletedTypes.map((name) => (
+                  <span key={name} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>{name}</span>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </CommandCenterShell>
   );
 }
+
+
