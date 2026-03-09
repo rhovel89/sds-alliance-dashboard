@@ -22,6 +22,13 @@ function getAllianceCode(r: AnyRow): string {
   return norm(r?.alliance_code || r?.alliance_name || r?.alliance || "—").toUpperCase();
 }
 
+function buildPlayerTypeAchievementsLink(player: string, typeName: string): string {
+  const params = new URLSearchParams();
+  if (String(player || "").trim()) params.set("player", String(player || "").trim());
+  if (String(typeName || "").trim()) params.set("type", String(typeName || "").trim());
+  return `/owner/state-achievements?${params.toString()}`;
+}
+
 export default function OwnerPlayerProgressPage() {
   const nav = useNavigate();
   const location = useLocation();
@@ -236,7 +243,17 @@ export default function OwnerPlayerProgressPage() {
               <div key={String(x.typeId || x.typeName)} style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
                   <div style={{ fontWeight: 900 }}>{x.typeName}</div>
-                  <div style={{ fontWeight: 900 }}>{x.current}/{x.requiredCount}</div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ fontWeight: 900 }}>{x.current}/{x.requiredCount}</div>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      style={{ padding: "6px 10px", fontSize: 12 }}
+                      onClick={() => nav(buildPlayerTypeAchievementsLink(selectedPlayer, x.typeName))}
+                    >
+                      Open in Achievements
+                    </button>
+                  </div>
                 </div>
 
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
@@ -259,4 +276,5 @@ export default function OwnerPlayerProgressPage() {
     </CommandCenterShell>
   );
 }
+
 
