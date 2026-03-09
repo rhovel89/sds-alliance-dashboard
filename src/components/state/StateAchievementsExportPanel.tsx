@@ -92,6 +92,23 @@ const normUpper = (v: any) => norm(v).toUpperCase();
 
 type ReqRow = Record<string, any>;
 
+function loadLocalAchievementExportPresets(): any[] {
+  try {
+    const raw = localStorage.getItem("achievementExportPresets");
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalAchievementExportPresets(arr: any[]) {
+  try {
+    localStorage.setItem("achievementExportPresets", JSON.stringify(Array.isArray(arr) ? arr : []));
+  } catch {}
+}
+
+
 function buildDiscordAchievementMessage(args: {
   stateCode: string;
   allianceFilter: string;
@@ -170,6 +187,9 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
   const [achievementTypeFilter, setAchievementTypeFilter] = useState<string>("ALL");
   const [achievementOptionFilter, setAchievementOptionFilter] = useState<string>("ALL");
   const [discordFormatPreset, setDiscordFormatPreset] = useState<string>("detailed");
+  const [savedPresets, setSavedPresets] = useState<any[]>([]);
+  const [selectedPresetName, setSelectedPresetName] = useState<string>("");
+  const [newPresetName, setNewPresetName] = useState<string>("");
   const [channels, setChannels] = useState<ChannelRow[]>([]);
   const [channelId, setChannelId] = useState<string>("");
 
@@ -211,6 +231,66 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
     setWebhooks(data || []);
   }
 
+
+  useEffect(() => {
+    setSavedPresets(loadLocalAchievementExportPresets());
+  }, []);
+
+  function saveCurrentPreset() {
+    const name = String(newPresetName || "").trim();
+    if (!name) {
+      setStatus("Enter a preset name first.");
+      return;
+    }
+
+    const preset = {
+      name,
+      allianceFilter,
+      achievementTypeFilter,
+      achievementOptionFilter,
+      discordFormatPreset,
+    };
+
+    const next = [
+      ...savedPresets.filter((x) => String(x?.name || "").trim().toLowerCase() !== name.toLowerCase()),
+      preset,
+    ].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+
+    setSavedPresets(next);
+    saveLocalAchievementExportPresets(next);
+    setSelectedPresetName(name);
+    setNewPresetName("");
+    setStatus("Preset saved ✅");
+  }
+
+  function applySelectedPreset() {
+    const name = String(selectedPresetName || "").trim();
+    const preset = savedPresets.find((x) => String(x?.name || "").trim() === name);
+    if (!preset) {
+      setStatus("Pick a preset first.");
+      return;
+    }
+
+    setAllianceFilter(String(preset.allianceFilter || "ALL"));
+    setAchievementTypeFilter(String(preset.achievementTypeFilter || "ALL"));
+    setAchievementOptionFilter(String(preset.achievementOptionFilter || "ALL"));
+    setDiscordFormatPreset(String(preset.discordFormatPreset || "detailed"));
+    setStatus("Preset loaded ✅");
+  }
+
+  function deleteSelectedPreset() {
+    const name = String(selectedPresetName || "").trim();
+    if (!name) {
+      setStatus("Pick a preset first.");
+      return;
+    }
+
+    const next = savedPresets.filter((x) => String(x?.name || "").trim() !== name);
+    setSavedPresets(next);
+    saveLocalAchievementExportPresets(next);
+    setSelectedPresetName("");
+    setStatus("Preset deleted ✅");
+  }
   function toggleWebhook(id: string) {
     setSelectedWebhookIds((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }
@@ -545,6 +625,49 @@ const achievementOptionOptions = useMemo(() => {
         </select>
       </div>
 
+      <div style={{ marginTop: 10 }}>
+        <div style={{ fontWeight: 900, marginBottom: 6 }}>Saved Export Presets</div>
+
+        <div style={{ display: "grid", gap: 8 }}>
+          <input
+            className="zombie-input"
+            value={newPresetName}
+            onChange={(e) => setNewPresetName(String(e.target.value || ""))}
+            placeholder="New preset name..."
+            style={{ padding: "10px 12px", width: "100%" }}
+          />
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={saveCurrentPreset}>
+              Save Current Preset
+            </button>
+          </div>
+
+          <select
+            className="zombie-input"
+            value={selectedPresetName}
+            onChange={(e) => setSelectedPresetName(String(e.target.value || ""))}
+            style={{ padding: "10px 12px", width: "100%" }}
+          >
+            <option value="">Select saved preset...</option>
+            {savedPresets.map((p) => (
+              <option key={String(p?.name || "")} value={String(p?.name || "")}>
+                {String(p?.name || "")}
+              </option>
+            ))}
+          </select>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={applySelectedPreset} disabled={!selectedPresetName}>
+              Load Preset
+            </button>
+            <button className="zombie-btn" type="button" onClick={deleteSelectedPreset} disabled={!selectedPresetName}>
+              Delete Preset
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <button
@@ -737,6 +860,7 @@ const achievementOptionOptions = useMemo(() => {
 // deploy check 2026-03-08T12:51:56
 
 // pages stamp 2026-03-08T12:58:58
+
 
 
 
