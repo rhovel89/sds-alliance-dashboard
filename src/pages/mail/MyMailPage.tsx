@@ -1,320 +1,154 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabaseClient";
 
-const LS_MAIL = "sad_my_mail_v1";
-
-type MailMessage = {
-  id: string;
-  author: "me" | "system";
-  body: string;
-  created_at: string;
+type RecipientRow = {
+  id?: string;
+  user_id?: string;
+  display_name?: string;
+  game_name?: string;
+  alliance_code?: string;
 };
 
-type MailThread = {
-  id: string;
-  title: string;
-  tag?: string;
-  pinned?: boolean;
-  unread?: boolean;
-  created_at: string;
-  updated_at: string;
-  messages: MailMessage[];
+type InboxRow = {
+  id?: string;
+  created_at?: string;
+  subject?: string | null;
+  body?: string | null;
+  kind?: string | null;
+  direction?: string | null;
+  from_display_name?: string | null;
+  peer_display_name?: string | null;
+  sender_display_name?: string | null;
+  unread_count?: number | null;
+  thread_key?: string | null;
 };
 
-type MailStore = {
-  threads: MailThread[];
-};
+function s(v: any) {
+  return v === null || v === undefined ? "" : String(v);
+}
 
-function safeJsonParse<T>(raw: string | null, fallback: T): T {
+function niceDate(v: any) {
   try {
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    return new Date(String(v || "")).toLocaleString();
   } catch {
-    return fallback;
-  }
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function uid(prefix = "id") {
-  return `${prefix}_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
-}
-
-function emptyStore(): MailStore {
-  return { threads: [] };
-}
-
-function normalizeStore(store: MailStore): MailStore {
-  return {
-    threads: Array.isArray(store?.threads)
-      ? store.threads.map((t) => ({
-          id: String(t?.id || uid("thread")),
-          title: String(t?.title || "Untitled Thread"),
-          tag: t?.tag ? String(t.tag) : "",
-          pinned: !!t?.pinned,
-          unread: !!t?.unread,
-          created_at: String(t?.created_at || nowIso()),
-          updated_at: String(t?.updated_at || t?.created_at || nowIso()),
-          messages: Array.isArray(t?.messages)
-            ? t.messages.map((m) => ({
-                id: String(m?.id || uid("msg")),
-                author: m?.author === "system" ? "system" : "me",
-                body: String(m?.body || ""),
-                created_at: String(m?.created_at || nowIso()),
-              }))
-            : [],
-        }))
-      : [],
-  };
-}
-
-function saveStore(next: MailStore) {
-  const raw = JSON.stringify(next);
-  localStorage.setItem(LS_MAIL, raw);
-  try {
-    const ev = new StorageEvent("storage", { key: LS_MAIL, newValue: raw });
-    window.dispatchEvent(ev);
-  } catch {
-    try {
-      window.dispatchEvent(new CustomEvent("sad:localstorage", { detail: { key: LS_MAIL, newValue: raw } }));
-    } catch {}
-  }
-}
-
-function downloadText(filename: string, text: string) {
-  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 500);
-}
-
-function prettyDate(v: string) {
-  try {
-    return new Date(v).toLocaleString();
-  } catch {
-    return v;
+    return String(v || "");
   }
 }
 
 export default function MyMailPage() {
-  const [store, setStore] = useState<MailStore>(() =>
-    normalizeStore(safeJsonParse<MailStore>(localStorage.getItem(LS_MAIL), emptyStore()))
-  );
+  const nav = useNavigate();
 
-  const [selectedThreadId, setSelectedThreadId] = useState("");
+  const [userId, setUserId] = useState<string>("");
+  const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
+
+  const [recipients, setRecipients] = useState<RecipientRow[]>([]);
+  const [items, setItems] = useState<InboxRow[]>([]);
+
+  const [toUserId, setToUserId] = useState("");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+
+  const [filterKind, setFilterKind] = useState("");
   const [q, setQ] = useState("");
-  const [newTitle, setNewTitle] = useState("");
-  const [newTag, setNewTag] = useState("");
-  const [composeBody, setComposeBody] = useState("");
 
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  async function loadRecipients() {
+    const res = await supabase.rpc("list_dm_recipients");
+    if (!res.error) setRecipients((res.data ?? []) as any);
+  }
 
-  function persist(next: MailStore) {
-    const normalized = normalizeStore(next);
-    setStore(normalized);
-    saveStore(normalized);
+  async function refreshInbox() {
+    setLoading(true);
+    const res = await supabase
+      .from("v_my_mail_inbox")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    if (res.error) {
+      setStatus(res.error.message);
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
+    setItems((res.data ?? []) as any);
+    setStatus("");
+    setLoading(false);
+  }
+
+  async function loadAll() {
+    setLoading(true);
+    setStatus("");
+
+    const auth = await supabase.auth.getUser();
+    const uid = String(auth.data?.user?.id || "");
+    setUserId(uid);
+
+    try {
+      await Promise.all([loadRecipients(), refreshInbox()]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    function onStorage() {
-      setStore(normalizeStore(safeJsonParse<MailStore>(localStorage.getItem(LS_MAIL), emptyStore())));
-    }
-
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("sad:localstorage" as any, onStorage);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("sad:localstorage" as any, onStorage);
-    };
+    void loadAll();
   }, []);
 
-  const filteredThreads = useMemo(() => {
-    const needle = String(q || "").trim().toLowerCase();
-    const base = [...store.threads].sort((a, b) => {
-      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
-      return String(b.updated_at || "").localeCompare(String(a.updated_at || ""));
-    });
+  async function sendDirectMail() {
+    if (!userId) return setStatus("You must be signed in.");
+    if (!toUserId) return setStatus("Select a player recipient.");
+    if (!body.trim()) return setStatus("Message body required.");
 
-    if (!needle) return base;
+    setLoading(true);
+    setStatus("Sending…");
 
-    return base.filter((t) => {
-      const hay =
-        `${t.title} ${t.tag || ""} ${t.messages.map((m) => m.body).join(" ")}`.toLowerCase();
-      return hay.includes(needle);
-    });
-  }, [store.threads, q]);
+    const r = await supabase.rpc("mail_send_message", {
+      p_to_user_id: toUserId,
+      p_subject: subject || null,
+      p_body: body,
+      p_alliance_code: null,
+    } as any);
 
-  const selectedThread = useMemo(() => {
-    return store.threads.find((t) => String(t.id) === String(selectedThreadId)) || filteredThreads[0] || null;
-  }, [store.threads, selectedThreadId, filteredThreads]);
-
-  useEffect(() => {
-    if (!selectedThread && filteredThreads.length > 0) {
-      setSelectedThreadId(String(filteredThreads[0].id));
-    }
-  }, [selectedThread, filteredThreads]);
-
-  const summary = useMemo(() => {
-    const totalThreads = store.threads.length;
-    const pinned = store.threads.filter((t) => t.pinned).length;
-    const unread = store.threads.filter((t) => t.unread).length;
-    const messages = store.threads.reduce((sum, t) => sum + t.messages.length, 0);
-    return { totalThreads, pinned, unread, messages };
-  }, [store.threads]);
-
-  function createThread() {
-    const title = String(newTitle || "").trim();
-    if (!title) {
-      setStatus("Enter a thread title first.");
+    if (r.error) {
+      setStatus(r.error.message || "Send failed.");
+      setLoading(false);
       return;
     }
 
-    const body = String(composeBody || "").trim();
-    const ts = nowIso();
-
-    const thread: MailThread = {
-      id: uid("thread"),
-      title,
-      tag: String(newTag || "").trim(),
-      pinned: false,
-      unread: false,
-      created_at: ts,
-      updated_at: ts,
-      messages: body
-        ? [
-            {
-              id: uid("msg"),
-              author: "me",
-              body,
-              created_at: ts,
-            },
-          ]
-        : [],
-    };
-
-    const next: MailStore = {
-      ...store,
-      threads: [thread, ...store.threads],
-    };
-
-    persist(next);
-    setSelectedThreadId(thread.id);
-    setNewTitle("");
-    setNewTag("");
-    setComposeBody("");
-    setStatus("Thread created ✅");
+    setSubject("");
+    setBody("");
+    setStatus("Mail sent ✅");
+    await refreshInbox();
+    setLoading(false);
   }
 
-  function updateThread(id: string, patch: Partial<MailThread>) {
-    persist({
-      ...store,
-      threads: store.threads.map((t) =>
-        String(t.id) === String(id)
-          ? { ...t, ...patch, updated_at: nowIso() }
-          : t
-      ),
+  const filtered = useMemo(() => {
+    const needle = s(q).trim().toLowerCase();
+
+    return items.filter((m) => {
+      const kindOk = !filterKind || s(m.kind) === filterKind;
+      const text =
+        `${s(m.subject)} ${s(m.body)} ${s(m.from_display_name)} ${s(m.sender_display_name)} ${s(m.peer_display_name)}`.toLowerCase();
+      const textOk = !needle || text.includes(needle);
+      return kindOk && textOk;
     });
+  }, [items, filterKind, q]);
+
+  function recipientLabel(r: RecipientRow) {
+    const name = s(r.display_name || r.game_name || r.user_id || r.id || "Unknown");
+    const alliance = s(r.alliance_code || "").trim().toUpperCase();
+    return alliance ? `${name} (${alliance})` : name;
   }
 
-  function togglePin(id: string) {
-    const t = store.threads.find((x) => String(x.id) === String(id));
-    if (!t) return;
-    updateThread(id, { pinned: !t.pinned });
-    setStatus(t.pinned ? "Thread unpinned." : "Thread pinned ✅");
-  }
-
-  function toggleUnread(id: string) {
-    const t = store.threads.find((x) => String(x.id) === String(id));
-    if (!t) return;
-    updateThread(id, { unread: !t.unread });
-    setStatus(t.unread ? "Thread marked read." : "Thread marked unread.");
-  }
-
-  function deleteThread(id: string) {
-    if (!window.confirm("Delete this thread?")) return;
-
-    const nextThreads = store.threads.filter((t) => String(t.id) !== String(id));
-    persist({ ...store, threads: nextThreads });
-
-    if (String(selectedThreadId) === String(id)) {
-      setSelectedThreadId(nextThreads[0]?.id ? String(nextThreads[0].id) : "");
-    }
-
-    setStatus("Thread deleted ✅");
-  }
-
-  function addMessage() {
-    if (!selectedThread) {
-      setStatus("Select a thread first.");
-      return;
-    }
-
-    const body = String(composeBody || "").trim();
-    if (!body) {
-      setStatus("Write a message first.");
-      return;
-    }
-
-    const msg: MailMessage = {
-      id: uid("msg"),
-      author: "me",
-      body,
-      created_at: nowIso(),
-    };
-
-    persist({
-      ...store,
-      threads: store.threads.map((t) =>
-        String(t.id) === String(selectedThread.id)
-          ? {
-              ...t,
-              updated_at: nowIso(),
-              unread: false,
-              messages: [...t.messages, msg],
-            }
-          : t
-      ),
-    });
-
-    setComposeBody("");
-    setStatus("Message added ✅");
-  }
-
-  function exportMail() {
-    downloadText(
-      `my-mail-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`,
-      JSON.stringify(store, null, 2)
-    );
-    setStatus("Mail export downloaded ✅");
-  }
-
-  function importMail(file: File) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const obj = JSON.parse(String(reader.result || "{}"));
-        const normalized = normalizeStore(obj as MailStore);
-        persist(normalized);
-        setSelectedThreadId(normalized.threads[0]?.id ? String(normalized.threads[0].id) : "");
-        setStatus("Mail import complete ✅");
-      } catch {
-        setStatus("Import failed. Invalid JSON.");
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  function resetAll() {
-    if (!window.confirm("Reset all local mail data on this device?")) return;
-    const next = emptyStore();
-    persist(next);
-    setSelectedThreadId("");
-    setComposeBody("");
-    setStatus("Mail reset ✅");
+  function whoLine(m: InboxRow) {
+    const sender = s(m.sender_display_name || m.from_display_name || "Unknown");
+    const peer = s(m.peer_display_name || "Unknown");
+    if (s(m.kind) !== "direct") return `From: ${sender}`;
+    if (s(m.direction) === "out") return `To: ${peer}`;
+    return `From: ${sender}`;
   }
 
   return (
@@ -333,36 +167,22 @@ export default function MyMailPage() {
         }}
       >
         <div>
-          <div style={{ fontSize: 28, fontWeight: 900 }}>✉️ My Mail</div>
+          <div style={{ fontSize: 28, fontWeight: 900 }}>📬 My Mail</div>
           <div style={{ opacity: 0.75, marginTop: 4 }}>
-            Cleaner UI shell for personal mail threads stored in localStorage.
-          </div>
-          <div style={{ opacity: 0.65, marginTop: 6, fontSize: 12 }}>
-            Storage key: <code>{LS_MAIL}</code>
+            Player-to-player mail, inbox preview, and quick access to full threads.
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="zombie-btn" type="button" onClick={exportMail}>Export</button>
-          <button
-            className="zombie-btn"
-            type="button"
-            onClick={() => fileRef.current?.click()}
-          >
-            Import
+          <button className="zombie-btn" type="button" onClick={() => void loadAll()} disabled={loading}>
+            Refresh
           </button>
-          <button className="zombie-btn" type="button" onClick={resetAll}>Reset</button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".json,application/json"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) importMail(f);
-              e.currentTarget.value = "";
-            }}
-          />
+          <button className="zombie-btn" type="button" onClick={() => nav("/mail-v2")}>
+            Open Inbox
+          </button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/mail-threads")}>
+            Open Threads
+          </button>
         </div>
       </div>
 
@@ -379,7 +199,7 @@ export default function MyMailPage() {
         </div>
       ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 380px) minmax(0, 1fr)", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(320px, 420px) minmax(0, 1fr)", gap: 12 }}>
         <div style={{ display: "grid", gap: 12 }}>
           <div
             style={{
@@ -389,49 +209,73 @@ export default function MyMailPage() {
               padding: 14,
             }}
           >
-            <div style={{ fontWeight: 900, marginBottom: 10 }}>Compose</div>
+            <div style={{ fontWeight: 900, marginBottom: 10 }}>Compose Direct Mail</div>
 
             <div style={{ display: "grid", gap: 10 }}>
               <div>
-                <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>Thread title</div>
+                <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>Recipient</div>
+                <select
+                  className="zombie-input"
+                  value={toUserId}
+                  onChange={(e) => setToUserId(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px" }}
+                >
+                  <option value="">Select player…</option>
+                  {recipients.map((r, i) => {
+                    const id = s(r.user_id || r.id);
+                    return (
+                      <option key={`${id}-${i}`} value={id}>
+                        {recipientLabel(r)}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>Subject</div>
                 <input
                   className="zombie-input"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Example: WOC planning notes"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Optional subject"
                   style={{ width: "100%", padding: "10px 12px" }}
                 />
               </div>
 
               <div>
-                <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>Tag</div>
-                <input
-                  className="zombie-input"
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="ops, reminder, intel..."
-                  style={{ width: "100%", padding: "10px 12px" }}
-                />
-              </div>
-
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>
-                  {selectedThread ? "Message body (adds to selected thread)" : "Opening message"}
-                </div>
+                <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>Message</div>
                 <textarea
                   className="zombie-input"
-                  value={composeBody}
-                  onChange={(e) => setComposeBody(e.target.value)}
-                  rows={7}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  rows={8}
                   placeholder="Write your message..."
                   style={{ width: "100%", padding: "10px 12px", resize: "vertical" }}
                 />
               </div>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button className="zombie-btn" type="button" onClick={createThread}>Create Thread</button>
-                <button className="zombie-btn" type="button" onClick={addMessage} disabled={!selectedThread}>
-                  Add Message
+                <button
+                  className="zombie-btn"
+                  type="button"
+                  disabled={!userId || loading || !toUserId || !body.trim()}
+                  onClick={() => void sendDirectMail()}
+                >
+                  Send Mail
+                </button>
+
+                <button
+                  className="zombie-btn"
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    setToUserId("");
+                    setSubject("");
+                    setBody("");
+                  }}
+                >
+                  Clear
                 </button>
               </div>
             </div>
@@ -445,143 +289,114 @@ export default function MyMailPage() {
               padding: 14,
             }}
           >
-            <div style={{ fontWeight: 900, marginBottom: 10 }}>Mail Summary</div>
+            <div style={{ fontWeight: 900, marginBottom: 10 }}>Quick Links</div>
             <div style={{ display: "grid", gap: 8 }}>
-              <div>Threads: <strong>{summary.totalThreads}</strong></div>
-              <div>Pinned: <strong>{summary.pinned}</strong></div>
-              <div>Unread: <strong>{summary.unread}</strong></div>
-              <div>Messages: <strong>{summary.messages}</strong></div>
+              <Link to="/mail-v2">Open full inbox</Link>
+              <Link to="/mail-threads">Open full thread view</Link>
             </div>
           </div>
         </div>
 
-        <div style={{ display: "grid", gap: 12 }}>
+        <div
+          style={{
+            border: "1px solid rgba(255,255,255,0.10)",
+            background: "rgba(255,255,255,0.04)",
+            borderRadius: 16,
+            padding: 14,
+          }}
+        >
           <div
             style={{
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.04)",
-              borderRadius: 16,
-              padding: 14,
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+              alignItems: "center",
+              marginBottom: 10,
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-                flexWrap: "wrap",
-                alignItems: "center",
-                marginBottom: 10,
-              }}
-            >
-              <div style={{ fontWeight: 900 }}>Threads</div>
+            <div style={{ fontWeight: 900 }}>Inbox Preview</div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <select
+                className="zombie-input"
+                value={filterKind}
+                onChange={(e) => setFilterKind(e.target.value)}
+                style={{ padding: "10px 12px" }}
+              >
+                <option value="">All</option>
+                <option value="direct">Direct</option>
+                <option value="alliance_broadcast">Alliance Broadcast</option>
+                <option value="state_broadcast">State Broadcast</option>
+              </select>
+
               <input
                 className="zombie-input"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search threads..."
-                style={{ minWidth: 240, padding: "10px 12px" }}
+                placeholder="Search inbox..."
+                style={{ minWidth: 220, padding: "10px 12px" }}
               />
-            </div>
-
-            <div style={{ display: "grid", gap: 8 }}>
-              {filteredThreads.length === 0 ? (
-                <div style={{ opacity: 0.7 }}>No mail threads yet.</div>
-              ) : (
-                filteredThreads.map((t) => (
-                  <div
-                    key={t.id}
-                    style={{
-                      border: String(selectedThread?.id) === String(t.id)
-                        ? "1px solid rgba(255,255,255,0.20)"
-                        : "1px solid rgba(255,255,255,0.08)",
-                      background: String(selectedThread?.id) === String(t.id)
-                        ? "rgba(255,255,255,0.06)"
-                        : "rgba(0,0,0,0.16)",
-                      borderRadius: 12,
-                      padding: 10,
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
-                      <button
-                        className="zombie-btn"
-                        type="button"
-                        style={{ textAlign: "left", whiteSpace: "normal", flex: 1 }}
-                        onClick={() => setSelectedThreadId(String(t.id))}
-                      >
-                        <div style={{ fontWeight: 900 }}>
-                          {t.pinned ? "📌 " : ""}{t.title}
-                        </div>
-                        <div style={{ opacity: 0.7, fontSize: 12, marginTop: 4 }}>
-                          {t.tag ? `${t.tag} • ` : ""}{t.messages.length} message(s) • {prettyDate(t.updated_at)}
-                        </div>
-                      </button>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                      <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setSelectedThreadId(String(t.id))}>Open</button>
-                      <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => togglePin(t.id)}>
-                        {t.pinned ? "Unpin" : "Pin"}
-                      </button>
-                      <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => toggleUnread(t.id)}>
-                        {t.unread ? "Mark Read" : "Mark Unread"}
-                      </button>
-                      <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => deleteThread(t.id)}>
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
             </div>
           </div>
 
-          <div
-            style={{
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.04)",
-              borderRadius: 16,
-              padding: 14,
-            }}
-          >
-            <div style={{ fontWeight: 900, marginBottom: 10 }}>Thread Detail</div>
+          <div style={{ opacity: 0.75, marginBottom: 10 }}>
+            Showing {filtered.length} of {items.length}
+          </div>
 
-            {!selectedThread ? (
-              <div style={{ opacity: 0.7 }}>Select a thread to view messages.</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {filtered.length === 0 ? (
+              <div style={{ opacity: 0.7 }}>No mail yet.</div>
             ) : (
-              <div style={{ display: "grid", gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 900 }}>{selectedThread.title}</div>
-                  <div style={{ opacity: 0.72, marginTop: 4 }}>
-                    {selectedThread.tag ? `${selectedThread.tag} • ` : ""}
-                    Created {prettyDate(selectedThread.created_at)} • Updated {prettyDate(selectedThread.updated_at)}
+              filtered.map((m, i) => (
+                <div
+                  key={`${s(m.id)}-${i}`}
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "rgba(0,0,0,0.16)",
+                    borderRadius: 12,
+                    padding: 12,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+                    <div>
+                      <div style={{ fontWeight: 900 }}>
+                        {s(m.subject) || "(no subject)"}
+                      </div>
+                      <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
+                        {whoLine(m)}
+                      </div>
+                    </div>
+
+                    <div style={{ opacity: 0.65, fontSize: 12, whiteSpace: "nowrap" }}>
+                      {niceDate(m.created_at)}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 8, opacity: 0.9 }}>
+                    {s(m.body).slice(0, 220)}
+                    {s(m.body).length > 220 ? "…" : ""}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      onClick={() => nav("/mail-v2")}
+                    >
+                      Open Inbox
+                    </button>
+
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      onClick={() => nav("/mail-threads")}
+                    >
+                      Open Threads
+                    </button>
                   </div>
                 </div>
-
-                <div style={{ display: "grid", gap: 10 }}>
-                  {selectedThread.messages.length === 0 ? (
-                    <div style={{ opacity: 0.7 }}>No messages in this thread yet.</div>
-                  ) : (
-                    selectedThread.messages.map((m) => (
-                      <div
-                        key={m.id}
-                        style={{
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          background: m.author === "me" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.16)",
-                          borderRadius: 12,
-                          padding: 12,
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-                          <div style={{ fontWeight: 800 }}>{m.author === "me" ? "Me" : "System"}</div>
-                          <div style={{ opacity: 0.65, fontSize: 12 }}>{prettyDate(m.created_at)}</div>
-                        </div>
-                        <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{m.body}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              ))
             )}
           </div>
         </div>
