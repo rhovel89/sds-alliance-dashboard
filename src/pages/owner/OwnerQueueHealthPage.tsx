@@ -74,6 +74,88 @@ export default function OwnerQueueHealthPage() {
     void loadAll();
   }, []);
 
+  function toggleSelectedRowId(id: string) {
+    const key = String(id || "");
+    if (!key) return;
+    setSelectedRowIds((prev) => prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]);
+  }
+
+  function clearSelectedRows() {
+    setSelectedRowIds([]);
+  }
+
+  function selectFilteredRowsByStatus(nextStatus: string) {
+    const ids = filteredRows
+      .filter((r) => String(r?.status || "").toLowerCase() === String(nextStatus || "").toLowerCase())
+      .map((r) => String(r?.id || ""))
+      .filter(Boolean);
+
+    setSelectedRowIds(ids);
+  }
+
+  async function bulkRetryFailedRows() {
+    try {
+      const ids = selectedRowIds.slice();
+      if (!ids.length) return setStatus("Select failed rows first.");
+      if (!window.confirm(`Retry ${ids.length} selected row(s)?`)) return;
+
+      setBulkBusy(true);
+
+      for (const id of ids) {
+        const up = await supabase
+          .from("discord_send_queue")
+          .update({
+            status: "queued",
+            status_detail: null,
+            locked_at: null,
+            updated_at: new Date().toISOString(),
+          } as any)
+          .eq("id", id);
+
+        if (up.error) throw up.error;
+      }
+
+      setStatus(`Retried ${ids.length} row(s) ✅`);
+      setSelectedRowIds([]);
+      await loadAll();
+    } catch (e: any) {
+      setStatus("Bulk retry failed: " + String(e?.message || e || "unknown error"));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function bulkCloseSendingRows() {
+    try {
+      const ids = selectedRowIds.slice();
+      if (!ids.length) return setStatus("Select sending rows first.");
+      if (!window.confirm(`Close ${ids.length} selected sending row(s)?`)) return;
+
+      setBulkBusy(true);
+
+      for (const id of ids) {
+        const up = await supabase
+          .from("discord_send_queue")
+          .update({
+            status: "failed",
+            status_detail: "Manually closed stale sending row",
+            updated_at: new Date().toISOString(),
+          } as any)
+          .eq("id", id);
+
+        if (up.error) throw up.error;
+      }
+
+      setStatus(`Closed ${ids.length} row(s) ✅`);
+      setSelectedRowIds([]);
+      await loadAll();
+    } catch (e: any) {
+      setStatus("Bulk close failed: " + String(e?.message || e || "unknown error"));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   async function copyText(txt: string) {
     try {
       await navigator.clipboard.writeText(String(txt || ""));
@@ -228,6 +310,28 @@ export default function OwnerQueueHealthPage() {
         ))}
       </div>
 
+      <div style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+        <div style={{ fontWeight: 900, marginBottom: 8 }}>Bulk Queue Actions</div>
+        <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 8 }}>Selected: {selectedRowIds.length}</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="zombie-btn" type="button" style={{ padding: "8px 10px" }} onClick={() => clearSelectedRows()} disabled={bulkBusy || !selectedRowIds.length}>
+            Clear
+          </button>
+          <button className="zombie-btn" type="button" style={{ padding: "8px 10px" }} onClick={() => selectFilteredRowsByStatus("failed")} disabled={bulkBusy}>
+            Select Failed
+          </button>
+          <button className="zombie-btn" type="button" style={{ padding: "8px 10px" }} onClick={() => selectFilteredRowsByStatus("sending")} disabled={bulkBusy}>
+            Select Sending
+          </button>
+          <button className="zombie-btn" type="button" style={{ padding: "8px 10px" }} onClick={() => void bulkRetryFailedRows()} disabled={bulkBusy || !selectedRowIds.length}>
+            Retry Selected
+          </button>
+          <button className="zombie-btn" type="button" style={{ padding: "8px 10px" }} onClick={() => void bulkCloseSendingRows()} disabled={bulkBusy || !selectedRowIds.length}>
+            Close Selected
+          </button>
+        </div>
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 14 }}>
         <select
           value={statusFilter}
@@ -280,9 +384,28 @@ export default function OwnerQueueHealthPage() {
               <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
-                    <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
-                      {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedRowIds.includes(String(r?.id || ""))}
+                        onChange={() => toggleSelectedRowId(String(r?.id || ""))}
+                      />
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedRowIds.includes(String(r?.id || ""))}
+                        onChange={() => toggleSelectedRowId(String(r?.id || ""))}
+                      />
+                      <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
+                    </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                      <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
+                        {norm(r?.status || "unknown")}
+                      </span>
+                      <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
+                        {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
+                      </span>
                     </div>
                     <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
                       {norm(r?.status_detail || "Unknown failure")}
@@ -319,9 +442,28 @@ export default function OwnerQueueHealthPage() {
               <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
-                    <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
-                      {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedRowIds.includes(String(r?.id || ""))}
+                        onChange={() => toggleSelectedRowId(String(r?.id || ""))}
+                      />
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedRowIds.includes(String(r?.id || ""))}
+                        onChange={() => toggleSelectedRowId(String(r?.id || ""))}
+                      />
+                      <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
+                    </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                      <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
+                        {norm(r?.status || "unknown")}
+                      </span>
+                      <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
+                        {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
+                      </span>
                     </div>
                     <div style={{ fontSize: 12, opacity: 0.72, marginTop: 4 }}>
                       Created: {norm(r?.created_at)}
@@ -356,7 +498,21 @@ export default function OwnerQueueHealthPage() {
             <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedRowIds.includes(String(r?.id || ""))}
+                        onChange={() => toggleSelectedRowId(String(r?.id || ""))}
+                      />
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedRowIds.includes(String(r?.id || ""))}
+                        onChange={() => toggleSelectedRowId(String(r?.id || ""))}
+                      />
+                      <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
+                    </div>
+                    </div>
                   <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
                     {norm(r?.target || r?.channel_name || r?.channel_id || "—")}
                   </div>
@@ -378,6 +534,10 @@ export default function OwnerQueueHealthPage() {
     </CommandCenterShell>
   );
 }
+
+
+
+
 
 
 
