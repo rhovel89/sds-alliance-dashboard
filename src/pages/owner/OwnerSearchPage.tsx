@@ -55,6 +55,12 @@ export default function OwnerSearchPage() {
   const [queueRows, setQueueRows] = useState<AnyRow[]>([]);
   const [players, setPlayers] = useState<AnyRow[]>([]);
 
+  async function copyText(txt: string) {
+    try {
+      await navigator.clipboard.writeText(String(txt || ""));
+    } catch {}
+  }
+
   async function loadAll() {
     try {
       setLoading(true);
@@ -154,10 +160,43 @@ export default function OwnerSearchPage() {
           <div style={{ fontWeight: 950, marginBottom: 8 }}>Achievement Requests</div>
           <div style={{ display: "grid", gap: 8 }}>
             {!needle ? <div style={{ opacity: 0.7 }}>Type to search.</div> : requestResults.length === 0 ? <div style={{ opacity: 0.7 }}>No request matches.</div> : requestResults.map((r, i) => (
-              <button key={String(r?.id || i)} className="zombie-btn" type="button" style={{ textAlign: "left", whiteSpace: "normal" }} onClick={() => nav(buildAchievementSearchLink(r))}>
-                <div style={{ fontWeight: 800 }}>{getPlayerName(r)}</div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>{getAllianceCode(r)} • {getTypeName(r)} • {s(r?.status)}</div>
-              </button>
+              <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10, background: "rgba(0,0,0,0.12)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800 }}>{getPlayerName(r)}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                      <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
+                        {getAllianceCode(r)}
+                      </span>
+                      <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
+                        {getTypeName(r)}
+                      </span>
+                      <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
+                        {s(r?.status)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      style={{ padding: "6px 10px", fontSize: 12 }}
+                      onClick={() => nav(buildAchievementSearchLink(r))}
+                    >
+                      Open
+                    </button>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      style={{ padding: "6px 10px", fontSize: 12 }}
+                      onClick={() => void copyText(window.location.origin + buildAchievementSearchLink(r))}
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </section> : null}
@@ -166,10 +205,33 @@ export default function OwnerSearchPage() {
           <div style={{ fontWeight: 950, marginBottom: 8 }}>Players</div>
           <div style={{ display: "grid", gap: 8 }}>
             {!needle ? <div style={{ opacity: 0.7 }}>Type to search.</div> : playerResults.length === 0 ? <div style={{ opacity: 0.7 }}>No player matches.</div> : playerResults.map((p, i) => (
-              <button key={String(p?.id || i)} className="zombie-btn" type="button" style={{ textAlign: "left", whiteSpace: "normal" }} onClick={() => nav(`/owner/dossier?q=${encodeURIComponent(String(p?.game_name || p?.name || p?.id || ""))}`)}>
-                <div style={{ fontWeight: 800 }}>{s(p?.game_name || p?.name || "Player")}</div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>{s(p?.id)}</div>
-              </button>
+              <div key={String(p?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10, background: "rgba(0,0,0,0.12)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800 }}>{s(p?.game_name || p?.name || "Player")}</div>
+                    <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>{s(p?.id)}</div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      style={{ padding: "6px 10px", fontSize: 12 }}
+                      onClick={() => nav(`/owner/dossier?q=${encodeURIComponent(String(p?.game_name || p?.name || p?.id || ""))}`)}
+                    >
+                      Open
+                    </button>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      style={{ padding: "6px 10px", fontSize: 12 }}
+                      onClick={() => void copyText(window.location.origin + `/owner/dossier?q=${encodeURIComponent(String(p?.game_name || p?.name || p?.id || ""))}`)}
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </section> : null}
@@ -178,11 +240,43 @@ export default function OwnerSearchPage() {
           <div style={{ fontWeight: 950, marginBottom: 8 }}>Discord Queue</div>
           <div style={{ display: "grid", gap: 8 }}>
             {!needle ? <div style={{ opacity: 0.7 }}>Type to search.</div> : queueResults.length === 0 ? <div style={{ opacity: 0.7 }}>No queue matches.</div> : queueResults.map((r, i) => (
-              <button key={String(r?.id || i)} className="zombie-btn" type="button" style={{ textAlign: "left", whiteSpace: "normal" }} onClick={() => nav("/owner/queue-health")}>
-                <div style={{ fontWeight: 800 }}>{s(r?.kind || "queue")}</div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>{s(r?.target || r?.channel_name || r?.channel_id || "—")}</div>
-                <div style={{ fontSize: 12, opacity: 0.7 }}>{s(r?.status)}</div>
-              </button>
+              <div key={String(r?.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10, background: "rgba(0,0,0,0.12)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800 }}>{s(r?.kind || "queue")}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                      <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
+                        {s(r?.status || "unknown")}
+                      </span>
+                      <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
+                        {s(r?.target || r?.channel_name || r?.channel_id || "—")}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+                      {s(r?.status_detail || "")}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      style={{ padding: "6px 10px", fontSize: 12 }}
+                      onClick={() => nav("/owner/queue-health")}
+                    >
+                      Open
+                    </button>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      style={{ padding: "6px 10px", fontSize: 12 }}
+                      onClick={() => void copyText(window.location.origin + "/owner/queue-health")}
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </section> : null}
@@ -190,5 +284,6 @@ export default function OwnerSearchPage() {
     </CommandCenterShell>
   );
 }
+
 
 
