@@ -51,6 +51,7 @@ export default function OwnerAllianceDashboardLinksPage() {
   const [allianceCode, setAllianceCode] = useState("WOC");
   const [label, setLabel] = useState("");
   const [url, setUrl] = useState("");
+  const [sectionName, setSectionName] = useState("");
   const [rolesCsv, setRolesCsv] = useState("");
   const [sort, setSort] = useState("0");
   const [active, setActive] = useState(true);
@@ -92,6 +93,7 @@ export default function OwnerAllianceDashboardLinksPage() {
           alliance_code: normUpper(allianceCode),
           label: norm(label),
           url: norm(url),
+          section_name: norm(sectionName) || null,
           roles_csv: norm(rolesCsv) || null,
           sort: Number(sort || 0),
           active,
@@ -101,6 +103,7 @@ export default function OwnerAllianceDashboardLinksPage() {
 
       setLabel("");
       setUrl("");
+      setSectionName("");
       setRolesCsv("");
       setSort("0");
       setActive(true);
@@ -119,6 +122,7 @@ export default function OwnerAllianceDashboardLinksPage() {
           alliance_code: normUpper(r?.alliance_code),
           label: norm(r?.label),
           url: norm(r?.url),
+          section_name: norm(r?.section_name) || null,
           roles_csv: norm(r?.roles_csv) || null,
           sort: Number(r?.sort || 0),
           active: !!r?.active,
@@ -184,6 +188,7 @@ export default function OwnerAllianceDashboardLinksPage() {
             <input className="zombie-input" value={allianceCode} onChange={(e) => setAllianceCode(e.target.value)} placeholder="Alliance code" style={{ padding: "10px 12px", width: 140 }} />
             <input className="zombie-input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label" style={{ padding: "10px 12px", minWidth: 220, flex: 1 }} />
             <input className="zombie-input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." style={{ padding: "10px 12px", minWidth: 280, flex: 2 }} />
+            <input className="zombie-input" value={sectionName} onChange={(e) => setSectionName(e.target.value)} placeholder="Section (Tools, Intel, Ops...)" style={{ padding: "10px 12px", minWidth: 220, flex: 1 }} />
           </div>
 
           <div style={{ display: "grid", gap: 10 }}>
@@ -241,6 +246,7 @@ export default function OwnerAllianceDashboardLinksPage() {
                   <input className="zombie-input" value={String(r?.alliance_code || "")} onChange={(e) => patchRow(r.id, { alliance_code: e.target.value })} style={{ padding: "8px 10px", width: 140 }} />
                   <input className="zombie-input" value={String(r?.label || "")} onChange={(e) => patchRow(r.id, { label: e.target.value })} style={{ padding: "8px 10px", minWidth: 220, flex: 1 }} />
                   <input className="zombie-input" value={String(r?.url || "")} onChange={(e) => patchRow(r.id, { url: e.target.value })} style={{ padding: "8px 10px", minWidth: 280, flex: 2 }} />
+                  <input className="zombie-input" value={String(r?.section_name || "")} onChange={(e) => patchRow(r.id, { section_name: e.target.value })} placeholder="Section" style={{ padding: "8px 10px", minWidth: 180, flex: 1 }} />
                 </div>
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -295,6 +301,7 @@ export default function OwnerAllianceDashboardLinksPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 

@@ -58,6 +58,16 @@ export default function AllianceDashboardLinksPanel(props: { allianceCode: strin
     return rows.filter((r) => roleAllowed(String(r?.roles_csv || ""), userRole));
   }, [rows, userRole]);
 
+  const groupedRows = useMemo(() => {
+    const map = new Map<string, AnyRow[]>();
+    for (const r of visibleRows) {
+      const section = norm(r?.section_name || "General");
+      if (!map.has(section)) map.set(section, []);
+      map.get(section)!.push(r);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [visibleRows]);
+
   if (!allianceCode) return null;
 
   return (
@@ -66,20 +76,28 @@ export default function AllianceDashboardLinksPanel(props: { allianceCode: strin
       {loading ? <div style={{ opacity: 0.7 }}>Loading…</div> : null}
       {!loading && visibleRows.length === 0 ? <div style={{ opacity: 0.7 }}>No links available.</div> : null}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {visibleRows.map((r) => (
-          <a
-            key={String(r?.id || "")}
-            className="zombie-btn"
-            href={String(r?.url || "#")}
-            target="_blank"
-            rel="noreferrer"
-            style={{ padding: "10px 12px", textDecoration: "none" }}
-          >
-            {String(r?.label || "Link")}
-          </a>
+      <div style={{ display: "grid", gap: 12 }}>
+        {groupedRows.map(([section, links]) => (
+          <div key={section}>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>{section}</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {links.map((r) => (
+                <a
+                  key={String(r?.id || "")}
+                  className="zombie-btn"
+                  href={String(r?.url || "#")}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ padding: "10px 12px", textDecoration: "none" }}
+                >
+                  {String(r?.label || "Link")}
+                </a>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>
   );
 }
+
