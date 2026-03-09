@@ -91,6 +91,70 @@ const normUpper = (v: any) => norm(v).toUpperCase();
 
 
 type ReqRow = Record<string, any>;
+
+function buildDiscordAchievementMessage(args: {
+  stateCode: string;
+  allianceFilter: string;
+  achievementTypeFilter: string;
+  achievementOptionFilter: string;
+  preset: string;
+  completed: any[];
+  progress: any[];
+  pending: any[];
+  url?: string;
+}) {
+  const {
+    stateCode,
+    allianceFilter,
+    achievementTypeFilter,
+    achievementOptionFilter,
+    preset,
+    completed,
+    progress,
+    pending,
+    url,
+  } = args;
+
+  const typePart = achievementTypeFilter && achievementTypeFilter !== "ALL" ? ` • Type: **${achievementTypeFilter}**` : "";
+  const optionPart = achievementOptionFilter && achievementOptionFilter !== "ALL" ? ` • Option: **${achievementOptionFilter}**` : "";
+
+  const detailedCompleted = completed.slice(0, 8).map((r) => `• ${formatAchievementLine(r)}`);
+  const detailedProgress = progress.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`);
+  const detailedPending = pending.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`);
+
+  const compactCompleted = completed.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`);
+  const compactProgress = progress.slice(0, 3).map((r) => `• ${formatAchievementLine(r)}`);
+  const compactPending = pending.slice(0, 3).map((r) => `• ${formatAchievementLine(r)}`);
+
+  const briefCompleted = completed.slice(0, 3).map((r) => `• ${getPlayerName(r)}`);
+  const briefProgress = progress.slice(0, 3).map((r) => `• ${getPlayerName(r)}`);
+  const briefPending = pending.slice(0, 3).map((r) => `• ${getPlayerName(r)}`);
+
+  const parts: string[] = [
+    `🩸 **State ${stateCode} — Achievements Intel**`,
+    `Alliance: **${allianceFilter}**${typePart}${optionPart}`,
+    `Completed: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
+  ];
+
+  if (preset === "brief") {
+    if (briefCompleted.length) parts.push("", "✅ **Completed**", ...briefCompleted);
+    if (briefProgress.length) parts.push("", "🧬 **In Progress**", ...briefProgress);
+    if (briefPending.length) parts.push("", "⏳ **Pending**", ...briefPending);
+  } elseif (preset === "compact") {
+    if (compactCompleted.length) parts.push("", "✅ **Completed**", ...compactCompleted);
+    if (compactProgress.length) parts.push("", "🧬 **In Progress**", ...compactProgress);
+    if (compactPending.length) parts.push("", "⏳ **Pending**", ...compactPending);
+  } else {
+    if (detailedCompleted.length) parts.push("", "✅ **Completed**", ...detailedCompleted);
+    if (detailedProgress.length) parts.push("", "🧬 **In Progress**", ...detailedProgress);
+    if (detailedPending.length) parts.push("", "⏳ **Pending**", ...detailedPending);
+  }
+
+  if (url) parts.push("", "📎 Export Image:", url);
+
+  return parts.join("\n");
+}
+
 type ChannelRow = {
   id?: string;
     channel_id: "default:achievements", // per-alliance default
@@ -105,6 +169,7 @@ export default function StateAchievementsExportPanel(props: { stateCode: string;
   const [allianceFilter, setAllianceFilter] = useState<string>("ALL");
   const [achievementTypeFilter, setAchievementTypeFilter] = useState<string>("ALL");
   const [achievementOptionFilter, setAchievementOptionFilter] = useState<string>("ALL");
+  const [discordFormatPreset, setDiscordFormatPreset] = useState<string>("detailed");
   const [channels, setChannels] = useState<ChannelRow[]>([]);
   const [channelId, setChannelId] = useState<string>("");
 
@@ -353,24 +418,17 @@ const achievementOptionOptions = useMemo(() => {
       if (up.error) throw up.error;
 
       const pub = supabase.storage.from("exports").getPublicUrl(name);
-      const url = pub?.data?.publicUrl;
-      const completedLines = completed.slice(0, 8).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
-      const progressLines = progress.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
-      const pendingLines = pending.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`).join("\n");
-
-      const parts: string[] = [
-        `🩸 **State ${stateCode} — Achievements Intel v3**`,
-        `Alliance: **${allianceFilter}** • Type: **${achievementTypeFilter}** • Option: **${achievementOptionFilter}**`,
-        `Completed: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
-      ];
-
-      if (completedLines) parts.push("", "✅ **Completed**", completedLines);
-      if (progressLines) parts.push("", "🧬 **In Progress**", progressLines);
-      if (pendingLines) parts.push("", "⏳ **Pending**", pendingLines);
-
-      parts.push("", "📎 Export Image:", url);
-
-      const msg = parts.join("\n");
+      const url = pub?.data?.publicUrl;      const msg = buildDiscordAchievementMessage({
+        stateCode,
+        allianceFilter,
+        achievementTypeFilter,
+        achievementOptionFilter,
+        preset: discordFormatPreset,
+        completed,
+        progress,
+        pending,
+        url,
+      });
 
 
       setStatus("Queueing Discord send…");
@@ -473,6 +531,20 @@ const achievementOptionOptions = useMemo(() => {
         </select>
       </div>
 
+      <div style={{ marginTop: 10 }}>
+        <div style={{ fontWeight: 900, marginBottom: 6 }}>Discord Format Preset</div>
+        <select
+          className="zombie-input"
+          value={discordFormatPreset}
+          onChange={(e) => setDiscordFormatPreset(String(e.target.value || "detailed"))}
+          style={{ padding: "10px 12px", width: "100%" }}
+        >
+          <option value="detailed">Detailed</option>
+          <option value="compact">Compact</option>
+          <option value="brief">Brief</option>
+        </select>
+      </div>
+
       <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <button
@@ -490,14 +562,16 @@ const achievementOptionOptions = useMemo(() => {
             type="button"
             style={{ padding: "10px 12px" }}
             onClick={() => void sendToSelectedWebhooks(
-              [
-                `🩸 **State ${stateCode} — Achievements Intel v3**`,
-                `Alliance: **${allianceFilter}** • Type: **${achievementTypeFilter}** • Option: **${achievementOptionFilter}**`,
-                `Completed: **${completed.length}** • In Progress: **${progress.length}** • Pending: **${pending.length}**`,
-                ...(completed.length ? ["", "✅ **Completed**", ...completed.slice(0, 8).map((r) => `• ${formatAchievementLine(r)}`)] : []),
-                ...(progress.length ? ["", "🧬 **In Progress**", ...progress.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`)] : []),
-                ...(pending.length ? ["", "⏳ **Pending**", ...pending.slice(0, 5).map((r) => `• ${formatAchievementLine(r)}`)] : []),
-              ].join("\n"),
+              buildDiscordAchievementMessage({
+                stateCode,
+                allianceFilter,
+                achievementTypeFilter,
+                achievementOptionFilter,
+                preset: discordFormatPreset,
+                completed,
+                progress,
+                pending,
+              }),
               {
                 state_code: stateCode,
                 alliance_code: String(allianceFilter || "").toUpperCase(),
@@ -663,6 +737,7 @@ const achievementOptionOptions = useMemo(() => {
 // deploy check 2026-03-08T12:51:56
 
 // pages stamp 2026-03-08T12:58:58
+
 
 
 
