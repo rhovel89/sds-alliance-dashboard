@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 
@@ -17,35 +17,61 @@ type MsgRow = {
   from_name: string;
   to_name: string;
   subject_norm: string | null;
-  body: any;
+  body: unknown;
   created_at_norm: string;
   from_user_id_norm: string;
   to_user_id_norm: string | null;
 };
 
-type PlayerOpt = { user_id: string; display_name: string; player_id: string };
+type PlayerOpt = {
+  user_id: string;
+  display_name: string;
+  player_id: string;
+};
 
 function fmt(dt?: string | null) {
   if (!dt) return "—";
-  try { return new Date(dt).toLocaleString(); } catch { return dt; }
+  try {
+    return new Date(dt).toLocaleString();
+  } catch {
+    return dt;
+  }
 }
 
 function isDmThread(threadKey: string) {
   return String(threadKey || "").startsWith("dm:");
 }
 
+function bodyText(value: unknown) {
+  return String(value ?? "");
+}
+
 function ReplyBox(props: { threadKey: string; onSent: () => void }) {
   const [me, setMe] = useState<string>("");
   const [peer, setPeer] = useState<{ id: string; name: string } | null>(null);
   const [body, setBody] = useState<string>("");
-  const [status, setStatus] = useState<string>("");useEffect(() => {
+  const [status, setStatus] = useState<string>("");
+
+  useEffect(() => {
+    let alive = true;
+
     (async () => {
       const u = await supabase.auth.getUser();
-      setMe(u.data?.user?.id || "");
+      if (!alive) return;
+      setMe(String(u.data?.user?.id || ""));
     })();
-  }, []);useEffect(() => {
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
     (async () => {
       setPeer(null);
+
       if (!props.threadKey || !isDmThread(props.threadKey) || !me) return;
 
       const r = await supabase
@@ -55,36 +81,58 @@ function ReplyBox(props: { threadKey: string; onSent: () => void }) {
         .order("created_at_norm", { ascending: false })
         .limit(50);
 
-      if (r.error || !r.data?.length) return;
+      if (!alive || r.error || !r.data?.length) return;
 
       let pid = "";
       let pname = "";
 
-      for (const m of (r.data as any[])) {
+      for (const m of r.data as any[]) {
         const f = String(m.from_user_id_norm || "");
         const t = String(m.to_user_id_norm || "");
-        if (f && f !== me) { pid = f; pname = String(m.from_name || ""); break; }
-        if (t && t !== me) { pid = t; pname = String(m.to_name || ""); break; }
+
+        if (f && f !== me) {
+          pid = f;
+          pname = String(m.from_name || "");
+          break;
+        }
+
+        if (t && t !== me) {
+          pid = t;
+          pname = String(m.to_name || "");
+          break;
+        }
       }
 
-      if (!pid) return;
+      if (!alive || !pid) return;
       setPeer({ id: pid, name: pname || pid });
     })();
+
+    return () => {
+      alive = false;
+    };
   }, [props.threadKey, me]);
 
   async function send() {
     if (!peer?.id) return;
-    if (!body.trim()) return alert("Reply body required.");
+    if (!body.trim()) {
+      alert("Reply body required.");
+      return;
+    }
 
     setStatus("Sending…");
+
     const r = await supabase.rpc("mail_send_message", {
       p_to_user_id: peer.id,
       p_subject: null,
       p_body: body,
       p_alliance_code: null,
-    });
+    } as any);
 
-    if (r.error) { setStatus(r.error.message); return; }
+    if (r.error) {
+      setStatus(r.error.message || "Send failed.");
+      return;
+    }
+
     setBody("");
     setStatus("Sent ✅");
     props.onSent();
@@ -99,43 +147,13 @@ function ReplyBox(props: { threadKey: string; onSent: () => void }) {
     ? "Finding peer…"
     : "";
 
-    // Realtime: reload inbox/threads when any mail_items change
-  useEffect(() => {
-    let ch: any = null;
-    let alive = true;
-
-    (async () => {
-      const u = await supabase.auth.getUser();
-      const uid = u.data?.user?.id;
-      if (!uid || !alive) return;
-
-      ch = supabase
-        .channel(`rt_mail_items_${uid}`)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "mail_items" },
-          () => {
-            // debounce reload slightly to avoid rapid bursts
-            window.clearTimeout((window as any).__rt_mail_t);
-            (window as any).__rt_mail_t = window.setTimeout(() => {
-              try { void load(); } catch {}
-            }, 250);
-          }
-        )
-        .subscribe();
-    })();
-
-    return () => {
-      alive = false;
-      try { if (ch) supabase.removeChannel(ch); } catch {}
-    };
-  }, []);
-
-return (
+  return (
     <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ fontWeight: 950 }}>Reply</div>
-        <div style={{ opacity: 0.8, fontSize: 12 }}>{status || (peer ? `To: ${peer.name}` : disabledReason)}</div>
+        <div style={{ opacity: 0.8, fontSize: 12 }}>
+          {status || (peer ? `To: ${peer.name}` : disabledReason)}
+        </div>
       </div>
 
       <textarea
@@ -148,7 +166,9 @@ return (
       />
 
       <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
-        <button type="button" onClick={() => void send()} disabled={!peer}>Send Reply</button>
+        <button type="button" onClick={() => void send()} disabled={!peer}>
+          Send Reply
+        </button>
       </div>
     </div>
   );
@@ -157,6 +177,7 @@ return (
 export default function MyMailThreadsPage() {
   const nav = useNavigate();
   const location = useLocation();
+
   const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [msgs, setMsgs] = useState<MsgRow[]>([]);
@@ -166,6 +187,11 @@ export default function MyMailThreadsPage() {
   const [toUserId, setToUserId] = useState<string>("");
   const [subject, setSubject] = useState<string>("");
   const [body, setBody] = useState<string>("");
+
+  const requestedThreadKey = useMemo(() => {
+    const raw = new URLSearchParams(location.search).get("thread");
+    return String(raw || "").trim();
+  }, [location.search]);
 
   async function loadPlayers() {
     const res = await supabase
@@ -177,53 +203,84 @@ export default function MyMailThreadsPage() {
   }
 
   async function loadThreads() {
-    const res = await supabase.from("v_my_mail_threads").select("*");
-    if (res.error) { setStatus(res.error.message); setThreads([]); return; }
-    const rows = (res.data ?? []) as any as ThreadRow[];
-    setThreads(rows);
-    if (!selected && rows.length) setSelected(rows[0].thread_key);
+    const res = await supabase
+      .from("v_my_mail_threads")
+      .select("*")
+      .order("last_message_at", { ascending: false });
+
+    if (res.error) {
+      setStatus(res.error.message);
+      setThreads([]);
+      return;
+    }
+
+    setThreads((res.data ?? []) as any);
   }
 
   async function loadMsgs(threadKey: string) {
     setStatus("Loading messages…");
+
     const res = await supabase
       .from("v_my_mail_messages")
       .select("*")
       .eq("thread_key", threadKey)
       .order("created_at_norm", { ascending: true });
 
-    if (res.error) { setStatus(res.error.message); setMsgs([]); return; }
+    if (res.error) {
+      setStatus(res.error.message);
+      setMsgs([]);
+      return;
+    }
+
     setMsgs((res.data ?? []) as any);
     setStatus("");
 
-    await supabase.rpc("mail_mark_thread_read", { p_thread_key: threadKey });
+    await supabase.rpc("mail_mark_thread_read", { p_thread_key: threadKey } as any);
     await loadThreads();
   }
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (String(selected || "").trim()) params.set("thread", String(selected || "").trim());
-    const qs = params.toString();
-    window.history.replaceState(null, "", qs ? `/mail-threads?${qs}` : "/mail-threads");
-  }, [selected]);
-
-  useEffect(() => {
     void loadPlayers();
     void loadThreads();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (String(selected || "").trim()) params.set("thread", String(selected || "").trim());
+    if (!threads.length) {
+      if (selected !== null) setSelected(null);
+      return;
+    }
+
+    if (requestedThreadKey) {
+      const exists = threads.some((t) => t.thread_key === requestedThreadKey);
+      if (exists) {
+        if (selected !== requestedThreadKey) setSelected(requestedThreadKey);
+        return;
+      }
+    }
+
+    const selectedExists = !!selected && threads.some((t) => t.thread_key === selected);
+    if (!selectedExists) {
+      setSelected(threads[0].thread_key);
+    }
+  }, [threads, requestedThreadKey, selected]);
+
+  useEffect(() => {
+    const current = String(new URLSearchParams(location.search).get("thread") || "").trim();
+    const next = String(selected || "").trim();
+
+    if (current === next) return;
+
+    const params = new URLSearchParams(location.search);
+    if (next) params.set("thread", next);
+    else params.delete("thread");
+
     const qs = params.toString();
-    window.history.replaceState(null, "", qs ? `/mail-threads?${qs}` : "/mail-threads");
-  }, [selected]);
+    nav(qs ? `/mail-threads?${qs}` : "/mail-threads", { replace: true });
+  }, [selected, location.search, nav]);
 
   useEffect(() => {
     if (selected) void loadMsgs(selected);
     else setMsgs([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
 
   const selectedThread = useMemo(
@@ -232,8 +289,15 @@ export default function MyMailThreadsPage() {
   );
 
   async function sendNew() {
-    if (!toUserId) return alert("Pick a player.");
-    if (!body.trim()) return alert("Message body required.");
+    if (!toUserId) {
+      alert("Pick a player.");
+      return;
+    }
+
+    if (!body.trim()) {
+      alert("Message body required.");
+      return;
+    }
 
     setStatus("Sending…");
 
@@ -242,9 +306,12 @@ export default function MyMailThreadsPage() {
       p_subject: subject || null,
       p_body: body,
       p_alliance_code: null,
-    });
+    } as any);
 
-    if (r.error) { setStatus(r.error.message); return; }
+    if (r.error) {
+      setStatus(r.error.message || "Send failed.");
+      return;
+    }
 
     setSubject("");
     setBody("");
@@ -272,28 +339,43 @@ export default function MyMailThreadsPage() {
         {status ? status : `Threads: ${threads.length}`}
       </div>
 
-      {/* Compose */}
       <div className="zombie-card" style={{ marginTop: 12, padding: 14, borderRadius: 16 }}>
         <div style={{ fontWeight: 950 }}>Send a message</div>
         <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
           <select value={toUserId} onChange={(e) => setToUserId(e.target.value)}>
             <option value="">Select player…</option>
             {players.map((p) => (
-              <option key={p.user_id} value={p.user_id}>{p.display_name}</option>
+              <option key={p.user_id} value={p.user_id}>
+                {p.display_name}
+              </option>
             ))}
           </select>
-          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (optional)" />
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder="Write your message…" />
+
+          <input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="Subject (optional)"
+          />
+
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={4}
+            placeholder="Write your message…"
+          />
+
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button type="button" onClick={() => void sendNew()}>Send</button>
+            <button type="button" onClick={() => void sendNew()}>
+              Send
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Threads + Messages */}
       <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "360px 1fr", gap: 12 }}>
         <div className="zombie-card" style={{ padding: 12, borderRadius: 16 }}>
           <div style={{ fontWeight: 950 }}>Threads</div>
+
           <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
             {threads.map((t) => (
               <button
@@ -305,64 +387,66 @@ export default function MyMailThreadsPage() {
                   padding: 10,
                   borderRadius: 14,
                   textAlign: "left",
-                  border: t.thread_key === selected ? "1px solid rgba(120,255,120,0.55)" : "1px solid rgba(255,255,255,0.12)",
+                  border:
+                    t.thread_key === selected
+                      ? "1px solid rgba(120,255,120,0.55)"
+                      : "1px solid rgba(255,255,255,0.12)",
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                   <div style={{ fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {t.subject || "(no subject)"}
                   </div>
+
                   {t.unread_count ? (
                     <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.25)" }}>
                       {t.unread_count}
                     </span>
                   ) : null}
                 </div>
+
                 <div style={{ marginTop: 6, opacity: 0.85, fontSize: 12 }}>{t.preview || ""}</div>
                 <div style={{ marginTop: 6, opacity: 0.7, fontSize: 11 }}>{fmt(t.last_message_at)}</div>
               </button>
             ))}
+
             {!threads.length ? <div style={{ opacity: 0.8 }}>No threads yet.</div> : null}
           </div>
         </div>
 
         <div className="zombie-card" style={{ padding: 12, borderRadius: 16 }}>
-          <div style={{ fontWeight: 950 }}>{selectedThread ? (selectedThread.subject || "(no subject)") : "Messages"}</div>
+          <div style={{ fontWeight: 950 }}>
+            {selectedThread ? (selectedThread.subject || "(no subject)") : "Messages"}
+          </div>
 
           <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
             {msgs.map((m, idx) => (
-              <div key={m.created_at_norm + ":" + idx} style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 12 }}>
+              <div
+                key={m.created_at_norm + ":" + idx}
+                style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 12 }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                   <div style={{ fontWeight: 900 }}>{m.from_name}</div>
                   <div style={{ opacity: 0.7, fontSize: 12 }}>{fmt(m.created_at_norm)}</div>
                 </div>
-                <div style={{ marginTop: 8 }}><MailMessageBody body={String(m.body ?? "")} /></div>
+
+                <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
+                  {bodyText(m.body)}
+                </div>
               </div>
             ))}
+
             {!msgs.length ? <div style={{ opacity: 0.8 }}>No messages in this thread.</div> : null}
           </div>
 
           <ReplyBox
             threadKey={selected || ""}
-            onSent={() => { if (selected) void loadMsgs(selected); }}
+            onSent={() => {
+              if (selected) void loadMsgs(selected);
+            }}
           />
         </div>
       </div>
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

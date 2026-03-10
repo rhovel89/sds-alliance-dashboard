@@ -81,11 +81,12 @@ export default function MyMailInboxPage() {
     setLoading(true);
     setStatus(t("common.sending"));
 
-    const res = await supabase.rpc("send_direct_message", {
+    const res = await supabase.rpc("mail_send_message", {
       p_to_user_id: to,
-      p_subject: subject.trim(),
+      p_subject: subject.trim() || null,
       p_body: b,
-    });
+      p_alliance_code: null,
+    } as any);
 
     if (res.error) { setStatus(res.error.message); setLoading(false); return; }
 
@@ -192,4 +193,5 @@ export default function MyMailInboxPage() {
     </div>
   );
 }
+
 
