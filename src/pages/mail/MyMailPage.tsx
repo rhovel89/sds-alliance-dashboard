@@ -277,6 +277,29 @@ export default function MyMailPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  async function markThreadRead(threadKey: string) {
+    const key = s(threadKey).trim();
+    if (!key) return;
+
+    setStatus("Marking thread read…");
+    const r = await supabase.rpc("mail_mark_thread_read", { p_thread_key: key } as any);
+    if (r.error) {
+      setStatus(r.error.message || "Mark read failed.");
+      return;
+    }
+
+    setStatus("Thread marked read ✅");
+    await refreshInbox();
+  }
+
+  async function markThreadUnread(threadKey: string) {
+    const key = s(threadKey).trim();
+    if (!key) return;
+
+    setStatus("Mark unread is preview-only for now. Opening thread view…");
+    nav(`/mail-threads?thread=${encodeURIComponent(key)}`);
+  }
+
   function whoLine(m: InboxRow) {
     const sender = s(m.sender_display_name || m.from_display_name || "Unknown");
     const peer = s(m.peer_display_name || "Unknown");
@@ -584,6 +607,24 @@ export default function MyMailPage() {
                     >
                       Reply
                     </button>
+
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      onClick={() => void markThreadRead(String(m.thread_key || ""))}
+                      disabled={!String(m.thread_key || "").trim() || Number(m.unread_count || 0) <= 0}
+                    >
+                      Mark Read
+                    </button>
+
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      onClick={() => void markThreadUnread(String(m.thread_key || ""))}
+                      disabled={!String(m.thread_key || "").trim()}
+                    >
+                      Mark Unread
+                    </button>
                   </div>
                 </div>
               ))
@@ -594,6 +635,8 @@ export default function MyMailPage() {
     </div>
   );
 }
+
+
 
 
 
