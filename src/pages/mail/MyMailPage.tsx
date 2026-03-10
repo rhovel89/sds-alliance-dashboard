@@ -237,6 +237,18 @@ export default function MyMailPage() {
     });
   }, [items, filterKind, mailTab, q]);
 
+  const tabCounts = useMemo(() => {
+    return {
+      all: items.length,
+      inbox: items.filter((m) => s(m.direction) !== "out").length,
+      sent: items.filter((m) => s(m.direction) === "out").length,
+      broadcast: items.filter((m) => {
+        const kind = s(m.kind);
+        return kind === "alliance_broadcast" || kind === "state_broadcast";
+      }).length,
+    };
+  }, [items]);
+
   function pickRecipient(recipientId: string) {
     const id = s(recipientId);
     const r = recipients.find((x) => s(x.user_id || x.id) === id);
@@ -511,6 +523,21 @@ export default function MyMailPage() {
             </div>
           </div>
 
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+            <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>
+              All {tabCounts.all}
+            </span>
+            <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>
+              Inbox {tabCounts.inbox}
+            </span>
+            <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>
+              Sent {tabCounts.sent}
+            </span>
+            <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>
+              Broadcast {tabCounts.broadcast}
+            </span>
+          </div>
+
           <div style={{ opacity: 0.75, marginBottom: 10 }}>
             Showing {filtered.length} of {items.length}
           </div>
@@ -635,6 +662,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
