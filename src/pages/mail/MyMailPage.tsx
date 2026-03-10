@@ -11,10 +11,6 @@ type RecipientRow = {
 };
 
 const MAIL_HOME_DRAFT_KEY = "sad_mail_home_draft_v1";
-
-const MAIL_RECENTS_KEY = "sad_mail_recent_recipients_v1";
-const MAIL_FAVORITES_KEY = "sad_mail_favorite_recipients_v1";
-
 type InboxRow = {
   id?: string;
   created_at?: string;
@@ -31,38 +27,6 @@ type InboxRow = {
 
 function s(v: any) {
   return v === null || v === undefined ? "" : String(v);
-}
-
-function loadRecentRecipients(): string[] {
-  try {
-    const raw = localStorage.getItem(MAIL_RECENTS_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr.map((x) => String(x || "")).filter(Boolean) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveRecentRecipients(arr: string[]) {
-  try {
-    localStorage.setItem(MAIL_RECENTS_KEY, JSON.stringify((arr || []).map((x) => String(x || "")).filter(Boolean)));
-  } catch {}
-}
-
-function loadFavoriteRecipients(): string[] {
-  try {
-    const raw = localStorage.getItem(MAIL_FAVORITES_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr.map((x) => String(x || "")).filter(Boolean) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveFavoriteRecipients(arr: string[]) {
-  try {
-    localStorage.setItem(MAIL_FAVORITES_KEY, JSON.stringify((arr || []).map((x) => String(x || "")).filter(Boolean)));
-  } catch {}
 }
 
 function buildMailThreadLink(threadKey: string): string {
@@ -223,9 +187,6 @@ export default function MyMailPage() {
       return;
     }
 
-    pushRecentRecipient(targetUserId);
-    pushRecentRecipient(targetUserId);
-    pushRecentRecipient(targetUserId);
     setRecipientSearch("");
     setSubject("");
     setBody("");
@@ -276,28 +237,6 @@ export default function MyMailPage() {
     setToUserId(id);
     setRecipientSearch(r ? recipientLabel(r) : "");
   }
-
-  function toggleFavoriteRecipient(recipientId: string) {
-    const id = s(recipientId);
-    if (!id) return;
-
-    const next = favoriteRecipientIds.includes(id)
-      ? favoriteRecipientIds.filter((x) => x !== id)
-      : [id, ...favoriteRecipientIds.filter((x) => x !== id)];
-
-    setFavoriteRecipientIds(next);
-    saveFavoriteRecipients(next);
-  }
-
-  function pushRecentRecipient(recipientId: string) {
-    const id = s(recipientId);
-    if (!id) return;
-
-    const next = [id, ...recentRecipientIds.filter((x) => x !== id)].slice(0, 8);
-    setRecentRecipientIds(next);
-    saveRecentRecipients(next);
-  }
-
   function recipientLabel(r: RecipientRow) {
     const name = s(r.display_name || r.game_name || r.user_id || r.id || "Unknown");
     const alliance = s(r.alliance_code || "").trim().toUpperCase();
@@ -428,75 +367,7 @@ export default function MyMailPage() {
                 </select>
               </div>
 
-              <div style={{ display: "grid", gap: 10 }}>
-                <div>
-                  <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Favorite Recipients</div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {favoriteRecipientIds.length === 0 ? (
-                      <span style={{ opacity: 0.65, fontSize: 12 }}>No favorites yet.</span>
-                    ) : favoriteRecipientIds.map((id) => {
-                      const r = recipients.find((x) => s(x.user_id || x.id) === id);
-                      if (!r) return null;
-                      return (
-                        <div key={`fav-${id}`} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          <button
-                            className="zombie-btn"
-                            type="button"
-                            style={{ padding: "6px 10px", fontSize: 12 }}
-                            onClick={() => pickRecipient(id)}
-                          >
-                            {recipientLabel(r)}
-                          </button>
-                          <button
-                            className="zombie-btn"
-                            type="button"
-                            style={{ padding: "6px 10px", fontSize: 12 }}
-                            onClick={() => toggleFavoriteRecipient(id)}
-                          >
-                            ★
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Recent Recipients</div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {recentRecipientIds.length === 0 ? (
-                      <span style={{ opacity: 0.65, fontSize: 12 }}>No recents yet.</span>
-                    ) : recentRecipientIds.map((id) => {
-                      const r = recipients.find((x) => s(x.user_id || x.id) === id);
-                      if (!r) return null;
-                      const isFav = favoriteRecipientIds.includes(id);
-                      return (
-                        <div key={`recent-${id}`} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          <button
-                            className="zombie-btn"
-                            type="button"
-                            style={{ padding: "6px 10px", fontSize: 12 }}
-                            onClick={() => pickRecipient(id)}
-                          >
-                            {recipientLabel(r)}
-                          </button>
-                          <button
-                            className="zombie-btn"
-                            type="button"
-                            style={{ padding: "6px 10px", fontSize: 12 }}
-                            onClick={() => toggleFavoriteRecipient(id)}
-                          >
-                            {isFav ? "★" : "☆"}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>Subject</div>
+              <div><div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>Subject</div>
                 <input
                   className="zombie-input"
                   value={subject}
@@ -713,6 +584,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
