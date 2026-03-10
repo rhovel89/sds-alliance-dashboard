@@ -103,6 +103,12 @@ export default function OwnerStateAchievementsPage() {
     return vals.sort((a, b) => a.localeCompare(b));
   }, [requests]);
 
+  const typeById = useMemo(() => {
+    const m: Record<string, AnyRow> = {};
+    for (const t of types) if (t?.id) m[String(t.id)] = t;
+    return m;
+  }, [types]);
+
   const typeOptions = useMemo(() => {
     const vals = Array.from(new Set(requests.map((r) => {
       const t = typeById[String(r?.achievement_type_id || "")];
@@ -131,12 +137,6 @@ export default function OwnerStateAchievementsPage() {
       return allianceOk && playerOk && typeOk && statusOk;
     });
   }, [requests, typeById, requestAllianceFilter, requestPlayerFilter, requestTypeFilter, requestStatusFilter]);
-
-  const typeById = useMemo(() => {
-    const m: Record<string, AnyRow> = {};
-    for (const t of types) if (t?.id) m[String(t.id)] = t;
-    return m;
-  }, [types]);
 
   const optionsByType = useMemo(() => {
     const m: Record<string, AnyRow[]> = {};
@@ -1222,6 +1222,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
