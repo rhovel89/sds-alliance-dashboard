@@ -56,6 +56,12 @@ function clearMailHomeDraft() {
   } catch {}
 }
 
+function previewSnippet(m: InboxRow) {
+  const text = s(m.body).replace(/\s+/g, " ").trim();
+  if (!text) return "(no preview)";
+  return text.length > 160 ? text.slice(0, 160) + "…" : text;
+}
+
 function niceDate(v: any) {
   try {
     return new Date(String(v || "")).toLocaleString();
@@ -543,9 +549,13 @@ export default function MyMailPage() {
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 8, opacity: 0.9 }}>
-                    {s(m.body).slice(0, 220)}
-                    {s(m.body).length > 220 ? "…" : ""}
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ opacity: 0.9, lineHeight: 1.45 }}>
+                      {previewSnippet(m)}
+                    </div>
+                    <div style={{ opacity: 0.6, fontSize: 12, marginTop: 6 }}>
+                      Thread: {s(m.thread_key) || "—"}
+                    </div>
                   </div>
 
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
@@ -584,6 +594,8 @@ export default function MyMailPage() {
     </div>
   );
 }
+
+
 
 
 
