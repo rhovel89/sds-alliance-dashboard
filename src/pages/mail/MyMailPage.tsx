@@ -496,10 +496,38 @@ export default function MyMailPage() {
             <div style={{ fontWeight: 900 }}>Inbox Preview</div>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="zombie-btn" type="button" onClick={() => setMailTab("all")}>All</button>
-              <button className="zombie-btn" type="button" onClick={() => setMailTab("inbox")}>Inbox</button>
-              <button className="zombie-btn" type="button" onClick={() => setMailTab("sent")}>Sent</button>
-              <button className="zombie-btn" type="button" onClick={() => setMailTab("broadcast")}>Broadcast</button>
+              <button
+                className="zombie-btn"
+                type="button"
+                onClick={() => setMailTab("all")}
+                style={mailTab === "all" ? { fontWeight: 900, outline: "2px solid rgba(255,255,255,0.22)" } : undefined}
+              >
+                All ({tabCounts.all})
+              </button>
+              <button
+                className="zombie-btn"
+                type="button"
+                onClick={() => setMailTab("inbox")}
+                style={mailTab === "inbox" ? { fontWeight: 900, outline: "2px solid rgba(255,255,255,0.22)" } : undefined}
+              >
+                Inbox ({tabCounts.inbox})
+              </button>
+              <button
+                className="zombie-btn"
+                type="button"
+                onClick={() => setMailTab("sent")}
+                style={mailTab === "sent" ? { fontWeight: 900, outline: "2px solid rgba(255,255,255,0.22)" } : undefined}
+              >
+                Sent ({tabCounts.sent})
+              </button>
+              <button
+                className="zombie-btn"
+                type="button"
+                onClick={() => setMailTab("broadcast")}
+                style={mailTab === "broadcast" ? { fontWeight: 900, outline: "2px solid rgba(255,255,255,0.22)" } : undefined}
+              >
+                Broadcast ({tabCounts.broadcast})
+              </button>
 
               <select
                 className="zombie-input"
@@ -572,7 +600,7 @@ export default function MyMailPage() {
                               background: "rgba(255,255,255,0.08)"
                             }}
                           >
-                            Unread {Number(m.unread_count || 0)}
+                            Unread • {Number(m.unread_count || 0)}
                           </span>
                         ) : null}
                         {s(m.kind) ? (
@@ -662,6 +690,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
