@@ -980,7 +980,6 @@ export default function OwnerStateAchievementsPage() {
           {initialStatusFromQuery ? ` • Status: ${initialStatusFromQuery}` : ""}
         </div>
       ) : null}
-      {msg ? <div style={{ marginTop: 10, opacity: 0.9 }}>{msg}</div> : null}
       </div>
 
 
