@@ -636,6 +636,10 @@ export default function OwnerMorningBriefPage() {
         ))}
       </div>
 
+      <div style={{ marginTop: 8, opacity: 0.68, fontSize: 12 }}>
+        Tip: the summary cards above are quick links into the related owner pages.
+      </div>
+
       <section style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
         <div style={{ fontWeight: 950, marginBottom: 8 }}>Saved Morning Brief Presets</div>
         <div style={{ display: "grid", gap: 8 }}>
@@ -769,6 +773,7 @@ export default function OwnerMorningBriefPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
