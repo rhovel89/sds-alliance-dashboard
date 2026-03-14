@@ -1032,9 +1032,9 @@ export default function OwnerStateAchievementsPage() {
 
       {tab === "requests" ? (
         <div className="zombie-card" style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 900 }}>Requests Queue</div>
+          <div style={{ fontWeight: 900 }}>Requests Queue ({filteredRequests.length})</div>
           <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>
-            Update counts/status/notes. Auto marks ✅ at 100%.
+            Update counts, status, and notes. Auto marks ✅ at 100%. Filters and bulk tools apply to the visible request list below.
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
@@ -1285,6 +1285,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
