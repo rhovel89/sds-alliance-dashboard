@@ -535,7 +535,7 @@ export default function MeDashboardPage() {
         <DailyBriefingPanel />
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-          <MeStateAlertsPanel stateCode={selectedPlayer?.state_code ?? "789"} />
+          <MeStateAlertsCard stateCode={selectedPlayer?.state_code ?? "789"} />
           <MeStateBulletinsPanel stateCode={selectedPlayer?.state_code ?? "789"} />
           <MeAllianceAlertsPanel
             allianceId={selectedAllianceProfile?.alliance_id ?? null}
@@ -748,6 +748,7 @@ export default function MeDashboardPage() {
     </div>
   );
 }
+
 
 
 
