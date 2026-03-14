@@ -394,7 +394,7 @@ export default function MeDashboardPage() {
   ];
 
   return (
-    <div style={{ padding: 16, maxWidth: 1380, margin: "0 auto" }}>
+    <div style={{ padding: "16px 20px 28px 20px", width: "100%", maxWidth: "none", margin: 0 }}>
       <div
         className="zombie-card"
         style={{
@@ -770,4 +770,5 @@ export default function MeDashboardPage() {
     </div>
   );
 }
+
 
