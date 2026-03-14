@@ -229,7 +229,7 @@ return (
 
               setStatus("Posting+Sending…");
               try {
-                await create(); // keep your existing DB insert logic
+                await postAlert(); // keep your existing DB insert logic
 
                 const b = body.trim();
                 const msg =
@@ -315,6 +315,8 @@ return (
     </div>
   );
 }
+
+
 
 
 
