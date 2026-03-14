@@ -536,12 +536,12 @@ export default function MeDashboardPage() {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
           <MeStateAlertsCard stateCode={selectedPlayer?.state_code ?? "789"} />
-          <MeStateBulletinsPanel stateCode={selectedPlayer?.state_code ?? "789"} />
+          <MeStateAnnouncementsCard stateCode={selectedPlayer?.state_code ?? "789"} />
           <MeAllianceAlertsPanel
             allianceId={selectedAllianceProfile?.alliance_id ?? null}
             allianceCode={selectedAllianceProfile?.alliance_code ?? null}
           />
-          <MeAllianceAnnouncementsPanel
+          <MeAllianceAnnouncementsCard
             allianceId={selectedAllianceProfile?.alliance_id ?? null}
             allianceCode={selectedAllianceProfile?.alliance_code ?? null}
           />
@@ -748,6 +748,7 @@ export default function MeDashboardPage() {
     </div>
   );
 }
+
 
 
 
