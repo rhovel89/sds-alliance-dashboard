@@ -947,13 +947,19 @@ export default function OwnerStateAchievementsPage() {
 
   return (
     <div style={{ padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🧟 Owner — State Achievements Admin</h2>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/owner")}>Back to Owner</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements")}>Player Form</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements-tracker")}>Tracker</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <h2 style={{ margin: 0 }}>🧟 Owner — State Achievements Admin</h2>
+          <div style={{ opacity: 0.72, fontSize: 12 }}>
+            Manage requests, types, options, access, and export tools for the selected state.
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/owner")}>Back to Owner</button>
+          <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements")}>Player Form</button>
+          <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements-tracker")}>Tracker</button>
+          <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
           <SupportBundleButton />
         </div>
       </div>
@@ -1340,6 +1346,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
