@@ -504,10 +504,13 @@ export default function MyMailPage() {
               padding: 14,
             }}
           >
-            <div style={{ fontWeight: 900, marginBottom: 10 }}>Quick Links</div>
+            <div style={{ fontWeight: 900, marginBottom: 6 }}>Other Mail Views</div>
+            <div style={{ opacity: 0.72, fontSize: 12, marginBottom: 10 }}>
+              Jump into the full inbox list or the dedicated thread workspace.
+            </div>
             <div style={{ display: "grid", gap: 8 }}>
-              <Link to="/mail-v2">Open full inbox</Link>
-              <Link to="/mail-threads">Open full thread view</Link>
+              <Link to="/mail-v2">Open full inbox list</Link>
+              <Link to="/mail-threads">Open full thread workspace</Link>
             </div>
           </div>
         </div>
@@ -750,6 +753,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
