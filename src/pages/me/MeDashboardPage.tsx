@@ -285,11 +285,32 @@ export default function MeDashboardPage() {
     if (up.error) setStatus(up.error.message);
   }
 
-  async function saveAllianceProfileField(field: string, value: string) {
+    async function saveAllianceProfileField(field: string, value: string) {
     if (!selectedProfileId) return;
     setAlliances((prev) => prev.map((a) => (a.id === selectedProfileId ? ({ ...(a as any), [field]: value } as any) : a)));
     const up = await supabase.from("player_alliances").update({ [field]: value }).eq("id", selectedProfileId);
     if (up.error) setStatus(up.error.message);
+  }
+
+  async function saveAllianceProfile() {
+    if (!selectedProfileId || !selectedAllianceProfile) return;
+    setStatus("Saving alliance profile…");
+
+    const up = await supabase
+      .from("player_alliances")
+      .update({
+        in_game_name: String(selectedAllianceProfile.in_game_name ?? ""),
+        notes: String(selectedAllianceProfile.notes ?? ""),
+      })
+      .eq("id", selectedProfileId);
+
+    if (up.error) {
+      setStatus(up.error.message);
+      return;
+    }
+
+    setStatus("Alliance profile saved ✅");
+    window.setTimeout(() => setStatus(""), 1200);
   }
 
   async function selectAllianceProfile(profileId: string) {
@@ -749,3 +770,4 @@ export default function MeDashboardPage() {
     </div>
   );
 }
+
