@@ -972,12 +972,22 @@ export default function OwnerStateAchievementsPage() {
           {loading ? "Loading…" : `types=${types.length} • options=${options.length} • requests=${requests.length} • access=${access.length}`}
         </div>
         {(initialAllianceFromQuery || initialTypeFromQuery || initialPlayerFromQuery || initialStatusFromQuery) ? (
-        <div style={{ marginBottom: 10, border:"1px solid rgba(255,255,255,0.10)", background:"rgba(255,255,255,0.04)", borderRadius: 12, padding: 10 }}>
-          Deep link filters active
-          {initialAllianceFromQuery ? ` • Alliance: ${initialAllianceFromQuery}` : ""}
-          {initialTypeFromQuery ? ` • Type: ${initialTypeFromQuery}` : ""}
-          {initialPlayerFromQuery ? ` • Player: ${initialPlayerFromQuery}` : ""}
-          {initialStatusFromQuery ? ` • Status: ${initialStatusFromQuery}` : ""}
+        <div
+          style={{
+            marginBottom: 10,
+            border: "1px solid rgba(120,180,255,0.28)",
+            background: "rgba(120,180,255,0.08)",
+            borderRadius: 12,
+            padding: 10,
+          }}
+        >
+          <div style={{ fontWeight: 800 }}>Deep link filters active</div>
+          <div style={{ fontSize: 12, opacity: 0.82, marginTop: 4 }}>
+            {initialAllianceFromQuery ? `Alliance: ${initialAllianceFromQuery}` : ""}
+            {initialTypeFromQuery ? `${initialAllianceFromQuery ? " • " : ""}Type: ${initialTypeFromQuery}` : ""}
+            {initialPlayerFromQuery ? `${(initialAllianceFromQuery || initialTypeFromQuery) ? " • " : ""}Player: ${initialPlayerFromQuery}` : ""}
+            {initialStatusFromQuery ? `${(initialAllianceFromQuery || initialTypeFromQuery || initialPlayerFromQuery) ? " • " : ""}Status: ${initialStatusFromQuery}` : ""}
+          </div>
         </div>
       ) : null}
         {msg ? (
@@ -1275,6 +1285,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
