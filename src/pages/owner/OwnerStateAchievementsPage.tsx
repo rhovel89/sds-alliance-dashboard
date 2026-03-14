@@ -1134,12 +1134,33 @@ export default function OwnerStateAchievementsPage() {
                         onChange={() => toggleSelectedRequestId(String(r?.id || ""))}
                       />
                     </label>
-                    <div style={{ fontWeight: 900 }}>{String(r.player_name || "Player")} <span style={{ opacity: 0.7 }}>({String(r.alliance_name || "—")})</span></div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <div style={{ fontWeight: 900 }}>{String(r.player_name || "Player")}</div>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          padding: "3px 8px",
+                          borderRadius: 999,
+                          border: "1px solid rgba(255,255,255,0.10)",
+                          background: "rgba(255,255,255,0.05)",
+                          opacity: 0.9
+                        }}
+                      >
+                        {String(r.alliance_name || "—")}
+                      </span>
+                    </div>
                     <div style={{ marginLeft: "auto", fontWeight: 900 }}>{cur}/{req}{done ? " ✅" : ""}</div>
                   </div>
 
                   <div style={{ opacity: 0.85, marginTop: 6 }}>
-                    {typeName(r.achievement_type_id)}{r.option_id ? (" — " + optionLabel(r.option_id)) : ""}
+                    <span style={{ fontWeight: 700 }}>
+                      {typeName(r.achievement_type_id)}
+                    </span>
+                    {r.option_id ? (
+                      <span style={{ opacity: 0.78 }}>
+                        {" — " + optionLabel(r.option_id)}
+                      </span>
+                    ) : null}
                   </div>
 
                   <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -1346,6 +1367,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
