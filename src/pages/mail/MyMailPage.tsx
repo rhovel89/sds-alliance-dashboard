@@ -733,7 +733,11 @@ export default function MyMailPage() {
                     ) : null}
                   </div>
 
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div style={{ fontSize: 12, opacity: 0.68, marginBottom: 8 }}>
+                      Actions
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <button
                       className="zombie-btn"
                       type="button"
@@ -777,6 +781,7 @@ export default function MyMailPage() {
                     >
                       Unread Tools
                     </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -787,6 +792,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
