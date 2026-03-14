@@ -4,7 +4,6 @@ import { supabase } from "../../lib/supabaseBrowserClient";
 
 type Row = {
   id: string;
-  alliance_code?: string | null;
   created_at: string;
   severity?: "info" | "warning" | "critical" | null;
   title?: string | null;
@@ -32,23 +31,17 @@ function tone(sev?: string | null) {
   return { badge: "rgba(120,190,255,0.14)", border: "rgba(120,190,255,0.24)" };
 }
 
-export default function MeAllianceAlertsPanel(props: { allianceId: string | null; allianceCode?: string | null }) {
-  const code = String(props.allianceCode ?? "").trim().toUpperCase();
+export default function MeStateAlertsCard() {
   const [rows, setRows] = useState<Row[]>([]);
   const [status, setStatus] = useState("");
+  const stateCode = "789";
 
   async function load() {
-    if (!code) {
-      setRows([]);
-      setStatus("");
-      return;
-    }
-
     setStatus("Loading…");
     const res = await supabase
-      .from("v_my_alliance_alerts_v2")
+      .from("v_my_state_alerts")
       .select("*")
-      .eq("alliance_code", code)
+      .eq("state_code", stateCode)
       .order("pinned", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(12);
@@ -65,10 +58,9 @@ export default function MeAllianceAlertsPanel(props: { allianceId: string | null
 
   useEffect(() => {
     void load();
-    if (!code) return;
     const id = window.setInterval(() => { void load(); }, 30000);
     return () => window.clearInterval(id);
-  }, [code]);
+  }, []);
 
   const unacked = useMemo(() => rows.filter((r) => !r.is_acked).length, [rows]);
   const top = useMemo(() => {
@@ -76,35 +68,29 @@ export default function MeAllianceAlertsPanel(props: { allianceId: string | null
     return (pinned.length ? pinned : rows).slice(0, 3);
   }, [rows]);
 
-  const link = props.allianceId ? `/dashboard/${props.allianceId}/alerts` : "";
-
   return (
     <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div>
-          <div style={{ fontWeight: 950, fontSize: 16 }}>🛡️ Alliance Alerts</div>
+          <div style={{ fontWeight: 950, fontSize: 16 }}>🚨 State Alerts</div>
           <div style={{ opacity: 0.78, fontSize: 12 }}>
-            {code ? `Alliance ${code}` : "No alliance selected"} {status ? ` • ${status}` : code ? ` • ${rows.length} live item(s)` : ""}
+            State {stateCode} • {status ? status : `${rows.length} live item(s)`}
           </div>
         </div>
 
-        {code ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ fontSize: 12, opacity: 0.84 }}>
-              Unacked <b>{unacked}</b>
-            </div>
-            <button type="button" className="zombie-btn" onClick={() => void load()}>
-              Refresh
-            </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ fontSize: 12, opacity: 0.84 }}>
+            Unacked <b>{unacked}</b>
           </div>
-        ) : null}
+          <button type="button" className="zombie-btn" onClick={() => void load()}>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-        {!code ? (
-          <div style={{ opacity: 0.72 }}>Select an alliance profile to see alliance alerts.</div>
-        ) : top.length === 0 ? (
-          <div style={{ opacity: 0.72 }}>No alliance alerts yet.</div>
+        {top.length === 0 ? (
+          <div style={{ opacity: 0.72 }}>No state alerts yet.</div>
         ) : (
           top.map((r) => {
             const t = tone(r.severity);
@@ -118,29 +104,33 @@ export default function MeAllianceAlertsPanel(props: { allianceId: string | null
                   padding: 12,
                 }}
               >
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 900,
-                      letterSpacing: 0.3,
-                      padding: "4px 8px",
-                      borderRadius: 999,
-                      background: t.badge,
-                      border: `1px solid ${t.border}`,
-                    }}
-                  >
-                    {(String(r.severity ?? "info")).toUpperCase()}
-                  </span>
-                  {r.pinned ? <span style={{ fontSize: 12, opacity: 0.85 }}>📌 Pinned</span> : null}
-                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 900,
+                          letterSpacing: 0.3,
+                          padding: "4px 8px",
+                          borderRadius: 999,
+                          background: t.badge,
+                          border: `1px solid ${t.border}`,
+                        }}
+                      >
+                        {(String(r.severity ?? "info")).toUpperCase()}
+                      </span>
+                      {r.pinned ? <span style={{ fontSize: 12, opacity: 0.85 }}>📌 Pinned</span> : null}
+                    </div>
 
-                <div style={{ fontWeight: 900, marginTop: 8 }}>
-                  {String(r.title ?? "Alliance alert")}
-                </div>
+                    <div style={{ fontWeight: 900, marginTop: 8 }}>
+                      {String(r.title ?? "State alert")}
+                    </div>
 
-                <div style={{ opacity: 0.78, fontSize: 13, lineHeight: 1.45, marginTop: 6 }}>
-                  {snip(r.body)}
+                    <div style={{ opacity: 0.78, fontSize: 13, lineHeight: 1.45, marginTop: 6 }}>
+                      {snip(r.body)}
+                    </div>
+                  </div>
                 </div>
 
                 <div style={{ marginTop: 8, opacity: 0.68, fontSize: 12 }}>
@@ -153,7 +143,7 @@ export default function MeAllianceAlertsPanel(props: { allianceId: string | null
       </div>
 
       <div style={{ marginTop: 10 }}>
-        {link ? <Link to={link}>Open alliance alerts</Link> : null}
+        <Link to="/state/789/alerts-db">Open full state alerts</Link>
       </div>
     </div>
   );

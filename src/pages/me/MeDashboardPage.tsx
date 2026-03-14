@@ -1,8 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabaseBrowserClient";
+import DailyBriefingPanel from "../../components/me/DailyBriefingPanel";
 import MeTodayEventsPanel from "../../components/me/MeTodayEventsPanel";
 import MeAllianceAlertsPanel from "../../components/me/MeAllianceAlertsPanel";
+import MeStateAlertsCard from "../../components/me/MeStateAlertsCard";
+import MeStateAnnouncementsCard from "../../components/me/MeStateAnnouncementsCard";
+import MeAllianceAnnouncementsCard from "../../components/me/MeAllianceAnnouncementsCard";
 
 const LS_STATE_ALERTS_V2 = "sad_state_789_alerts_v2";
 
@@ -362,48 +366,121 @@ export default function MeDashboardPage() {
   const alertsLink = selectedAllianceProfile?.alliance_id ? `/dashboard/${selectedAllianceProfile.alliance_id}/alerts` : "";
 
   return (
-    <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900 }}>My Dashboard</h1>
-      <div style={{ opacity: 0.85, marginTop: 6 }}>
-        {userId ? "Signed in ✅" : "Not signed in"}{loading ? " • Loading…" : ""}{status ? " • " + status : ""}
-      </div>
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-        <Link to="/state/789/ops">State Ops Console</Link>
-        <Link to="/state/789/alerts">State Alerts (V2)</Link>
-        <Link to="/mail">My Mail (Supabase)</Link>
-        <button disabled={!userId} onClick={() => userId && refreshAll(userId)}>Refresh</button>
-      </div>
-
-      <hr style={{ margin: "16px 0", opacity: 0.3 }} />
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <MeTodayEventsPanel events={eventsToday} alliances={alliances} />
-
-        <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>My Mail (latest)</div>
-          <div style={{ padding: 12 }}>
-            {myMail.length === 0 ? (
-              <div style={{ opacity: 0.75 }}>No mail yet.</div>
-            ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                {myMail.slice(0, 6).map((m) => (
-                  <div key={m.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 10 }}>
-                    <div style={{ fontWeight: 900 }}>[{m.kind}] {m.subject || "(no subject)"}</div>
-                    <div style={{ opacity: 0.75, fontSize: 12 }}>{new Date(m.created_at).toLocaleString()}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div style={{ marginTop: 10 }}><Link to="/mail">Open inbox</Link></div>
+    <div style={{ padding: 16, maxWidth: 1400, margin: "0 auto", display: "grid", gap: 16 }}>
+      <div
+        style={{
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
+          borderRadius: 18,
+          padding: 16,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontSize: 28, fontWeight: 950 }}>🎯 Personal Command Center</div>
+            <div style={{ opacity: 0.84, marginTop: 6 }}>
+              {userId ? "Signed in ✅" : "Not signed in"}
+              {loading ? " • Loading…" : ""}
+              {status ? " • " + status : ""}
+            </div>
+            <div style={{ opacity: 0.72, marginTop: 8, fontSize: 13 }}>
+              State {selectedPlayer?.state_code || "789"} • Alliance {selectedAllianceProfile?.alliance_code || "—"} • Role {selectedAllianceProfile?.role || "—"}
+            </div>
           </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <Link to="/state/789/ops">State Ops</Link>
+            <Link to="/state/789/alerts-db">State Alerts</Link>
+            <Link to="/mail-threads">Mail Threads</Link>
+            <button disabled={!userId} onClick={() => userId && refreshAll(userId)}>Refresh</button>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginTop: 14 }}>
+          {[
+            { label: "Linked Players", value: players.length, sub: selectedPlayer?.game_name || "No player selected" },
+            { label: "Alliance", value: selectedAllianceProfile?.alliance_code || "—", sub: selectedAllianceProfile?.role || "No alliance selected" },
+            { label: "Events Today", value: eventsToday.length, sub: "Upcoming alliance events" },
+            { label: "Mail", value: myMail.length, sub: "Latest inbox items" },
+            { label: "Achievements", value: myAchievements.length, sub: "Recent requests" },
+            { label: "HQs", value: hqs.length, sub: "For selected alliance" },
+          ].map((item) => (
+            <div
+              key={item.label}
+              style={{
+                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.04)",
+                borderRadius: 14,
+                padding: 12,
+              }}
+            >
+              <div style={{ opacity: 0.72, fontSize: 12 }}>{item.label}</div>
+              <div style={{ fontWeight: 950, fontSize: 24, marginTop: 4 }}>{item.value}</div>
+              <div style={{ opacity: 0.68, fontSize: 12, marginTop: 4 }}>{item.sub}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <MeAllianceAlertsPanel
-        allianceId={selectedAllianceProfile?.alliance_id ?? null}
-        allianceCode={selectedAllianceProfile?.alliance_code ?? null}
-      />
+      <DailyBriefingPanel />
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+        <MeStateAlertsCard />
+        <MeStateAnnouncementsCard />
+        <MeAllianceAlertsPanel
+          allianceId={selectedAllianceProfile?.alliance_id ?? null}
+          allianceCode={selectedAllianceProfile?.alliance_code ?? null}
+        />
+        <MeAllianceAnnouncementsCard
+          allianceId={selectedAllianceProfile?.alliance_id ?? null}
+          allianceCode={selectedAllianceProfile?.alliance_code ?? null}
+        />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+        <MeTodayEventsPanel events={eventsToday} alliances={alliances} />
+
+        <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 950, fontSize: 16 }}>📬 My Mail</div>
+              <div style={{ opacity: 0.78, fontSize: 12 }}>
+                Latest inbox activity for your account
+              </div>
+            </div>
+            <Link to="/mail-threads">Open inbox</Link>
+          </div>
+
+          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            {myMail.length === 0 ? (
+              <div style={{ opacity: 0.72 }}>No mail yet.</div>
+            ) : (
+              myMail.slice(0, 6).map((m) => (
+                <div
+                  key={m.id}
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "rgba(255,255,255,0.03)",
+                    borderRadius: 14,
+                    padding: 12,
+                  }}
+                >
+                  <div style={{ fontWeight: 900 }}>
+                    [{m.kind}] {m.subject || "(no subject)"}
+                  </div>
+                  <div style={{ opacity: 0.78, fontSize: 13, lineHeight: 1.45, marginTop: 6 }}>
+                    {String(m.body || "").replace(/\s+/g, " ").trim().slice(0, 160) || "(no preview)"}
+                    {String(m.body || "").replace(/\s+/g, " ").trim().length > 160 ? "…" : ""}
+                  </div>
+                  <div style={{ opacity: 0.68, fontSize: 12, marginTop: 8 }}>
+                    {new Date(m.created_at).toLocaleString()}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
 
       <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden", marginTop: 16 }}>
         <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>My Achievements</div>
@@ -434,6 +511,42 @@ export default function MeDashboardPage() {
       </div>
 
       <hr style={{ margin: "16px 0", opacity: 0.3 }} />
+
+      {/* COMMAND CENTER LIVE RAIL */}
+      <div className="zombie-card" style={{ borderRadius: 20, padding: 16, marginBottom: 16, background: "linear-gradient(135deg, rgba(176,18,27,0.14), rgba(255,255,255,0.03))", border: "1px solid rgba(255,255,255,0.10)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 24, fontWeight: 950 }}>🧭 Personal Command Center</div>
+            <div style={{ opacity: 0.78, marginTop: 4 }}>
+              Live state + alliance intel, announcements, alerts, mail, and today’s activity.
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link to="/state/789/alerts-db">Live State Alerts</Link>
+            <Link to="/mail-threads">Mail Threads</Link>
+            <Link to="/state/789">State Hub</Link>
+            {selectedAllianceProfile?.alliance_id ? <Link to={`/dashboard/${selectedAllianceProfile.alliance_id}`}>Alliance Hub</Link> : null}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: 16, marginBottom: 16 }}>
+        <DailyBriefingPanel />
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+          <MeStateAlertsPanel stateCode={selectedPlayer?.state_code ?? "789"} />
+          <MeStateBulletinsPanel stateCode={selectedPlayer?.state_code ?? "789"} />
+          <MeAllianceAlertsPanel
+            allianceId={selectedAllianceProfile?.alliance_id ?? null}
+            allianceCode={selectedAllianceProfile?.alliance_code ?? null}
+          />
+          <MeAllianceAnnouncementsPanel
+            allianceId={selectedAllianceProfile?.alliance_id ?? null}
+            allianceCode={selectedAllianceProfile?.alliance_code ?? null}
+          />
+        </div>
+      </div>
 
       <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden" }}>
         <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>Player Profile</div>
@@ -635,4 +748,7 @@ export default function MeDashboardPage() {
     </div>
   );
 }
+
+
+
 
