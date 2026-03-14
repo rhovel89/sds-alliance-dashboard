@@ -1369,7 +1369,12 @@ export default function OwnerStateAchievementsPage() {
                   </div>
 
                   <div style={{ opacity: 0.6, fontSize: 12, marginTop: 8 }}>
-                    created: {String(r.created_at || "—")}{r.completed_at ? (" • completed: " + String(r.completed_at)) : ""}
+                    <span>Created: {String(r.created_at || "—")}</span>
+                    {r.completed_at ? (
+                      <span style={{ marginLeft: 8, color: "rgba(120,255,120,0.88)" }}>
+                        Completed: {String(r.completed_at)}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -1538,6 +1543,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
