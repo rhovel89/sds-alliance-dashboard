@@ -45,7 +45,7 @@ export default function DailyBriefingPanel() {
     try {
       const b = await supabase
         .from("state_bulletins")
-        .select("id,title,pinned,created_at,expires_at")
+        .select("id,title,pinned,created_at")
         .eq("state_code", stateCode)
         .order("pinned", { ascending: false })
         .order("created_at", { ascending: false })
@@ -130,3 +130,4 @@ export default function DailyBriefingPanel() {
     </div>
   );
 }
+
