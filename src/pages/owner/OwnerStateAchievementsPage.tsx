@@ -138,6 +138,15 @@ export default function OwnerStateAchievementsPage() {
     });
   }, [requests, typeById, requestAllianceFilter, requestPlayerFilter, requestTypeFilter, requestStatusFilter]);
 
+  const requestActiveFilterSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (requestAllianceFilter !== "ALL") parts.push(`Alliance: ${requestAllianceFilter}`);
+    if (String(requestPlayerFilter || "").trim()) parts.push(`Player: ${String(requestPlayerFilter || "").trim()}`);
+    if (requestTypeFilter !== "ALL") parts.push(`Type: ${requestTypeFilter}`);
+    if (requestStatusFilter !== "ALL") parts.push(`Status: ${requestStatusFilter}`);
+    return parts;
+  }, [requestAllianceFilter, requestPlayerFilter, requestTypeFilter, requestStatusFilter]);
+
   const optionsByType = useMemo(() => {
     const m: Record<string, AnyRow[]> = {};
     for (const o of options || []) {
@@ -996,6 +1005,27 @@ export default function OwnerStateAchievementsPage() {
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ fontSize: 12, opacity: 0.72 }}>
+                Showing {Math.min(filteredRequests.length, 200)} of {filteredRequests.length} filtered request(s)
+                {requestActiveFilterSummary.length ? ` • Active: ${requestActiveFilterSummary.join(" • ")}` : ""}
+              </div>
+
+              <button
+                className="zombie-btn"
+                style={{ padding: "8px 10px", fontSize: 12 }}
+                onClick={() => {
+                  setRequestAllianceFilter("ALL");
+                  setRequestPlayerFilter("");
+                  setRequestTypeFilter("ALL");
+                  setRequestStatusFilter("ALL");
+                  setSelectedRequestIds([]);
+                }}
+              >
+                Reset Request Filters
+              </button>
+            </div>
+
             {filteredRequests.slice(0, 200).map((r) => {
               const req = reqRequired(r);
               const cur = reqCurrent(r);
@@ -1222,6 +1252,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
