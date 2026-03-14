@@ -386,10 +386,21 @@ export default function MyMailPage() {
       {status ? (
         <div
           style={{
-            border: "1px solid rgba(255,255,255,0.10)",
-            background: "rgba(255,255,255,0.04)",
+            border:
+              s(status).includes("✅")
+                ? "1px solid rgba(120,255,120,0.35)"
+                : /failed|error|required|must/i.test(s(status))
+                ? "1px solid rgba(255,120,120,0.35)"
+                : "1px solid rgba(255,255,255,0.10)",
+            background:
+              s(status).includes("✅")
+                ? "rgba(120,255,120,0.08)"
+                : /failed|error|required|must/i.test(s(status))
+                ? "rgba(255,120,120,0.08)"
+                : "rgba(255,255,255,0.04)",
             borderRadius: 14,
             padding: 12,
+            fontWeight: s(status).includes("✅") ? 700 : 500,
           }}
         >
           {status}
@@ -753,6 +764,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
