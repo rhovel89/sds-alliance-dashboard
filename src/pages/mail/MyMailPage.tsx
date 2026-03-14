@@ -548,6 +548,18 @@ export default function MyMailPage() {
                 placeholder="Search inbox..."
                 style={{ minWidth: 220, padding: "10px 12px" }}
               />
+
+              <button
+                className="zombie-btn"
+                type="button"
+                onClick={() => {
+                  setMailTab("all");
+                  setFilterKind("");
+                  setQ("");
+                }}
+              >
+                Reset Filters
+              </button>
             </div>
           </div>
 
@@ -695,6 +707,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
