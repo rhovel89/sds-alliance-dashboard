@@ -498,9 +498,6 @@ export default function OwnerQueueHealthPage() {
                     <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => nav(buildQueueSourceLink(r))}>
                       Open Source
                     </button>
-                    <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => nav(buildQueueSourceLink(r))}>
-                      Open Source
-                    </button>
                   </div>
                 </div>
               </div>
@@ -549,9 +546,6 @@ export default function OwnerQueueHealthPage() {
                     </button>
                     <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => void copyText(String(r?.id || ""))}>
                       Copy ID
-                    </button>
-                    <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => nav(buildQueueSourceLink(r))}>
-                      Open Source
                     </button>
                     <button className="zombie-btn" type="button" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => nav(buildQueueSourceLink(r))}>
                       Open Source
