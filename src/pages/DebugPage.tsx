@@ -56,9 +56,10 @@ export default function DebugPage() {
 
       <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.href = "/owner/jump"}>/owner/jump</button>
-        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.href = "/state/789/alerts"}>/state/789/alerts</button>
+        <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.href = "/state/789/alerts-db"}>/state/789/alerts</button>
         <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.href = "/state/789/discussion"}>/state/789/discussion</button>
       </div>
     </div>
   );
 }
+

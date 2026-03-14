@@ -59,7 +59,7 @@ export default function OwnerEventRemindersPage() {
 
           <button type="button" onClick={() => void run()}>Generate Reminders</button>
 
-          <a href="/owner/discord-queue-db" style={{ opacity: 0.85, fontSize: 12, marginLeft: "auto" }}>
+          <a href="/owner/discord-queue" style={{ opacity: 0.85, fontSize: 12, marginLeft: "auto" }}>
             View full queue →
           </a>
         </div>
@@ -92,3 +92,4 @@ export default function OwnerEventRemindersPage() {
     </div>
   );
 }
+

@@ -28,7 +28,7 @@ export default function StateQuickLinksPanel() {
 
       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
         <Link to="/state/789" style={pillStyle()}>🗺️ State Dashboard</Link>
-        <Link to="/state/789/alerts" style={pillStyle()}>🚨 State Alerts</Link>
+        <Link to="/state/789/alerts-db" style={pillStyle()}>🚨 State Alerts</Link>
         <Link to="/state/789/discussion" style={pillStyle()}>💬 Discussion</Link>
         <Link to="/state/789/achievements" style={pillStyle()}>🏆 Achievements</Link>
       </div>

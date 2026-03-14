@@ -70,7 +70,7 @@ export default function DailyBriefingPanel() {
   useEffect(() => { void load(); }, []);
 
   const pills = useMemo(() => ([
-    { label: "Mail", value: unread, to: "/mail-threads", emoji: "📬" },
+    { label: "Mail", value: unread, to: "/mail", emoji: "📬" },
     { label: "Events Today", value: eventsToday, to: "/dashboard", emoji: "📅" },
     { label: "State Bulletins", value: bulletinsCount, to: "/state/789", emoji: "📌" },
   ]), [unread, eventsToday, bulletinsCount]);
@@ -117,7 +117,7 @@ export default function DailyBriefingPanel() {
       ) : null}
 
       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <button type="button" onClick={() => nav("/state/789/alerts")} style={{ padding: "10px 12px", borderRadius: 12 }}>
+        <button type="button" onClick={() => nav("/state/789/alerts-db")} style={{ padding: "10px 12px", borderRadius: 12 }}>
           🚨 State Alerts
         </button>
         <button type="button" onClick={() => nav("/state/789/discussion")} style={{ padding: "10px 12px", borderRadius: 12 }}>
@@ -130,4 +130,6 @@ export default function DailyBriefingPanel() {
     </div>
   );
 }
+
+
 

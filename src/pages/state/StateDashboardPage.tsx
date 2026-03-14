@@ -44,7 +44,7 @@ export default function StateDashboardPage() {
       </div>
 
       <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-        <CardButton emoji="🚨" label="State Alerts" to="/state/789/alerts" sub="Compose + pin + export/import" />
+        <CardButton emoji="🚨" label="State Alerts" to="/state/789/alerts-db" sub="Compose + pin + export/import + schedule" />
         <CardButton emoji="💬" label="State Discussions" to="/state/789/discussion" sub="Threads + tags + export/import" />
         <CardButton emoji="🏆" label="State Achievements" to="/state/789/achievements" sub="Requests + progress tracking" />
       </div>
@@ -60,6 +60,7 @@ export default function StateDashboardPage() {
     </div>
   );
 }
+
 
 
 

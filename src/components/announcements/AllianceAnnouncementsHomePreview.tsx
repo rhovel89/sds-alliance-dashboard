@@ -55,7 +55,7 @@ export default function AllianceAnnouncementsHomePreview() {
     <div className="zombie-card" style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 900, fontSize: 16 }}>📣 Announcements</div>
-        <Link to={/dashboard//announcements} style={{ opacity: 0.85 }}>
+        <Link to={`/dashboard/${encodeURIComponent(allianceCode)}/announcements`} style={{ opacity: 0.85 }}>
           View all →
         </Link>
       </div>

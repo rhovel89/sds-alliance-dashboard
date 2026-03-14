@@ -419,8 +419,8 @@ export default function MeDashboardPage() {
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Link to="/state/789">State Hub</Link>
             <Link to="/state/789/ops">State Ops</Link>
-            <Link to="/state/789/alerts">State Alerts</Link>
-            <Link to="/mail-threads">Mail</Link>
+            <Link to="/state/789/alerts-db">State Alerts</Link>
+            <Link to="/mail">Mail</Link>
             {selectedAllianceProfile?.alliance_id ? (
               <Link to={`/dashboard/${selectedAllianceProfile.alliance_id}`}>Alliance Hub</Link>
             ) : null}
@@ -517,7 +517,7 @@ export default function MeDashboardPage() {
                 <div style={{ fontWeight: 950, fontSize: 16 }}>📬 My Mail</div>
                 <div style={{ opacity: 0.78, fontSize: 12 }}>Latest inbox activity for your account</div>
               </div>
-              <Link to="/mail-threads">Open inbox</Link>
+              <Link to="/mail">Open inbox</Link>
             </div>
 
             <div style={{ marginTop: 12 }}>
@@ -770,5 +770,8 @@ export default function MeDashboardPage() {
     </div>
   );
 }
+
+
+
 
 

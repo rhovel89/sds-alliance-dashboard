@@ -42,12 +42,12 @@ export default function MeQuickPanels() {
       <Card title={t("me.quickLinks")} note=" ">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <a href="/me">{t("nav.me")}</a>
-          <a href="/mail-threads">{t("nav.mailThreads")}</a>
+          <a href="/mail">{t("nav.mailThreads")}</a>
           <a href="/mail">{t("nav.mailInbox")}</a>
           <a href="/me/hq-manager">{t("nav.hqManager")}</a>
           <a href="/state/789/achievements/request">{t("nav.achRequest")}</a>
           <a href="/state/789/achievements/admin-v2">{t("nav.achAdmin")}</a>
-          <a href="/state/789/alerts">{t("nav.stateAlerts")}</a>
+          <a href="/state/789/alerts-db">{t("nav.stateAlerts")}</a>
           <a href="/state/789/discussion">{t("nav.stateDiscussion")}</a>
         </div>
       </Card>
@@ -66,6 +66,8 @@ export default function MeQuickPanels() {
     </div>
   );
 }
+
+
 
 
 

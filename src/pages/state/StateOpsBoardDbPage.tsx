@@ -231,7 +231,7 @@ export default function StateOpsBoardDbPage() {
             <button type="button" onClick={() => void queueSummary()} disabled={!canManage}>
               📥 Queue Summary to Discord
             </button>
-            <a href="/owner/discord-queue-db" style={{ opacity: 0.9, fontSize: 12 }}>View Queue</a>
+            <a href="/owner/discord-queue" style={{ opacity: 0.9, fontSize: 12 }}>View Queue</a>
             {!canManage ? (
               <span style={{ opacity: 0.75, fontSize: 12 }}>
                 (Disabled: need owner/admin or ops manager)
@@ -289,6 +289,7 @@ export default function StateOpsBoardDbPage() {
     </div>
   );
 }
+
 
 
 
