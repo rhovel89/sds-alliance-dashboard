@@ -56,6 +56,10 @@ export default function OwnerAllianceDashboardLinksPage() {
   const [sort, setSort] = useState("0");
   const [active, setActive] = useState(true);
 
+  const [listAllianceFilter, setListAllianceFilter] = useState("ALL");
+  const [listSectionFilter, setListSectionFilter] = useState("ALL");
+  const [listSearch, setListSearch] = useState("");
+
   async function loadAll() {
     try {
       setLoading(true);
@@ -160,6 +164,44 @@ export default function OwnerAllianceDashboardLinksPage() {
     setRows((prev) => prev.map((x) => String(x?.id || "") === String(id) ? { ...x, ...patch } : x));
   }
 
+  const allianceFilterOptions = useMemo(() => {
+    const vals = Array.from(new Set(rows.map((r) => normUpper(r?.alliance_code)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    return ["ALL", ...vals];
+  }, [rows]);
+
+  const sectionFilterOptions = useMemo(() => {
+    const vals = Array.from(new Set(rows.map((r) => norm(r?.section_name)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    return ["ALL", ...vals];
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    const needle = norm(listSearch).toLowerCase();
+
+    return rows.filter((r) => {
+      const allianceOk = listAllianceFilter === "ALL" || normUpper(r?.alliance_code) === listAllianceFilter;
+      const sectionOk = listSectionFilter === "ALL" || norm(r?.section_name) === listSectionFilter;
+
+      const text = [
+        s(r?.alliance_code),
+        s(r?.label),
+        s(r?.url),
+        s(r?.section_name),
+        s(r?.roles_csv),
+      ].join(" ").toLowerCase();
+
+      const textOk = !needle || text.includes(needle);
+      return allianceOk && sectionOk && textOk;
+    });
+  }, [rows, listAllianceFilter, listSectionFilter, listSearch]);
+
+  const activeFilterSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (listAllianceFilter !== "ALL") parts.push(`Alliance: ${listAllianceFilter}`);
+    if (listSectionFilter !== "ALL") parts.push(`Section: ${listSectionFilter}`);
+    if (norm(listSearch)) parts.push(`Search: ${norm(listSearch)}`);
+    return parts;
+  }, [listAllianceFilter, listSectionFilter, listSearch]);
+
   return (
     <CommandCenterShell
       title="Owner • Alliance Dashboard Links"
@@ -176,7 +218,26 @@ export default function OwnerAllianceDashboardLinksPage() {
       }
     >
       {status ? (
-        <div style={{ marginBottom: 10, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 10 }}>
+        <div
+          style={{
+            marginBottom: 10,
+            border:
+              String(status || "").includes("✅")
+                ? "1px solid rgba(120,255,120,0.35)"
+                : /failed|required|error/i.test(String(status || ""))
+                ? "1px solid rgba(255,120,120,0.35)"
+                : "1px solid rgba(255,255,255,0.10)",
+            background:
+              String(status || "").includes("✅")
+                ? "rgba(120,255,120,0.08)"
+                : /failed|required|error/i.test(String(status || ""))
+                ? "rgba(255,120,120,0.08)"
+                : "rgba(255,255,255,0.04)",
+            borderRadius: 12,
+            padding: 10,
+            fontWeight: String(status || "").includes("✅") ? 700 : 500,
+          }}
+        >
           {status}
         </div>
       ) : null}
@@ -238,8 +299,66 @@ export default function OwnerAllianceDashboardLinksPage() {
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ fontWeight: 900, marginBottom: 10 }}>Existing Links</div>
+
+        <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <select
+              className="zombie-input"
+              value={listAllianceFilter}
+              onChange={(e) => setListAllianceFilter(String(e.target.value || "ALL"))}
+              style={{ padding: "10px 12px", minWidth: 160 }}
+            >
+              {allianceFilterOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+            </select>
+
+            <select
+              className="zombie-input"
+              value={listSectionFilter}
+              onChange={(e) => setListSectionFilter(String(e.target.value || "ALL"))}
+              style={{ padding: "10px 12px", minWidth: 180 }}
+            >
+              {sectionFilterOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+            </select>
+
+            <input
+              className="zombie-input"
+              value={listSearch}
+              onChange={(e) => setListSearch(e.target.value)}
+              placeholder="Search label / URL / roles / section..."
+              style={{ padding: "10px 12px", minWidth: 260, flex: 1 }}
+            />
+
+            <button
+              className="zombie-btn"
+              type="button"
+              style={{ padding: "10px 12px" }}
+              onClick={() => {
+                setListAllianceFilter("ALL");
+                setListSectionFilter("ALL");
+                setListSearch("");
+              }}
+            >
+              Reset Filters
+            </button>
+          </div>
+
+          <div style={{ fontSize: 12, opacity: 0.72 }}>
+            Showing {filteredRows.length} of {rows.length}
+          </div>
+
+          {activeFilterSummary.length > 0 ? (
+            <div style={{ fontSize: 12, opacity: 0.68 }}>
+              Active: {activeFilterSummary.join(" • ")}
+            </div>
+          ) : null}
+        </div>
+
         <div style={{ display: "grid", gap: 10 }}>
-          {rows.length === 0 ? <div style={{ opacity: 0.7 }}>No dashboard links yet.</div> : rows.map((r) => (
+          {filteredRows.length === 0 ? (
+            <div style={{ opacity: 0.7 }}>
+              {rows.length === 0 ? "No dashboard links yet." : "No links match the current filters."}
+            </div>
+          ) : filteredRows.map((r) => (
             <div key={String(r?.id || "")} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
               <div style={{ display: "grid", gap: 10 }}>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -301,6 +420,7 @@ export default function OwnerAllianceDashboardLinksPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
