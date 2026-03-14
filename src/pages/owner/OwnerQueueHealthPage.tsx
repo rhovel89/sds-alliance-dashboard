@@ -226,6 +226,7 @@ export default function OwnerQueueHealthPage() {
 
   const now = Date.now();
   const last24h = now - 24 * 60 * 60 * 1000;
+  const uiText = "rgba(255,255,255,0.92)";
 
   const statusOptions = useMemo(() => {
     const vals = Array.from(new Set(rows.map((r) => s(r?.status)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
@@ -366,7 +367,7 @@ export default function OwnerQueueHealthPage() {
         })}
       </div>
 
-      <div style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+      <div style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12, color: uiText }}>
         <div style={{ fontWeight: 900, marginBottom: 8 }}>Bulk Queue Actions</div>
         <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 8 }}>Selected: {selectedRowIds.length}</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -413,6 +414,8 @@ export default function OwnerQueueHealthPage() {
           onChange={(e) => setStatusFilter(String(e.target.value || "ALL"))}
           style={{
             padding: "10px 12px",
+            color: uiText,
+            background: "rgba(0,0,0,0.35)",
             borderRadius: 12,
             border: "1px solid rgba(255,255,255,0.12)",
             background: "rgba(0,0,0,0.25)",
@@ -427,6 +430,8 @@ export default function OwnerQueueHealthPage() {
           onChange={(e) => setKindFilter(String(e.target.value || "ALL"))}
           style={{
             padding: "10px 12px",
+            color: uiText,
+            background: "rgba(0,0,0,0.35)",
             borderRadius: 12,
             border: "1px solid rgba(255,255,255,0.12)",
             background: "rgba(0,0,0,0.25)",
@@ -603,6 +608,7 @@ export default function OwnerQueueHealthPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
