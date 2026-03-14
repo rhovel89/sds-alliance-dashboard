@@ -1126,6 +1126,121 @@ export default function OwnerStateAchievementsPage() {
               </button>
             </div>
 
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+                flexWrap: "wrap",
+                alignItems: "center",
+                padding: 10,
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.03)"
+              }}
+            >
+              <div style={{ fontSize: 12, opacity: 0.82 }}>
+                Selected: {selectedRequestIds.length}
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  className="zombie-btn"
+                  type="button"
+                  style={{ padding: "8px 10px", fontSize: 12 }}
+                  disabled={bulkBusy}
+                  onClick={selectAllVisibleRequests}
+                >
+                  Select Visible
+                </button>
+
+                <button
+                  className="zombie-btn"
+                  type="button"
+                  style={{ padding: "8px 10px", fontSize: 12 }}
+                  disabled={bulkBusy || !selectedRequestIds.length}
+                  onClick={clearSelectedRequests}
+                >
+                  Clear Selected
+                </button>
+
+                <button
+                  className="zombie-btn"
+                  type="button"
+                  style={{ padding: "8px 10px", fontSize: 12 }}
+                  disabled={bulkBusy}
+                  onClick={() => selectRequestsByStatus("submitted")}
+                >
+                  Select Submitted
+                </button>
+
+                <button
+                  className="zombie-btn"
+                  type="button"
+                  style={{ padding: "8px 10px", fontSize: 12 }}
+                  disabled={bulkBusy}
+                  onClick={() => selectRequestsByStatus("in_progress")}
+                >
+                  Select In Progress
+                </button>
+
+                <button
+                  className="zombie-btn"
+                  type="button"
+                  style={{ padding: "8px 10px", fontSize: 12 }}
+                  disabled={bulkBusy}
+                  onClick={() => selectRequestsByStatus("completed")}
+                >
+                  Select Completed
+                </button>
+
+                <button
+                  className="zombie-btn"
+                  type="button"
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: 12,
+                    border: "1px solid rgba(255,220,120,0.24)",
+                    background: "rgba(255,220,120,0.08)"
+                  }}
+                  disabled={bulkBusy || !selectedRequestIds.length}
+                  onClick={() => void bulkSetRequestStatus("submitted")}
+                >
+                  Mark Submitted
+                </button>
+
+                <button
+                  className="zombie-btn"
+                  type="button"
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: 12,
+                    border: "1px solid rgba(120,180,255,0.24)",
+                    background: "rgba(120,180,255,0.08)"
+                  }}
+                  disabled={bulkBusy || !selectedRequestIds.length}
+                  onClick={() => void bulkSetRequestStatus("in_progress")}
+                >
+                  Mark In Progress
+                </button>
+
+                <button
+                  className="zombie-btn"
+                  type="button"
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: 12,
+                    border: "1px solid rgba(120,255,120,0.24)",
+                    background: "rgba(120,255,120,0.08)"
+                  }}
+                  disabled={bulkBusy || !selectedRequestIds.length}
+                  onClick={() => void bulkSetRequestStatus("completed")}
+                >
+                  Mark Completed
+                </button>
+              </div>
+            </div>
+
             {filteredRequests.slice(0, 200).map((r) => {
               const req = reqRequired(r);
               const cur = reqCurrent(r);
@@ -1415,6 +1530,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
