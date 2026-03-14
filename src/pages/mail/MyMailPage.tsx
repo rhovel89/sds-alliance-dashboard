@@ -438,6 +438,10 @@ export default function MyMailPage() {
                   placeholder="Write your message..."
                   style={{ width: "100%", padding: "10px 12px", resize: "vertical" }}
                 />
+                <div style={{ marginTop: 6, fontSize: 12, opacity: 0.72, display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <span>{body.trim() ? "Ready to send" : "Message body required"}</span>
+                  <span>{body.length} chars</span>
+                </div>
               </div>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -717,6 +721,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
