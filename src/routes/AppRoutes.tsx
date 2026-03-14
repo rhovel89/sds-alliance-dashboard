@@ -199,7 +199,7 @@ export default function AppRoutes() {
 
       {/* Owner */}
       <Route path="/owner" element={<RequireAdmin><OwnerCommandCenterHomePage /></RequireAdmin>} />
-        <Route path="/owner/command-center" element={<RequireAdmin><OwnerDashboardPage /></RequireAdmin>} />
+  
   <Route path="/owner/discord" element={<RequireAdmin><OwnerDiscordSettingsPage /></RequireAdmin>} />
       <Route path="/owner/select" element={<RequireAdmin><OwnerDashboardSelect /></RequireAdmin>} />
       <Route path="/owner/requests" element={<RequireAdmin><OwnerAccessRequestsPage /></RequireAdmin>} />
@@ -252,7 +252,7 @@ export default function AppRoutes() {
       <Route path="/state/789/alerts-v2" element={<State789AlertsCenterPage />} />
       <Route path="/state/789/discussion" element={<State789DiscussionBoardPage />} />
       <Route path="/state/789/discussion-v2" element={<State789DiscussionBoardV2Page />} />
-      <Route path="/state/789/ops" element={<State789OpsConsolePage />} />
+
       <Route path="/owner/broadcast" element={<RequireAdmin><OwnerBroadcastComposerPage /></RequireAdmin>} />
       <Route path="/owner/live-ops" element={<RequireAdmin><OwnerLiveOpsPage /></RequireAdmin>} />
       <Route path="/owner/discord-mentions" element={<RequireAdmin><OwnerDiscordMentionsPage /></RequireAdmin>} />
@@ -303,8 +303,8 @@ export default function AppRoutes() {
       <Route path="/owner/discord-webhook-requirements/*" element={<RequireAdmin><OwnerDiscordWebhookRequirementsPage /></RequireAdmin>} />
       <Route path="*" element={<NotFoundPage />} />
         <Route path="/owner/links" element={<RequireAdmin><OwnerCommandCenterHomePage /></RequireAdmin>} />
-              <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
-        <Route path="/owner/permissions" element={<RequireAdmin><OwnerAlliancePermissionsHubPage /></RequireAdmin>} />
+      
+
               <Route path="/owner/morning-brief" element={<OwnerMorningBriefPage />} />
               <Route path="/owner/queue-health" element={<OwnerQueueHealthPage />} />
               <Route path="/owner/search" element={<OwnerSearchPage />} />
@@ -314,6 +314,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
