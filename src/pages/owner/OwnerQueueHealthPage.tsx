@@ -42,6 +42,8 @@ export default function OwnerQueueHealthPage() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [rows, setRows] = useState<AnyRow[]>([]);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState(() => {
     const p = new URLSearchParams(window.location.search || "");
@@ -601,6 +603,7 @@ export default function OwnerQueueHealthPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
