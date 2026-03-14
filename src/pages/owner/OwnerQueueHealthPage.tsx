@@ -74,6 +74,15 @@ export default function OwnerQueueHealthPage() {
     void loadAll();
   }, []);
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search || "");
+    if (statusFilter === "ALL") p.delete("status");
+    else p.set("status", statusFilter);
+
+    const qs = p.toString();
+    window.history.replaceState(null, "", qs ? `${location.pathname}?${qs}` : location.pathname);
+  }, [statusFilter, location.pathname]);
+
   function toggleSelectedRowId(id: string) {
     const key = String(id || "");
     if (!key) return;
@@ -252,6 +261,14 @@ export default function OwnerQueueHealthPage() {
     return { queued, sending, failed, sent24h };
   }, [rows, last24h]);
 
+  const activeFilterSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (statusFilter !== "ALL") parts.push(`Status: ${statusFilter}`);
+    if (kindFilter !== "ALL") parts.push(`Kind: ${kindFilter}`);
+    if (norm(targetFilter)) parts.push(`Search: ${norm(targetFilter)}`);
+    return parts;
+  }, [statusFilter, kindFilter, targetFilter]);
+
   const failedRows = useMemo(
     () => filteredRows.filter((r) => normLower(r?.status) === "failed").slice(0, 20),
     [filteredRows]
@@ -289,7 +306,26 @@ export default function OwnerQueueHealthPage() {
       }
     >
       {status ? (
-        <div style={{ marginBottom: 10, border: "1px solid rgba(176,18,27,0.35)", background: "rgba(176,18,27,0.12)", borderRadius: 12, padding: 10 }}>
+        <div
+          style={{
+            marginBottom: 10,
+            border:
+              String(status || "").includes("✅")
+                ? "1px solid rgba(120,255,120,0.35)"
+                : /failed|error|select|load/i.test(String(status || ""))
+                ? "1px solid rgba(255,120,120,0.35)"
+                : "1px solid rgba(255,255,255,0.12)",
+            background:
+              String(status || "").includes("✅")
+                ? "rgba(120,255,120,0.08)"
+                : /failed|error|select|load/i.test(String(status || ""))
+                ? "rgba(255,120,120,0.08)"
+                : "rgba(255,255,255,0.04)",
+            borderRadius: 12,
+            padding: 10,
+            fontWeight: String(status || "").includes("✅") ? 700 : 500,
+          }}
+        >
           {status}
         </div>
       ) : null}
@@ -298,16 +334,34 @@ export default function OwnerQueueHealthPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(180px, 1fr))", gap: 12 }}>
         {[
-          { label: "Queued", value: summary.queued },
-          { label: "Sending", value: summary.sending },
-          { label: "Failed", value: summary.failed },
-          { label: "Sent Last 24h", value: summary.sent24h },
-        ].map((x) => (
-          <div key={x.label} style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
-            <div style={{ opacity: 0.72, fontSize: 12 }}>{x.label}</div>
-            <div style={{ fontWeight: 950, fontSize: 28, marginTop: 6 }}>{x.value}</div>
-          </div>
-        ))}
+          { label: "Queued", value: summary.queued, filterValue: "queued" },
+          { label: "Sending", value: summary.sending, filterValue: "sending" },
+          { label: "Failed", value: summary.failed, filterValue: "failed" },
+          { label: "Sent Last 24h", value: summary.sent24h, filterValue: "sent" },
+        ].map((x) => {
+          const active = statusFilter === x.filterValue;
+          return (
+            <button
+              key={x.label}
+              type="button"
+              className="zombie-btn"
+              onClick={() => setStatusFilter(active ? "ALL" : x.filterValue)}
+              style={{
+                border: active ? "1px solid rgba(255,255,255,0.24)" : "1px solid rgba(255,255,255,0.10)",
+                background: active ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
+                borderRadius: 14,
+                padding: 12,
+                textAlign: "left",
+              }}
+            >
+              <div style={{ opacity: 0.72, fontSize: 12 }}>{x.label}</div>
+              <div style={{ fontWeight: 950, fontSize: 28, marginTop: 6 }}>{x.value}</div>
+              <div style={{ opacity: 0.6, fontSize: 11, marginTop: 6 }}>
+                {active ? "Click to clear status filter" : "Click to filter"}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       <div style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
@@ -328,6 +382,25 @@ export default function OwnerQueueHealthPage() {
           </button>
           <button className="zombie-btn" type="button" style={{ padding: "8px 10px" }} onClick={() => void bulkCloseSendingRows()} disabled={bulkBusy || !selectedRowIds.length}>
             Close Selected
+          </button>
+        </div>
+
+        <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ fontSize: 12, opacity: 0.72 }}>
+            {activeFilterSummary.length ? `Active: ${activeFilterSummary.join(" • ")}` : "Active: none"}
+          </div>
+          <button
+            className="zombie-btn"
+            type="button"
+            style={{ padding: "8px 10px" }}
+            onClick={() => {
+              setStatusFilter("ALL");
+              setKindFilter("ALL");
+              setTargetFilter("");
+            }}
+            disabled={bulkBusy && !activeFilterSummary.length}
+          >
+            Reset Filters
           </button>
         </div>
       </div>
@@ -534,6 +607,7 @@ export default function OwnerQueueHealthPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
