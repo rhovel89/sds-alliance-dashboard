@@ -365,6 +365,28 @@ export default function MyMailPage() {
     await refreshInbox();
   }
 
+  async function deleteThread(threadKey: string) {
+    const key = s(threadKey).trim();
+    if (!key) return;
+
+    if (!window.confirm("Delete this thread? This cannot be undone.")) return;
+
+    setLoading(true);
+    setStatus("Deleting thread…");
+
+    const r = await supabase.rpc("mail_delete_thread", { p_thread_key: key } as any);
+
+    if (r.error) {
+      setStatus(r.error.message || "Delete failed.");
+      setLoading(false);
+      return;
+    }
+
+    setStatus("Thread deleted ✅");
+    await refreshInbox();
+    setLoading(false);
+  }
+
   function markThreadUnread(threadKey: string) {
     const key = s(threadKey).trim();
     if (!key) return;
@@ -789,6 +811,19 @@ export default function MyMailPage() {
                         >
                           Unread Tools
                         </button>
+
+                        <button
+                          className="zombie-btn"
+                          type="button"
+                          onClick={() => void deleteThread(threadKey)}
+                          disabled={!threadKey || loading}
+                          style={{
+                            border: "1px solid rgba(255,120,120,0.35)",
+                            background: "rgba(255,120,120,0.08)"
+                          }}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -801,3 +836,5 @@ export default function MyMailPage() {
     </div>
   );
 }
+
+
