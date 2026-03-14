@@ -583,7 +583,26 @@ export default function OwnerMorningBriefPage() {
       }
     >
       {status ? (
-        <div style={{ marginBottom: 10, border: "1px solid rgba(176,18,27,0.35)", background: "rgba(176,18,27,0.12)", borderRadius: 12, padding: 10 }}>
+        <div
+          style={{
+            marginBottom: 10,
+            border:
+              String(status || "").includes("✅")
+                ? "1px solid rgba(120,255,120,0.35)"
+                : /failed|error|load|required/i.test(String(status || ""))
+                ? "1px solid rgba(255,120,120,0.35)"
+                : "1px solid rgba(255,255,255,0.12)",
+            background:
+              String(status || "").includes("✅")
+                ? "rgba(120,255,120,0.08)"
+                : /failed|error|load|required/i.test(String(status || ""))
+                ? "rgba(255,120,120,0.08)"
+                : "rgba(255,255,255,0.04)",
+            borderRadius: 12,
+            padding: 10,
+            fontWeight: String(status || "").includes("✅") ? 700 : 500,
+          }}
+        >
           {status}
         </div>
       ) : null}
@@ -592,15 +611,28 @@ export default function OwnerMorningBriefPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(180px, 1fr))", gap: 12 }}>
         {[
-          { label: "Pending Now", value: summary.pendingCount },
-          { label: "Completed Last 24h", value: summary.completed24hCount },
-          { label: "Failed Discord Sends", value: summary.failedCount },
-          { label: "Active Alliances", value: summary.activeAlliances },
+          { label: "Pending Now", value: summary.pendingCount, to: "/owner/state-achievements?status=pending" },
+          { label: "Completed Last 24h", value: summary.completed24hCount, to: "/owner/state-achievements?status=completed" },
+          { label: "Failed Discord Sends", value: summary.failedCount, to: "/owner/queue-health?status=failed" },
+          { label: "Active Alliances", value: summary.activeAlliances, to: "/owner/search" },
         ].map((x) => (
-          <div key={x.label} style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+          <button
+            key={x.label}
+            type="button"
+            className="zombie-btn"
+            onClick={() => nav(x.to)}
+            style={{
+              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.03)",
+              borderRadius: 14,
+              padding: 12,
+              textAlign: "left",
+            }}
+          >
             <div style={{ opacity: 0.72, fontSize: 12 }}>{x.label}</div>
             <div style={{ fontWeight: 950, fontSize: 28, marginTop: 6 }}>{x.value}</div>
-          </div>
+            <div style={{ opacity: 0.6, fontSize: 11, marginTop: 6 }}>Open</div>
+          </button>
         ))}
       </div>
 
@@ -737,6 +769,7 @@ export default function OwnerMorningBriefPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
