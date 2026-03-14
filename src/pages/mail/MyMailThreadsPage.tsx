@@ -219,6 +219,26 @@ export default function MyMailThreadsPage() {
       setSelected(s(rows[0]?.thread_key));
     }
   }
+  async function deleteSelectedThread() {
+    const key = s(selected).trim();
+    if (!key) return;
+
+    if (!window.confirm("Delete this thread? This cannot be undone.")) return;
+
+    setStatus("Deleting thread…");
+
+    const r = await supabase.rpc("mail_delete_thread", { p_thread_key: key } as any);
+    if (r.error) {
+      setStatus(r.error.message || "Delete failed.");
+      return;
+    }
+
+    setMsgs([]);
+    setSelected(null);
+    setStatus("Thread deleted ✅");
+    await loadThreads();
+  }
+
 
   async function sendNew() {
     if (!userId) {
@@ -318,6 +338,18 @@ export default function MyMailThreadsPage() {
           <button className="zombie-btn" type="button" onClick={() => nav("/mail")}>Mail Home</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/mail-v2")}>Inbox</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/owner/mail-broadcast")}>Broadcast</button>
+            <button
+              className="zombie-btn"
+              type="button"
+              onClick={() => void deleteSelectedThread()}
+              disabled={!selected}
+              style={{
+                border: "1px solid rgba(255,120,120,0.35)",
+                background: "rgba(255,120,120,0.08)"
+              }}
+            >
+              Delete Thread
+            </button>
           <button className="zombie-btn" type="button" onClick={() => void loadAll()} disabled={loading}>Refresh</button>
         </div>
       </div>
@@ -545,3 +577,5 @@ export default function MyMailThreadsPage() {
     </div>
   );
 }
+
+
