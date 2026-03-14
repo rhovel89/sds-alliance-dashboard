@@ -1019,11 +1019,66 @@ export default function OwnerStateAchievementsPage() {
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="requests" ? 900 : 600 }} onClick={() => setTab("requests")}>Requests</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="types" ? 900 : 600 }} onClick={() => setTab("types")}>Types</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="options" ? 900 : 600 }} onClick={() => setTab("options")}>Options</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="access" ? 900 : 600 }} onClick={() => setTab("access")}>Access</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: tab==="export" ? 900 : 600 }} onClick={() => setTab("export")}>Export/Import</button>
+          <button
+            className="zombie-btn"
+            style={{
+              padding: "10px 12px",
+              fontWeight: tab==="requests" ? 900 : 600,
+              border: tab==="requests" ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.10)",
+              background: tab==="requests" ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.03)"
+            }}
+            onClick={() => setTab("requests")}
+          >
+            Requests
+          </button>
+          <button
+            className="zombie-btn"
+            style={{
+              padding: "10px 12px",
+              fontWeight: tab==="types" ? 900 : 600,
+              border: tab==="types" ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.10)",
+              background: tab==="types" ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.03)"
+            }}
+            onClick={() => setTab("types")}
+          >
+            Types
+          </button>
+          <button
+            className="zombie-btn"
+            style={{
+              padding: "10px 12px",
+              fontWeight: tab==="options" ? 900 : 600,
+              border: tab==="options" ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.10)",
+              background: tab==="options" ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.03)"
+            }}
+            onClick={() => setTab("options")}
+          >
+            Options
+          </button>
+          <button
+            className="zombie-btn"
+            style={{
+              padding: "10px 12px",
+              fontWeight: tab==="access" ? 900 : 600,
+              border: tab==="access" ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.10)",
+              background: tab==="access" ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.03)"
+            }}
+            onClick={() => setTab("access")}
+          >
+            Access
+          </button>
+          <button
+            className="zombie-btn"
+            style={{
+              padding: "10px 12px",
+              fontWeight: tab==="export" ? 900 : 600,
+              border: tab==="export" ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.10)",
+              background: tab==="export" ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.03)"
+            }}
+            onClick={() => setTab("export")}
+          >
+            Export/Import
+          </button>
           <div style={{ marginLeft: "auto" }}>
             <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={seedDefaults} disabled={!canAdmin}>Seed Defaults</button>
           </div>
@@ -1285,6 +1340,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
