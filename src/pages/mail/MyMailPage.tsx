@@ -237,6 +237,11 @@ export default function MyMailPage() {
     });
   }, [items, filterKind, mailTab, q]);
 
+  const selectedRecipientLabel = useMemo(() => {
+    const r = recipients.find((x) => s(x.user_id || x.id) === s(toUserId));
+    return r ? recipientLabel(r) : "";
+  }, [recipients, toUserId]);
+
   const tabCounts = useMemo(() => {
     return {
       all: items.length,
@@ -406,6 +411,11 @@ export default function MyMailPage() {
                     );
                   })}
                 </select>
+                {selectedRecipientLabel ? (
+                  <div style={{ fontSize: 12, opacity: 0.75 }}>
+                    Selected: {selectedRecipientLabel}
+                  </div>
+                ) : null}
               </div>
 
               <div><div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>Subject</div>
@@ -707,6 +717,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
