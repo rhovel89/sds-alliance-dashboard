@@ -1172,8 +1172,36 @@ export default function OwnerStateAchievementsPage() {
                       onChange={(e) => setLocalRequests(r.id, { current_count: Math.max(0, asInt(e.target.value, 0)) })}
                       style={{ padding: "8px 10px", width: 90 }}
                     />
-                    <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} disabled={!canAdmin} onClick={() => setLocalRequests(r.id, { current_count: cur + 1, status: "in_progress" })}>+1</button>
-                    <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} disabled={!canAdmin} onClick={() => setLocalRequests(r.id, { current_count: req, status: "completed" })}>Set ✅</button>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      style={{
+                        padding: "8px 10px",
+                        fontSize: 12,
+                        minWidth: 52,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        background: "rgba(255,255,255,0.04)"
+                      }}
+                      disabled={!canAdmin}
+                      onClick={() => setLocalRequests(r.id, { current_count: cur + 1, status: "in_progress" })}
+                    >
+                      +1
+                    </button>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      style={{
+                        padding: "8px 10px",
+                        fontSize: 12,
+                        minWidth: 78,
+                        border: "1px solid rgba(120,255,120,0.28)",
+                        background: "rgba(120,255,120,0.08)"
+                      }}
+                      disabled={!canAdmin}
+                      onClick={() => setLocalRequests(r.id, { current_count: req, status: "completed" })}
+                    >
+                      Set ✅
+                    </button>
 
                     <div style={{ opacity: 0.75, fontSize: 12 }}>Status</div>
                     <select className="zombie-input" value={String(r.status || "submitted")} disabled={!canAdmin} onChange={(e) => setLocalRequests(r.id, { status: e.target.value })} style={{ padding: "8px 10px" }}>
@@ -1183,7 +1211,21 @@ export default function OwnerStateAchievementsPage() {
                       <option value="denied">denied</option>
                     </select>
 
-                    <button className="zombie-btn" style={{ padding: "8px 10px", fontWeight: 900 }} disabled={!canAdmin} onClick={() => saveRequestRow(r)}>Save</button>
+                    <button
+                      className="zombie-btn"
+                      type="button"
+                      style={{
+                        padding: "8px 12px",
+                        fontWeight: 900,
+                        minWidth: 72,
+                        border: "1px solid rgba(255,255,255,0.18)",
+                        background: "rgba(255,255,255,0.08)"
+                      }}
+                      disabled={!canAdmin}
+                      onClick={() => saveRequestRow(r)}
+                    >
+                      Save
+                    </button>
                   </div>
 
                   <div style={{ marginTop: 10 }}>
@@ -1367,6 +1409,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
