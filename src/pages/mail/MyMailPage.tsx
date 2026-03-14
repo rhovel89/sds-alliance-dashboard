@@ -64,7 +64,26 @@ function previewSnippet(m: InboxRow) {
 
 function niceDate(v: any) {
   try {
-    return new Date(String(v || "")).toLocaleString();
+    const d = new Date(String(v || ""));
+    if (Number.isNaN(d.getTime())) return String(v || "");
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((today.getTime() - target.getTime()) / 86400000);
+
+    const timeText = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+    if (diffDays === 0) return `Today, ${timeText}`;
+    if (diffDays === 1) return `Yesterday, ${timeText}`;
+
+    return d.toLocaleString([], {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   } catch {
     return String(v || "");
   }
@@ -768,6 +787,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
