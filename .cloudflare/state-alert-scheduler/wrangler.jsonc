@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "state-alert-scheduler-789",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-03-14",
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
+  "vars": {
+    "STATE_ALERTS_TABLE": "state_alerts",
+    "SITE_URL": "https://state789.site"
+  }
+}

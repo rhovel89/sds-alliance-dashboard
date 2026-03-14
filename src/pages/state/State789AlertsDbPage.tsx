@@ -1,3 +1,4 @@
+import StateScheduledAlertControls from "../../components/state/StateScheduledAlertControls";
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
 import DiscordChannelSelect from "../../components/discord/DiscordChannelSelect";
@@ -221,6 +222,14 @@ return (
               label="Send to Discord channel"
             />
           </div><button onClick={postAlert} disabled={!userId}>Post</button>
+
+          <StateScheduledAlertControls
+            stateCode="789"
+            userId={userId}
+            title={title}
+            body={body}
+            discordChannelId={discordChannelId}
+          />
           <button
             type="button"
             onClick={async () => {
@@ -315,6 +324,7 @@ return (
     </div>
   );
 }
+
 
 
 
