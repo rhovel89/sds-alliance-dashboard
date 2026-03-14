@@ -1100,14 +1100,20 @@ export default function OwnerStateAchievementsPage() {
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
-              <div style={{ fontSize: 12, opacity: 0.72 }}>
+              <div style={{ fontSize: 12, opacity: 0.78, lineHeight: 1.45 }}>
                 Showing {Math.min(filteredRequests.length, 200)} of {filteredRequests.length} filtered request(s)
-                {requestActiveFilterSummary.length ? ` • Active: ${requestActiveFilterSummary.join(" • ")}` : ""}
+                {requestActiveFilterSummary.length ? ` • Active filters: ${requestActiveFilterSummary.join(" • ")}` : " • Active filters: none"}
               </div>
 
               <button
                 className="zombie-btn"
-                style={{ padding: "8px 10px", fontSize: 12 }}
+                type="button"
+                style={{
+                  padding: "8px 10px",
+                  fontSize: 12,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(255,255,255,0.05)"
+                }}
                 onClick={() => {
                   setRequestAllianceFilter("ALL");
                   setRequestPlayerFilter("");
@@ -1409,6 +1415,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
