@@ -578,8 +578,8 @@ export default function MyMailPage() {
                 <div
                   key={`${s(m.id)}-${i}`}
                   style={{
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "rgba(0,0,0,0.16)",
+                    border: Number(m.unread_count || 0) > 0 ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.08)",
+                    background: Number(m.unread_count || 0) > 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.16)",
                     borderRadius: 12,
                     padding: 12,
                   }}
@@ -587,7 +587,7 @@ export default function MyMailPage() {
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
                     <div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                        <div style={{ fontWeight: 900 }}>
+                        <div style={{ fontWeight: Number(m.unread_count || 0) > 0 ? 950 : 900 }}>
                           {s(m.subject) || "(no subject)"}
                         </div>
                         {Number(m.unread_count || 0) > 0 ? (
@@ -690,6 +690,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
