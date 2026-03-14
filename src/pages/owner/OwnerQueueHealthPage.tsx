@@ -470,14 +470,7 @@ export default function OwnerQueueHealthPage() {
                         checked={selectedRowIds.includes(String(r?.id || ""))}
                         onChange={() => toggleSelectedRowId(String(r?.id || ""))}
                       />
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedRowIds.includes(String(r?.id || ""))}
-                        onChange={() => toggleSelectedRowId(String(r?.id || ""))}
-                      />
-                      <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
-                    </div>
+                      <div style={{ fontWeight: 900, color: uiText }}>{norm(r?.kind || "queue")}</div>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                       <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
@@ -525,14 +518,7 @@ export default function OwnerQueueHealthPage() {
                         checked={selectedRowIds.includes(String(r?.id || ""))}
                         onChange={() => toggleSelectedRowId(String(r?.id || ""))}
                       />
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedRowIds.includes(String(r?.id || ""))}
-                        onChange={() => toggleSelectedRowId(String(r?.id || ""))}
-                      />
-                      <div style={{ fontWeight: 900 }}>{norm(r?.kind || "queue")}</div>
-                    </div>
+                      <div style={{ fontWeight: 900, color: uiText }}>{norm(r?.kind || "queue")}</div>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                       <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)" }}>
@@ -608,6 +594,7 @@ export default function OwnerQueueHealthPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
