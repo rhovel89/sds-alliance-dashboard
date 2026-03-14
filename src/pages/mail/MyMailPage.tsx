@@ -282,7 +282,7 @@ export default function MyMailPage() {
       );
     });
 
-    setToUserId(s(possibleRecipient?.user_id || possibleRecipient?.id || ""));
+    pickRecipient(s(possibleRecipient?.user_id || possibleRecipient?.id || ""));
     setSubject(nextSubject);
     setBody("");
     setStatus("Reply loaded into composer ✅");
@@ -393,7 +393,7 @@ export default function MyMailPage() {
                 <select
                   className="zombie-input"
                   value={toUserId}
-                  onChange={(e) => setToUserId(e.target.value)}
+                  onChange={(e) => pickRecipient(e.target.value)}
                   style={{ width: "100%", padding: "10px 12px" }}
                 >
                   <option value="">Select player…</option>
@@ -695,6 +695,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
