@@ -1,5 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowserClient";
+
+type Severity = "info" | "warning" | "critical";
+type MentionTarget = "none" | "everyone" | "here" | "leadership" | "custom";
 
 type Props = {
   stateCode: string;
@@ -7,10 +10,8 @@ type Props = {
   title: string;
   body: string;
   discordChannelId?: string | null;
+  initialSeverity?: Severity;
 };
-
-type Severity = "info" | "warning" | "critical";
-type MentionTarget = "none" | "everyone" | "here" | "leadership" | "custom";
 
 function localInputToIso(v: string) {
   if (!v) return "";
@@ -18,17 +19,34 @@ function localInputToIso(v: string) {
   return Number.isNaN(d.getTime()) ? "" : d.toISOString();
 }
 
+function mentionPreview(target: MentionTarget, override: string) {
+  if (target === "everyone") return "@everyone";
+  if (target === "here") return "@here";
+  if (target === "leadership") return "@leadership";
+  if (target === "custom") return String(override || "").trim();
+  return "No mention";
+}
+
 export default function StateScheduledAlertControls(props: Props) {
   const [scheduledFor, setScheduledFor] = useState("");
-  const [severity, setSeverity] = useState<Severity>("info");
+  const [severity, setSeverity] = useState<Severity>(props.initialSeverity ?? "info");
   const [mentionTarget, setMentionTarget] = useState<MentionTarget>("none");
   const [mentionOverride, setMentionOverride] = useState("");
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setSeverity(props.initialSeverity ?? "info");
+  }, [props.initialSeverity]);
+
   const canSchedule = useMemo(() => {
-    return !!props.userId && !!String(props.title || "").trim() && !!scheduledFor;
-  }, [props.userId, props.title, scheduledFor]);
+    return (
+      !!props.userId &&
+      !!String(props.title || "").trim() &&
+      !!String(props.body || "").trim() &&
+      !!scheduledFor
+    );
+  }, [props.userId, props.title, props.body, scheduledFor]);
 
   async function scheduleAlert() {
     if (!canSchedule) return;
@@ -45,11 +63,12 @@ export default function StateScheduledAlertControls(props: Props) {
     const ins = await supabase.from("scheduled_state_alerts").insert({
       state_code: String(props.stateCode || "789"),
       title: String(props.title || "").trim(),
-      body: String(props.body || ""),
+      body: String(props.body || "").trim(),
       severity,
       scheduled_for: whenIso,
       mention_target: mentionTarget,
-      mention_override: mentionTarget === "custom" ? String(mentionOverride || "").trim() : null,
+      mention_override:
+        mentionTarget === "custom" ? String(mentionOverride || "").trim() : null,
       discord_channel_id: String(props.discordChannelId || "").trim() || null,
       created_by: props.userId,
       dispatch_to_discord: true,
@@ -75,7 +94,7 @@ export default function StateScheduledAlertControls(props: Props) {
     <div
       className="zombie-card"
       style={{
-        marginTop: 12,
+        marginTop: 14,
         padding: 14,
         borderRadius: 16,
         border: "1px solid rgba(255,120,120,0.14)",
@@ -84,7 +103,7 @@ export default function StateScheduledAlertControls(props: Props) {
     >
       <div style={{ fontWeight: 900, fontSize: 16 }}>⏱️ Schedule alert for later</div>
       <div style={{ opacity: 0.78, fontSize: 12, marginTop: 4 }}>
-        Pick the day/time, severity, and mention target. When due, the scheduler will post it and queue Discord.
+        Choose the day/time, severity, and mention target. When due, the scheduler will post it and queue Discord.
       </div>
 
       <div
@@ -146,6 +165,10 @@ export default function StateScheduledAlertControls(props: Props) {
         ) : null}
       </div>
 
+      <div style={{ marginTop: 10, opacity: 0.8, fontSize: 12 }}>
+        Mention preview: <b>{mentionPreview(mentionTarget, mentionOverride)}</b>
+      </div>
+
       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <button
           type="button"
@@ -155,6 +178,7 @@ export default function StateScheduledAlertControls(props: Props) {
         >
           {saving ? "Scheduling…" : "Schedule alert"}
         </button>
+
         <div style={{ opacity: 0.8, fontSize: 12 }}>{status}</div>
       </div>
     </div>

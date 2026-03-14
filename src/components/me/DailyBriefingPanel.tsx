@@ -3,7 +3,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 
 type ThreadRow = { unread_count: number };
-type BulletinRow = { id: string; title: string; pinned: boolean; created_at: string; expires_at: string | null };
+type BulletinRow = { id: string; title: string; pinned: boolean; created_at: string };
 type EventRow = { event_id?: string; title?: string; starts_at?: string };
 
 function fmt(dt?: string | null) {
@@ -108,7 +108,7 @@ export default function DailyBriefingPanel() {
               <div key={b.id} style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 10 }}>
                 <div style={{ fontWeight: 900 }}>{b.pinned ? "📌 " : ""}{b.title}</div>
                 <div style={{ marginTop: 6, opacity: 0.75, fontSize: 12 }}>
-                  {fmt(b.created_at)} {b.expires_at ? ` • Expires: ${fmt(b.expires_at)}` : ""}
+                  {fmt(b.created_at)}
                 </div>
               </div>
             ))}

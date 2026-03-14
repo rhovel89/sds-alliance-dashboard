@@ -593,7 +593,7 @@ export default function MeDashboardPage() {
 
               {selectedPlayer ? (
                 <div style={{ display: "grid", gap: 10 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 10 }}>
                     <div>
                       <div style={{ opacity: 0.75, fontSize: 12 }}>Display name</div>
                       <input value={selectedPlayer.name ?? ""} onChange={(e) => void savePlayerField("name", e.target.value)} />
@@ -604,7 +604,7 @@ export default function MeDashboardPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 10 }}>
                     <div>
                       <div style={{ opacity: 0.75, fontSize: 12 }}>Discord</div>
                       <input value={String(selectedPlayer.discord_name ?? "")} onChange={(e) => void savePlayerField("discord_name", e.target.value)} />
@@ -615,7 +615,7 @@ export default function MeDashboardPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 10 }}>
                     <div>
                       <div style={{ opacity: 0.75, fontSize: 12 }}>State</div>
                       <input value={String(selectedPlayer.state_code ?? "789")} onChange={(e) => void savePlayerField("state_code", e.target.value)} />
@@ -660,7 +660,7 @@ export default function MeDashboardPage() {
                     {alertsLink ? <Link to={alertsLink}>Alerts</Link> : null}
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 10, marginTop: 12 }}>
                     <div>
                       <div style={{ opacity: 0.75, fontSize: 12 }}>In-game name (for this alliance)</div>
                       <input value={String(selectedAllianceProfile.in_game_name ?? "")} onChange={(e) => void saveAllianceProfileField("in_game_name", e.target.value)} />
