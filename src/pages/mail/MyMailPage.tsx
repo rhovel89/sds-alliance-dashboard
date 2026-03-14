@@ -10,7 +10,6 @@ type RecipientRow = {
   alliance_code?: string;
 };
 
-const MAIL_HOME_DRAFT_KEY = "sad_mail_home_draft_v1";
 type InboxRow = {
   id?: string;
   created_at?: string;
@@ -23,15 +22,22 @@ type InboxRow = {
   sender_display_name?: string | null;
   unread_count?: number | null;
   thread_key?: string | null;
+  thread_id?: string | null;
 };
 
-function s(v: any) {
+const MAIL_HOME_DRAFT_KEY = "sad_mail_home_draft_v1";
+
+function s(v: unknown) {
   return v === null || v === undefined ? "" : String(v);
+}
+
+function threadKeyOf(row: InboxRow) {
+  return s(row.thread_key || row.thread_id).trim();
 }
 
 function buildMailThreadLink(threadKey: string): string {
   const params = new URLSearchParams();
-  if (String(threadKey || "").trim()) params.set("thread", String(threadKey || "").trim());
+  if (s(threadKey).trim()) params.set("thread", s(threadKey).trim());
   return `/mail-threads?${params.toString()}`;
 }
 
@@ -44,7 +50,7 @@ function loadMailHomeDraft() {
   }
 }
 
-function saveMailHomeDraft(next: any) {
+function saveMailHomeDraft(next: unknown) {
   try {
     localStorage.setItem(MAIL_HOME_DRAFT_KEY, JSON.stringify(next || {}));
   } catch {}
@@ -59,19 +65,18 @@ function clearMailHomeDraft() {
 function previewSnippet(m: InboxRow) {
   const text = s(m.body).replace(/\s+/g, " ").trim();
   if (!text) return "(no preview)";
-  return text.length > 160 ? text.slice(0, 160) + "…" : text;
+  return text.length > 160 ? `${text.slice(0, 160)}…` : text;
 }
 
-function niceDate(v: any) {
+function niceDate(v: unknown) {
   try {
-    const d = new Date(String(v || ""));
-    if (Number.isNaN(d.getTime())) return String(v || "");
+    const d = new Date(s(v));
+    if (Number.isNaN(d.getTime())) return s(v);
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const diffDays = Math.round((today.getTime() - target.getTime()) / 86400000);
-
     const timeText = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
     if (diffDays === 0) return `Today, ${timeText}`;
@@ -85,14 +90,14 @@ function niceDate(v: any) {
       minute: "2-digit",
     });
   } catch {
-    return String(v || "");
+    return s(v);
   }
 }
 
 export default function MyMailPage() {
   const nav = useNavigate();
 
-  const [userId, setUserId] = useState<string>("");
+  const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
 
@@ -110,13 +115,20 @@ export default function MyMailPage() {
   const [mailTab, setMailTab] = useState("all");
   const [q, setQ] = useState("");
 
+  function recipientLabel(r: RecipientRow) {
+    const name = s(r.display_name || r.game_name || r.user_id || r.id || "Unknown");
+    const alliance = s(r.alliance_code).trim().toUpperCase();
+    return alliance ? `${name} (${alliance})` : name;
+  }
+
   async function loadRecipients() {
     const res = await supabase.rpc("list_dm_recipients");
-    if (!res.error) setRecipients((res.data ?? []) as any);
+    if (!res.error) setRecipients((res.data ?? []) as RecipientRow[]);
   }
 
   async function refreshInbox() {
     setLoading(true);
+
     const res = await supabase
       .from("v_my_mail_inbox")
       .select("*")
@@ -124,13 +136,13 @@ export default function MyMailPage() {
       .limit(200);
 
     if (res.error) {
-      setStatus(res.error.message);
+      setStatus(res.error.message || "Failed to load inbox.");
       setItems([]);
       setLoading(false);
       return;
     }
 
-    setItems((res.data ?? []) as any);
+    setItems((res.data ?? []) as InboxRow[]);
     setStatus("");
     setLoading(false);
   }
@@ -140,7 +152,7 @@ export default function MyMailPage() {
     setStatus("");
 
     const auth = await supabase.auth.getUser();
-    const uid = String(auth.data?.user?.id || "");
+    const uid = s(auth.data?.user?.id);
     setUserId(uid);
 
     try {
@@ -163,6 +175,13 @@ export default function MyMailPage() {
     });
   }, [toUserId, recipientSearch, subject, body]);
 
+  function pickRecipient(recipientId: string) {
+    const id = s(recipientId);
+    const r = recipients.find((x) => s(x.user_id || x.id) === id);
+    setToUserId(id);
+    setRecipientSearch(r ? recipientLabel(r) : "");
+  }
+
   async function openNewestThreadForRecipient(targetUserId: string) {
     try {
       const res = await supabase
@@ -170,17 +189,20 @@ export default function MyMailPage() {
         .select("*")
         .order("last_message_at", { ascending: false });
 
-      if (res.error) return;
+      if (res.error) {
+        nav("/mail-threads");
+        return;
+      }
 
       const rows = (res.data ?? []) as any[];
       const match = rows.find((r) => {
-        const a = String(r?.peer_user_id || r?.other_user_id || r?.to_user_id || "");
-        const b = String(r?.from_user_id || "");
-        return a === String(targetUserId || "") || b === String(targetUserId || "");
+        const a = s(r?.peer_user_id || r?.other_user_id || r?.to_user_id);
+        const b = s(r?.from_user_id);
+        return a === s(targetUserId) || b === s(targetUserId);
       });
 
-      if (match?.thread_key) {
-        nav(`/mail-threads?thread=${encodeURIComponent(String(match.thread_key))}`);
+      if (s(match?.thread_key).trim()) {
+        nav(`/mail-threads?thread=${encodeURIComponent(s(match.thread_key))}`);
       } else {
         nav("/mail-threads");
       }
@@ -190,9 +212,20 @@ export default function MyMailPage() {
   }
 
   async function sendDirectMail() {
-    if (!userId) return setStatus("You must be signed in.");
-    if (!toUserId) return setStatus("Select a player recipient.");
-    if (!body.trim()) return setStatus("Message body required.");
+    if (!userId) {
+      setStatus("You must be signed in.");
+      return;
+    }
+
+    if (!toUserId) {
+      setStatus("Select a player recipient.");
+      return;
+    }
+
+    if (!body.trim()) {
+      setStatus("Message body required.");
+      return;
+    }
 
     setLoading(true);
     setStatus("Sending…");
@@ -201,7 +234,7 @@ export default function MyMailPage() {
 
     const r = await supabase.rpc("mail_send_message", {
       p_to_user_id: toUserId,
-      p_subject: subject || null,
+      p_subject: subject.trim() || null,
       p_body: body,
       p_alliance_code: null,
     } as any);
@@ -213,6 +246,7 @@ export default function MyMailPage() {
     }
 
     setRecipientSearch("");
+    setToUserId("");
     setSubject("");
     setBody("");
     clearMailHomeDraft();
@@ -248,8 +282,7 @@ export default function MyMailPage() {
         mailTab === "broadcast" ? kind === "alliance_broadcast" || kind === "state_broadcast" :
         true;
 
-      const text =
-        `${s(m.subject)} ${s(m.body)} ${s(m.from_display_name)} ${s(m.sender_display_name)} ${s(m.peer_display_name)}`.toLowerCase();
+      const text = `${s(m.subject)} ${s(m.body)} ${s(m.from_display_name)} ${s(m.sender_display_name)} ${s(m.peer_display_name)}`.toLowerCase();
       const textOk = !needle || text.includes(needle);
 
       return kindOk && tabOk && textOk;
@@ -285,33 +318,13 @@ export default function MyMailPage() {
       );
     }
 
-    if (filterKind) {
-      parts.push(filterKind);
-    }
-
-    if (s(q).trim()) {
-      parts.push(s(q).trim());
-    }
+    if (filterKind) parts.push(filterKind);
+    if (s(q).trim()) parts.push(s(q).trim());
 
     return parts;
   }, [mailTab, filterKind, q]);
 
-  function pickRecipient(recipientId: string) {
-    const id = s(recipientId);
-    const r = recipients.find((x) => s(x.user_id || x.id) === id);
-    setToUserId(id);
-    setRecipientSearch(r ? recipientLabel(r) : "");
-  }
-  function recipientLabel(r: RecipientRow) {
-    const name = s(r.display_name || r.game_name || r.user_id || r.id || "Unknown");
-    const alliance = s(r.alliance_code || "").trim().toUpperCase();
-    return alliance ? `${name} (${alliance})` : name;
-  }
-
   function prefillReply(m: InboxRow) {
-    const directTarget = s(m.direction) === "out"
-      ? ""
-      : "";
     const subjectText = s(m.subject).trim();
     const nextSubject = subjectText
       ? (subjectText.toLowerCase().startsWith("re:") ? subjectText : `Re: ${subjectText}`)
@@ -329,7 +342,7 @@ export default function MyMailPage() {
       );
     });
 
-    pickRecipient(s(possibleRecipient?.user_id || possibleRecipient?.id || ""));
+    pickRecipient(s(possibleRecipient?.user_id || possibleRecipient?.id));
     setSubject(nextSubject);
     setBody("");
     setStatus("Reply loaded into composer ✅");
@@ -342,6 +355,7 @@ export default function MyMailPage() {
 
     setStatus("Marking thread read…");
     const r = await supabase.rpc("mail_mark_thread_read", { p_thread_key: key } as any);
+
     if (r.error) {
       setStatus(r.error.message || "Mark read failed.");
       return;
@@ -351,7 +365,7 @@ export default function MyMailPage() {
     await refreshInbox();
   }
 
-  async function markThreadUnread(threadKey: string) {
+  function markThreadUnread(threadKey: string) {
     const key = s(threadKey).trim();
     if (!key) return;
 
@@ -385,7 +399,7 @@ export default function MyMailPage() {
         <div>
           <div style={{ fontSize: 28, fontWeight: 900 }}>📬 My Mail</div>
           <div style={{ opacity: 0.75, marginTop: 4 }}>
-            Player-to-player mail, inbox preview, and quick access to full threads.
+            Direct player mail, inbox preview, and quick access to full threads.
           </div>
         </div>
 
@@ -471,7 +485,8 @@ export default function MyMailPage() {
                 ) : null}
               </div>
 
-              <div><div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>Subject</div>
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 4 }}>Subject</div>
                 <input
                   className="zombie-input"
                   value={subject}
@@ -637,21 +652,6 @@ export default function MyMailPage() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-            <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>
-              All {tabCounts.all}
-            </span>
-            <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>
-              Inbox {tabCounts.inbox}
-            </span>
-            <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>
-              Sent {tabCounts.sent}
-            </span>
-            <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)" }}>
-              Broadcast {tabCounts.broadcast}
-            </span>
-          </div>
-
           <div style={{ opacity: 0.75, marginBottom: 6 }}>
             Showing {filtered.length} of {items.length}
           </div>
@@ -666,125 +666,134 @@ export default function MyMailPage() {
             {filtered.length === 0 ? (
               <div style={{ opacity: 0.7 }}>{items.length === 0 ? "No mail yet." : "No mail matches the current filters."}</div>
             ) : (
-              filtered.map((m, i) => (
-                <div
-                  key={`${s(m.id)}-${i}`}
-                  style={{
-                    border: Number(m.unread_count || 0) > 0 ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.08)",
-                    background: Number(m.unread_count || 0) > 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.16)",
-                    borderRadius: 12,
-                    padding: 12,
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                        <div style={{ fontWeight: Number(m.unread_count || 0) > 0 ? 950 : 900 }}>
-                          {s(m.subject) || "(no subject)"}
+              filtered.map((m, i) => {
+                const threadKey = threadKeyOf(m);
+
+                return (
+                  <div
+                    key={`${s(m.id)}-${i}`}
+                    style={{
+                      border: Number(m.unread_count || 0) > 0 ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.08)",
+                      background: Number(m.unread_count || 0) > 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.16)",
+                      borderRadius: 12,
+                      padding: 12,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+                      <div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          <div style={{ fontWeight: Number(m.unread_count || 0) > 0 ? 950 : 900 }}>
+                            {s(m.subject) || "(no subject)"}
+                          </div>
+
+                          {Number(m.unread_count || 0) > 0 ? (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                padding: "3px 8px",
+                                borderRadius: 999,
+                                border: "1px solid rgba(255,255,255,0.10)",
+                                background: "rgba(255,255,255,0.08)"
+                              }}
+                            >
+                              Unread • {Number(m.unread_count || 0)}
+                            </span>
+                          ) : null}
+
+                          {s(m.kind) ? (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                padding: "3px 8px",
+                                borderRadius: 999,
+                                border: "1px solid rgba(255,255,255,0.10)",
+                                background: "rgba(255,255,255,0.05)"
+                              }}
+                            >
+                              {s(m.kind)}
+                            </span>
+                          ) : null}
                         </div>
-                        {Number(m.unread_count || 0) > 0 ? (
-                          <span
-                            style={{
-                              fontSize: 11,
-                              padding: "3px 8px",
-                              borderRadius: 999,
-                              border: "1px solid rgba(255,255,255,0.10)",
-                              background: "rgba(255,255,255,0.08)"
-                            }}
-                          >
-                            Unread • {Number(m.unread_count || 0)}
-                          </span>
-                        ) : null}
-                        {s(m.kind) ? (
-                          <span
-                            style={{
-                              fontSize: 11,
-                              padding: "3px 8px",
-                              borderRadius: 999,
-                              border: "1px solid rgba(255,255,255,0.10)",
-                              background: "rgba(255,255,255,0.05)"
-                            }}
-                          >
-                            {s(m.kind)}
-                          </span>
-                        ) : null}
+
+                        <div style={{ opacity: 0.78, fontSize: 12, marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <span>{whoLine(m)}</span>
+                          {threadKey ? (
+                            <span style={{ opacity: 0.6 }}>• Thread ready</span>
+                          ) : null}
+                        </div>
                       </div>
-                      <div style={{ opacity: 0.78, fontSize: 12, marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <span>{whoLine(m)}</span>
-                        {String(m.thread_key || "").trim() ? (
-                          <span style={{ opacity: 0.6 }}>• Thread ready</span>
-                        ) : null}
+
+                      <div style={{ opacity: 0.65, fontSize: 12, whiteSpace: "nowrap" }}>
+                        {niceDate(m.created_at)}
                       </div>
                     </div>
 
-                    <div style={{ opacity: 0.65, fontSize: 12, whiteSpace: "nowrap" }}>
-                      {niceDate(m.created_at)}
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 8 }}>
-                    <div style={{ opacity: 0.9, lineHeight: 1.45 }}>
-                      {previewSnippet(m)}
-                    </div>
-                    {String(m.thread_key || "").trim() ? (
-                      <div style={{ opacity: 0.6, fontSize: 12, marginTop: 6 }}>
-                        Thread: {s(m.thread_key)}
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ opacity: 0.9, lineHeight: 1.45 }}>
+                        {previewSnippet(m)}
                       </div>
-                    ) : null}
-                  </div>
 
-                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                    <div style={{ fontSize: 12, opacity: 0.68, marginBottom: 8 }}>
-                      Actions
+                      {threadKey ? (
+                        <div style={{ opacity: 0.6, fontSize: 12, marginTop: 6 }}>
+                          Thread: {threadKey}
+                        </div>
+                      ) : null}
                     </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                    <button
-                      className="zombie-btn"
-                      type="button"
-                      onClick={() => nav("/mail-v2")}
-                    >
-                      Open Inbox
-                    </button>
 
-                    <button
-                      className="zombie-btn"
-                      type="button"
-                      onClick={() => nav(buildMailThreadLink(String(m.thread_key || "")))}
-                      disabled={!String(m.thread_key || "").trim()}
-                    >
-                      Open Thread
-                    </button>
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                      <div style={{ fontSize: 12, opacity: 0.68, marginBottom: 8 }}>
+                        Actions
+                      </div>
 
-                    <button
-                      className="zombie-btn"
-                      type="button"
-                      onClick={() => prefillReply(m)}
-                      disabled={s(m.kind) !== "direct"}
-                    >
-                      Reply
-                    </button>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        <button
+                          className="zombie-btn"
+                          type="button"
+                          onClick={() => nav("/mail-v2")}
+                        >
+                          Open Inbox
+                        </button>
 
-                    <button
-                      className="zombie-btn"
-                      type="button"
-                      onClick={() => void markThreadRead(String(m.thread_key || ""))}
-                      disabled={!String(m.thread_key || "").trim() || Number(m.unread_count || 0) <= 0}
-                    >
-                      Mark Read
-                    </button>
+                        <button
+                          className="zombie-btn"
+                          type="button"
+                          onClick={() => nav(buildMailThreadLink(threadKey))}
+                          disabled={!threadKey}
+                        >
+                          Open Thread
+                        </button>
 
-                    <button
-                      className="zombie-btn"
-                      type="button"
-                      onClick={() => void markThreadUnread(String(m.thread_key || ""))}
-                      disabled={!String(m.thread_key || "").trim()}
-                    >
-                      Unread Tools
-                    </button>
+                        <button
+                          className="zombie-btn"
+                          type="button"
+                          onClick={() => prefillReply(m)}
+                          disabled={s(m.kind) !== "direct"}
+                        >
+                          Reply
+                        </button>
+
+                        <button
+                          className="zombie-btn"
+                          type="button"
+                          onClick={() => void markThreadRead(threadKey)}
+                          disabled={!threadKey || Number(m.unread_count || 0) <= 0}
+                        >
+                          Mark Read
+                        </button>
+
+                        <button
+                          className="zombie-btn"
+                          type="button"
+                          onClick={() => markThreadUnread(threadKey)}
+                          disabled={!threadKey}
+                        >
+                          Unread Tools
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -792,39 +801,3 @@ export default function MyMailPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
