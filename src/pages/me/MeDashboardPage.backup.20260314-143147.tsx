@@ -8,6 +8,8 @@ import MeStateAlertsCard from "../../components/me/MeStateAlertsCard";
 import MeStateAnnouncementsCard from "../../components/me/MeStateAnnouncementsCard";
 import MeAllianceAnnouncementsCard from "../../components/me/MeAllianceAnnouncementsCard";
 
+const LS_STATE_ALERTS_V2 = "sad_state_789_alerts_v2";
+
 type TroopType = "Fighter" | "Shooter" | "Rider";
 type TierLevel = "T5" | "T6" | "T7" | "T8" | "T9" | "T10" | "T11" | "T12" | "T13" | "T14";
 const TROOP_TYPES: TroopType[] = ["Fighter", "Shooter", "Rider"];
@@ -75,6 +77,14 @@ type MailItem = {
   body: string;
 };
 
+type AlertsStore = {
+  version: 1;
+  updatedAt: string;
+  items: Array<{ id: string; createdAt: string; severity: "info" | "warning" | "critical"; title: string; pinned: boolean; acknowledgedBy: string[] }>;
+};
+
+function nowIso() { return new Date().toISOString(); }
+function safeJsonParse<T>(raw: string | null, fallback: T): T { try { return raw ? (JSON.parse(raw) as T) : fallback; } catch { return fallback; } }
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
 function toNum(v: any, fallback = 0) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
 
@@ -109,6 +119,14 @@ export default function MeDashboardPage() {
   const selectedPlayer = useMemo(() => players.find((p) => p.id === selectedPlayerId) ?? null, [players, selectedPlayerId]);
   const selectedAllianceProfile = useMemo(() => alliances.find((a) => a.id === selectedProfileId) ?? null, [alliances, selectedProfileId]);
 
+  const stateAlerts = useMemo(() => {
+    const store = safeJsonParse<AlertsStore>(localStorage.getItem(LS_STATE_ALERTS_V2), { version: 1, updatedAt: nowIso(), items: [] });
+    const items = store.items ?? [];
+    const pinned = items.filter((a) => a.pinned).slice(0, 3);
+    const unacked = items.filter((a) => (a.acknowledgedBy ?? []).length === 0);
+    return { total: items.length, pinned, unackedCount: unacked.length };
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
@@ -125,19 +143,11 @@ export default function MeDashboardPage() {
       setUserId(uid);
       if (uid) void refreshAll(uid);
       else {
-        setPlayers([]);
-        setAlliances([]);
-        setHqs([]);
-        setEventsToday([]);
-        setMyAchievements([]);
-        setMyMail([]);
+        setPlayers([]); setAlliances([]); setHqs([]); setEventsToday([]); setMyAchievements([]); setMyMail([]);
       }
     });
 
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, []);
 
   async function refreshAll(uid: string) {
@@ -173,11 +183,7 @@ export default function MeDashboardPage() {
       await refreshMyMail();
 
       if (pick) await refreshPlayer(pick);
-      else {
-        setAlliances([]);
-        setSelectedProfileId("");
-        setHqs([]);
-      }
+      else { setAlliances([]); setSelectedProfileId(""); setHqs([]); }
 
       setStatus("");
     } catch (e: any) {
@@ -204,7 +210,6 @@ export default function MeDashboardPage() {
       .select("id,created_at,kind,subject,alliance_code,state_code,body")
       .order("created_at", { ascending: false })
       .limit(10);
-
     if (!res.error) setMyMail((res.data ?? []) as any);
   }
 
@@ -229,12 +234,7 @@ export default function MeDashboardPage() {
   }
 
   async function refreshHqs(profileId: string) {
-    const hRes = await supabase
-      .from("player_alliance_hqs")
-      .select("*")
-      .eq("profile_id", profileId)
-      .order("updated_at", { ascending: false });
-
+    const hRes = await supabase.from("player_alliance_hqs").select("*").eq("profile_id", profileId).order("updated_at", { ascending: false });
     if (hRes.error) throw hRes.error;
     setHqs((hRes.data ?? []) as any);
   }
@@ -365,50 +365,46 @@ export default function MeDashboardPage() {
   const announcementsLink = selectedAllianceProfile?.alliance_id ? `/dashboard/${selectedAllianceProfile.alliance_id}/announcements` : "";
   const alertsLink = selectedAllianceProfile?.alliance_id ? `/dashboard/${selectedAllianceProfile.alliance_id}/alerts` : "";
 
-  const topStats = [
-    { label: "Players", value: players.length, sub: "Linked to this account" },
-    { label: "Alliances", value: alliances.length, sub: "Profiles available" },
-    { label: "Events Today", value: eventsToday.length, sub: "Upcoming operations" },
-    { label: "Mail", value: myMail.length, sub: "Latest inbox items" },
-  ];
-
   return (
-    <div style={{ padding: 16, maxWidth: 1380, margin: "0 auto" }}>
+    <div style={{ padding: 16, maxWidth: 1400, margin: "0 auto", display: "grid", gap: 16 }}>
       <div
-        className="zombie-card"
         style={{
-          padding: 16,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
           borderRadius: 18,
-          marginBottom: 16,
-          display: "grid",
-          gap: 14,
+          padding: 16,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 24, fontWeight: 950 }}>Personal Command Center</div>
-            <div style={{ opacity: 0.78, marginTop: 4, fontSize: 13 }}>
-              Live state intel, alliance traffic, mail, events, and player management in one place.
+            <div style={{ fontSize: 28, fontWeight: 950 }}>🎯 Personal Command Center</div>
+            <div style={{ opacity: 0.84, marginTop: 6 }}>
+              {userId ? "Signed in ✅" : "Not signed in"}
+              {loading ? " • Loading…" : ""}
+              {status ? " • " + status : ""}
             </div>
-            <div style={{ opacity: 0.72, marginTop: 6, fontSize: 12 }}>
-              {userId ? "Signed in ✅" : "Not signed in"}{loading ? " • Loading…" : ""}{status ? " • " + status : ""}
+            <div style={{ opacity: 0.72, marginTop: 8, fontSize: 13 }}>
+              State {selectedPlayer?.state_code || "789"} • Alliance {selectedAllianceProfile?.alliance_code || "—"} • Role {selectedAllianceProfile?.role || "—"}
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link to="/state/789">State Hub</Link>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <Link to="/state/789/ops">State Ops</Link>
-            <Link to="/state/789/alerts">State Alerts</Link>
-            <Link to="/mail-threads">Mail</Link>
-            {selectedAllianceProfile?.alliance_id ? (
-              <Link to={`/dashboard/${selectedAllianceProfile.alliance_id}`}>Alliance Hub</Link>
-            ) : null}
+            <Link to="/state/789/alerts-db">State Alerts</Link>
+            <Link to="/mail-threads">Mail Threads</Link>
             <button disabled={!userId} onClick={() => userId && refreshAll(userId)}>Refresh</button>
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-          {topStats.map((item) => (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginTop: 14 }}>
+          {[
+            { label: "Linked Players", value: players.length, sub: selectedPlayer?.game_name || "No player selected" },
+            { label: "Alliance", value: selectedAllianceProfile?.alliance_code || "—", sub: selectedAllianceProfile?.role || "No alliance selected" },
+            { label: "Events Today", value: eventsToday.length, sub: "Upcoming alliance events" },
+            { label: "Mail", value: myMail.length, sub: "Latest inbox items" },
+            { label: "Achievements", value: myAchievements.length, sub: "Recent requests" },
+            { label: "HQs", value: hqs.length, sub: "For selected alliance" },
+          ].map((item) => (
             <div
               key={item.label}
               style={{
@@ -426,125 +422,135 @@ export default function MeDashboardPage() {
         </div>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1.7fr) minmax(320px, 1fr)",
-          gap: 16,
-          alignItems: "start",
-          marginBottom: 16,
-        }}
-      >
-        <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-            <MeStateAlertsCard stateCode={selectedPlayer?.state_code ?? "789"} />
-            <MeStateAnnouncementsCard stateCode={selectedPlayer?.state_code ?? "789"} />
-            <MeAllianceAlertsPanel
-              allianceId={selectedAllianceProfile?.alliance_id ?? null}
-              allianceCode={selectedAllianceProfile?.alliance_code ?? null}
-            />
-            <MeAllianceAnnouncementsCard
-              allianceId={selectedAllianceProfile?.alliance_id ?? null}
-              allianceCode={selectedAllianceProfile?.alliance_code ?? null}
-            />
-          </div>
+      <DailyBriefingPanel />
 
-          <MeTodayEventsPanel events={eventsToday} alliances={alliances} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+        <MeStateAlertsCard />
+        <MeStateAnnouncementsCard />
+        <MeAllianceAlertsPanel
+          allianceId={selectedAllianceProfile?.alliance_id ?? null}
+          allianceCode={selectedAllianceProfile?.alliance_code ?? null}
+        />
+        <MeAllianceAnnouncementsCard
+          allianceId={selectedAllianceProfile?.alliance_id ?? null}
+          allianceCode={selectedAllianceProfile?.alliance_code ?? null}
+        />
+      </div>
 
-          <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <div>
-                <div style={{ fontWeight: 950, fontSize: 16 }}>🏆 My Achievements</div>
-                <div style={{ opacity: 0.78, fontSize: 12 }}>Recent achievement requests and progress</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+        <MeTodayEventsPanel events={eventsToday} alliances={alliances} />
+
+        <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 950, fontSize: 16 }}>📬 My Mail</div>
+              <div style={{ opacity: 0.78, fontSize: 12 }}>
+                Latest inbox activity for your account
               </div>
             </div>
-
-            <div style={{ marginTop: 12 }}>
-              {myAchievements.length === 0 ? (
-                <div style={{ opacity: 0.75 }}>No achievement requests found for your account.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {myAchievements.slice(0, 6).map((a) => (
-                    <div
-                      key={a.id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        borderRadius: 12,
-                        padding: 12,
-                      }}
-                    >
-                      <div style={{ fontWeight: 900 }}>{a.request?.title ?? "Achievement"}</div>
-                      <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-                        {new Date(a.created_at).toLocaleString()} • Status: <b>{a.request?.status ?? "pending"}</b>
-                        {a.request?.progress_text ? <> • Progress: <b>{a.request.progress_text}</b></> : null}
-                        {a.request?.completed ? <> • ✅ Completed</> : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gap: 16 }}>
-          <DailyBriefingPanel />
-
-          <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <div>
-                <div style={{ fontWeight: 950, fontSize: 16 }}>📬 My Mail</div>
-                <div style={{ opacity: 0.78, fontSize: 12 }}>Latest inbox activity for your account</div>
-              </div>
-              <Link to="/mail-threads">Open inbox</Link>
-            </div>
-
-            <div style={{ marginTop: 12 }}>
-              {myMail.length === 0 ? (
-                <div style={{ opacity: 0.75 }}>No mail yet.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {myMail.slice(0, 5).map((m) => (
-                    <div
-                      key={m.id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        borderRadius: 12,
-                        padding: 12,
-                      }}
-                    >
-                      <div style={{ fontWeight: 900 }}>[{m.kind}] {m.subject || "(no subject)"}</div>
-                      <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-                        {new Date(m.created_at).toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <Link to="/mail-threads">Open inbox</Link>
           </div>
 
-          <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
-            <div style={{ fontWeight: 950, fontSize: 16 }}>⚡ Quick Actions</div>
-            <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Link to="/state/789/discussion">Discussion</Link>
-              <Link to="/state/789/achievements">Achievements</Link>
-              <Link to="/state/789">State Hub</Link>
-              {selectedAllianceProfile?.alliance_id ? <Link to={`/dashboard/${selectedAllianceProfile.alliance_id}`}>Alliance Hub</Link> : null}
-              {calendarLink ? <Link to={calendarLink}>Calendar</Link> : null}
-              {alertsLink ? <Link to={alertsLink}>Alliance Alerts</Link> : null}
-              {announcementsLink ? <Link to={announcementsLink}>Announcements</Link> : null}
-            </div>
+          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            {myMail.length === 0 ? (
+              <div style={{ opacity: 0.72 }}>No mail yet.</div>
+            ) : (
+              myMail.slice(0, 6).map((m) => (
+                <div
+                  key={m.id}
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "rgba(255,255,255,0.03)",
+                    borderRadius: 14,
+                    padding: 12,
+                  }}
+                >
+                  <div style={{ fontWeight: 900 }}>
+                    [{m.kind}] {m.subject || "(no subject)"}
+                  </div>
+                  <div style={{ opacity: 0.78, fontSize: 13, lineHeight: 1.45, marginTop: 6 }}>
+                    {String(m.body || "").replace(/\s+/g, " ").trim().slice(0, 160) || "(no preview)"}
+                    {String(m.body || "").replace(/\s+/g, " ").trim().length > 160 ? "…" : ""}
+                  </div>
+                  <div style={{ opacity: 0.68, fontSize: 12, marginTop: 8 }}>
+                    {new Date(m.created_at).toLocaleString()}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
 
-      <details open style={{ marginBottom: 16 }}>
-        <summary style={{ cursor: "pointer", fontWeight: 900, marginBottom: 10 }}>Player Profile</summary>
+      <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden", marginTop: 16 }}>
+        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>My Achievements</div>
+        <div style={{ padding: 12 }}>
+          {myAchievements.length === 0 ? (
+            <div style={{ opacity: 0.75 }}>No achievement requests found for your account.</div>
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              {myAchievements.slice(0, 10).map((a) => (
+                <div key={a.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 10 }}>
+                  <div style={{ fontWeight: 900 }}>{a.request?.title ?? "Achievement"}</div>
+                  <div style={{ opacity: 0.75, fontSize: 12 }}>
+                    {new Date(a.created_at).toLocaleString()} • Status: <b>{a.request?.status ?? "pending"}</b>
+                    {a.request?.progress_text ? <> • Progress: <b>{a.request.progress_text}</b></> : null}
+                    {a.request?.completed ? <> • ✅ Completed</> : null}
+                  </div>
+                  <details style={{ marginTop: 8 }}>
+                    <summary style={{ cursor: "pointer" }}>Raw</summary>
+                    <pre style={{ marginTop: 8, whiteSpace: "pre-wrap", fontSize: 12, opacity: 0.9 }}>
+{JSON.stringify(a.request, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
-        <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
-          <div style={{ fontWeight: 950, fontSize: 16, marginBottom: 12 }}>Player Profile</div>
+      <hr style={{ margin: "16px 0", opacity: 0.3 }} />
 
+      {/* COMMAND CENTER LIVE RAIL */}
+      <div className="zombie-card" style={{ borderRadius: 20, padding: 16, marginBottom: 16, background: "linear-gradient(135deg, rgba(176,18,27,0.14), rgba(255,255,255,0.03))", border: "1px solid rgba(255,255,255,0.10)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 24, fontWeight: 950 }}>🧭 Personal Command Center</div>
+            <div style={{ opacity: 0.78, marginTop: 4 }}>
+              Live state + alliance intel, announcements, alerts, mail, and today’s activity.
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link to="/state/789/alerts-db">Live State Alerts</Link>
+            <Link to="/mail-threads">Mail Threads</Link>
+            <Link to="/state/789">State Hub</Link>
+            {selectedAllianceProfile?.alliance_id ? <Link to={`/dashboard/${selectedAllianceProfile.alliance_id}`}>Alliance Hub</Link> : null}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: 16, marginBottom: 16 }}>
+        <DailyBriefingPanel />
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+          <MeStateAlertsCard stateCode={selectedPlayer?.state_code ?? "789"} />
+          <MeStateAnnouncementsCard stateCode={selectedPlayer?.state_code ?? "789"} />
+          <MeAllianceAlertsPanel
+            allianceId={selectedAllianceProfile?.alliance_id ?? null}
+            allianceCode={selectedAllianceProfile?.alliance_code ?? null}
+          />
+          <MeAllianceAnnouncementsCard
+            allianceId={selectedAllianceProfile?.alliance_id ?? null}
+            allianceCode={selectedAllianceProfile?.alliance_code ?? null}
+          />
+        </div>
+      </div>
+
+      <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>Player Profile</div>
+        <div style={{ padding: 12, display: "grid", gap: 12 }}>
           {players.length === 0 ? (
             <div style={{ opacity: 0.8 }}>
               No player profile is linked to this account yet.
@@ -554,15 +560,11 @@ export default function MeDashboardPage() {
             </div>
           ) : (
             <>
-              <select
-                value={selectedPlayerId}
-                onChange={async (e) => {
-                  const pid = e.target.value;
-                  setSelectedPlayerId(pid);
-                  if (pid) await refreshPlayer(pid);
-                }}
-                style={{ minWidth: 360, marginBottom: 12 }}
-              >
+              <select value={selectedPlayerId} onChange={async (e) => {
+                const pid = e.target.value;
+                setSelectedPlayerId(pid);
+                if (pid) await refreshPlayer(pid);
+              }} style={{ minWidth: 360 }}>
                 {players.map((p) => (
                   <option key={p.id} value={p.id}>
                     {(p.name ?? "Player")} • {p.game_name ?? ""} ({p.id.slice(0, 6)}…)
@@ -609,14 +611,11 @@ export default function MeDashboardPage() {
             </>
           )}
         </div>
-      </details>
+      </div>
 
-      <details style={{ marginBottom: 16 }}>
-        <summary style={{ cursor: "pointer", fontWeight: 900, marginBottom: 10 }}>Alliance Profile + HQs</summary>
-
-        <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
-          <div style={{ fontWeight: 950, fontSize: 16, marginBottom: 12 }}>Alliance Profile + HQs</div>
-
+      <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden", marginTop: 16 }}>
+        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>Alliance Profile + HQs</div>
+        <div style={{ padding: 12, display: "grid", gap: 12 }}>
           {alliances.length === 0 ? (
             <div style={{ opacity: 0.8 }}>No alliance memberships found for this player (provisioning controls this).</div>
           ) : (
@@ -632,14 +631,14 @@ export default function MeDashboardPage() {
 
               {selectedAllianceProfile ? (
                 <>
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", opacity: 0.85, marginTop: 12 }}>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", opacity: 0.85 }}>
                     <div>Alliance: <b>{selectedAllianceProfile.alliance_code}</b></div>
                     {announcementsLink ? <Link to={announcementsLink}>Announcements</Link> : null}
                     {calendarLink ? <Link to={calendarLink}>Calendar</Link> : null}
                     {alertsLink ? <Link to={alertsLink}>Alerts</Link> : null}
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
                       <div style={{ opacity: 0.75, fontSize: 12 }}>In-game name (for this alliance)</div>
                       <input value={String(selectedAllianceProfile.in_game_name ?? "")} onChange={(e) => void saveAllianceProfileField("in_game_name", e.target.value)} />
@@ -650,7 +649,7 @@ export default function MeDashboardPage() {
                     </div>
                   </div>
 
-                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12, marginTop: 14 }}>
+                  <div style={{ borderTop: "1px solid #222", paddingTop: 12 }}>
                     <div style={{ fontWeight: 900 }}>Add HQ</div>
 
                     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10, marginTop: 10 }}>
@@ -706,14 +705,14 @@ export default function MeDashboardPage() {
                     </div>
                   </div>
 
-                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12, marginTop: 14 }}>
+                  <div style={{ borderTop: "1px solid #222", paddingTop: 12 }}>
                     <div style={{ fontWeight: 900 }}>HQ List ({hqs.length})</div>
                     <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
                       {hqs.length === 0 ? (
                         <div style={{ opacity: 0.7 }}>No HQs yet.</div>
                       ) : (
                         hqs.map((hq) => (
-                          <div key={hq.id} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 12 }}>
+                          <div key={hq.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 12 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                               <div>
                                 <div style={{ fontWeight: 900 }}>{hq.hq_name} • HQ {hq.hq_level}</div>
@@ -736,12 +735,12 @@ export default function MeDashboardPage() {
                   </div>
                 </>
               ) : (
-                <div style={{ opacity: 0.75, marginTop: 12 }}>Select an alliance profile above to manage HQs.</div>
+                <div style={{ opacity: 0.75 }}>Select an alliance profile above to manage HQs.</div>
               )}
             </>
           )}
         </div>
-      </details>
+      </div>
 
       <div style={{ opacity: 0.6, marginTop: 12, fontSize: 12 }}>
         Tip: delegated posting for Alliance Alerts is controlled by <code>alliance_access_grants.can_post_alerts</code>.
@@ -749,3 +748,9 @@ export default function MeDashboardPage() {
     </div>
   );
 }
+
+
+
+
+
+
