@@ -968,14 +968,14 @@ export default function OwnerStateAchievementsPage() {
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ opacity: 0.75, fontSize: 12 }}>State</div>
+          <div style={{ opacity: 0.78, fontSize: 12, fontWeight: 700 }}>State Code</div>
           <input className="zombie-input" value={stateCode} onChange={(e) => setStateCode(e.target.value)} style={{ padding: "10px 12px", width: 120 }} />
           <div style={{ marginLeft: "auto", opacity: 0.75, fontSize: 12 }}>
             user={userId ? "yes" : "no"} • admin={String(isAppAdmin)} • owner={String(isDashboardOwner)}
           </div>
         </div>
-        <div style={{ opacity: 0.75, fontSize: 12, marginTop: 8 }}>
-          {loading ? "Loading…" : `types=${types.length} • options=${options.length} • requests=${requests.length} • access=${access.length}`}
+        <div style={{ opacity: 0.78, fontSize: 12, marginTop: 8 }}>
+          {loading ? "Loading…" : `Types: ${types.length} • Options: ${options.length} • Requests: ${requests.length} • Access: ${access.length}`}
         </div>
         {(initialAllianceFromQuery || initialTypeFromQuery || initialPlayerFromQuery || initialStatusFromQuery) ? (
         <div
@@ -1346,6 +1346,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
