@@ -1246,7 +1246,15 @@ export default function OwnerStateAchievementsPage() {
               const cur = reqCurrent(r);
               const done = (String(r.status) === "completed") || (cur >= req);
               return (
-                <div key={String(r.id)} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
+                <div
+                  key={String(r.id)}
+                  style={{
+                    padding: 10,
+                    borderRadius: 12,
+                    border: done ? "1px solid rgba(120,255,120,0.22)" : "1px solid rgba(255,255,255,0.10)",
+                    background: done ? "rgba(120,255,120,0.05)" : "rgba(0,0,0,0.20)"
+                  }}
+                >
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <input
@@ -1530,6 +1538,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
