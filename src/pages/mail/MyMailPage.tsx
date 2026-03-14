@@ -617,8 +617,11 @@ export default function MyMailPage() {
                           </span>
                         ) : null}
                       </div>
-                      <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-                        {whoLine(m)}
+                      <div style={{ opacity: 0.78, fontSize: 12, marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <span>{whoLine(m)}</span>
+                        {String(m.thread_key || "").trim() ? (
+                          <span style={{ opacity: 0.6 }}>• Thread ready</span>
+                        ) : null}
                       </div>
                     </div>
 
@@ -631,9 +634,11 @@ export default function MyMailPage() {
                     <div style={{ opacity: 0.9, lineHeight: 1.45 }}>
                       {previewSnippet(m)}
                     </div>
-                    <div style={{ opacity: 0.6, fontSize: 12, marginTop: 6 }}>
-                      Thread: {s(m.thread_key) || "—"}
-                    </div>
+                    {String(m.thread_key || "").trim() ? (
+                      <div style={{ opacity: 0.6, fontSize: 12, marginTop: 6 }}>
+                        Thread: {s(m.thread_key)}
+                      </div>
+                    ) : null}
                   </div>
 
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
@@ -690,6 +695,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
