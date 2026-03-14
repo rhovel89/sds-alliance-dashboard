@@ -980,6 +980,30 @@ export default function OwnerStateAchievementsPage() {
           {initialStatusFromQuery ? ` • Status: ${initialStatusFromQuery}` : ""}
         </div>
       ) : null}
+        {msg ? (
+          <div
+            style={{
+              marginTop: 10,
+              border:
+                String(msg || "").includes("✅")
+                  ? "1px solid rgba(120,255,120,0.35)"
+                  : /failed|error|missing|load/i.test(String(msg || ""))
+                  ? "1px solid rgba(255,120,120,0.35)"
+                  : "1px solid rgba(255,255,255,0.14)",
+              background:
+                String(msg || "").includes("✅")
+                  ? "rgba(120,255,120,0.08)"
+                  : /failed|error|missing|load/i.test(String(msg || ""))
+                  ? "rgba(255,120,120,0.08)"
+                  : "rgba(255,255,255,0.04)",
+              borderRadius: 10,
+              padding: 10,
+              fontWeight: String(msg || "").includes("✅") ? 700 : 500,
+            }}
+          >
+            {msg}
+          </div>
+        ) : null}
       </div>
 
 
@@ -1251,6 +1275,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
