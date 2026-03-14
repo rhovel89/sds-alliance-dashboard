@@ -254,6 +254,29 @@ export default function MyMailPage() {
     };
   }, [items]);
 
+  const activeFilterSummary = useMemo(() => {
+    const parts: string[] = [];
+
+    if (mailTab !== "all") {
+      parts.push(
+        mailTab === "inbox" ? "Inbox" :
+        mailTab === "sent" ? "Sent" :
+        mailTab === "broadcast" ? "Broadcast" :
+        "All"
+      );
+    }
+
+    if (filterKind) {
+      parts.push(filterKind);
+    }
+
+    if (s(q).trim()) {
+      parts.push(s(q).trim());
+    }
+
+    return parts;
+  }, [mailTab, filterKind, q]);
+
   function pickRecipient(recipientId: string) {
     const id = s(recipientId);
     const r = recipients.find((x) => s(x.user_id || x.id) === id);
@@ -592,9 +615,15 @@ export default function MyMailPage() {
             </span>
           </div>
 
-          <div style={{ opacity: 0.75, marginBottom: 10 }}>
+          <div style={{ opacity: 0.75, marginBottom: 6 }}>
             Showing {filtered.length} of {items.length}
           </div>
+
+          {activeFilterSummary.length > 0 ? (
+            <div style={{ opacity: 0.68, marginBottom: 10, fontSize: 12 }}>
+              Active: {activeFilterSummary.join(" • ")}
+            </div>
+          ) : null}
 
           <div style={{ display: "grid", gap: 8 }}>
             {filtered.length === 0 ? (
@@ -721,6 +750,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
