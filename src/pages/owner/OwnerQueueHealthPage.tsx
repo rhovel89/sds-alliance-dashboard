@@ -409,51 +409,56 @@ export default function OwnerQueueHealthPage() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 14 }}>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(String(e.target.value || "ALL"))}
-          style={{
-            padding: "10px 12px",
-            color: uiText,
-            background: "rgba(0,0,0,0.35)",
-            borderRadius: 12,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(0,0,0,0.25)",
-            color: "rgba(255,255,255,0.92)"
-          }}
-        >
-          {statusOptions.map((x) => <option key={x} value={x}>{x}</option>)}
-        </select>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, opacity: 0.78, color: uiText }}>Status Filter</div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(String(e.target.value || "ALL"))}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.35)",
+              color: uiText
+            }}
+          >
+            {statusOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        </div>
 
-        <select
-          value={kindFilter}
-          onChange={(e) => setKindFilter(String(e.target.value || "ALL"))}
-          style={{
-            padding: "10px 12px",
-            color: uiText,
-            background: "rgba(0,0,0,0.35)",
-            borderRadius: 12,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(0,0,0,0.25)",
-            color: "rgba(255,255,255,0.92)"
-          }}
-        >
-          {kindOptions.map((x) => <option key={x} value={x}>{x}</option>)}
-        </select>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, opacity: 0.78, color: uiText }}>Kind Filter</div>
+          <select
+            value={kindFilter}
+            onChange={(e) => setKindFilter(String(e.target.value || "ALL"))}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.35)",
+              color: uiText
+            }}
+          >
+            {kindOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        </div>
 
-        <input
-          value={targetFilter}
-          onChange={(e) => setTargetFilter(String(e.target.value || ""))}
-          placeholder="Filter target / channel / error..."
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            borderRadius: 12,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(0,0,0,0.25)",
-            color: "rgba(255,255,255,0.92)"
-          }}
-        />
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, opacity: 0.78, color: uiText }}>Search</div>
+          <input
+            value={targetFilter}
+            onChange={(e) => setTargetFilter(String(e.target.value || ""))}
+            placeholder="Filter target / channel / error..."
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.35)",
+              color: uiText
+            }}
+          />
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
@@ -594,6 +599,7 @@ export default function OwnerQueueHealthPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 
