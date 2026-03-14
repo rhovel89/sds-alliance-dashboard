@@ -308,7 +308,7 @@ export default function MyMailPage() {
     const key = s(threadKey).trim();
     if (!key) return;
 
-    setStatus("Mark unread is preview-only for now. Opening thread view…");
+    setStatus("Unread tools are not available on Mail Home yet. Opening thread view…");
     nav(`/mail-threads?thread=${encodeURIComponent(key)}`);
   }
 
@@ -572,7 +572,7 @@ export default function MyMailPage() {
 
           <div style={{ display: "grid", gap: 8 }}>
             {filtered.length === 0 ? (
-              <div style={{ opacity: 0.7 }}>No mail yet.</div>
+              <div style={{ opacity: 0.7 }}>{items.length === 0 ? "No mail yet." : "No mail matches the current filters."}</div>
             ) : (
               filtered.map((m, i) => (
                 <div
@@ -683,7 +683,7 @@ export default function MyMailPage() {
                       onClick={() => void markThreadUnread(String(m.thread_key || ""))}
                       disabled={!String(m.thread_key || "").trim()}
                     >
-                      Mark Unread
+                      Unread Tools
                     </button>
                   </div>
                 </div>
@@ -695,6 +695,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
