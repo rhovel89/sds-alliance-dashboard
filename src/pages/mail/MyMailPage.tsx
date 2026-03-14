@@ -460,6 +460,10 @@ export default function MyMailPage() {
                   placeholder="Optional subject"
                   style={{ width: "100%", padding: "10px 12px" }}
                 />
+                <div style={{ marginTop: 6, fontSize: 12, opacity: 0.72, display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <span>{subject.trim() ? `Preview subject: ${subject.trim()}` : "Subject optional"}</span>
+                  <span>{subject.trim().length} chars</span>
+                </div>
               </div>
 
               <div>
@@ -764,6 +768,7 @@ export default function MyMailPage() {
     </div>
   );
 }
+
 
 
 
