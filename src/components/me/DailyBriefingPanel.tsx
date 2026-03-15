@@ -158,7 +158,7 @@ export default function DailyBriefingPanel() {
             onClick={() => nav(p.to)}
           >
             <div style={{ fontWeight: 900 }}>{p.emoji} {p.label}</div>
-            <div style={{ opacity: 0.8, fontSize: 12 }}>Count: <b>{p.value}</b></div>
+            <div style={{ color: "rgba(243,247,242,0.88)", fontSize: 12 }}>Count: <b style={{ color: "#ffffff" }}>{p.value}</b></div>
           </button>
         ))}
       </div>
@@ -223,7 +223,7 @@ export default function DailyBriefingPanel() {
         <div className="zombie-card" style={{ padding: 12, borderRadius: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
             <div style={{ fontWeight: 900 }}>Latest State Alerts</div>
-            <button type="button" onClick={() => nav("/state/789/alerts-db")} style={{ padding: "8px 10px", borderRadius: 12 }}>
+            <button type="button" onClick={() => nav("/state/789/alerts")} style={{ padding: "8px 10px", borderRadius: 12 }}>
               Open Alerts
             </button>
           </div>
@@ -233,7 +233,7 @@ export default function DailyBriefingPanel() {
               <button
                 key={a.id}
                 type="button"
-                onClick={() => nav("/state/789/alerts-db")}
+                onClick={() => nav("/state/789/alerts")}
                 style={{
                   textAlign: "left",
                   border: !a.is_acked ? "1px solid rgba(255,120,120,0.30)" : "1px solid rgba(255,255,255,0.10)",
@@ -261,7 +261,7 @@ export default function DailyBriefingPanel() {
         <button type="button" onClick={() => nav("/mail")} style={{ padding: "10px 12px", borderRadius: 12 }}>
           📬 Mail
         </button>
-        <button type="button" onClick={() => nav("/state/789/alerts-db")} style={{ padding: "10px 12px", borderRadius: 12 }}>
+        <button type="button" onClick={() => nav("/state/789/alerts")} style={{ padding: "10px 12px", borderRadius: 12 }}>
           🚨 State Alerts
         </button>
         <button type="button" onClick={() => nav("/state/789/discussion")} style={{ padding: "10px 12px", borderRadius: 12 }}>

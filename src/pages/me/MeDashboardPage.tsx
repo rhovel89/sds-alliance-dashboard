@@ -78,6 +78,13 @@ type MailItem = {
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
 function toNum(v: any, fallback = 0) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
 
+const TEXT = "#f3f7f2";
+const MUTED = "rgba(243,247,242,0.88)";
+const SOFT = "rgba(243,247,242,0.72)";
+const PANEL = "rgba(10,14,12,0.82)";
+const BORDER = "1px solid rgba(160,255,160,0.14)";
+const LINK = "#9ef7b9";
+
 export default function MeDashboardPage() {
   const [userId, setUserId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -394,7 +401,17 @@ export default function MeDashboardPage() {
   ];
 
   return (
-    <div style={{ padding: "16px 20px 28px 20px", width: "100%", maxWidth: "none", margin: 0 }}>
+    <div
+      style={{
+        padding: "16px 20px 28px 20px",
+        width: "100%",
+        maxWidth: "none",
+        margin: 0,
+        color: TEXT,
+        background: "linear-gradient(180deg, #07110b 0%, #0b1510 100%)",
+        minHeight: "100vh",
+      }}
+    >
       <div
         className="zombie-card"
         style={{
@@ -403,15 +420,18 @@ export default function MeDashboardPage() {
           marginBottom: 16,
           display: "grid",
           gap: 14,
+          background: PANEL,
+          border: BORDER,
+          color: TEXT,
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 24, fontWeight: 950 }}>Personal Command Center</div>
-            <div style={{ opacity: 0.78, marginTop: 4, fontSize: 13 }}>
+            <div style={{ color: MUTED, marginTop: 4, fontSize: 13 }}>
               Live state intel, alliance traffic, mail, events, and player management in one place.
             </div>
-            <div style={{ opacity: 0.72, marginTop: 6, fontSize: 12 }}>
+            <div style={{ color: SOFT, marginTop: 6, fontSize: 12 }}>
               {userId ? "Signed in ✅" : "Not signed in"}{loading ? " • Loading…" : ""}{status ? " • " + status : ""}
             </div>
           </div>
