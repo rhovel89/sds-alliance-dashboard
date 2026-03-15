@@ -493,7 +493,7 @@ export default function OwnerBroadcastComposerPage() {
       setSending(false);
     }
   }
-  async function sendNowBot() {
+    async function sendNowBot() {
     try {
       if (!resolvedChannelId) {
         return window.alert("Set a channel WITH an ID first (Owner → Discord Mentions).");
@@ -514,13 +514,8 @@ export default function OwnerBroadcastComposerPage() {
       window.alert("Send failed: " + String(e?.message || e));
     }
   }
-catch (e: any) {
-      window.alert("Send failed: " + String(e?.message || e));
-    }
-  }
 
-return (
-    <div style={{ padding: 14 }}>
+return (<div style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>📣 Owner — Broadcast Composer</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -683,5 +678,6 @@ return (
     </div>
   );
 }
+
 
 
