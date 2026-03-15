@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { GUIDE_MEDIA_BUCKET } from "../../lib/storageBuckets";
 
@@ -39,6 +39,9 @@ export default function GuideSectionAttachmentsPanel(props: {
   const [rows, setRows] = useState<Row[]>([]);
   const [status, setStatus] = useState<string>("");
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+  const [dragOver, setDragOver] = useState(false);
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const imageRows = useMemo(() => rows.filter(isImage), [rows]);
   const fileRows = useMemo(() => rows.filter((r) => !isImage(r)), [rows]);
@@ -78,9 +81,9 @@ export default function GuideSectionAttachmentsPanel(props: {
     if (sectionId) void load();
   }, [sectionId]);
 
-  async function upload(files: FileList | null) {
+  async function uploadFiles(files: File[]) {
     if (!canEdit) return;
-    if (!files || !files.length) return;
+    if (!files.length) return;
 
     const userRes = await supabase.auth.getUser();
     const uid = userRes.data?.user?.id || null;
@@ -91,7 +94,7 @@ export default function GuideSectionAttachmentsPanel(props: {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const safeName = safeKeyPart(file.name);
+      const safeName = safeKeyPart(file.name || `upload-${Date.now()}`);
       const key = `${String(allianceCode || "").toUpperCase()}/sections/${sectionId}/${Date.now()}-${safeName}`;
 
       setStatus(`Uploading ${i + 1}/${files.length}…`);
@@ -111,7 +114,7 @@ export default function GuideSectionAttachmentsPanel(props: {
         section_id: sectionId,
         entry_id: "",
         storage_path: key,
-        file_name: file.name,
+        file_name: file.name || safeName,
         mime_type: file.type || null,
         size_bytes: file.size || null,
       });
@@ -125,6 +128,50 @@ export default function GuideSectionAttachmentsPanel(props: {
     setStatus("Uploaded ✅");
     await load();
     window.setTimeout(() => setStatus(""), 1200);
+  }
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const fl = e.target.files;
+    if (!fl) return;
+    void uploadFiles(Array.from(fl));
+    e.target.value = "";
+  }
+
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragOver(false);
+    if (!canEdit) return;
+
+    const fl = e.dataTransfer.files;
+    if (!fl || !fl.length) return;
+    void uploadFiles(Array.from(fl));
+  }
+
+  function onPaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    if (!canEdit) return;
+
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const files: File[] = [];
+    for (const it of Array.from(items)) {
+      if (it.kind === "file") {
+        const f = it.getAsFile();
+        if (f) {
+          const named = new File(
+            [f],
+            f.name && f.name !== "image.png" ? f.name : `pasted-${Date.now()}.png`,
+            { type: f.type || "image/png" }
+          );
+          files.push(named);
+        }
+      }
+    }
+
+    if (files.length) {
+      e.preventDefault();
+      void uploadFiles(files);
+    }
   }
 
   async function openFile(r: Row) {
@@ -180,7 +227,7 @@ export default function GuideSectionAttachmentsPanel(props: {
     >
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div>
-          <div style={{ fontWeight: 950 }}>Section Attachments</div>
+          <div style={{ fontWeight: 950 }}>Section Media</div>
           <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
             Section-wide reference images and files.
           </div>
@@ -190,21 +237,47 @@ export default function GuideSectionAttachmentsPanel(props: {
 
       {canEdit ? (
         <div
-          style={{
-            border: "1px solid rgba(255,255,255,0.10)",
-            borderRadius: 14,
-            padding: 12,
-            background: "rgba(255,255,255,0.03)",
+          tabIndex={0}
+          onDrop={onDrop}
+          onPaste={onPaste}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
           }}
+          onDragLeave={() => setDragOver(false)}
+          style={{
+            border: dragOver
+              ? "1px solid rgba(120,255,120,0.35)"
+              : "1px solid rgba(255,255,255,0.10)",
+            borderRadius: 16,
+            padding: 14,
+            background: dragOver ? "rgba(120,255,120,0.06)" : "rgba(255,255,255,0.03)",
+            outline: "none",
+          }}
+          title="Drop files here or click and paste a screenshot"
         >
-          <input
-            type="file"
-            multiple
-            onChange={(e) => void upload(e.target.files)}
-            style={{ width: "100%" }}
-          />
+          <div style={{ fontWeight: 900 }}>Add section media</div>
           <div style={{ marginTop: 6, opacity: 0.72, fontSize: 12 }}>
-            Choose one or many files from desktop or phone.
+            Choose from desktop/phone, drag files here, or click this box and paste a screenshot.
+          </div>
+
+          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="zombie-btn"
+              onClick={() => inputRef.current?.click()}
+            >
+              Choose Files
+            </button>
+
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.txt,.zip,.csv"
+              style={{ display: "none" }}
+              onChange={onPick}
+            />
           </div>
         </div>
       ) : null}
@@ -309,7 +382,7 @@ export default function GuideSectionAttachmentsPanel(props: {
       ) : null}
 
       {!rows.length ? (
-        <div style={{ opacity: 0.72, fontSize: 12 }}>No section attachments.</div>
+        <div style={{ opacity: 0.72, fontSize: 12 }}>No section media yet.</div>
       ) : null}
     </div>
   );
