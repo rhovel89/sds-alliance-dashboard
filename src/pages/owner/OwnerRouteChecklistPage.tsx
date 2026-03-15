@@ -56,7 +56,7 @@ const ABS_ROUTES: string[] = [
   "/owner/links",
   "/owner/live-ops",
   "/owner/live-ops-db",
-  "/owner/mail-broadcast",
+  "/owner/broadcast",
   "/owner/membership",
   "/owner/memberships",
   "/owner/onboarding-queue",
@@ -271,3 +271,4 @@ export default function OwnerRouteChecklistPage() {
     </CommandCenterShell>
   );
 }
+

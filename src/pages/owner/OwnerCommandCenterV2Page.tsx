@@ -52,7 +52,7 @@ export default function OwnerCommandCenterV2Page() {
         <Tile emoji="✅" title="Onboarding Queue" sub="Approve → provision → welcome mail" to="/owner/onboarding-queue" />
         <Tile emoji="🧩" title="Access Control" sub="Per-alliance + state permissions" to="/owner/access-control" />
         <Tile emoji="📡" title="Activity Feed" sub="Ops + audit trail (who did what)" to="/owner/activity-feed" />
-        <Tile emoji="📣" title="Broadcast Mail" sub="Send announcements to alliance members" to="/owner/mail-broadcast" />
+        <Tile emoji="📣" title="Broadcast Mail" sub="Send announcements to alliance members" to="/owner/broadcast" />
         <Tile emoji="🗂️" title="Directory Sync" sub="Alliance map + directory management" to="/owner/directory-sync" />
         <Tile emoji="🧾" title="Data Vault" sub="Export/import all configs + backups" to="/owner/data-vault" />
         <Tile emoji="🔎" title="Command Search" sub="Search mail, bulletins, and guides" to="/search" />
@@ -60,4 +60,5 @@ export default function OwnerCommandCenterV2Page() {
     </div>
   );
 }
+
 

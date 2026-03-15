@@ -49,7 +49,7 @@ export default function OwnerLinksIndexPage() {
       "/owner/permissions?section=permissions",
       "/owner/memberships",
       "/owner/players",
-      "/owner/mail-broadcast",
+      "/owner/broadcast",
       "/owner/discord-queue",
       "/owner/data-vault",
       "/owner/directory-db",
@@ -130,4 +130,5 @@ export default function OwnerLinksIndexPage() {
     </div>
   );
 }
+
 

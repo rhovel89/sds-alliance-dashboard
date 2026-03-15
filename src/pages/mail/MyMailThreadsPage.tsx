@@ -337,7 +337,7 @@ export default function MyMailThreadsPage() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="zombie-btn" type="button" onClick={() => nav("/mail")}>Mail Home</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/mail-v2")}>Inbox</button>
-          <button className="zombie-btn" type="button" onClick={() => nav("/owner/mail-broadcast")}>Broadcast</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/owner/broadcast")}>Broadcast</button>
             <button
               className="zombie-btn"
               type="button"
@@ -577,5 +577,6 @@ export default function MyMailThreadsPage() {
     </div>
   );
 }
+
 
 

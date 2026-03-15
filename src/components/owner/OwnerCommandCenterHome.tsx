@@ -64,7 +64,7 @@ export default function OwnerCommandCenterHome() {
       { group: "Start Here (recommended order)", title: "1) Alliance Directory Sync", desc: "Add/verify alliances. Powers dropdowns + onboarding.", to: "/owner/directory-sync", badge: "Start" },
       { group: "Start Here (recommended order)", title: "2) Onboarding Queue", desc: "Approve → provision membership → optional welcome mail.", to: "/owner/onboarding-queue", badge: "Start" },
       { group: "Start Here (recommended order)", title: "3) Access Control Hub", desc: "All permissions (State + Alliance) + legacy tools in one place.", to: "/owner/access-control", badge: "Start" },
-      { group: "Start Here (recommended order)", title: "4) Mail Broadcast", desc: "Send an alliance broadcast (shows in /mail-v2).", to: "/owner/mail-broadcast", badge: "Start" },
+      { group: "Start Here (recommended order)", title: "4) Mail Broadcast", desc: "Send an alliance broadcast (shows in /mail-v2).", to: "/owner/broadcast", badge: "Start" },
 
       // People & membership
       { group: "People & Membership", title: "Access Requests", desc: "Review access requests (legacy list).", to: "/owner/requests" },
@@ -89,7 +89,7 @@ export default function OwnerCommandCenterHome() {
       { group: "Alliances & Directory", title: "Alliance Jump", desc: "Jump to an alliance dashboard.", to: "/owner/jump" },
 
       // Mail / comms
-      { group: "Mail & Comms", title: "Mail Broadcast", desc: "Send broadcast into mail system.", to: "/owner/mail-broadcast" },
+      { group: "Mail & Comms", title: "Mail Broadcast", desc: "Send broadcast into mail system.", to: "/owner/broadcast" },
       { group: "Mail & Comms", title: "Broadcast Composer", desc: "Compose a Discord-ready message + payload.", to: "/owner/broadcast" },
 
       // Discord
@@ -207,5 +207,6 @@ export default function OwnerCommandCenterHome() {
     </div>
   );
 }
+
 
 

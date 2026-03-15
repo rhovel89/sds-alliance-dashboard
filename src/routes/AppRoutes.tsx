@@ -181,7 +181,7 @@ export default function AppRoutes() {
       <Route path="/owner/player-ops" element={<RequireAdmin><OwnerPlayerOpsFlowPage /></RequireAdmin>} />
       <Route path="/alliances-v2" element={<AllianceDirectoryDbPage />} />
       <Route path="/owner/directory-db" element={<RequireAdmin><OwnerDirectoryDbPage /></RequireAdmin>} />
-      <Route path="/owner/mail-broadcast" element={<RequireAdmin><OwnerMailBroadcastPage /></RequireAdmin>} />
+      <Route path="/owner/mail-broadcast" element={<RequireAdmin><Navigate to="/owner/broadcast" replace /></RequireAdmin>} />
       <Route path="/owner/data-vault" element={<RequireAdmin><OwnerDataVaultPage /></RequireAdmin>} />
       <Route path="/status" element={<SystemStatusPage />} />
       {/* Public */}
@@ -314,6 +314,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 

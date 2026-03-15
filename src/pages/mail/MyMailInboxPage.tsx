@@ -206,7 +206,7 @@ export default function MyMailInboxPage() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="zombie-btn" type="button" onClick={() => nav("/mail")}>Mail Home</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/mail-threads")}>Threads</button>
-          <button className="zombie-btn" type="button" onClick={() => nav("/owner/mail-broadcast")}>Broadcast</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/owner/broadcast")}>Broadcast</button>
           <button className="zombie-btn" type="button" onClick={() => void refresh()} disabled={loading}>Refresh</button>
         </div>
       </div>
@@ -409,5 +409,6 @@ export default function MyMailInboxPage() {
     </div>
   );
 }
+
 
 
