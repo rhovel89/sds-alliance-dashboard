@@ -167,7 +167,7 @@ export default function AppRoutes() {
       <Route path="/owner/discord-queue" element={<RequireAdmin><OwnerDiscordQueuePage /></RequireAdmin>} />
       <Route path="/mail-threads" element={<MyMailThreadsPage />} />
       <Route path="/owner/onboarding-queue" element={<RequireAdmin><OwnerOnboardingQueuePage /></RequireAdmin>} />
-      <Route path="/state/789/achievements/request-v2" element={<State789AchievementRequestV2Page />} />
+      <Route path="/state/789/achievements/request-v2" element={<Navigate to="/state/789/achievements-form" replace />} />
       <Route path="/state/789/achievements/admin-v2" element={<State789AchievementsAdminV2Page />} />
       <Route path="/state/789/alerts-db" element={<State789AlertsDbPage />} />
       <Route path="/state/789/discussion-db" element={<State789DiscussionDbPage />} />
@@ -272,7 +272,7 @@ export default function AppRoutes() {
       <Route path="/owner/state-achievements/queue" element={<RequireAdmin><OwnerStateAchievementsQueuePage /></RequireAdmin>} />
       <Route path="/owner/state-achievements/access" element={<RequireAdmin><OwnerStateAchievementsAccessPage /></RequireAdmin>} />
       <Route path="/owner/state-achievements/admin" element={<RequireAdmin><OwnerStateAchievementsAdminPage /></RequireAdmin>} />
-      <Route path="/state/789/achievements/request" element={<State789AchievementRequestPage />} />
+      <Route path="/state/789/achievements/request" element={<Navigate to="/state/789/achievements-form" replace />} />
       <Route path="/owner/state-achievement-requests" element={<RequireAdmin><OwnerStateAchievementRequestsPage /></RequireAdmin>} />
       <Route path="/state/789/progress" element={<State789AchievementProgressPage />} />
       <Route path="/owner/state-achievement-catalog" element={<RequireAdmin><OwnerStateAchievementCatalogPage /></RequireAdmin>} />
@@ -280,7 +280,7 @@ export default function AppRoutes() {
       <Route path="/owner/discord-mentions-tools" element={<RequireAdmin><OwnerDiscordMentionsToolsPage /></RequireAdmin>} />
       <Route path="/owner/realtime-history" element={<RequireAdmin><OwnerRealtimeHistoryPage /></RequireAdmin>} />
       <Route path="/owner/oneclick-provision-plus" element={<RequireAdmin><OwnerOneClickProvisionPlusPage /></RequireAdmin>} />
-      <Route path="/state/789/achievement-request" element={<State789AchievementRequestPage />} />
+      <Route path="/state/789/achievement-request" element={<Navigate to="/state/789/achievements-form" replace />} />
       <Route path="/owner/state-achievement-inbox" element={<RequireAdmin><OwnerStateAchievementInboxPage /></RequireAdmin>} />
       <Route path="/owner/state-achievements-roster" element={<RequireAdmin><OwnerStateAchievementsRosterPage /></RequireAdmin>} />
       <Route path="/owner/discord-edge-test" element={<RequireAdmin><OwnerDiscordEdgeSendTestPage /></RequireAdmin>} />
@@ -314,6 +314,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
