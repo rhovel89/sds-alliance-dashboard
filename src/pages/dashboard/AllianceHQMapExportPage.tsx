@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toPng } from "html-to-image";
 import { supabase } from "../../lib/supabaseClient";
@@ -10,6 +10,25 @@ function tsLabel() {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
+function routeStorageKey(allianceCode: string) {
+  return `hqMapDiscordRoute:${String(allianceCode || "").trim().toUpperCase()}`;
+}
+
+function loadSavedDiscordRoute(allianceCode: string) {
+  try {
+    const raw = localStorage.getItem(routeStorageKey(allianceCode));
+    return String(raw || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function saveDiscordRoute(allianceCode: string, route: string) {
+  try {
+    localStorage.setItem(routeStorageKey(allianceCode), String(route || "").trim());
+  } catch {}
+}
+
 export default function AllianceHQMapExportPage() {
   const { alliance_id } = useParams();
   const allianceCode = String(alliance_id || "").trim().toUpperCase();
@@ -19,6 +38,40 @@ export default function AllianceHQMapExportPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [lastPublicUrl, setLastPublicUrl] = useState("");
+
+  const [routePreset, setRoutePreset] = useState<"hq-map" | "announcements" | "custom">("hq-map");
+  const [customRoute, setCustomRoute] = useState("");
+
+  useEffect(() => {
+    const saved = loadSavedDiscordRoute(allianceCode);
+
+    if (saved === "default:hq-map") {
+      setRoutePreset("hq-map");
+      setCustomRoute("");
+      return;
+    }
+
+    if (saved === "default:announcements") {
+      setRoutePreset("announcements");
+      setCustomRoute("");
+      return;
+    }
+
+    if (saved) {
+      setRoutePreset("custom");
+      setCustomRoute(saved);
+      return;
+    }
+
+    setRoutePreset("hq-map");
+    setCustomRoute("");
+  }, [allianceCode]);
+
+  const sendRoute = useMemo(() => {
+    if (routePreset === "hq-map") return "default:hq-map";
+    if (routePreset === "announcements") return "default:announcements";
+    return String(customRoute || "").trim();
+  }, [routePreset, customRoute]);
 
   async function exportPngAndUpload(downloadAlso = true) {
     if (!captureRef.current) {
@@ -84,31 +137,39 @@ export default function AllianceHQMapExportPage() {
     }
   }
 
+  function handleSaveRoute() {
+    const route = String(sendRoute || "").trim();
+    if (!route) {
+      setMsg("Enter a valid Discord route first.");
+      return;
+    }
+
+    saveDiscordRoute(allianceCode, route);
+    setMsg(`Discord destination saved ✅\nAlliance: ${allianceCode}\nRoute: ${route}`);
+  }
+
   async function queueDiscordSend(url: string) {
+    const route = String(sendRoute || "").trim();
+    if (!route) throw new Error("Discord route is empty.");
+
     const content =
       `🗺️ **${allianceCode || "Alliance"} HQ Map Export**\n` +
       `Generated: ${new Date().toLocaleString()}\n` +
       url;
 
-    const tryQueue = async (channelId: string) => {
-      return supabase.rpc("queue_discord_send" as any, {
-        p_kind: "discord_webhook",
-        p_target: "alliance:" + allianceCode,
-        p_channel_id: channelId,
-        p_content: content,
-        p_meta: {
-          kind: "hq_map_export",
-          source: "AllianceHQMapExportPage",
-          alliance_code: allianceCode,
-          public_url: url,
-        },
-      } as any);
-    };
-
-    let q = await tryQueue("default:hq-map");
-    if (q.error) {
-      q = await tryQueue("default:announcements");
-    }
+    const q = await supabase.rpc("queue_discord_send" as any, {
+      p_kind: "discord_webhook",
+      p_target: "alliance:" + allianceCode,
+      p_channel_id: route,
+      p_content: content,
+      p_meta: {
+        kind: "hq_map_export",
+        source: "AllianceHQMapExportPage",
+        alliance_code: allianceCode,
+        public_url: url,
+        route,
+      },
+    } as any);
 
     if (q.error) throw q.error;
   }
@@ -117,9 +178,12 @@ export default function AllianceHQMapExportPage() {
     setBusy(true);
     setMsg("");
     try {
+      const route = String(sendRoute || "").trim();
+      if (!route) throw new Error("Choose or enter a Discord route first.");
+
       const url = lastPublicUrl || (await exportPngAndUpload(false));
       await queueDiscordSend(url);
-      setMsg(`Queued to Discord ✅\n${url}`);
+      setMsg(`Queued to Discord ✅\nRoute: ${route}\n${url}`);
     } catch (e: any) {
       setMsg(`Discord send failed: ${String(e?.message || e)}`);
     } finally {
@@ -143,8 +207,8 @@ export default function AllianceHQMapExportPage() {
         <div
           className="zombie-card"
           style={{
-            minWidth: 320,
-            maxWidth: 420,
+            minWidth: 340,
+            maxWidth: 460,
             padding: 12,
             pointerEvents: "auto",
             background: "rgba(8,10,14,0.94)",
@@ -154,21 +218,54 @@ export default function AllianceHQMapExportPage() {
         >
           <div style={{ fontWeight: 950, fontSize: 14 }}>🗺️ HQ Map Tools</div>
           <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-            Export this exact page as PNG and send the PNG link to Discord.
+            Export this exact page as PNG and choose where the Discord send goes.
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-            <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} disabled={busy} onClick={handleExport}>
-              {busy ? "WORKING..." : "Export PNG"}
-            </button>
+          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            <div style={{ opacity: 0.75, fontSize: 12 }}>Discord destination</div>
 
-            <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} disabled={busy} onClick={handleCopyLink}>
-              Copy PNG Link
-            </button>
+            <select
+              className="zombie-input"
+              value={routePreset}
+              onChange={(e) => setRoutePreset(e.target.value as any)}
+              style={{ padding: "10px 12px", width: "100%" }}
+            >
+              <option value="hq-map">default:hq-map</option>
+              <option value="announcements">default:announcements</option>
+              <option value="custom">custom route…</option>
+            </select>
 
-            <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} disabled={busy} onClick={handleSendDiscord}>
-              Send to Discord
-            </button>
+            {routePreset === "custom" ? (
+              <input
+                className="zombie-input"
+                value={customRoute}
+                onChange={(e) => setCustomRoute(e.target.value)}
+                placeholder="Enter route string"
+                style={{ padding: "10px 12px", width: "100%" }}
+              />
+            ) : null}
+
+            <div style={{ opacity: 0.7, fontSize: 12 }}>
+              Current send route: <b>{sendRoute || "(none)"}</b>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={handleSaveRoute} disabled={busy}>
+                Save Route
+              </button>
+
+              <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} disabled={busy} onClick={handleExport}>
+                {busy ? "WORKING..." : "Export PNG"}
+              </button>
+
+              <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} disabled={busy} onClick={handleCopyLink}>
+                Copy PNG Link
+              </button>
+
+              <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} disabled={busy} onClick={handleSendDiscord}>
+                Send to Discord
+              </button>
+            </div>
           </div>
 
           {msg ? (
