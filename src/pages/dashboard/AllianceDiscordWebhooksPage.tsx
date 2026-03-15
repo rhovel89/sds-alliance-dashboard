@@ -61,7 +61,6 @@ export default function AllianceDiscordWebhooksPage() {
     guides: "",
     calendar: "",
     hq_map: "",
-    hq_map: "",
   });
 
   const activeWebhooks = useMemo(() => rows.filter(r => r.active !== false), [rows]);
@@ -333,6 +332,7 @@ export default function AllianceDiscordWebhooksPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 

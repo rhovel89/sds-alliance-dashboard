@@ -541,13 +541,16 @@ export function AllianceGuidesCommandCenter() {
   }
 
   function getNextSortKey(parentId: string | null) {
-    const sibs = getChildren(parentId);
-    const vals = sibs.map((x) => getSortKeyForEntry(String(x.id || ""))).filter((x): x is number => Number.isFinite(x as number));
-    if (!vals.length) return sibs.length + 1;
-    return Math.max(...vals) + 1;
-  }
+  const sibs = getChildren(parentId);
+  const vals = sibs
+    .map((x) => getSortKeyForEntry(String(x.id || "")))
+    .filter((x): x is number => Number.isFinite(x as number));
 
-  async function saveEntryMeta(entry: EntryRow, nextMeta: Partial<NotebookMeta>) {
+  if (!vals.length) return sibs.length + 1;
+  return Math.max(...vals) + 1;
+}
+
+async function saveEntryMeta(entry: EntryRow, nextMeta: Partial<NotebookMeta>) {
   const doc = parseStoredBody(entry.body ?? "");
   const merged: NotebookMeta = {
     parentEntryId: doc.meta.parentEntryId || null,
@@ -557,12 +560,11 @@ export function AllianceGuidesCommandCenter() {
 
   const body = serializeDoc(merged, doc.blocks);
 
-  return await safeUpdateById("guide_section_entries", String(entry.id), {
+  return safeUpdateById("guide_section_entries", String(entry.id), {
     body,
     updated_at: new Date().toISOString(),
   });
 }
-
 async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
     const id = String(entryId || "");
     if (!id) return;
@@ -997,7 +999,9 @@ async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
   });
 
   if (up.error) {
-    setError(up.error.message);
+    const msg = String(up.error.message || "Section save failed");
+    setError(msg);
+    alert(msg);
     return;
   }
 
@@ -1005,7 +1009,6 @@ async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
   setEditingSectionName("");
   await loadSections();
 }
-
 async function deleteSection(sectionId: string) {
     if (!canEditAll) return;
     const ok = confirm("Delete this section? Entries inside it will be deleted too.");
@@ -1106,7 +1109,9 @@ async function deleteSection(sectionId: string) {
   });
 
   if (up.error) {
-    setError(up.error.message);
+    const msg = String(up.error.message || "Entry save failed");
+    setError(msg);
+    alert(msg);
     return;
   }
 
@@ -1126,7 +1131,6 @@ async function deleteSection(sectionId: string) {
   stopEditEntry();
   await loadEntries(selectedSectionId);
 }
-
 async function deleteEntry(entryId: string) {
     if (!selectedSectionId) return;
 
@@ -1887,4 +1891,10 @@ async function safeUpdateById(
 
   return res;
 }
+
+
+
+
+
+
 
