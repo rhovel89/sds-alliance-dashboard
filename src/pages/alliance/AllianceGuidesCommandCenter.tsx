@@ -9,10 +9,25 @@ import { useRealtimeRefresh } from "../../hooks/useRealtimeRefresh";
 type SectionRow = Record<string, any>;
 type EntryRow = Record<string, any>;
 
+type BlockType = "heading" | "text" | "checklist";
+
+type PageBlock = {
+  id: string;
+  type: BlockType;
+  text?: string;
+  items?: string[];
+  checked?: boolean[];
+};
+
 const SECTION_NAME_COL = "title";
+const BODY_JSON_PREFIX = "__NOTEBOOK_JSON__:";
 
 function s(v: unknown) {
   return String(v ?? "").trim();
+}
+
+function makeId() {
+  return `blk_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
 function niceDate(v: unknown) {
@@ -23,6 +38,161 @@ function niceDate(v: unknown) {
   } catch {
     return String(v ?? "");
   }
+}
+
+function makeHeadingBlock(text = "New heading"): PageBlock {
+  return { id: makeId(), type: "heading", text };
+}
+
+function makeTextBlock(text = ""): PageBlock {
+  return { id: makeId(), type: "text", text };
+}
+
+function makeChecklistBlock(): PageBlock {
+  return {
+    id: makeId(),
+    type: "checklist",
+    items: ["New item"],
+    checked: [false],
+  };
+}
+
+function normalizeBlock(raw: any): PageBlock | null {
+  const type = String(raw?.type || "").trim() as BlockType;
+  if (!["heading", "text", "checklist"].includes(type)) return null;
+
+  if (type === "heading") {
+    return {
+      id: s(raw?.id) || makeId(),
+      type,
+      text: String(raw?.text ?? ""),
+    };
+  }
+
+  if (type === "text") {
+    return {
+      id: s(raw?.id) || makeId(),
+      type,
+      text: String(raw?.text ?? ""),
+    };
+  }
+
+  const items = Array.isArray(raw?.items) ? raw.items.map((x: any) => String(x ?? "")) : [];
+  const checked = Array.isArray(raw?.checked) ? raw.checked.map((x: any) => !!x) : [];
+  while (checked.length < items.length) checked.push(false);
+
+  return {
+    id: s(raw?.id) || makeId(),
+    type: "checklist",
+    items,
+    checked: checked.slice(0, items.length),
+  };
+}
+
+function parseStoredBody(raw: unknown): PageBlock[] {
+  const body = String(raw ?? "");
+
+  if (!body.trim()) {
+    return [makeTextBlock("")];
+  }
+
+  if (body.startsWith(BODY_JSON_PREFIX)) {
+    try {
+      const parsed = JSON.parse(body.slice(BODY_JSON_PREFIX.length));
+      if (Array.isArray(parsed)) {
+        const blocks = parsed.map(normalizeBlock).filter(Boolean) as PageBlock[];
+        if (blocks.length) return blocks;
+      }
+    } catch {}
+  }
+
+  return [makeTextBlock(body)];
+}
+
+function serializeBlocks(blocks: PageBlock[]): string {
+  const cleaned = blocks
+    .map(normalizeBlock)
+    .filter(Boolean)
+    .map((b) => {
+      if (b!.type === "heading" || b!.type === "text") {
+        return {
+          id: b!.id,
+          type: b!.type,
+          text: String(b!.text ?? ""),
+        };
+      }
+
+      return {
+        id: b!.id,
+        type: "checklist",
+        items: Array.isArray(b!.items) ? b!.items.map((x) => String(x ?? "")) : [],
+        checked: Array.isArray(b!.checked) ? b!.checked.map((x) => !!x) : [],
+      };
+    });
+
+  return BODY_JSON_PREFIX + JSON.stringify(cleaned);
+}
+
+function renderBlock(block: PageBlock) {
+  if (block.type === "heading") {
+    return (
+      <div
+        key={block.id}
+        style={{
+          fontSize: 24,
+          fontWeight: 950,
+          lineHeight: 1.25,
+          marginBottom: 4,
+        }}
+      >
+        {String(block.text || "").trim() || "Untitled heading"}
+      </div>
+    );
+  }
+
+  if (block.type === "checklist") {
+    const items = Array.isArray(block.items) ? block.items : [];
+    const checked = Array.isArray(block.checked) ? block.checked : [];
+
+    return (
+      <div key={block.id} style={{ display: "grid", gap: 10 }}>
+        {items.length === 0 ? (
+          <div style={{ opacity: 0.7 }}>Empty checklist</div>
+        ) : (
+          items.map((item, idx) => (
+            <label
+              key={`${block.id}_${idx}`}
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "flex-start",
+                lineHeight: 1.6,
+              }}
+            >
+              <input type="checkbox" checked={!!checked[idx]} readOnly />
+              <span style={{ opacity: checked[idx] ? 0.7 : 0.96, textDecoration: checked[idx] ? "line-through" : "none" }}>
+                {item || "(empty item)"}
+              </span>
+            </label>
+          ))
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      key={block.id}
+      style={{
+        whiteSpace: "pre-wrap",
+        lineHeight: 1.8,
+        fontSize: 15,
+        opacity: 0.96,
+      }}
+    >
+      {String(block.text ?? "")}
+    </div>
+  );
 }
 
 export function AllianceGuidesCommandCenter() {
@@ -61,9 +231,10 @@ export function AllianceGuidesCommandCenter() {
 
   const [newEntryTitle, setNewEntryTitle] = useState("");
   const [newEntryBody, setNewEntryBody] = useState("");
+
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editingEntryTitle, setEditingEntryTitle] = useState("");
-  const [editingEntryBody, setEditingEntryBody] = useState("");
+  const [editingBlocks, setEditingBlocks] = useState<PageBlock[]>([]);
 
   const selectedSection = useMemo(
     () => sections.find((x) => String(x.id) === String(selectedSectionId || "")) ?? null,
@@ -75,12 +246,110 @@ export function AllianceGuidesCommandCenter() {
     [entries, selectedEntryId]
   );
 
+  const selectedEntryBlocks = useMemo(
+    () => parseStoredBody(selectedEntry?.body ?? ""),
+    [selectedEntry]
+  );
+
   function isOwnEntry(entry: EntryRow) {
     return !!currentUserId && String(entry?.created_by || "") === String(currentUserId);
   }
 
   function canEditEntry(entry: EntryRow) {
     return canEditAll || isOwnEntry(entry);
+  }
+
+  function startEditEntry(entry: EntryRow) {
+    if (!canEditEntry(entry)) return;
+    setEditingEntryId(String(entry.id));
+    setEditingEntryTitle(String(entry.title || ""));
+    setEditingBlocks(parseStoredBody(entry.body ?? ""));
+  }
+
+  function stopEditEntry() {
+    setEditingEntryId(null);
+    setEditingEntryTitle("");
+    setEditingBlocks([]);
+  }
+
+  function addBlock(type: BlockType) {
+    setEditingBlocks((prev) => {
+      if (type === "heading") return [...prev, makeHeadingBlock()];
+      if (type === "checklist") return [...prev, makeChecklistBlock()];
+      return [...prev, makeTextBlock("")];
+    });
+  }
+
+  function updateBlock(blockId: string, patch: Partial<PageBlock>) {
+    setEditingBlocks((prev) =>
+      prev.map((b) => (String(b.id) === String(blockId) ? { ...b, ...patch } : b))
+    );
+  }
+
+  function removeBlock(blockId: string) {
+    setEditingBlocks((prev) => prev.filter((b) => String(b.id) !== String(blockId)));
+  }
+
+  function moveBlock(blockId: string, dir: -1 | 1) {
+    setEditingBlocks((prev) => {
+      const idx = prev.findIndex((b) => String(b.id) === String(blockId));
+      if (idx < 0) return prev;
+      const nextIdx = idx + dir;
+      if (nextIdx < 0 || nextIdx >= prev.length) return prev;
+
+      const clone = [...prev];
+      const [item] = clone.splice(idx, 1);
+      clone.splice(nextIdx, 0, item);
+      return clone;
+    });
+  }
+
+  function updateChecklistItem(blockId: string, idx: number, value: string) {
+    setEditingBlocks((prev) =>
+      prev.map((b) => {
+        if (String(b.id) !== String(blockId) || b.type !== "checklist") return b;
+        const items = [...(b.items || [])];
+        items[idx] = value;
+        return { ...b, items };
+      })
+    );
+  }
+
+  function toggleChecklistItem(blockId: string, idx: number, checkedValue: boolean) {
+    setEditingBlocks((prev) =>
+      prev.map((b) => {
+        if (String(b.id) !== String(blockId) || b.type !== "checklist") return b;
+        const checked = [...(b.checked || [])];
+        checked[idx] = checkedValue;
+        return { ...b, checked };
+      })
+    );
+  }
+
+  function addChecklistItem(blockId: string) {
+    setEditingBlocks((prev) =>
+      prev.map((b) => {
+        if (String(b.id) !== String(blockId) || b.type !== "checklist") return b;
+        return {
+          ...b,
+          items: [...(b.items || []), "New item"],
+          checked: [...(b.checked || []), false],
+        };
+      })
+    );
+  }
+
+  function removeChecklistItem(blockId: string, idx: number) {
+    setEditingBlocks((prev) =>
+      prev.map((b) => {
+        if (String(b.id) !== String(blockId) || b.type !== "checklist") return b;
+        const items = [...(b.items || [])];
+        const checked = [...(b.checked || [])];
+        items.splice(idx, 1);
+        checked.splice(idx, 1);
+        return { ...b, items, checked };
+      })
+    );
   }
 
   useRealtimeRefresh({
@@ -178,10 +447,13 @@ export function AllianceGuidesCommandCenter() {
   }, [allianceCode]);
 
   useEffect(() => {
-    if (selectedSectionId) void loadEntries(selectedSectionId);
-    else {
+    if (selectedSectionId) {
+      void loadEntries(selectedSectionId);
+      stopEditEntry();
+    } else {
       setEntries([]);
       setSelectedEntryId(null);
+      stopEditEntry();
     }
   }, [selectedSectionId]);
 
@@ -266,8 +538,10 @@ export function AllianceGuidesCommandCenter() {
     if (!allianceCode || !selectedSectionId) return;
 
     const title = newEntryTitle.trim();
-    const body = newEntryBody.trim();
-    if (!title || !body) return;
+    if (!title) return;
+
+    const bodyBlocks = [makeTextBlock(newEntryBody)];
+    const storedBody = serializeBlocks(bodyBlocks);
 
     setError(null);
 
@@ -281,7 +555,7 @@ export function AllianceGuidesCommandCenter() {
       section_id: selectedSectionId,
       alliance_code: allianceCode,
       title,
-      body,
+      body: storedBody,
       created_by: userRes.user.id,
     };
 
@@ -302,13 +576,6 @@ export function AllianceGuidesCommandCenter() {
     if (ins.data?.id) setSelectedEntryId(String(ins.data.id));
   }
 
-  function startEditEntry(entry: EntryRow) {
-    if (!canEditEntry(entry)) return;
-    setEditingEntryId(String(entry.id));
-    setEditingEntryTitle(String(entry.title || ""));
-    setEditingEntryBody(String(entry.body || ""));
-  }
-
   async function saveEditEntry() {
     if (!editingEntryId || !selectedSectionId) return;
 
@@ -316,8 +583,9 @@ export function AllianceGuidesCommandCenter() {
     if (!existing || !canEditEntry(existing)) return;
 
     const title = editingEntryTitle.trim();
-    const body = editingEntryBody.trim();
-    if (!title || !body) return;
+    if (!title) return;
+
+    const storedBody = serializeBlocks(editingBlocks);
 
     setError(null);
 
@@ -325,7 +593,7 @@ export function AllianceGuidesCommandCenter() {
       .from("guide_section_entries")
       .update({
         title,
-        body,
+        body: storedBody,
         updated_at: new Date().toISOString(),
       } as any)
       .eq("id", editingEntryId);
@@ -335,9 +603,7 @@ export function AllianceGuidesCommandCenter() {
       return;
     }
 
-    setEditingEntryId(null);
-    setEditingEntryTitle("");
-    setEditingEntryBody("");
+    stopEditEntry();
     await loadEntries(selectedSectionId);
   }
 
@@ -362,6 +628,7 @@ export function AllianceGuidesCommandCenter() {
       return;
     }
 
+    if (String(editingEntryId || "") === String(entryId)) stopEditEntry();
     await loadEntries(selectedSectionId);
   }
 
@@ -397,7 +664,7 @@ export function AllianceGuidesCommandCenter() {
               {allianceCode} Guides
             </div>
             <div style={{ opacity: 0.78, fontSize: 13, marginTop: 6 }}>
-              Sections across the top. Pages down the left. Selected page on the right.
+              Sections across the top. Pages down the left. Rich page blocks on the right.
             </div>
           </div>
 
@@ -588,9 +855,7 @@ export function AllianceGuidesCommandCenter() {
                   type="button"
                   onClick={() => {
                     setSelectedEntryId(String(entry.id));
-                    setEditingEntryId(null);
-                    setEditingEntryTitle("");
-                    setEditingEntryBody("");
+                    stopEditEntry();
                   }}
                   className="zombie-btn"
                   style={{
@@ -649,7 +914,7 @@ export function AllianceGuidesCommandCenter() {
                 >
                   <div style={{ fontWeight: 900, fontSize: 16 }}>New page</div>
                   <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-                    Add a new page inside this section.
+                    Create a new notebook page in this section.
                   </div>
 
                   <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
@@ -663,8 +928,8 @@ export function AllianceGuidesCommandCenter() {
                     <textarea
                       value={newEntryBody}
                       onChange={(e) => setNewEntryBody(e.target.value)}
-                      placeholder="Start writing..."
-                      rows={6}
+                      placeholder="Starter note..."
+                      rows={5}
                       className="zombie-input"
                       style={{ padding: "10px 12px", width: "100%" }}
                     />
@@ -728,44 +993,127 @@ export function AllianceGuidesCommandCenter() {
                           marginTop: 18,
                           paddingTop: 18,
                           borderTop: "1px solid rgba(255,255,255,0.08)",
-                          whiteSpace: "pre-wrap",
-                          lineHeight: 1.7,
-                          fontSize: 15,
+                          display: "grid",
+                          gap: 16,
                         }}
                       >
-                        {s(selectedEntry.body)}
+                        {selectedEntryBlocks.map(renderBlock)}
                       </div>
                     </>
                   ) : (
                     <>
-                      <div style={{ fontWeight: 900, fontSize: 16 }}>Edit page</div>
-                      <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontWeight: 900, fontSize: 16 }}>Edit page</div>
+                          <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
+                            Add headings, note blocks, and checklist blocks.
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button className="zombie-btn" type="button" onClick={() => addBlock("heading")}>
+                            + Heading
+                          </button>
+                          <button className="zombie-btn" type="button" onClick={() => addBlock("text")}>
+                            + Note
+                          </button>
+                          <button className="zombie-btn" type="button" onClick={() => addBlock("checklist")}>
+                            + Checklist
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
                         <input
                           value={editingEntryTitle}
                           onChange={(e) => setEditingEntryTitle(e.target.value)}
                           className="zombie-input"
-                          style={{ padding: "10px 12px", width: "100%" }}
+                          style={{ padding: "10px 12px", width: "100%", fontWeight: 900 }}
+                          placeholder="Page title"
                         />
-                        <textarea
-                          value={editingEntryBody}
-                          onChange={(e) => setEditingEntryBody(e.target.value)}
-                          rows={10}
-                          className="zombie-input"
-                          style={{ padding: "10px 12px", width: "100%" }}
-                        />
+
+                        {editingBlocks.map((block, idx) => (
+                          <div
+                            key={block.id}
+                            style={{
+                              border: "1px solid rgba(255,255,255,0.10)",
+                              borderRadius: 16,
+                              padding: 12,
+                              background: "rgba(255,255,255,0.03)",
+                              display: "grid",
+                              gap: 10,
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                              <div style={{ fontWeight: 900, opacity: 0.82 }}>
+                                {block.type === "heading" ? "Heading" : block.type === "checklist" ? "Checklist" : "Note"} block
+                              </div>
+
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                <button className="zombie-btn" type="button" disabled={idx === 0} onClick={() => moveBlock(block.id, -1)}>↑</button>
+                                <button className="zombie-btn" type="button" disabled={idx === editingBlocks.length - 1} onClick={() => moveBlock(block.id, 1)}>↓</button>
+                                <button className="zombie-btn" type="button" onClick={() => removeBlock(block.id)}>Delete</button>
+                              </div>
+                            </div>
+
+                            {block.type === "heading" ? (
+                              <input
+                                value={String(block.text ?? "")}
+                                onChange={(e) => updateBlock(block.id, { text: e.target.value })}
+                                className="zombie-input"
+                                style={{ padding: "10px 12px", width: "100%", fontWeight: 900 }}
+                                placeholder="Heading text"
+                              />
+                            ) : null}
+
+                            {block.type === "text" ? (
+                              <textarea
+                                value={String(block.text ?? "")}
+                                onChange={(e) => updateBlock(block.id, { text: e.target.value })}
+                                rows={6}
+                                className="zombie-input"
+                                style={{ padding: "10px 12px", width: "100%" }}
+                                placeholder="Write your notes here..."
+                              />
+                            ) : null}
+
+                            {block.type === "checklist" ? (
+                              <div style={{ display: "grid", gap: 8 }}>
+                                {(block.items || []).map((item, itemIdx) => (
+                                  <div key={`${block.id}_${itemIdx}`} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={!!(block.checked || [])[itemIdx]}
+                                      onChange={(e) => toggleChecklistItem(block.id, itemIdx, e.target.checked)}
+                                    />
+                                    <input
+                                      value={String(item ?? "")}
+                                      onChange={(e) => updateChecklistItem(block.id, itemIdx, e.target.value)}
+                                      className="zombie-input"
+                                      style={{ padding: "10px 12px", flex: 1 }}
+                                      placeholder="Checklist item"
+                                    />
+                                    <button className="zombie-btn" type="button" onClick={() => removeChecklistItem(block.id, itemIdx)}>
+                                      Delete
+                                    </button>
+                                  </div>
+                                ))}
+
+                                <div>
+                                  <button className="zombie-btn" type="button" onClick={() => addChecklistItem(block.id)}>
+                                    + Add Item
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        ))}
+
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <button className="zombie-btn" type="button" onClick={() => void saveEditEntry()}>
                             Save
                           </button>
-                          <button
-                            className="zombie-btn"
-                            type="button"
-                            onClick={() => {
-                              setEditingEntryId(null);
-                              setEditingEntryTitle("");
-                              setEditingEntryBody("");
-                            }}
-                          >
+                          <button className="zombie-btn" type="button" onClick={stopEditEntry}>
                             Cancel
                           </button>
                         </div>
