@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseBrowserClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 import { sendDiscordBot } from "../../lib/discordEdgeSend";
+import { fetchRoleStoreFromDb, fetchChannelStoreFromDb } from "../../lib/discordMappingsStore";
 
 type RoleMapStore = {
   version: 1;
@@ -256,6 +257,23 @@ export default function OwnerBroadcastComposerPage() {
   const roleKeys = useMemo(() => Object.keys(roleLut || {}).sort(), [roleLut]);
   const channelKeys = useMemo(() => Object.keys(chanLut || {}).sort(), [chanLut]);
 
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      const [dbRoles, dbChannels] = await Promise.all([
+        fetchRoleStoreFromDb(),
+        fetchChannelStoreFromDb(),
+      ]);
+
+      if (!alive) return;
+      setRoleStore(dbRoles);
+      setChanStore(dbChannels);
+    })();
+
+    return () => { alive = false; };
+  }, []);
+
   const resolvedChannelId = useMemo(() => {
     const chKey = norm(targetChannelName);
     return chKey ? (chanLut[chKey] || "") : "";
@@ -300,9 +318,14 @@ export default function OwnerBroadcastComposerPage() {
     }
   }, []);
 
-  function refreshStores() {
-    setRoleStore(loadRoleStore());
-    setChanStore(loadChannelStore());
+  async function refreshStores() {
+    const [dbRoles, dbChannels] = await Promise.all([
+      fetchRoleStoreFromDb(),
+      fetchChannelStoreFromDb(),
+    ]);
+
+    setRoleStore(dbRoles);
+    setChanStore(dbChannels);
   }
 
   function newTemplate() {
@@ -678,6 +701,7 @@ return (<div style={{ padding: 14 }}>
     </div>
   );
 }
+
 
 
 
