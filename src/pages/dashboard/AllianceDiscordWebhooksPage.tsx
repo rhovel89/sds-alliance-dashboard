@@ -29,6 +29,9 @@ const KINDS = [
   { key: "ops", label: "Ops Feed" },
   { key: "threads", label: "Threads" },
   { key: "achievements", label: "Achievements" },
+  { key: "guides", label: "Guides" },
+  { key: "calendar", label: "Calendar" },
+  { key: "hq_map", label: "HQ Map" },
   { key: "hq_map", label: "HQ Map" },
 ] as const;
 
@@ -55,6 +58,9 @@ export default function AllianceDiscordWebhooksPage() {
     ops: "",
     threads: "",
     achievements: "",
+    guides: "",
+    calendar: "",
+    hq_map: "",
     hq_map: "",
   });
 
@@ -327,6 +333,7 @@ export default function AllianceDiscordWebhooksPage() {
     </CommandCenterShell>
   );
 }
+
 
 
 

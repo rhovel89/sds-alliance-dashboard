@@ -20,9 +20,11 @@ import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
 import AllianceHQMapExportPage from "../pages/dashboard/AllianceHQMapExportPage";
 import PermissionsPage from "../pages/dashboard/Permissions";
 import AllianceCalendarPage from "../pages/calendar/AllianceCalendarPage";
+import AllianceCalendarExportPage from "../pages/calendar/AllianceCalendarExportPage";
 
 import AllianceAnnouncementsPage from "../pages/alliance/AllianceAnnouncementsPage";
 import AllianceGuidesPage from "../pages/alliance/AllianceGuidesPage";
+import AllianceGuidesExportPage from "../pages/alliance/AllianceGuidesExportPage";
 
 import PlayerDashboardPage from "../pages/PlayerDashboardPage";
 
@@ -227,11 +229,11 @@ export default function AppRoutes() {
         <Route path="announcements" element={<AllianceAnnouncementsPage />} />
 
         <Route path="alerts" element={<AllianceAlertsPage />} />
-        <Route path="guides" element={<AllianceGuidesPage />} />
+        <Route path="guides" element={<AllianceGuidesExportPage />} />
         <Route path="roster" element={<RequireAllianceAccess><AllianceRosterPage /></RequireAllianceAccess>} />
 
         <Route path="hq-map" element={<AllianceHQMapExportPage />} />
-        <Route path="calendar" element={<RequireAllianceAccess><AllianceCalendarPage /></RequireAllianceAccess>} />
+        <Route path="calendar" element={<RequireAllianceAccess><AllianceCalendarExportPage /></RequireAllianceAccess>} />
             <Route path="discord-webhooks" element={<RequireAllianceAccess><AllianceDiscordWebhooksPage /></RequireAllianceAccess>} />
 
         <Route path="permissions" element={<RequireAlliance><PermissionsPage /></RequireAlliance>} />
@@ -315,6 +317,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
