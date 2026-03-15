@@ -478,7 +478,17 @@ export default function OwnerBroadcastComposerPage() {
 
     setSending(true);
     try {
-      const r = await callDiscordBroadcast(payload);
+      const r = await callDiscordBroadcast({
+        channelId: payload.targetChannelId,
+        content: payload.messageResolved,
+        scope: payload.scope,
+        allianceCode: payload.allianceCode,
+        mentionRoles: payload.mentionRoles,
+        mentionRoleIds: payload.mentionRoleIds,
+        targetChannel: payload.targetChannel,
+        source: payload.source,
+        rawPayload: payload,
+      });
       if (!r.ok) {
         throw new Error(r.error || JSON.stringify(r.data || {}));
       }
@@ -700,6 +710,7 @@ return (<div style={{ padding: 14 }}>
     </div>
   );
 }
+
 
 
 
