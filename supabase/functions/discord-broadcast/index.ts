@@ -27,37 +27,35 @@ Deno.serve(async (req) => {
     payload = null;
   }
 
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return json(200, {
-      ok: false,
-      debug: {
-        stage: "env",
-        missingSupabaseUrl: !SUPABASE_URL,
-        missingSupabaseAnonKey: !SUPABASE_ANON_KEY,
-        hasAuthorizationHeader: !!authHeader,
-        authHeaderPrefix: authHeader ? authHeader.slice(0, 20) : null,
-        payload,
-      },
-    });
+  let userId: string | null = null;
+  let userError: string | null = null;
+
+  try {
+    if (SUPABASE_URL && SUPABASE_ANON_KEY && authHeader) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+
+      const { data, error } = await supabase.auth.getUser();
+      userId = data?.user?.id ?? null;
+      userError = error?.message ?? null;
+    }
+  } catch (e: any) {
+    userError = String(e?.message || e);
   }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: authHeader ? { headers: { Authorization: authHeader } } : {},
-  });
-
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
 
   return json(200, {
     ok: true,
     debug: {
+      method: req.method,
       hasAuthorizationHeader: !!authHeader,
       authHeaderPrefix: authHeader ? authHeader.slice(0, 20) : null,
       hasBearerPrefix: authHeader.toLowerCase().startsWith("bearer "),
-      userId: userData?.user?.id ?? null,
-      userError: userErr?.message ?? null,
-      payloadKeys: payload && typeof payload === "object" ? Object.keys(payload) : [],
-      payloadPreview: payload,
+      hasSupabaseUrl: !!SUPABASE_URL,
+      hasSupabaseAnonKey: !!SUPABASE_ANON_KEY,
+      userId,
+      userError,
+      payload,
     },
   });
 });
-
