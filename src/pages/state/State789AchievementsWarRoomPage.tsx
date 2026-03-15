@@ -3,81 +3,122 @@ import { useNavigate } from "react-router-dom";
 import ActionDrawer from "../../components/commandcenter/ActionDrawer";
 import StateAchievementsExportPanel from "../../components/state/StateAchievementsExportPanel";
 
-function HeroCard(props: {
-  title: string;
-  subtitle: string;
-  children?: React.ReactNode;
-}) {
+function Pill(props: { text: string }) {
   return (
     <div
-      className="zombie-card"
       style={{
-        padding: 20,
-        background: "linear-gradient(180deg, rgba(14,18,24,0.96), rgba(6,8,12,0.92))",
-        border: "1px solid rgba(255,255,255,0.10)",
+        padding: "6px 10px",
+        borderRadius: 999,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "rgba(255,255,255,0.04)",
+        fontSize: 12,
+        fontWeight: 800,
+        letterSpacing: "0.04em",
+        opacity: 0.92,
       }}
     >
-      <div style={{ opacity: 0.72, fontSize: 11, fontWeight: 950, letterSpacing: "0.14em" }}>
-        STATE 789 • ACHIEVEMENTS
-      </div>
-      <div style={{ fontSize: 30, fontWeight: 950, marginTop: 8, lineHeight: 1.1 }}>
-        {props.title}
-      </div>
-      <div style={{ opacity: 0.84, marginTop: 10, lineHeight: 1.65, maxWidth: 920 }}>
-        {props.subtitle}
-      </div>
-      {props.children ? <div style={{ marginTop: 16 }}>{props.children}</div> : null}
+      {props.text}
     </div>
   );
 }
 
-function InfoCard(props: {
-  eyebrow: string;
+function HeroAction(props: { label: string; onClick: () => void; primary?: boolean }) {
+  return (
+    <button
+      className="zombie-btn"
+      style={{
+        padding: "12px 14px",
+        fontWeight: 900,
+        minWidth: 180,
+        boxShadow: props.primary ? "0 10px 30px rgba(0,0,0,0.35)" : "none",
+      }}
+      onClick={props.onClick}
+    >
+      {props.label}
+    </button>
+  );
+}
+
+function FeatureCard(props: {
+  icon: string;
   title: string;
-  body: string;
-  cta?: string;
-  onClick?: () => void;
+  text: string;
+  cta: string;
+  onClick: () => void;
 }) {
   return (
     <div
       className="zombie-card"
       style={{
-        padding: 16,
-        minHeight: 180,
+        padding: 18,
+        minHeight: 220,
         display: "grid",
         gap: 10,
         alignContent: "start",
+        background: "linear-gradient(180deg, rgba(18,22,28,0.96), rgba(10,12,16,0.94))",
       }}
     >
-      <div style={{ opacity: 0.7, fontSize: 11, fontWeight: 900, letterSpacing: "0.12em" }}>{props.eyebrow}</div>
+      <div style={{ fontSize: 28 }}>{props.icon}</div>
       <div style={{ fontSize: 20, fontWeight: 950 }}>{props.title}</div>
-      <div style={{ opacity: 0.82, lineHeight: 1.55 }}>{props.body}</div>
-      {props.cta && props.onClick ? (
-        <div>
-          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={props.onClick}>
-            {props.cta}
-          </button>
-        </div>
-      ) : null}
+      <div style={{ opacity: 0.84, lineHeight: 1.6 }}>{props.text}</div>
+      <div>
+        <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={props.onClick}>
+          {props.cta}
+        </button>
+      </div>
     </div>
   );
 }
 
-function MiniStat(props: { label: string; value: string; sub: string }) {
+function CategoryTile(props: {
+  title: string;
+  text: string;
+}) {
   return (
     <div
       className="zombie-card"
       style={{
         padding: 14,
-        minHeight: 112,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
+        minHeight: 120,
+        display: "grid",
+        gap: 8,
+        background: "rgba(0,0,0,0.30)",
       }}
     >
-      <div style={{ opacity: 0.72, fontSize: 11, fontWeight: 900, letterSpacing: "0.12em" }}>{props.label}</div>
-      <div style={{ fontSize: 24, fontWeight: 950 }}>{props.value}</div>
-      <div style={{ opacity: 0.72, fontSize: 12 }}>{props.sub}</div>
+      <div style={{ fontWeight: 950, fontSize: 16 }}>{props.title}</div>
+      <div style={{ opacity: 0.8, lineHeight: 1.55 }}>{props.text}</div>
+    </div>
+  );
+}
+
+function StepRow(props: { step: string; title: string; text: string }) {
+  return (
+    <div
+      className="zombie-card"
+      style={{
+        padding: 16,
+        display: "grid",
+        gridTemplateColumns: "110px 1fr",
+        gap: 14,
+        alignItems: "start",
+      }}
+    >
+      <div
+        style={{
+          borderRadius: 12,
+          padding: "10px 12px",
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: "rgba(255,255,255,0.04)",
+          fontWeight: 950,
+          textAlign: "center",
+        }}
+      >
+        {props.step}
+      </div>
+      <div>
+        <div style={{ fontWeight: 950, fontSize: 18 }}>{props.title}</div>
+        <div style={{ opacity: 0.82, marginTop: 6, lineHeight: 1.6 }}>{props.text}</div>
+      </div>
     </div>
   );
 }
@@ -88,69 +129,57 @@ export default function State789AchievementsWarRoomPage() {
 
   return (
     <>
-      <div style={{ display: "grid", gap: 12 }}>
-        <HeroCard
-          title="Achievements Command Center"
-          subtitle="A cleaner player-facing hub for requests, progress, and tracking. The approval flow stays exactly the same — players submit requests, leadership reviews them, and approved progress continues through the existing pathway."
+      <div style={{ display: "grid", gap: 14 }}>
+        <div
+          className="zombie-card"
+          style={{
+            padding: 22,
+            background: "linear-gradient(180deg, rgba(16,20,26,0.98), rgba(8,10,14,0.94))",
+            border: "1px solid rgba(255,255,255,0.10)",
+          }}
         >
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              className="zombie-btn"
-              style={{ padding: "10px 12px", fontWeight: 900 }}
-              onClick={() => nav("/state/789/achievements/request")}
-            >
-              📝 Request an Achievement
-            </button>
-            <button
-              className="zombie-btn"
-              style={{ padding: "10px 12px" }}
-              onClick={() => nav("/state/789/achievements-progress")}
-            >
-              📈 Progress
-            </button>
-            <button
-              className="zombie-btn"
-              style={{ padding: "10px 12px" }}
-              onClick={() => nav("/state/789/achievements-tracker")}
-            >
-              🧾 Tracker
-            </button>
-            <button
-              className="zombie-btn"
-              style={{ padding: "10px 12px" }}
-              onClick={() => setDrawerOpen(true)}
-            >
-              📡 Export / Send
-            </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Pill text="STATE 789" />
+            <Pill text="PLAYER REQUESTS" />
+            <Pill text="APPROVALS UNCHANGED" />
           </div>
-        </HeroCard>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-          <MiniStat label="PLAYER ENTRY" value="DIRECT LINK" sub="One clean request page for players" />
-          <MiniStat label="APPROVAL FLOW" value="UNCHANGED" sub="Keeps the current owner approval process" />
-          <MiniStat label="PROGRESS" value="LIVE TOOLS" sub="Tracker and progress pages stay active" />
-          <MiniStat label="SUBMISSIONS" value="SAME PATH" sub="No new backend flow introduced" />
+          <div style={{ fontSize: 34, fontWeight: 950, marginTop: 14, lineHeight: 1.05 }}>
+            Achievements Hub
+          </div>
+
+          <div style={{ opacity: 0.86, marginTop: 12, lineHeight: 1.7, maxWidth: 980, fontSize: 15 }}>
+            This is the clean player-facing home for achievements in State 789. Players can open a direct request form,
+            leadership can keep the current approval path, and progress tracking stays exactly where it already works.
+          </div>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
+            <HeroAction primary label="📝 Request an Achievement" onClick={() => nav("/state/789/achievements/request")} />
+            <HeroAction label="📈 Progress" onClick={() => nav("/state/789/achievements-progress")} />
+            <HeroAction label="🧾 Tracker" onClick={() => nav("/state/789/achievements-tracker")} />
+            <HeroAction label="📡 Export / Send" onClick={() => setDrawerOpen(true)} />
+          </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
-          <InfoCard
-            eyebrow="STEP 1"
-            title="Players submit requests"
-            body="Use the dedicated request form link for achievement submissions. This keeps the player experience simple while still feeding the same approval queue."
-            cta="Open Request Form"
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+          <FeatureCard
+            icon="📝"
+            title="Direct Player Form"
+            text="Give players one simple link to submit achievement requests without walking through the full command page."
+            cta="Open Form"
             onClick={() => nav("/state/789/achievements/request")}
           />
-          <InfoCard
-            eyebrow="STEP 2"
-            title="Leadership reviews progress"
-            body="Leadership keeps using the same review and progress workflow. Nothing changes in the approval path, only the layout around it gets cleaned up."
+          <FeatureCard
+            icon="📈"
+            title="Progress Views"
+            text="Players and leadership can review progress from the existing progress page without changing how approvals work."
             cta="Open Progress"
             onClick={() => nav("/state/789/achievements-progress")}
           />
-          <InfoCard
-            eyebrow="STEP 3"
-            title="Track requests and movement"
-            body="Use the tracker to follow requests already in motion. This stays separate from the player form so the page is easier to navigate."
+          <FeatureCard
+            icon="🧾"
+            title="Tracker"
+            text="Use the tracker for live request review and request movement while keeping the player entry point separate and clean."
             cta="Open Tracker"
             onClick={() => nav("/state/789/achievements-tracker")}
           />
@@ -159,21 +188,58 @@ export default function State789AchievementsWarRoomPage() {
         <div
           className="zombie-card"
           style={{
-            padding: 16,
-            background: "linear-gradient(180deg, rgba(16,18,22,0.96), rgba(10,12,16,0.92))",
+            padding: 18,
+            background: "linear-gradient(180deg, rgba(14,16,20,0.96), rgba(8,10,14,0.92))",
           }}
         >
-          <div style={{ fontWeight: 950, fontSize: 18 }}>How this works</div>
-          <div style={{ marginTop: 10, opacity: 0.84, lineHeight: 1.65 }}>
-            Players submit an achievement request through the direct form. The request goes through the same existing submission pipeline and still requires approval.
-            Once reviewed, progress and final status continue through the same current owner flow.
+          <div style={{ fontSize: 20, fontWeight: 950 }}>Popular request categories</div>
+          <div style={{ opacity: 0.8, marginTop: 8, lineHeight: 1.6 }}>
+            These are examples of the kinds of achievement requests players commonly submit. The actual request and approval pipeline stays the same.
           </div>
-          <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 14 }}>
+            <CategoryTile title="Governor Rotations" text="Submit rotation milestones and let leadership update your progress through the current review flow." />
+            <CategoryTile title="Weapon / Build Requests" text="Pick an achievement and choose the required option or weapon when the type requires it." />
+            <CategoryTile title="Completion Progress" text="Track submitted items and watch progress move from submitted to approved or completed." />
+            <CategoryTile title="Leadership Review" text="Owners and approved helpers continue reviewing requests through the same current pathway." />
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gap: 12 }}>
+          <StepRow
+            step="STEP 1"
+            title="Players submit a request"
+            text="Use the direct request form link to enter your player name, alliance, and the achievement you want reviewed."
+          />
+          <StepRow
+            step="STEP 2"
+            title="Leadership reviews and approves"
+            text="Nothing changes in the approval flow. The same owner-side queue and review steps continue to handle requests."
+          />
+          <StepRow
+            step="STEP 3"
+            title="Progress stays visible"
+            text="Progress and tracker views remain active, so players and leaders can keep using the existing pages that already work."
+          />
+        </div>
+
+        <div
+          className="zombie-card"
+          style={{
+            padding: 16,
+            background: "rgba(0,0,0,0.28)",
+          }}
+        >
+          <div style={{ fontWeight: 950, fontSize: 18 }}>Quick links</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
             <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789")}>
               ⬅ Back to State
             </button>
             <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/achievements/request")}>
-              Player Form Link
+              Player Form
+            </button>
+            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/owner/state-achievements")}>
+              Owner Queue
             </button>
           </div>
         </div>

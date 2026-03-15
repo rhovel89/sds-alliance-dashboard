@@ -3,12 +3,20 @@ import { useNavigate } from "react-router-dom";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
 import { StateAchievementsRequestForm } from "../../components/state/StateAchievementsRequestForm";
 
-function StepCard(props: { step: string; title: string; text: string }) {
+function InfoTile(props: { title: string; text: string }) {
   return (
-    <div className="zombie-card" style={{ padding: 14, minHeight: 140 }}>
-      <div style={{ opacity: 0.72, fontSize: 11, fontWeight: 900, letterSpacing: "0.12em" }}>{props.step}</div>
-      <div style={{ fontSize: 18, fontWeight: 950, marginTop: 8 }}>{props.title}</div>
-      <div style={{ opacity: 0.82, marginTop: 8, lineHeight: 1.55 }}>{props.text}</div>
+    <div
+      className="zombie-card"
+      style={{
+        padding: 14,
+        minHeight: 130,
+        display: "grid",
+        gap: 8,
+        background: "rgba(0,0,0,0.26)",
+      }}
+    >
+      <div style={{ fontWeight: 950, fontSize: 16 }}>{props.title}</div>
+      <div style={{ opacity: 0.82, lineHeight: 1.55 }}>{props.text}</div>
     </div>
   );
 }
@@ -22,23 +30,23 @@ export default function State789AchievementsFormPage() {
         className="zombie-card"
         style={{
           padding: 20,
-          background: "linear-gradient(180deg, rgba(14,18,24,0.96), rgba(6,8,12,0.92))",
+          background: "linear-gradient(180deg, rgba(16,20,26,0.98), rgba(8,10,14,0.94))",
           border: "1px solid rgba(255,255,255,0.10)",
         }}
       >
         <div style={{ opacity: 0.72, fontSize: 11, fontWeight: 950, letterSpacing: "0.14em" }}>
-          PLAYER REQUEST FORM
+          DIRECT PLAYER FORM
         </div>
-        <div style={{ fontSize: 28, fontWeight: 950, marginTop: 8 }}>
+        <div style={{ fontSize: 30, fontWeight: 950, marginTop: 8, lineHeight: 1.08 }}>
           Request an Achievement
         </div>
-        <div style={{ opacity: 0.84, marginTop: 10, lineHeight: 1.65, maxWidth: 920 }}>
-          Use this page to submit an achievement request for review. Submissions keep the same approval path already in place —
-          nothing changes in how leadership reviews or approves them.
+        <div style={{ opacity: 0.86, marginTop: 10, lineHeight: 1.7, maxWidth: 920 }}>
+          Submit your achievement request here. This page is only a cleaner player entry point — the request still follows the
+          same current submit and approval path used today.
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/achievements")}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+          <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={() => nav("/state/789/achievements")}>
             ⬅ Achievements Home
           </button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => nav("/state/789/achievements-progress")}>
@@ -52,31 +60,34 @@ export default function State789AchievementsFormPage() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
-        <StepCard
-          step="STEP 1"
-          title="Fill out the request"
-          text="Enter your player name, alliance, and the achievement you are requesting. Choose an option or weapon when required."
+        <InfoTile
+          title="Fill out your request"
+          text="Enter your player name, alliance, and achievement details. Choose a required option or weapon when needed."
         />
-        <StepCard
-          step="STEP 2"
+        <InfoTile
           title="Submit for review"
-          text="Your request follows the same current submission route and stays pending until leadership reviews it."
+          text="Your request follows the same current request pipeline and remains subject to leadership review and approval."
         />
-        <StepCard
-          step="STEP 3"
-          title="Track approval and progress"
-          text="After submission, leadership can approve and update progress using the same workflow already in place."
+        <InfoTile
+          title="Track it later"
+          text="Use the tracker and progress pages to follow your submitted request once it enters the review flow."
         />
       </div>
 
       <div className="zombie-card" style={{ padding: 16 }}>
-        <div style={{ fontWeight: 950, marginBottom: 8 }}>Important</div>
+        <div style={{ fontWeight: 950, marginBottom: 8 }}>Before you submit</div>
         <div style={{ opacity: 0.82, lineHeight: 1.6 }}>
-          This page is only a cleaner player-facing entry point. It does not change the existing request handling, approval rules, or progress update flow.
+          Double-check your player name, alliance, and selected achievement. This keeps the owner review queue cleaner and helps your request move faster.
         </div>
       </div>
 
-      <div className="zombie-card" style={{ padding: 16 }}>
+      <div
+        className="zombie-card"
+        style={{
+          padding: 16,
+          background: "linear-gradient(180deg, rgba(14,16,20,0.96), rgba(8,10,14,0.92))",
+        }}
+      >
         <StateAchievementsRequestForm stateCode="789" />
       </div>
     </div>
