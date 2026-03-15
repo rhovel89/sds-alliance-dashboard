@@ -946,27 +946,46 @@ export default function OwnerStateAchievementsPage() {
   }
 
   return (
-    <div style={{ padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
-        <div style={{ display: "grid", gap: 4 }}>
-          <h2 style={{ margin: 0 }}>🧟 Owner — State Achievements Admin</h2>
-          <div style={{ opacity: 0.72, fontSize: 12 }}>
-            Manage requests, types, options, access, and export tools for the selected state.
-          </div>
-        </div>
+    <div style={{ padding: 16, maxWidth: 1400, margin: "0 auto", display: "grid", gap: 12 }}>
+      <div
+        className="zombie-card"
+        style={{
+          padding: 18,
+          background: "linear-gradient(180deg, rgba(16,20,26,0.98), rgba(8,10,14,0.94))",
+          border: "1px solid rgba(255,255,255,0.10)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+          <div style={{ minWidth: 280 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+              <div style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", fontSize: 12, fontWeight: 800 }}>STATE ACHIEVEMENTS</div>
+              <div style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", fontSize: 12, fontWeight: 800 }}>OWNER ADMIN</div>
+              <div style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", fontSize: 12, fontWeight: 800 }}>STATE {stateCode}</div>
+            </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/owner")}>Back to Owner</button>
-          <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements")}>Player Form</button>
-          <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements-tracker")}>Tracker</button>
-          <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
-          <SupportBundleButton />
+            <h2 style={{ margin: 0, fontSize: 30, lineHeight: 1.05 }}>Owner State Achievements Hub</h2>
+            <div style={{ opacity: 0.82, fontSize: 14, marginTop: 10, lineHeight: 1.6, maxWidth: 860 }}>
+              Manage requests, achievement types, options, helper access, and export tools from one owner workspace.
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/owner")}>Back to Owner</button>
+            <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements")}>Player Form</button>
+            <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements-tracker")}>Tracker</button>
+            <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
+            <SupportBundleButton />
+          </div>
         </div>
       </div>
 
-      <StateAchievementsExportPanel stateCode={stateCode} requests={requests} types={types} options={options} initialAllianceFilter={initialAllianceFromQuery || "ALL"} initialTypeFilter={initialTypeFromQuery || "ALL"} />
-
-      <div className="zombie-card" style={{ marginTop: 12 }}>
+      <div
+        className="zombie-card"
+        style={{
+          padding: 14,
+          background: "rgba(0,0,0,0.20)",
+        }}
+      >
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ opacity: 0.78, fontSize: 12, fontWeight: 700 }}>State Code</div>
           <input className="zombie-input" value={stateCode} onChange={(e) => setStateCode(e.target.value)} style={{ padding: "10px 12px", width: 120 }} />
@@ -974,28 +993,31 @@ export default function OwnerStateAchievementsPage() {
             user={userId ? "yes" : "no"} • admin={String(isAppAdmin)} • owner={String(isDashboardOwner)}
           </div>
         </div>
+
         <div style={{ opacity: 0.78, fontSize: 12, marginTop: 8 }}>
           {loading ? "Loading…" : `Types: ${types.length} • Options: ${options.length} • Requests: ${requests.length} • Access: ${access.length}`}
         </div>
+
         {(initialAllianceFromQuery || initialTypeFromQuery || initialPlayerFromQuery || initialStatusFromQuery) ? (
-        <div
-          style={{
-            marginBottom: 10,
-            border: "1px solid rgba(120,180,255,0.28)",
-            background: "rgba(120,180,255,0.08)",
-            borderRadius: 12,
-            padding: 10,
-          }}
-        >
-          <div style={{ fontWeight: 800 }}>Deep link filters active</div>
-          <div style={{ fontSize: 12, opacity: 0.82, marginTop: 4 }}>
-            {initialAllianceFromQuery ? `Alliance: ${initialAllianceFromQuery}` : ""}
-            {initialTypeFromQuery ? `${initialAllianceFromQuery ? " • " : ""}Type: ${initialTypeFromQuery}` : ""}
-            {initialPlayerFromQuery ? `${(initialAllianceFromQuery || initialTypeFromQuery) ? " • " : ""}Player: ${initialPlayerFromQuery}` : ""}
-            {initialStatusFromQuery ? `${(initialAllianceFromQuery || initialTypeFromQuery || initialPlayerFromQuery) ? " • " : ""}Status: ${initialStatusFromQuery}` : ""}
+          <div
+            style={{
+              marginTop: 10,
+              border: "1px solid rgba(120,180,255,0.28)",
+              background: "rgba(120,180,255,0.08)",
+              borderRadius: 12,
+              padding: 10,
+            }}
+          >
+            <div style={{ fontWeight: 800 }}>Deep link filters active</div>
+            <div style={{ fontSize: 12, opacity: 0.82, marginTop: 4 }}>
+              {initialAllianceFromQuery ? `Alliance: ${initialAllianceFromQuery}` : ""}
+              {initialTypeFromQuery ? `${initialAllianceFromQuery ? " • " : ""}Type: ${initialTypeFromQuery}` : ""}
+              {initialPlayerFromQuery ? `${(initialAllianceFromQuery || initialTypeFromQuery) ? " • " : ""}Player: ${initialPlayerFromQuery}` : ""}
+              {initialStatusFromQuery ? `${(initialAllianceFromQuery || initialTypeFromQuery || initialPlayerFromQuery) ? " • " : ""}Status: ${initialStatusFromQuery}` : ""}
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+
         {msg ? (
           <div
             style={{
@@ -1022,8 +1044,22 @@ export default function OwnerStateAchievementsPage() {
         ) : null}
       </div>
 
+      <div
+        className="zombie-card"
+        style={{
+          padding: 14,
+          background: "rgba(0,0,0,0.22)",
+        }}
+      >
+        <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 8 }}>Exports and Discord tools</div>
+        <div style={{ opacity: 0.72, fontSize: 12, marginBottom: 12 }}>
+          Export reports, filter by deep-link values, and prepare achievement output for Discord without leaving this page.
+        </div>
 
-      <div className="zombie-card" style={{ marginTop: 12 }}>
+        <StateAchievementsExportPanel stateCode={stateCode} requests={requests} types={types} options={options} initialAllianceFilter={initialAllianceFromQuery || "ALL"} initialTypeFilter={initialTypeFromQuery || "ALL"} />
+      </div>
+
+      <div className="zombie-card" style={{ marginTop: 0 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button
             className="zombie-btn"
@@ -1543,6 +1579,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
