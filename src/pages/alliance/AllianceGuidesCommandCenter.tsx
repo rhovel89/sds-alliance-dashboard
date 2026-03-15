@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useGuidesEditAccess } from "../../hooks/useGuidesEditAccess";
-import { GuideEntriesPanel } from "../../components/guides/GuideEntriesPanel";
 import GuideEntryAttachmentsPanel from "../../components/guides/GuideEntryAttachmentsPanel";
 import GuideSectionAttachmentsPanel from "../../components/guides/GuideSectionAttachmentsPanel";
 import { useRealtimeRefresh } from "../../hooks/useRealtimeRefresh";
@@ -15,20 +14,8 @@ const SECTION_NAME_COL = "title";
 export function AllianceGuidesCommandCenter() {
   const { alliance_id } = useParams();
   const allianceCode = useMemo(() => (alliance_id || "").toString(), [alliance_id]);
-  useRealtimeRefresh({
-    channel: `rt_guides_${allianceCode}`,
-    enabled: !!allianceCode,
-    changes: [
-      { table: "guide_sections", filter: `alliance_code=eq.${allianceCode}` },
-      { table: "guide_section_entries", filter: `alliance_code=eq.${allianceCode}` },
-      { table: "guide_entry_attachments", filter: `alliance_code=eq.${allianceCode}` },
-    ],
-    onChange: () => {
-      try { void loadSections(); } catch {}
-      try { if (selectedSectionId) void loadEntries(selectedSectionId); } catch {}
-    },
-    debounceMs: 300,
-  });
+
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   const roleState = useGuidesEditAccess(allianceCode);
 
@@ -37,19 +24,12 @@ export function AllianceGuidesCommandCenter() {
     is_dashboard_owner: false,
   });
 
-  useEffect(() => {
-    (async () => {
-      const res = await supabase.rpc("my_owner_flags");
-      if (!res.error && res.data && res.data[0]) {
-        setOwnerFlags({
-          is_app_admin: !!res.data[0].is_app_admin,
-          is_dashboard_owner: !!res.data[0].is_dashboard_owner,
-        });
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const canEdit = !!roleState.canEditGuides || ownerFlags.is_app_admin || ownerFlags.is_dashboard_owner;
+  const canEditAll =
+    !!roleState.canEditGuides ||
+    ownerFlags.is_app_admin ||
+    ownerFlags.is_dashboard_owner;
+
+  const canCreateOwnEntries = !!currentUserId;
 
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
@@ -69,6 +49,44 @@ export function AllianceGuidesCommandCenter() {
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editingEntryTitle, setEditingEntryTitle] = useState("");
   const [editingEntryBody, setEditingEntryBody] = useState("");
+
+  function isOwnEntry(entry: EntryRow) {
+    return !!currentUserId && String(entry?.created_by || "") === String(currentUserId);
+  }
+
+  function canEditEntry(entry: EntryRow) {
+    return canEditAll || isOwnEntry(entry);
+  }
+
+  useRealtimeRefresh({
+    channel: `rt_guides_${allianceCode}`,
+    enabled: !!allianceCode,
+    changes: [
+      { table: "guide_sections", filter: `alliance_code=eq.${allianceCode}` },
+      { table: "guide_section_entries", filter: `alliance_code=eq.${allianceCode}` },
+      { table: "guide_entry_attachments", filter: `alliance_code=eq.${allianceCode}` },
+    ],
+    onChange: () => {
+      try { void loadSections(); } catch {}
+      try { if (selectedSectionId) void loadEntries(selectedSectionId); } catch {}
+    },
+    debounceMs: 300,
+  });
+
+  useEffect(() => {
+    (async () => {
+      const u = await supabase.auth.getUser();
+      setCurrentUserId(u.data.user?.id || "");
+
+      const res = await supabase.rpc("my_owner_flags");
+      if (!res.error && res.data && res.data[0]) {
+        setOwnerFlags({
+          is_app_admin: !!res.data[0].is_app_admin,
+          is_dashboard_owner: !!res.data[0].is_dashboard_owner,
+        });
+      }
+    })();
+  }, []);
 
   async function loadSections() {
     if (!allianceCode) return;
@@ -121,18 +139,16 @@ export function AllianceGuidesCommandCenter() {
   }
 
   useEffect(() => {
-    loadSections();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void loadSections();
   }, [allianceCode]);
 
   useEffect(() => {
-    if (selectedSectionId) loadEntries(selectedSectionId);
+    if (selectedSectionId) void loadEntries(selectedSectionId);
     else setEntries([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSectionId]);
 
   async function createSection() {
-    if (!canEdit) return;
+    if (!canEditAll) return;
     if (!allianceCode) return;
     const name = newSectionName.trim();
     if (!name) return;
@@ -154,14 +170,14 @@ export function AllianceGuidesCommandCenter() {
     await loadSections();
   }
 
-  async function startEditSection(section: SectionRow) {
-    if (!canEdit) return;
+  function startEditSection(section: SectionRow) {
+    if (!canEditAll) return;
     setEditingSectionId(section.id);
     setEditingSectionName((section[SECTION_NAME_COL] || "").toString());
   }
 
   async function saveEditSection() {
-    if (!canEdit) return;
+    if (!canEditAll) return;
     if (!editingSectionId) return;
     const name = editingSectionName.trim();
     if (!name) return;
@@ -189,7 +205,7 @@ export function AllianceGuidesCommandCenter() {
   }
 
   async function deleteSection(sectionId: string) {
-    if (!canEdit) return;
+    if (!canEditAll) return;
     const ok = confirm("Delete this section? Entries inside will be deleted too.");
     if (!ok) return;
 
@@ -205,7 +221,7 @@ export function AllianceGuidesCommandCenter() {
   }
 
   async function createEntry() {
-    if (!canEdit) return;
+    if (!canCreateOwnEntries) return;
     if (!allianceCode || !selectedSectionId) return;
 
     const title = newEntryTitle.trim();
@@ -240,15 +256,17 @@ export function AllianceGuidesCommandCenter() {
   }
 
   function startEditEntry(entry: EntryRow) {
-    if (!canEdit) return;
+    if (!canEditEntry(entry)) return;
     setEditingEntryId(entry.id);
     setEditingEntryTitle((entry.title || "").toString());
     setEditingEntryBody((entry.body || "").toString());
   }
 
   async function saveEditEntry() {
-    if (!canEdit) return;
     if (!editingEntryId || !selectedSectionId) return;
+
+    const existing = entries.find((x) => String(x.id) === String(editingEntryId));
+    if (!existing || !canEditEntry(existing)) return;
 
     const title = editingEntryTitle.trim();
     const body = editingEntryBody.trim();
@@ -279,8 +297,10 @@ export function AllianceGuidesCommandCenter() {
   }
 
   async function deleteEntry(entryId: string) {
-    if (!canEdit) return;
     if (!selectedSectionId) return;
+
+    const existing = entries.find((x) => String(x.id) === String(entryId));
+    if (!existing || !canEditEntry(existing)) return;
 
     const ok = confirm("Delete this entry?");
     if (!ok) return;
@@ -306,12 +326,10 @@ export function AllianceGuidesCommandCenter() {
         {roleState.loading ? (
           <span>Checking permissions…</span>
         ) : roleState.error ? (
-          <span>
-            Role check issue: {roleState.error}
-          </span>
+          <span>Role check issue: {roleState.error}</span>
         ) : (
           <span>
-            Mode: <b>{canEdit ? "Editor" : "View-only"}</b>
+            Mode: <b>{canEditAll ? "Manager" : canCreateOwnEntries ? "Own entries" : "View-only"}</b>
             {roleState.role ? <span> (role: {roleState.role})</span> : null}
           </span>
         )}
@@ -321,20 +339,19 @@ export function AllianceGuidesCommandCenter() {
         <div style={{ marginBottom: 12, padding: 10, border: "1px solid #ff6b6b" }}>
           <b>Error:</b> {error}
           <div style={{ marginTop: 6, opacity: 0.9 }}>
-            (Backend RLS still enforces permissions. If you should be an editor, membership/RLS needs review.)
+            Backend RLS still enforces permissions. If you should have more access, membership/RLS needs review.
           </div>
         </div>
       ) : null}
 
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-        {/* LEFT: Sections */}
         <div style={{ width: 320, border: "1px solid rgba(255,255,255,0.15)", padding: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <b>Sections</b>
             {loadingSections ? <span style={{ opacity: 0.8 }}>Loading…</span> : null}
           </div>
 
-          {canEdit ? (
+          {canEditAll ? (
             <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
               <input
                 value={newSectionName}
@@ -346,13 +363,13 @@ export function AllianceGuidesCommandCenter() {
             </div>
           ) : (
             <div style={{ marginTop: 10, opacity: 0.85 }}>
-              You have view-only access. (Owner/R5/R4 can edit.)
+              You can view sections and add your own entries inside them.
             </div>
           )}
 
           <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
             {sections.map((s) => {
-              const name = (s[SECTION_NAME_COL] || (s.title ?? s.name ?? s.section_name) || s.title || "Untitled").toString();
+              const name = (s[SECTION_NAME_COL] || (s.title ?? s.name ?? s.section_name) || "Untitled").toString();
               const selected = s.id === selectedSectionId;
 
               return (
@@ -370,7 +387,7 @@ export function AllianceGuidesCommandCenter() {
                       {name}
                     </div>
 
-                    {canEdit ? (
+                    {canEditAll ? (
                       <div style={{ display: "flex", gap: 6 }}>
                         <button
                           onClick={(e) => {
@@ -383,7 +400,7 @@ export function AllianceGuidesCommandCenter() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteSection(s.id);
+                            void deleteSection(s.id);
                           }}
                         >
                           Del
@@ -392,7 +409,7 @@ export function AllianceGuidesCommandCenter() {
                     ) : null}
                   </div>
 
-                  {canEdit && editingSectionId === s.id ? (
+                  {canEditAll && editingSectionId === s.id ? (
                     <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
                       <input
                         value={editingSectionName}
@@ -402,7 +419,7 @@ export function AllianceGuidesCommandCenter() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          saveEditSection();
+                          void saveEditSection();
                         }}
                       >
                         Save
@@ -426,11 +443,18 @@ export function AllianceGuidesCommandCenter() {
           </div>
         </div>
 
-        {/* RIGHT: Entries */}
         <div style={{ flex: 1, border: "1px solid rgba(255,255,255,0.15)", padding: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <b>Entries</b>
-            <div style={{ marginTop: 10 }}>               {selectedSectionId ? <GuideSectionAttachmentsPanel allianceCode={allianceCode} sectionId={String(selectedSectionId)} canEdit={canEdit} /> : null}             </div>
+            <div style={{ marginTop: 10 }}>
+              {selectedSectionId ? (
+                <GuideSectionAttachmentsPanel
+                  allianceCode={allianceCode}
+                  sectionId={String(selectedSectionId)}
+                  canEdit={canEditAll}
+                />
+              ) : null}
+            </div>
             {loadingEntries ? <span style={{ opacity: 0.8 }}>Loading…</span> : null}
           </div>
 
@@ -438,7 +462,7 @@ export function AllianceGuidesCommandCenter() {
             <div style={{ marginTop: 12, opacity: 0.85 }}>Select a section to view entries.</div>
           ) : (
             <>
-              {canEdit ? (
+              {canCreateOwnEntries ? (
                 <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                   <input
                     value={newEntryTitle}
@@ -457,13 +481,14 @@ export function AllianceGuidesCommandCenter() {
                 </div>
               ) : (
                 <div style={{ marginTop: 10, opacity: 0.85 }}>
-                  View-only access. (Owner/R5/R4 can add/edit/delete entries.)
+                  Sign in to add your own entries.
                 </div>
               )}
 
               <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
                 {entries.map((en) => {
                   const isEditing = editingEntryId === en.id;
+                  const canEditThisEntry = canEditEntry(en);
 
                   return (
                     <div
@@ -476,12 +501,17 @@ export function AllianceGuidesCommandCenter() {
                       {!isEditing ? (
                         <>
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                            <div style={{ fontWeight: 700 }}>{(en.title || "Untitled").toString()}</div>
+                            <div style={{ fontWeight: 700 }}>
+                              {(en.title || "Untitled").toString()}
+                              {isOwnEntry(en) ? (
+                                <span style={{ marginLeft: 8, opacity: 0.65, fontSize: 12 }}>(yours)</span>
+                              ) : null}
+                            </div>
 
-                            {canEdit ? (
+                            {canEditThisEntry ? (
                               <div style={{ display: "flex", gap: 6 }}>
                                 <button onClick={() => startEditEntry(en)}>Edit</button>
-                                <button onClick={() => deleteEntry(en.id)}>Del</button>
+                                <button onClick={() => void deleteEntry(en.id)}>Del</button>
                               </div>
                             ) : null}
                           </div>
@@ -504,7 +534,7 @@ export function AllianceGuidesCommandCenter() {
                             style={{ width: "100%", marginTop: 8 }}
                           />
                           <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                            <button onClick={saveEditEntry}>Save</button>
+                            <button onClick={() => void saveEditEntry()}>Save</button>
                             <button
                               onClick={() => {
                                 setEditingEntryId(null);
@@ -517,11 +547,12 @@ export function AllianceGuidesCommandCenter() {
                           </div>
                         </>
                       )}
+
                       <GuideEntryAttachmentsPanel
                         allianceCode={allianceCode}
                         sectionId={selectedSectionId}
                         entryId={String(en.id)}
-                        canEdit={canEdit}
+                        canEdit={canEditThisEntry}
                       />
                     </div>
                   );
@@ -538,10 +569,3 @@ export function AllianceGuidesCommandCenter() {
     </div>
   );
 }
-
-
-
-
-
-
-
