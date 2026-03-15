@@ -4,29 +4,18 @@ import { toPng } from "html-to-image";
 import { supabase } from "../../lib/supabaseClient";
 import AllianceHQMap from "./AllianceHQMap";
 
+type WebhookRow = {
+  id: string;
+  alliance_code: string;
+  label: string | null;
+  webhook_url: string;
+  active: boolean | null;
+};
+
 function tsLabel() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-}
-
-function routeStorageKey(allianceCode: string) {
-  return `hqMapDiscordRoute:${String(allianceCode || "").trim().toUpperCase()}`;
-}
-
-function loadSavedDiscordRoute(allianceCode: string) {
-  try {
-    const raw = localStorage.getItem(routeStorageKey(allianceCode));
-    return String(raw || "").trim();
-  } catch {
-    return "";
-  }
-}
-
-function saveDiscordRoute(allianceCode: string, route: string) {
-  try {
-    localStorage.setItem(routeStorageKey(allianceCode), String(route || "").trim());
-  } catch {}
 }
 
 export default function AllianceHQMapExportPage() {
@@ -39,39 +28,66 @@ export default function AllianceHQMapExportPage() {
   const [msg, setMsg] = useState("");
   const [lastPublicUrl, setLastPublicUrl] = useState("");
 
-  const [routePreset, setRoutePreset] = useState<"hq-map" | "announcements" | "custom">("hq-map");
-  const [customRoute, setCustomRoute] = useState("");
+  const [webhooks, setWebhooks] = useState<WebhookRow[]>([]);
+  const [selectedWebhookId, setSelectedWebhookId] = useState("");
+  const [defaultWebhookId, setDefaultWebhookId] = useState("");
+
+  const activeWebhooks = useMemo(
+    () => webhooks.filter((w) => w.active !== false),
+    [webhooks]
+  );
 
   useEffect(() => {
-    const saved = loadSavedDiscordRoute(allianceCode);
+    let cancelled = false;
 
-    if (saved === "default:hq-map") {
-      setRoutePreset("hq-map");
-      setCustomRoute("");
-      return;
+    async function loadDiscordSettings() {
+      try {
+        const hooks = await supabase
+          .from("alliance_discord_webhooks")
+          .select("*")
+          .eq("alliance_code", allianceCode)
+          .order("created_at", { ascending: false });
+
+        if (hooks.error) throw hooks.error;
+
+        const rows = (hooks.data || []) as WebhookRow[];
+        if (cancelled) return;
+
+        setWebhooks(rows);
+
+        const def = await supabase
+          .from("alliance_discord_webhook_defaults")
+          .select("webhook_id")
+          .eq("alliance_code", allianceCode)
+          .eq("kind", "hq_map")
+          .maybeSingle();
+
+        if (!cancelled) {
+          const wid = String((def.data as any)?.webhook_id || "").trim();
+          setDefaultWebhookId(wid);
+
+          if (wid && rows.some((x) => String(x.id) === wid && x.active !== false)) {
+            setSelectedWebhookId(wid);
+          } else {
+            const first = rows.find((x) => x.active !== false);
+            setSelectedWebhookId(String(first?.id || ""));
+          }
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setMsg("Discord settings load failed: " + String(e?.message || e));
+        }
+      }
     }
 
-    if (saved === "default:announcements") {
-      setRoutePreset("announcements");
-      setCustomRoute("");
-      return;
+    if (allianceCode) {
+      void loadDiscordSettings();
     }
 
-    if (saved) {
-      setRoutePreset("custom");
-      setCustomRoute(saved);
-      return;
-    }
-
-    setRoutePreset("hq-map");
-    setCustomRoute("");
+    return () => {
+      cancelled = true;
+    };
   }, [allianceCode]);
-
-  const sendRoute = useMemo(() => {
-    if (routePreset === "hq-map") return "default:hq-map";
-    if (routePreset === "announcements") return "default:announcements";
-    return String(customRoute || "").trim();
-  }, [routePreset, customRoute]);
 
   async function exportPngAndUpload(downloadAlso = true) {
     if (!captureRef.current) {
@@ -137,20 +153,51 @@ export default function AllianceHQMapExportPage() {
     }
   }
 
-  function handleSaveRoute() {
-    const route = String(sendRoute || "").trim();
-    if (!route) {
-      setMsg("Enter a valid Discord route first.");
+  async function handleSaveDefault() {
+    const webhookId = String(selectedWebhookId || "").trim();
+    if (!webhookId) {
+      setMsg("Pick a webhook first.");
       return;
     }
 
-    saveDiscordRoute(allianceCode, route);
-    setMsg(`Discord destination saved ✅\nAlliance: ${allianceCode}\nRoute: ${route}`);
+    setBusy(true);
+    setMsg("");
+
+    try {
+      const me = await supabase.auth.getUser();
+      const uid = me.data?.user?.id || null;
+
+      const up = await supabase
+        .from("alliance_discord_webhook_defaults")
+        .upsert(
+          {
+            alliance_code: allianceCode,
+            kind: "hq_map",
+            webhook_id: webhookId,
+            updated_at: new Date().toISOString(),
+            updated_by: uid,
+          } as any,
+          { onConflict: "alliance_code,kind" } as any
+        );
+
+      if (up.error) throw up.error;
+
+      setDefaultWebhookId(webhookId);
+      setMsg("HQ Map default saved ✅");
+    } catch (e: any) {
+      setMsg("Save default failed: " + String(e?.message || e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function queueDiscordSend(url: string) {
-    const route = String(sendRoute || "").trim();
-    if (!route) throw new Error("Discord route is empty.");
+    const webhookId = String(selectedWebhookId || "").trim();
+    if (!webhookId) throw new Error("Choose a webhook first.");
+
+    const label =
+      activeWebhooks.find((x) => String(x.id) === webhookId)?.label ||
+      webhookId;
 
     const content =
       `🗺️ **${allianceCode || "Alliance"} HQ Map Export**\n` +
@@ -159,15 +206,16 @@ export default function AllianceHQMapExportPage() {
 
     const q = await supabase.rpc("queue_discord_send" as any, {
       p_kind: "discord_webhook",
-      p_target: "alliance:" + allianceCode,
-      p_channel_id: route,
+      p_target: `alliance:${allianceCode}`,
+      p_channel_id: webhookId,
       p_content: content,
       p_meta: {
         kind: "hq_map_export",
         source: "AllianceHQMapExportPage",
         alliance_code: allianceCode,
+        webhook_id: webhookId,
+        webhook_label: label,
         public_url: url,
-        route,
       },
     } as any);
 
@@ -177,13 +225,19 @@ export default function AllianceHQMapExportPage() {
   async function handleSendDiscord() {
     setBusy(true);
     setMsg("");
+
     try {
-      const route = String(sendRoute || "").trim();
-      if (!route) throw new Error("Choose or enter a Discord route first.");
+      const webhookId = String(selectedWebhookId || "").trim();
+      if (!webhookId) throw new Error("Choose a webhook first.");
 
       const url = lastPublicUrl || (await exportPngAndUpload(false));
       await queueDiscordSend(url);
-      setMsg(`Queued to Discord ✅\nRoute: ${route}\n${url}`);
+
+      const label =
+        activeWebhooks.find((x) => String(x.id) === webhookId)?.label ||
+        webhookId;
+
+      setMsg(`Queued to Discord ✅\nWebhook: ${label}\n${url}`);
     } catch (e: any) {
       setMsg(`Discord send failed: ${String(e?.message || e)}`);
     } finally {
@@ -207,8 +261,8 @@ export default function AllianceHQMapExportPage() {
         <div
           className="zombie-card"
           style={{
-            minWidth: 340,
-            maxWidth: 460,
+            minWidth: 360,
+            maxWidth: 480,
             padding: 12,
             pointerEvents: "auto",
             background: "rgba(8,10,14,0.94)",
@@ -218,51 +272,73 @@ export default function AllianceHQMapExportPage() {
         >
           <div style={{ fontWeight: 950, fontSize: 14 }}>🗺️ HQ Map Tools</div>
           <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-            Export this exact page as PNG and choose where the Discord send goes.
+            Export this exact page as PNG and send it using the same webhook system already used in Discord settings.
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>Discord destination</div>
+            <div style={{ opacity: 0.75, fontSize: 12 }}>Webhook destination</div>
 
             <select
               className="zombie-input"
-              value={routePreset}
-              onChange={(e) => setRoutePreset(e.target.value as any)}
+              value={selectedWebhookId}
+              onChange={(e) => setSelectedWebhookId(e.target.value)}
               style={{ padding: "10px 12px", width: "100%" }}
             >
-              <option value="hq-map">default:hq-map</option>
-              <option value="announcements">default:announcements</option>
-              <option value="custom">custom route…</option>
+              <option value="">(select webhook)</option>
+              {activeWebhooks.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {String(w.label || w.id)}
+                  {String(defaultWebhookId) === String(w.id) ? " — default" : ""}
+                </option>
+              ))}
             </select>
 
-            {routePreset === "custom" ? (
-              <input
-                className="zombie-input"
-                value={customRoute}
-                onChange={(e) => setCustomRoute(e.target.value)}
-                placeholder="Enter route string"
-                style={{ padding: "10px 12px", width: "100%" }}
-              />
-            ) : null}
-
             <div style={{ opacity: 0.7, fontSize: 12 }}>
-              Current send route: <b>{sendRoute || "(none)"}</b>
+              Default for HQ Map:{" "}
+              <b>
+                {activeWebhooks.find((x) => String(x.id) === String(defaultWebhookId))?.label ||
+                  (defaultWebhookId ? defaultWebhookId : "(none)")}
+              </b>
             </div>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={handleSaveRoute} disabled={busy}>
-                Save Route
+              <button
+                className="zombie-btn"
+                type="button"
+                style={{ padding: "10px 12px" }}
+                onClick={handleSaveDefault}
+                disabled={busy || !selectedWebhookId}
+              >
+                Save HQ Map Default
               </button>
 
-              <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} disabled={busy} onClick={handleExport}>
+              <button
+                className="zombie-btn"
+                type="button"
+                style={{ padding: "10px 12px" }}
+                disabled={busy}
+                onClick={handleExport}
+              >
                 {busy ? "WORKING..." : "Export PNG"}
               </button>
 
-              <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} disabled={busy} onClick={handleCopyLink}>
+              <button
+                className="zombie-btn"
+                type="button"
+                style={{ padding: "10px 12px" }}
+                disabled={busy}
+                onClick={handleCopyLink}
+              >
                 Copy PNG Link
               </button>
 
-              <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} disabled={busy} onClick={handleSendDiscord}>
+              <button
+                className="zombie-btn"
+                type="button"
+                style={{ padding: "10px 12px" }}
+                disabled={busy || !selectedWebhookId}
+                onClick={handleSendDiscord}
+              >
                 Send to Discord
               </button>
             </div>

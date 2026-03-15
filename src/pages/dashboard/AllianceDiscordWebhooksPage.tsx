@@ -29,6 +29,7 @@ const KINDS = [
   { key: "ops", label: "Ops Feed" },
   { key: "threads", label: "Threads" },
   { key: "achievements", label: "Achievements" },
+  { key: "hq_map", label: "HQ Map" },
 ] as const;
 
 export default function AllianceDiscordWebhooksPage() {
@@ -54,6 +55,7 @@ export default function AllianceDiscordWebhooksPage() {
     ops: "",
     threads: "",
     achievements: "",
+    hq_map: "",
   });
 
   const activeWebhooks = useMemo(() => rows.filter(r => r.active !== false), [rows]);
@@ -325,5 +327,6 @@ export default function AllianceDiscordWebhooksPage() {
     </CommandCenterShell>
   );
 }
+
 
 
