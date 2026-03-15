@@ -26,6 +26,64 @@ type Req = {
   provisioned: boolean;
 };
 
+function Pill(props: { text: string }) {
+  return (
+    <div
+      style={{
+        padding: "6px 10px",
+        borderRadius: 999,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "rgba(255,255,255,0.04)",
+        fontSize: 12,
+        fontWeight: 800,
+        letterSpacing: "0.04em",
+        opacity: 0.92,
+      }}
+    >
+      {props.text}
+    </div>
+  );
+}
+
+function StatCard(props: { label: string; value: string; sub: string }) {
+  return (
+    <div
+      className="zombie-card"
+      style={{
+        padding: 14,
+        minHeight: 112,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+      }}
+    >
+      <div style={{ opacity: 0.72, fontSize: 11, fontWeight: 900, letterSpacing: "0.12em" }}>{props.label}</div>
+      <div style={{ fontSize: 24, fontWeight: 950 }}>{props.value}</div>
+      <div style={{ opacity: 0.72, fontSize: 12 }}>{props.sub}</div>
+    </div>
+  );
+}
+
+function SectionCard(props: { title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="zombie-card"
+      style={{
+        padding: 16,
+        background: "rgba(0,0,0,0.22)",
+      }}
+    >
+      <div style={{ fontWeight: 950, fontSize: 18 }}>{props.title}</div>
+      {props.subtitle ? (
+        <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4, marginBottom: 12 }}>{props.subtitle}</div>
+      ) : (
+        <div style={{ height: 12 }} />
+      )}
+      {props.children}
+    </div>
+  );
+}
+
 export default function RequestAccessPage() {
   const { t } = useTranslation();
   const [userId, setUserId] = useState("");
@@ -60,7 +118,10 @@ export default function RequestAccessPage() {
       .order("sort_order", { ascending: true })
       .order("alliance_code", { ascending: true });
 
-    if (res.error) { setStatus(res.error.message); return; }
+    if (res.error) {
+      setStatus(res.error.message);
+      return;
+    }
     setDirectory((res.data ?? []) as any);
     setStatus("");
   }
@@ -75,7 +136,10 @@ export default function RequestAccessPage() {
     if (!res.error) setMyReqs((res.data ?? []) as any);
   }
 
-  useEffect(() => { void loadDirectory(); void loadMyRequests(); }, [stateCode]);
+  useEffect(() => {
+    void loadDirectory();
+    void loadMyRequests();
+  }, [stateCode]);
 
   const selectedDir = useMemo(
     () => directory.find((d) => d.alliance_code === allianceCode) ?? null,
@@ -107,7 +171,10 @@ export default function RequestAccessPage() {
       status: "pending",
     });
 
-    if (ins.error) { setStatus(ins.error.message); return; }
+    if (ins.error) {
+      setStatus(ins.error.message);
+      return;
+    }
 
     setStatus(t("common.sent"));
     setAllianceCode("");
@@ -118,84 +185,219 @@ export default function RequestAccessPage() {
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 1000, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900 }}>{t("onboarding.title")}</h1>
-      <div style={{ opacity: 0.8, marginTop: 6 }}>
-        {userId ? `${t("onboarding.signedIn")} ✅` : t("onboarding.notSignedIn")}
-        {status ? " • " + status : ""}
-      </div>
+    <div style={{ padding: 16, maxWidth: 1240, margin: "0 auto", display: "grid", gap: 12 }}>
+      <div
+        className="zombie-card"
+        style={{
+          padding: 20,
+          background: "linear-gradient(180deg, rgba(16,20,26,0.98), rgba(8,10,14,0.94))",
+          border: "1px solid rgba(255,255,255,0.10)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+          <div style={{ minWidth: 280 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+              <Pill text="ONBOARDING" />
+              <Pill text="ACCESS REQUEST" />
+              <Pill text={`STATE ${stateCode}`} />
+            </div>
 
-      <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden", marginTop: 12 }}>
-        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>{t("onboarding.request")}</div>
-        <div style={{ padding: 12, display: "grid", gap: 10 }}>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <label style={{ opacity: 0.75 }}>{t("onboarding.state")}</label>
-            <input value={stateCode} onChange={(e) => setStateCode(e.target.value)} style={{ width: 90 }} />
-            <button onClick={loadDirectory}>{t("onboarding.reloadDirectory")}</button>
-          </div>
+            <h1 style={{ fontSize: 32, fontWeight: 950, margin: 0, lineHeight: 1.05 }}>
+              {t("onboarding.title")}
+            </h1>
 
-          <div>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>{t("onboarding.allianceFromDirectory")}</div>
-            <select value={allianceCode} onChange={(e) => setAllianceCode(e.target.value)}>
-              <option value="">(select)</option>
-              {directory.map((d) => (
-                <option key={d.id} value={d.alliance_code}>
-                  {d.alliance_code}{d.tag ? ` [${d.tag}]` : ""}{d.name ? ` — ${d.name}` : ""}
-                </option>
-              ))}
-            </select>
-            <div style={{ opacity: 0.6, fontSize: 12, marginTop: 6 }}>
-              alliance_id: <code>{allianceId ?? "(none)"}</code>
+            <div style={{ opacity: 0.84, marginTop: 10, lineHeight: 1.7, maxWidth: 820 }}>
+              Request access to your alliance dashboard, attach your in-game details, and track approval status from one cleaner onboarding page.
+            </div>
+
+            <div style={{ opacity: 0.72, marginTop: 10, fontSize: 12 }}>
+              {userId ? `${t("onboarding.signedIn")} ✅` : t("onboarding.notSignedIn")}
+              {status ? " • " + status : ""}
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div>
-              <div style={{ opacity: 0.75, fontSize: 12 }}>{t("onboarding.displayName")}</div>
-              <input value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="…" />
-            </div>
-            <div>
-              <div style={{ opacity: 0.75, fontSize: 12 }}>{t("onboarding.gameName")}</div>
-              <input value={gameName} onChange={(e) => setGameName(e.target.value)} placeholder="…" />
-            </div>
-          </div>
-
-          <div>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>{t("onboarding.discordName")}</div>
-            <input value={discordName} onChange={(e) => setDiscordName(e.target.value)} placeholder="…" />
-          </div>
-
-          <div>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>{t("onboarding.notes")}</div>
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="…" />
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button disabled={!userId} onClick={submit}>{t("onboarding.submitRequest")}</button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={() => void loadDirectory()} style={{ padding: "10px 12px" }}>
+              {t("onboarding.reloadDirectory")}
+            </button>
+            <button className="zombie-btn" type="button" onClick={() => void loadMyRequests()} style={{ padding: "10px 12px" }}>
+              {t("common.reload")}
+            </button>
           </div>
         </div>
       </div>
 
-      <div style={{ border: "1px solid #333", borderRadius: 12, overflow: "hidden", marginTop: 16 }}>
-        <div style={{ padding: 12, borderBottom: "1px solid #333", fontWeight: 900 }}>{t("onboarding.myRequests")}</div>
-        <div style={{ padding: 12 }}>
-          {myReqs.length === 0 ? (
-            <div style={{ opacity: 0.75 }}>{t("onboarding.noRequests")}</div>
-          ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-              {myReqs.map((r) => (
-                <div key={r.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 10 }}>
-                  <div style={{ fontWeight: 900 }}>
-                    {r.state_code} • {r.alliance_code} • <span style={{ opacity: 0.9 }}>{r.status}</span> {r.provisioned ? "• ✅" : ""}
-                  </div>
-                  <div style={{ opacity: 0.75, fontSize: 12 }}>{new Date(r.created_at).toLocaleString()}</div>
-                </div>
-              ))}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        <StatCard label="STATE" value={stateCode} sub="Current onboarding state" />
+        <StatCard label="ALLIANCES" value={String(directory.length)} sub="Available from directory" />
+        <StatCard label="MY REQUESTS" value={String(myReqs.length)} sub="Recent onboarding history" />
+        <StatCard label="SESSION" value={userId ? "READY" : "SIGN IN"} sub={userId ? "You can submit requests" : "Authentication required"} />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.15fr) minmax(320px, 0.85fr)", gap: 12, alignItems: "start" }}>
+        <SectionCard
+          title={t("onboarding.request")}
+          subtitle="Choose your alliance from the directory and send an onboarding request."
+        >
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ opacity: 0.75, fontSize: 12, fontWeight: 800 }}>{t("onboarding.state")}</div>
+              <input
+                className="zombie-input"
+                value={stateCode}
+                onChange={(e) => setStateCode(e.target.value)}
+                style={{ width: 100, padding: "10px 12px" }}
+              />
+              <button className="zombie-btn" type="button" onClick={() => void loadDirectory()} style={{ padding: "10px 12px" }}>
+                {t("onboarding.reloadDirectory")}
+              </button>
             </div>
-          )}
-          <div style={{ marginTop: 10 }}>
-            <button onClick={loadMyRequests}>{t("common.reload")}</button>
+
+            <div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>{t("onboarding.allianceFromDirectory")}</div>
+              <select
+                className="zombie-input"
+                value={allianceCode}
+                onChange={(e) => setAllianceCode(e.target.value)}
+                style={{ width: "100%", padding: "10px 12px" }}
+              >
+                <option value="">(select)</option>
+                {directory.map((d) => (
+                  <option key={d.id} value={d.alliance_code}>
+                    {d.alliance_code}{d.tag ? ` [${d.tag}]` : ""}{d.name ? ` — ${d.name}` : ""}
+                  </option>
+                ))}
+              </select>
+
+              <div style={{ opacity: 0.6, fontSize: 12, marginTop: 6 }}>
+                alliance_id: <code>{allianceId ?? "(none)"}</code>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10 }}>
+              <div>
+                <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>{t("onboarding.displayName")}</div>
+                <input
+                  className="zombie-input"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="Display name"
+                  style={{ width: "100%", padding: "10px 12px" }}
+                />
+              </div>
+
+              <div>
+                <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>{t("onboarding.gameName")}</div>
+                <input
+                  className="zombie-input"
+                  value={gameName}
+                  onChange={(e) => setGameName(e.target.value)}
+                  placeholder="In-game name"
+                  style={{ width: "100%", padding: "10px 12px" }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>{t("onboarding.discordName")}</div>
+              <input
+                className="zombie-input"
+                value={discordName}
+                onChange={(e) => setDiscordName(e.target.value)}
+                placeholder="Discord name"
+                style={{ width: "100%", padding: "10px 12px" }}
+              />
+            </div>
+
+            <div>
+              <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>{t("onboarding.notes")}</div>
+              <textarea
+                className="zombie-input"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={4}
+                placeholder="Anything the owner team should know?"
+                style={{ width: "100%", padding: "10px 12px" }}
+              />
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+              <button
+                className="zombie-btn"
+                disabled={!userId}
+                onClick={submit}
+                style={{ padding: "12px 14px", fontWeight: 900 }}
+              >
+                {t("onboarding.submitRequest")}
+              </button>
+            </div>
           </div>
+        </SectionCard>
+
+        <div style={{ display: "grid", gap: 12 }}>
+          <SectionCard
+            title="How this works"
+            subtitle="The request flow stays the same. Only the page design changes."
+          >
+            <div style={{ display: "grid", gap: 10 }}>
+              <div className="zombie-card" style={{ padding: 12, background: "rgba(255,255,255,0.03)" }}>
+                <div style={{ fontWeight: 900 }}>1. Choose your alliance</div>
+                <div style={{ opacity: 0.78, marginTop: 6, lineHeight: 1.55 }}>
+                  Pick your alliance from the live state directory so the request maps to the correct dashboard.
+                </div>
+              </div>
+
+              <div className="zombie-card" style={{ padding: 12, background: "rgba(255,255,255,0.03)" }}>
+                <div style={{ fontWeight: 900 }}>2. Add your player details</div>
+                <div style={{ opacity: 0.78, marginTop: 6, lineHeight: 1.55 }}>
+                  Give the owner team enough detail to verify who you are and where you belong.
+                </div>
+              </div>
+
+              <div className="zombie-card" style={{ padding: 12, background: "rgba(255,255,255,0.03)" }}>
+                <div style={{ fontWeight: 900 }}>3. Wait for approval</div>
+                <div style={{ opacity: 0.78, marginTop: 6, lineHeight: 1.55 }}>
+                  Your request stays visible below so you can track pending, approved, or rejected status.
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title={t("onboarding.myRequests")}
+            subtitle="Your recent onboarding requests."
+          >
+            {myReqs.length === 0 ? (
+              <div style={{ opacity: 0.75 }}>{t("onboarding.noRequests")}</div>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {myReqs.map((r) => (
+                  <div
+                    key={r.id}
+                    style={{
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      borderRadius: 12,
+                      padding: 12,
+                      background: "rgba(255,255,255,0.03)",
+                    }}
+                  >
+                    <div style={{ fontWeight: 900 }}>
+                      {r.state_code} • {r.alliance_code} • <span style={{ opacity: 0.92 }}>{r.status}</span> {r.provisioned ? "• ✅" : ""}
+                    </div>
+                    <div style={{ opacity: 0.72, fontSize: 12, marginTop: 6 }}>
+                      {new Date(r.created_at).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ marginTop: 12 }}>
+              <button className="zombie-btn" type="button" onClick={() => void loadMyRequests()} style={{ padding: "10px 12px" }}>
+                {t("common.reload")}
+              </button>
+            </div>
+          </SectionCard>
         </div>
       </div>
     </div>
