@@ -254,7 +254,7 @@ export default function AlliancePageExportDiscordTools(props: Props) {
   }
 
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative", width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "hidden" }}>
       <div
         style={{
           position: "sticky",
@@ -269,8 +269,8 @@ export default function AlliancePageExportDiscordTools(props: Props) {
         <div
           className="zombie-card"
           style={{
-            minWidth: 360,
-            maxWidth: 500,
+            width: "min(480px, calc(100vw - 24px))",
+            maxWidth: "calc(100vw - 24px)",
             padding: 12,
             pointerEvents: "auto",
             background: "rgba(8,10,14,0.94)",
@@ -360,9 +360,10 @@ export default function AlliancePageExportDiscordTools(props: Props) {
         </div>
       </div>
 
-      <div ref={captureRef}>
+      <div ref={captureRef} style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}> 
         {props.children}
       </div>
     </div>
   );
 }
+
