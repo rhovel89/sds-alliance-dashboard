@@ -1,13 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "../../lib/supabaseBrowserClient";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseBrowserClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
-import { supabase } from "../../lib/supabaseBrowserClient";
-import { supabase } from "../../lib/supabaseClient";
-import { supabase } from "../../lib/supabaseBrowserClient";
 import { sendDiscordBot } from "../../lib/discordEdgeSend";
-import { supabase } from "../../lib/supabaseBrowserClient";
 
 type RoleMapStore = {
   version: 1;
@@ -261,6 +256,11 @@ export default function OwnerBroadcastComposerPage() {
   const roleKeys = useMemo(() => Object.keys(roleLut || {}).sort(), [roleLut]);
   const channelKeys = useMemo(() => Object.keys(chanLut || {}).sort(), [chanLut]);
 
+  const resolvedChannelId = useMemo(() => {
+    const chKey = norm(targetChannelName);
+    return chKey ? (chanLut[chKey] || "") : "";
+  }, [targetChannelName, chanLut]);
+
   const selectedTpl = useMemo(() => {
     if (!selectedTplId) return null;
     return tplStore.templates.find((t) => t.id === selectedTplId) || null;
@@ -493,14 +493,28 @@ export default function OwnerBroadcastComposerPage() {
       setSending(false);
     }
   }
-
-    async function sendNowBot() {
+  async function sendNowBot() {
     try {
-      if (!resolvedChannelId) return window.alert("Set a channel WITH an ID first (Owner → Discord Mentions).");
-      const r = await sendDiscordBot({ mode: "bot", channelId: resolvedChannelId, content: resolved });
+      if (!resolvedChannelId) {
+        return window.alert("Set a channel WITH an ID first (Owner → Discord Mentions).");
+      }
+      if (!resolved.trim()) {
+        return window.alert("Message is empty.");
+      }
+
+      const r = await sendDiscordBot({
+        mode: "bot",
+        channelId: resolvedChannelId,
+        content: resolved,
+      });
+
       if (!r.ok) return window.alert("Send failed: " + r.error);
       window.alert("✅ Sent to Discord (bot).");
     } catch (e: any) {
+      window.alert("Send failed: " + String(e?.message || e));
+    }
+  }
+catch (e: any) {
       window.alert("Send failed: " + String(e?.message || e));
     }
   }
@@ -571,24 +585,15 @@ return (
 
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={insertTargets}>Insert into Draft</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copyResolvedPayload}>Copy Payload JSON</button>
-      <button
-        type="button"
-        onClick={() => {
-          try {
-            // Expect existing payload object exists in your page already (the same one used for Copy Payload JSON)
-            // Fallback: use whatever variable you already stringify for payload copy.
-            const payload = (typeof discordPayload !== "undefined") ? (discordPayload as any) : (typeof payloadJson !== "undefined" ? (payloadJson as any) : {});
-            const msg = (typeof discordReadyMessage !== "undefined") ? String(discordReadyMessage) : "";
-            const ch = (typeof selectedChannelId !== "undefined") ? String(selectedChannelId) : null;
-            void queueDiscordOutbox(payload, msg, ch);
-          } catch (e: any) {
-            alert("Queue button couldn't find payload variables. Tell ChatGPT your payload variable names.");
-          }
-        }}
-        title="Queues payload to Supabase discord_outbox (no real sending yet)"
-      >
-        Queue for Bot
-      </button>
+                <button
+            type="button"
+            className="zombie-btn"
+            style={{ padding: "10px 12px" }}
+            onClick={() => void queueDiscordOutbox(buildPayload(), resolved, resolvedChannelId || null)}
+            title="Queues payload to Supabase discord_outbox (no real sending yet)"
+          >
+            Queue for Bot
+          </button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendNowBot}>Send Now (Bot)</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => applyDiscordDefaults(true)}>Use Defaults</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={sendToDiscord} disabled={sending}>
