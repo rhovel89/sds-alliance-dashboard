@@ -382,9 +382,9 @@ export default function MeDashboardPage() {
     setHqs((prev) => prev.map((x) => (x.id === id ? ({ ...x, ...next } as any) : x)));
   }
 
-  const calendarLink = selectedAllianceProfile?.alliance_id ? `/dashboard/${selectedAllianceProfile.alliance_id}/calendar` : "";
-  const announcementsLink = selectedAllianceProfile?.alliance_id ? `/dashboard/${selectedAllianceProfile.alliance_id}/announcements` : "";
-  const alertsLink = selectedAllianceProfile?.alliance_id ? `/dashboard/${selectedAllianceProfile.alliance_id}/alerts` : "";
+  const calendarLink = selectedAllianceProfile?.alliance_code ? `/dashboard/${selectedAllianceProfile.alliance_code}/calendar` : "";
+  const announcementsLink = selectedAllianceProfile?.alliance_code ? `/dashboard/${selectedAllianceProfile.alliance_code}/announcements` : "";
+  const alertsLink = selectedAllianceProfile?.alliance_code ? `/dashboard/${selectedAllianceProfile.alliance_code}/alerts` : "";
 
   const topStats = [
     { label: "Players", value: players.length, sub: "Linked to this account" },
@@ -421,8 +421,8 @@ export default function MeDashboardPage() {
             <Link to="/state/789/ops">State Ops</Link>
             <Link to="/state/789/alerts-db">State Alerts</Link>
             <Link to="/mail">Mail</Link>
-            {selectedAllianceProfile?.alliance_id ? (
-              <Link to={`/dashboard/${selectedAllianceProfile.alliance_id}`}>Alliance Hub</Link>
+            {selectedAllianceProfile?.alliance_code ? (
+              <Link to={`/dashboard/${selectedAllianceProfile.alliance_code}`}>Alliance Hub</Link>
             ) : null}
             <button disabled={!userId} onClick={() => userId && refreshAll(userId)}>Refresh</button>
           </div>
@@ -551,7 +551,7 @@ export default function MeDashboardPage() {
               <Link to="/state/789/discussion">Discussion</Link>
               <Link to="/state/789/achievements">Achievements</Link>
               <Link to="/state/789">State Hub</Link>
-              {selectedAllianceProfile?.alliance_id ? <Link to={`/dashboard/${selectedAllianceProfile.alliance_id}`}>Alliance Hub</Link> : null}
+              {selectedAllianceProfile?.alliance_id ? <Link to={`/dashboard/${selectedAllianceProfile.alliance_code}`}>Alliance Hub</Link> : null}
               {calendarLink ? <Link to={calendarLink}>Calendar</Link> : null}
               {alertsLink ? <Link to={alertsLink}>Alliance Alerts</Link> : null}
               {announcementsLink ? <Link to={announcementsLink}>Announcements</Link> : null}
@@ -770,6 +770,7 @@ export default function MeDashboardPage() {
     </div>
   );
 }
+
 
 
 

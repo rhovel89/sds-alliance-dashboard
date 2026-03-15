@@ -248,7 +248,7 @@ export default function AppRoutes() {
       <Route path="/owner/oneclick-provision" element={<RequireAdmin><OwnerOneClickProvisionPage /></RequireAdmin>} />
       <Route path="/owner/event-types-library" element={<RequireAdmin><OwnerEventTypesLibraryPage /></RequireAdmin>} />
       <Route path="/owner/jump" element={<RequireAdmin><OwnerAllianceJumpPage /></RequireAdmin>} />
-      <Route path="/state/789/alerts" element={<State789AlertsPage />} />
+      <Route path="/state/789/alerts" element={<Navigate to="/state/789/alerts-db" replace />} />
       <Route path="/state/789/alerts-v2" element={<State789AlertsCenterPage />} />
       <Route path="/state/789/discussion" element={<State789DiscussionBoardPage />} />
       <Route path="/state/789/discussion-v2" element={<State789DiscussionBoardV2Page />} />
@@ -314,6 +314,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
