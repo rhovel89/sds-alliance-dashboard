@@ -371,6 +371,19 @@ export default function OwnerBroadcastComposerPage() {
     if (selectedTplId === id) newTemplate();
   }
 
+  function buildDiscordContent(payload: any) {
+    const rolePrefix = (payload?.mentionRoleIds || [])
+      .filter((id: any) => String(id || "").trim())
+      .map((id: any) => `<@&${String(id).trim()}>`)
+      .join(" ");
+
+    const body = String(payload?.messageResolved || "").trim();
+
+    if (rolePrefix && body) return `${rolePrefix}` + "\n\n" + `${body}`;
+    if (rolePrefix) return rolePrefix;
+    return body;
+  }
+
   function buildPayload() {
     const chKey = norm(targetChannelName);
     const targetChannelId = chKey ? (chanLut[chKey] || "") : "";
@@ -480,7 +493,7 @@ export default function OwnerBroadcastComposerPage() {
     try {
       const r = await callDiscordBroadcast({
         channelId: payload.targetChannelId,
-        content: payload.messageResolved,
+        content: buildDiscordContent(payload),
         scope: payload.scope,
         allianceCode: payload.allianceCode,
         mentionRoles: payload.mentionRoles,
@@ -527,17 +540,20 @@ export default function OwnerBroadcastComposerPage() {
   }
     async function sendNowBot() {
     try {
+      const payload = buildPayload();
       if (!resolvedChannelId) {
         return window.alert("Set a channel WITH an ID first (Owner → Discord Mentions).");
       }
-      if (!resolved.trim()) {
+
+      const finalContent = buildDiscordContent(payload);
+      if (!finalContent.trim()) {
         return window.alert("Message is empty.");
       }
 
       const r = await sendDiscordBot({
         mode: "bot",
         channelId: resolvedChannelId,
-        content: resolved,
+        content: finalContent,
       });
 
       if (!r.ok) return window.alert("Send failed: " + r.error);
@@ -710,6 +726,7 @@ return (<div style={{ padding: 14 }}>
     </div>
   );
 }
+
 
 
 
