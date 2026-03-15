@@ -700,7 +700,7 @@ export default function MyMailPage() {
                   type="button"
                   onClick={() => setSelectedIdentity(identityOf(m))}
                   style={{
-                    textAlign: "left",
+                    textAlign: "left", color: "#F5F7FF", textShadow: "0 1px 0 rgba(0,0,0,0.45)",
                     width: "100%",
                     padding: 14,
                     borderRadius: 16,
@@ -875,11 +875,11 @@ export default function MyMailPage() {
 
               <div
                 style={{
-                  border: "1px solid rgba(255,255,255,0.10)",
+                  border: "1px solid rgba(255,255,255,0.18)",
                   borderRadius: 16,
                   padding: 16,
                   background: "rgba(0,0,0,0.18)",
-                  whiteSpace: "pre-wrap",
+                  whiteSpace: "pre-wrap", color: "#F5F7FF",
                   lineHeight: 1.55,
                   minHeight: 320,
                 }}
