@@ -57,11 +57,13 @@ export default function OwnerApprovalCenterPage() {
       alert("Enter a user_id.");
       return;
     }
+
     const pid = await resolvePlayerIdFromUserId(u);
     if (!pid) {
       alert("No player_id found for that user_id.");
       return;
     }
+
     nav(`/dossier/${encodeURIComponent(pid)}`);
   }
 
@@ -71,11 +73,12 @@ export default function OwnerApprovalCenterPage() {
       alert("Enter a player_id.");
       return;
     }
+
     nav(`/dossier/${encodeURIComponent(p)}`);
   }
 
   return (
-    <div style={{ width: "100%", maxWidth: 1440, margin: "0 auto", display: "grid", gap: 12 }}>
+    <div style={{ width: "100%", maxWidth: 1440, margin: "0 auto", padding: 16, display: "grid", gap: 12 }}>
       <div
         className="zombie-card"
         style={{
@@ -136,7 +139,7 @@ export default function OwnerApprovalCenterPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) auto",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             gap: 10,
             alignItems: "center",
           }}
