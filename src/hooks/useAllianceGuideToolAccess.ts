@@ -3,7 +3,10 @@ import { supabase } from "../lib/supabaseClient";
 
 type Result = {
   loading: boolean;
-  canUseGuideTools: boolean;
+  signedIn: boolean;
+  userId: string;
+  canCreateGuides: boolean;
+  canManageAllGuides: boolean;
   reason: string;
 };
 
@@ -13,7 +16,10 @@ function lower(v: unknown) {
 
 export function useAllianceGuideToolAccess(allianceCode: string): Result {
   const [loading, setLoading] = useState(true);
-  const [canUseGuideTools, setCanUseGuideTools] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const [userId, setUserId] = useState("");
+  const [canCreateGuides, setCanCreateGuides] = useState(false);
+  const [canManageAllGuides, setCanManageAllGuides] = useState(false);
   const [reason, setReason] = useState("Checking access...");
 
   useEffect(() => {
@@ -21,14 +27,16 @@ export function useAllianceGuideToolAccess(allianceCode: string): Result {
 
     async function run() {
       setLoading(true);
-      setCanUseGuideTools(false);
+      setSignedIn(false);
+      setUserId("");
+      setCanCreateGuides(false);
+      setCanManageAllGuides(false);
       setReason("Checking access...");
 
       try {
         const code = String(allianceCode || "").trim().toUpperCase();
         if (!code) {
           if (!cancelled) {
-            setCanUseGuideTools(false);
             setReason("Missing alliance code.");
             setLoading(false);
           }
@@ -40,19 +48,27 @@ export function useAllianceGuideToolAccess(allianceCode: string): Result {
 
         if (!uid) {
           if (!cancelled) {
-            setCanUseGuideTools(false);
+            setSignedIn(false);
+            setUserId("");
+            setCanCreateGuides(false);
+            setCanManageAllGuides(false);
             setReason("Sign in required.");
             setLoading(false);
           }
           return;
         }
 
+        // Base rule: any signed-in player can create/manage their own guides
+        setSignedIn(true);
+        setUserId(uid);
+        setCanCreateGuides(true);
+
         // App-wide elevated roles
         try {
           const admin = await supabase.rpc("is_app_admin");
           if (admin.data === true) {
             if (!cancelled) {
-              setCanUseGuideTools(true);
+              setCanManageAllGuides(true);
               setReason("App admin");
               setLoading(false);
             }
@@ -64,7 +80,7 @@ export function useAllianceGuideToolAccess(allianceCode: string): Result {
           const owner = await supabase.rpc("is_dashboard_owner");
           if (owner.data === true) {
             if (!cancelled) {
-              setCanUseGuideTools(true);
+              setCanManageAllGuides(true);
               setReason("Dashboard owner");
               setLoading(false);
             }
@@ -97,7 +113,7 @@ export function useAllianceGuideToolAccess(allianceCode: string): Result {
             const roles = (pa.data || []).map((x: any) => lower(x?.role));
             if (roles.includes("owner") || roles.includes("r5")) {
               if (!cancelled) {
-                setCanUseGuideTools(true);
+                setCanManageAllGuides(true);
                 setReason("Alliance owner/R5");
                 setLoading(false);
               }
@@ -107,8 +123,6 @@ export function useAllianceGuideToolAccess(allianceCode: string): Result {
         }
 
         // Explicit grants
-        // Supports either a future dedicated flag (can_manage_guides)
-        // or your existing grant flag (can_post_alerts) right now.
         let granted = false;
 
         try {
@@ -140,13 +154,16 @@ export function useAllianceGuideToolAccess(allianceCode: string): Result {
         }
 
         if (!cancelled) {
-          setCanUseGuideTools(granted);
-          setReason(granted ? "Explicitly granted" : "View only");
+          setCanManageAllGuides(granted);
+          setReason(granted ? "Explicitly granted" : "Own guides only");
           setLoading(false);
         }
       } catch (e: any) {
         if (!cancelled) {
-          setCanUseGuideTools(false);
+          setSignedIn(false);
+          setUserId("");
+          setCanCreateGuides(false);
+          setCanManageAllGuides(false);
           setReason(String(e?.message || e || "Access check failed"));
           setLoading(false);
         }
@@ -159,5 +176,12 @@ export function useAllianceGuideToolAccess(allianceCode: string): Result {
     };
   }, [allianceCode]);
 
-  return { loading, canUseGuideTools, reason };
+  return {
+    loading,
+    signedIn,
+    userId,
+    canCreateGuides,
+    canManageAllGuides,
+    reason,
+  };
 }
