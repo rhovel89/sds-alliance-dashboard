@@ -1,34 +1,23 @@
-import { supabase } from "./supabaseClient";
+import { supabase } from "./supabaseBrowserClient";
 
-export type DiscordSendMode = "bot";
-
-export type DiscordSendRequest = {
-  mode: DiscordSendMode;
-  channelId: string;
-  content: string;
-};
-
-export type DiscordSendResult =
-  | { ok: true; data: any }
-  | { ok: false; error: string; details?: any };
-
-export async function sendDiscordBot(req: DiscordSendRequest): Promise<DiscordSendResult> {
+export async function sendDiscordBot(body: any) {
   try {
-    const body = {
-      mode: "bot",
-      channelId: String(req.channelId || "").trim(),
-      content: String(req.content || ""),
-    };
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
 
-    const { data, error } = await supabase.functions.invoke("discord-broadcast", { body } as any);
-
-    if (error) {
-      return { ok: false, error: error.message, details: error };
+    if (!accessToken) {
+      return { ok: false, error: "No active Supabase session. Sign in again and retry." };
     }
 
-    // Function returns { ok: true/false, ... }
-    if (data && data.ok === false) {
-      return { ok: false, error: String(data.error || "Unknown error"), details: data };
+    const { data, error } = await supabase.functions.invoke("discord-broadcast", {
+      body,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (error) {
+      return { ok: false, error: error.message || JSON.stringify(error) };
     }
 
     return { ok: true, data };
@@ -36,3 +25,5 @@ export async function sendDiscordBot(req: DiscordSendRequest): Promise<DiscordSe
     return { ok: false, error: String(e?.message || e) };
   }
 }
+
+export default sendDiscordBot;
