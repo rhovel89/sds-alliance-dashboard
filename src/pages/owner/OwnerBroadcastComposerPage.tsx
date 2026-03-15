@@ -440,7 +440,7 @@ export default function OwnerBroadcastComposerPage() {
     setSendMsg(null);
     const payload = buildPayload();
 
-    if (!payload.targetChannelId || String(payload.targetChannelId).trim() === "") {
+    if (!payload.targetChannelId || !String(payload.targetChannelId).trim()) {
       const msg = "❌ Missing target channel ID. Add channel ID in /owner/discord-mentions, then select it here.";
       setSendMsg(msg);
       appendLog({
@@ -478,7 +478,20 @@ export default function OwnerBroadcastComposerPage() {
 
     setSending(true);
     try {
-      const r = await supabase.functions.invoke("discord-broadcast", { body: payload as any });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error("No active Supabase session. Sign in again and retry.");
+      }
+
+      const r = await supabase.functions.invoke("discord-broadcast", {
+        body: payload,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
       if ((r as any).error) {
         const e = (r as any).error;
         throw new Error(e?.message || JSON.stringify(e));
@@ -701,6 +714,7 @@ return (<div style={{ padding: 14 }}>
     </div>
   );
 }
+
 
 
 
