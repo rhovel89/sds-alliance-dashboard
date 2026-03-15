@@ -124,6 +124,25 @@ function StepRow(props: { step: string; title: string; text: string }) {
   );
 }
 
+function MiniStat(props: { label: string; value: string; sub: string }) {
+  return (
+    <div
+      className="zombie-card"
+      style={{
+        padding: 14,
+        minHeight: 112,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+      }}
+    >
+      <div style={{ opacity: 0.72, fontSize: 11, fontWeight: 900, letterSpacing: "0.12em" }}>{props.label}</div>
+      <div style={{ fontSize: 24, fontWeight: 950 }}>{props.value}</div>
+      <div style={{ opacity: 0.72, fontSize: 12 }}>{props.sub}</div>
+    </div>
+  );
+}
+
 export default function State789WarRoomPage() {
   const nav = useNavigate();
   const [legacyOpen, setLegacyOpen] = useState(false);
@@ -141,9 +160,9 @@ export default function State789WarRoomPage() {
         >
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Pill text="STATE 789" />
-            <Pill text="WAR ROOM" />
+            <Pill text="COMMAND HUB" />
             <Pill text="LIVE OPS" />
-            <Pill text="NO ROUTE CHANGES" />
+            <Pill text="LEGACY PRESERVED" />
           </div>
 
           <div style={{ fontSize: 34, fontWeight: 950, marginTop: 14, lineHeight: 1.05 }}>
@@ -151,8 +170,8 @@ export default function State789WarRoomPage() {
           </div>
 
           <div style={{ opacity: 0.86, marginTop: 12, lineHeight: 1.7, maxWidth: 980, fontSize: 15 }}>
-            A cleaner launch page for State 789. Use this as the main hub for alerts, discussion, ops, threads, and achievements
-            while keeping the existing legacy dashboard available when needed.
+            A cleaner front door for State 789. Use this hub to jump straight into alerts, discussion, achievements,
+            threads, and ops while keeping the existing legacy dashboard available when you need it.
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
@@ -160,36 +179,43 @@ export default function State789WarRoomPage() {
             <HeroAction label="💬 Discussion" onClick={() => nav("/state/789/discussion")} />
             <HeroAction label="🏆 Achievements" onClick={() => nav("/state/789/achievements")} />
             <HeroAction label="🛰️ Ops Console" onClick={() => nav("/state/789/ops-db")} />
-            <HeroAction label="🧟 Legacy Dashboard" onClick={() => setLegacyOpen(true)} />
+            <HeroAction label="🧟 Legacy Panels" onClick={() => setLegacyOpen(true)} />
           </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+          <MiniStat label="STATE" value="789" sub="Primary command sector" />
+          <MiniStat label="MODE" value="LIVE" sub="Fast access launch layout" />
+          <MiniStat label="TOOLS" value="READY" sub="Alerts, discussion, ops, threads" />
+          <MiniStat label="LEGACY" value="SAFE" sub="Existing dashboard preserved" />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
           <FeatureCard
             icon="🚨"
             title="Alerts Center"
-            text="Open the live alerts workflow for state-wide notifications, fast updates, and command visibility."
+            text="Open the live alerts workflow for state-wide messaging, fast coordination, and high-visibility notices."
             cta="Open Alerts"
             onClick={() => nav("/state/789/alerts")}
           />
           <FeatureCard
             icon="💬"
             title="Discussion Board"
-            text="Jump into state discussion without digging through the older dashboard layout."
+            text="Jump directly into state discussions and planning without navigating through the older dashboard layout."
             cta="Open Discussion"
             onClick={() => nav("/state/789/discussion")}
           />
           <FeatureCard
             icon="🏆"
-            title="Achievements"
-            text="Use the redesigned achievements hub for requests, progress, tracking, and player-facing forms."
+            title="Achievements Hub"
+            text="Use the redesigned achievements area for player requests, progress, tracking, approvals, and exports."
             cta="Open Achievements"
             onClick={() => nav("/state/789/achievements")}
           />
           <FeatureCard
             icon="🧵"
             title="Threads"
-            text="Access state threads and communications from a cleaner landing layout."
+            text="Access state threads and collaboration tools from a cleaner, more direct landing experience."
             cta="Open Threads"
             onClick={() => nav("/state/789/threads")}
           />
@@ -204,34 +230,34 @@ export default function State789WarRoomPage() {
         >
           <div style={{ fontSize: 20, fontWeight: 950 }}>Core state tools</div>
           <div style={{ opacity: 0.8, marginTop: 8, lineHeight: 1.6 }}>
-            Everything important stays accessible, but the landing page is simplified so you can get where you need faster.
+            The layout is cleaner, but the underlying tools and routes stay exactly where they already work.
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 14 }}>
-            <CategoryTile title="Alerts" text="Emergency messaging, coordination, and state-wide alert control." />
-            <CategoryTile title="Discussion" text="State communication and shared planning threads." />
-            <CategoryTile title="Achievements" text="Player requests, progress tracking, approvals, and exports." />
-            <CategoryTile title="Ops Console" text="Operational tools and active state control workflows." />
-            <CategoryTile title="Threads" text="Communication threads and state collaboration." />
-            <CategoryTile title="Legacy Panels" text="Older dashboard panels remain available in a drawer so nothing is lost." />
+            <CategoryTile title="Alerts" text="Emergency messaging, active warnings, and state coordination." />
+            <CategoryTile title="Discussion" text="State planning, collaboration, and communication." />
+            <CategoryTile title="Achievements" text="Requests, player progress, approvals, and exports." />
+            <CategoryTile title="Ops Console" text="Operational state tools and active command workflows." />
+            <CategoryTile title="Threads" text="Ongoing conversation and collaboration tools." />
+            <CategoryTile title="Legacy Dashboard" text="Older working panels stay available in a drawer, not removed." />
           </div>
         </div>
 
         <div style={{ display: "grid", gap: 12 }}>
           <StepRow
             step="STEP 1"
-            title="Pick the tool you need"
-            text="Use the landing cards to jump directly into alerts, discussion, achievements, ops, or threads."
+            title="Choose the tool you need"
+            text="Use the launch cards to go directly into alerts, discussion, achievements, threads, or ops."
           />
           <StepRow
             step="STEP 2"
-            title="Keep the old workflow available"
-            text="The legacy State 789 dashboard is still preserved behind a drawer so the redesign does not remove working panels."
+            title="Keep the current workflow intact"
+            text="This redesign only improves the landing experience. All of the working routes underneath remain the same."
           />
           <StepRow
             step="STEP 3"
-            title="Use this as the main state entry"
-            text="This page becomes the cleaner front door for State 789 without changing the working routes underneath it."
+            title="Open the legacy dashboard only when needed"
+            text="The previous State 789 dashboard is still preserved behind a drawer, so no working functionality is lost."
           />
         </div>
 
