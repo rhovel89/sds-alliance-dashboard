@@ -268,7 +268,7 @@ export default function AppRoutes() {
       <Route path="/owner/state-achievements" element={<RequireAdmin><OwnerStateAchievementsPage /></RequireAdmin>} />
       <Route path="/state/789/achievements-tracker" element={<State789AchievementsTrackerPage />} />
       <Route path="/state/789/achievements-progress" element={<State789AchievementsProgressPage />} />
-      <Route path="/state/789/achievements-form" element={<State789AchievementsFormPage />} />
+      <Route path="/state/789/achievements-form" element={<Navigate to="/state/789/achievements/request" replace />} />
       <Route path="/owner/state-achievements/queue" element={<RequireAdmin><OwnerStateAchievementsQueuePage /></RequireAdmin>} />
       <Route path="/owner/state-achievements/access" element={<RequireAdmin><OwnerStateAchievementsAccessPage /></RequireAdmin>} />
       <Route path="/owner/state-achievements/admin" element={<RequireAdmin><OwnerStateAchievementsAdminPage /></RequireAdmin>} />
@@ -314,6 +314,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
