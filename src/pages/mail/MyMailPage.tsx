@@ -462,20 +462,20 @@ export default function MyMailPage() {
       >
         <div style={{ minWidth: 320 }}>
           <div style={{ fontSize: 28, fontWeight: 950 }}>📫 Mail Command Center</div>
-          <div style={{ opacity: 0.8, marginTop: 6 }}>
+          <div style={{ opacity: 0.96, marginTop: 6 }}>
             Faster compose, cleaner inbox triage, and a full preview pane without forcing players into thread view first.
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
             <div className="zombie-card" style={{ padding: "10px 12px", borderRadius: 14, minWidth: 130 }}>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>Unread</div>
+              <div style={{ fontSize: 12, opacity: 0.94 }}>Unread</div>
               <div style={{ fontWeight: 950, fontSize: 20 }}>{unreadTotal}</div>
             </div>
             <div className="zombie-card" style={{ padding: "10px 12px", borderRadius: 14, minWidth: 130 }}>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>Inbox Rows</div>
+              <div style={{ fontSize: 12, opacity: 0.94 }}>Inbox Rows</div>
               <div style={{ fontWeight: 950, fontSize: 20 }}>{items.length}</div>
             </div>
             <div className="zombie-card" style={{ padding: "10px 12px", borderRadius: 14, minWidth: 130 }}>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>Threads</div>
+              <div style={{ fontSize: 12, opacity: 0.94 }}>Threads</div>
               <div style={{ fontWeight: 950, fontSize: 20 }}>{totalThreads}</div>
             </div>
           </div>
@@ -523,13 +523,13 @@ export default function MyMailPage() {
         <div className="zombie-card" style={{ padding: 16, borderRadius: 18, display: "grid", gap: 12 }}>
           <div>
             <div style={{ fontWeight: 950, fontSize: 20 }}>Compose Direct Mail</div>
-            <div style={{ opacity: 0.78, marginTop: 4, fontSize: 12 }}>
+            <div style={{ opacity: 0.95, marginTop: 4, fontSize: 12, color: "rgba(245,247,255,0.92)" }}>
               Search a player, pick them once, then write. Players should not have to fight the form.
             </div>
           </div>
 
           <div style={{ display: "grid", gap: 8 }}>
-            <label style={{ fontSize: 12, opacity: 0.8 }}>Recipient search</label>
+            <label style={{ fontSize: 12, opacity: 0.96 }}>Recipient search</label>
             <input
               className="zombie-input"
               value={recipientSearch}
@@ -538,7 +538,7 @@ export default function MyMailPage() {
               style={{ width: "100%", padding: "12px 14px" }}
             />
 
-            <label style={{ fontSize: 12, opacity: 0.8 }}>Recipient</label>
+            <label style={{ fontSize: 12, opacity: 0.96 }}>Recipient</label>
             <select
               className="zombie-input"
               value={toUserId}
@@ -556,13 +556,13 @@ export default function MyMailPage() {
               })}
             </select>
 
-            <div style={{ fontSize: 12, opacity: 0.78 }}>
+            <div style={{ fontSize: 12, opacity: 0.95 }}>
               {selectedRecipientLabel ? "Selected: " + selectedRecipientLabel : "No recipient selected"}
             </div>
           </div>
 
           <div style={{ display: "grid", gap: 8 }}>
-            <label style={{ fontSize: 12, opacity: 0.8 }}>Subject</label>
+            <label style={{ fontSize: 12, opacity: 0.96 }}>Subject</label>
             <input
               className="zombie-input"
               value={subject}
@@ -573,7 +573,7 @@ export default function MyMailPage() {
           </div>
 
           <div style={{ display: "grid", gap: 8 }}>
-            <label style={{ fontSize: 12, opacity: 0.8 }}>Message</label>
+            <label style={{ fontSize: 12, opacity: 0.96 }}>Message</label>
             <textarea
               className="zombie-input"
               value={body}
@@ -582,7 +582,7 @@ export default function MyMailPage() {
               placeholder="Write your message..."
               style={{ width: "100%", padding: "12px 14px", resize: "vertical" }}
             />
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12, opacity: 0.78 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12, opacity: 0.95 }}>
               <span>{body.trim() ? "Ready to send" : "Message body required"}</span>
               <span>{body.length} chars</span>
             </div>
@@ -623,9 +623,9 @@ export default function MyMailPage() {
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <div>
               <div style={{ fontWeight: 950, fontSize: 20 }}>Inbox</div>
-              <div style={{ opacity: 0.78, fontSize: 12 }}>Pick a row to preview it instantly.</div>
+              <div style={{ opacity: 0.95, fontSize: 12, color: "rgba(245,247,255,0.92)" }}>Pick a row to preview it instantly.</div>
             </div>
-            <div style={{ opacity: 0.82, fontSize: 12 }}>
+            <div style={{ opacity: 0.962, fontSize: 12, color: "rgba(245,247,255,0.92)" }}>
               Showing {filtered.length} of {items.length}
             </div>
           </div>
@@ -750,7 +750,7 @@ export default function MyMailPage() {
                         ) : null}
                       </div>
 
-                      <div style={{ opacity: 0.78, fontSize: 12, marginTop: 6 }}>
+                      <div style={{ opacity: 0.95, fontSize: 12, marginTop: 6 }}>
                         {whoLine(m)}
                       </div>
 
@@ -759,7 +759,7 @@ export default function MyMailPage() {
                       </div>
                     </div>
 
-                    <div style={{ opacity: 0.72, fontSize: 12, whiteSpace: "nowrap" }}>
+                    <div style={{ opacity: 0.92, fontSize: 12, whiteSpace: "nowrap" }}>
                       {niceDate(m.created_at)}
                     </div>
                   </div>
@@ -768,7 +768,7 @@ export default function MyMailPage() {
             })}
 
             {filtered.length === 0 ? (
-              <div style={{ opacity: 0.72, padding: 16 }}>
+              <div style={{ opacity: 0.92, padding: 16 }}>
                 {items.length === 0 ? "No mail yet." : "No mail matches the current filters."}
               </div>
             ) : null}
@@ -778,11 +778,11 @@ export default function MyMailPage() {
         <div className="zombie-card" style={{ padding: 16, borderRadius: 18, display: "grid", gap: 12, alignSelf: "stretch" }}>
           <div>
             <div style={{ fontWeight: 950, fontSize: 20 }}>Preview</div>
-            <div style={{ opacity: 0.78, fontSize: 12 }}>Read the selected message before opening a thread.</div>
+            <div style={{ opacity: 0.95, fontSize: 12, color: "rgba(245,247,255,0.92)" }}>Read the selected message before opening a thread.</div>
           </div>
 
           {!selectedMail ? (
-            <div style={{ opacity: 0.72, padding: 20, border: "1px dashed rgba(255,255,255,0.16)", borderRadius: 16 }}>
+            <div style={{ opacity: 0.92, padding: 20, border: "1px dashed rgba(255,255,255,0.16)", borderRadius: 16 }}>
               Select an inbox row to preview it here.
             </div>
           ) : (
@@ -817,10 +817,10 @@ export default function MyMailPage() {
                     ) : null}
                   </div>
 
-                  <div style={{ opacity: 0.8, marginTop: 6 }}>{whoLine(selectedMail)}</div>
+                  <div style={{ opacity: 0.96, marginTop: 6 }}>{whoLine(selectedMail)}</div>
                 </div>
 
-                <div style={{ opacity: 0.72, fontSize: 12 }}>{niceDate(selectedMail.created_at)}</div>
+                <div style={{ opacity: 0.92, fontSize: 12, color: "rgba(245,247,255,0.92)" }}>{niceDate(selectedMail.created_at)}</div>
               </div>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -887,7 +887,7 @@ export default function MyMailPage() {
                 {s(selectedMail.body) || "(empty message)"}
               </div>
 
-              <div style={{ fontSize: 12, opacity: 0.75 }}>
+              <div style={{ fontSize: 12, opacity: 0.94 }}>
                 Fast action: reply loads back into the compose pane on the left.
               </div>
             </>

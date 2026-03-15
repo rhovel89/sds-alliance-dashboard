@@ -194,11 +194,11 @@ export default function MyMailInboxPage() {
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto", display: "grid", gap: 12 }}>
+    <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto", display: "grid", gap: 12, color: "#F5F7FF" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>📨 My Mail — Inbox</h1>
-          <div style={{ opacity: 0.75, marginTop: 4 }}>
+          <div style={{ opacity: 0.94, marginTop: 4 }}>
             Full inbox list with direct compose, thread access, and read tools.
           </div>
         </div>
@@ -236,7 +236,7 @@ export default function MyMailInboxPage() {
 
       <div
         style={{
-          border: "1px solid rgba(255,255,255,0.10)",
+          border: "1px solid rgba(255,255,255,0.18)",
           background: "rgba(255,255,255,0.04)",
           borderRadius: 16,
           padding: 14,
@@ -296,7 +296,7 @@ export default function MyMailInboxPage() {
 
       <div
         style={{
-          border: "1px solid rgba(255,255,255,0.10)",
+          border: "1px solid rgba(255,255,255,0.18)",
           background: "rgba(255,255,255,0.04)",
           borderRadius: 16,
           padding: 14,
@@ -328,7 +328,7 @@ export default function MyMailInboxPage() {
           </div>
         </div>
 
-        <div style={{ opacity: 0.72, marginBottom: 10 }}>
+        <div style={{ opacity: 0.92, marginBottom: 10 }}>
           Showing {filtered.length} of {items.length}
         </div>
 
@@ -340,10 +340,10 @@ export default function MyMailInboxPage() {
               <div
                 key={`${s(m.id)}-${idx}`}
                 style={{
-                  border: "1px solid rgba(255,255,255,0.10)",
+                  border: "1px solid rgba(255,255,255,0.18)",
                   borderRadius: 12,
                   overflow: "hidden",
-                  background: "rgba(0,0,0,0.16)",
+                  background: "rgba(255,255,255,0.05)",
                 }}
               >
                 <div style={{ padding: 12, borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
@@ -351,7 +351,7 @@ export default function MyMailInboxPage() {
                     <div style={{ fontWeight: 900 }}>
                       [{s(m.kind) || "mail"}] {s(m.subject) || "(no subject)"}
                     </div>
-                    <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
+                    <div style={{ opacity: 0.94, fontSize: 12, marginTop: 4, color: "rgba(245,247,255,0.92)" }}>
                       {niceDate(m.created_at)} • {whoLine(m)}
                     </div>
                   </div>
@@ -392,7 +392,7 @@ export default function MyMailInboxPage() {
                   </div>
                 </div>
 
-                <div style={{ padding: 12, whiteSpace: "pre-wrap" }}>
+                <div style={{ padding: 12, whiteSpace: "pre-wrap", color: "#F5F7FF" }}>
                   {s(m.body)}
                 </div>
               </div>
@@ -400,7 +400,7 @@ export default function MyMailInboxPage() {
           })}
 
           {filtered.length === 0 ? (
-            <div style={{ opacity: 0.7 }}>
+            <div style={{ opacity: 0.90 }}>
               {items.length === 0 ? "No mail yet." : "No mail matches the current filters."}
             </div>
           ) : null}
