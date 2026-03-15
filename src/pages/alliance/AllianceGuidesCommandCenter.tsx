@@ -409,6 +409,8 @@ export function AllianceGuidesCommandCenter() {
   const [selectedImageUrls, setSelectedImageUrls] = useState<Record<string, string>>({});
   const [editingImageUrls, setEditingImageUrls] = useState<Record<string, string>>({});
 
+  const [collapsedEntryIds, setCollapsedEntryIds] = useState<string[]>([]);
+
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   const entryDocsById = useMemo(() => {
@@ -473,6 +475,10 @@ export function AllianceGuidesCommandCenter() {
     return rows;
   }, [entries, entryDocsById, entryMapById]);
 
+  const parentIdsWithChildren = useMemo(() => {
+    return Array.from(childMap.keys());
+  }, [childMap]);
+
   const selectedSection = useMemo(
     () => sections.find((x) => String(x.id) === String(selectedSectionId || "")) ?? null,
     [sections, selectedSectionId]
@@ -506,6 +512,40 @@ export function AllianceGuidesCommandCenter() {
 
   function canEditEntry(entry: EntryRow) {
     return canEditAll || isOwnEntry(entry);
+  }
+
+  function isCollapsed(entryId: string) {
+    return collapsedEntryIds.includes(entryId);
+  }
+
+  function toggleCollapsed(entryId: string) {
+    setCollapsedEntryIds((prev) =>
+      prev.includes(entryId) ? prev.filter((x) => x !== entryId) : [...prev, entryId]
+    );
+  }
+
+  function collapseAllGroups() {
+    setCollapsedEntryIds(parentIdsWithChildren);
+  }
+
+  function expandAllGroups() {
+    setCollapsedEntryIds([]);
+  }
+
+  function expandEntryPath(entryId: string) {
+    const toOpen = new Set<string>();
+    let currentId = String(entryId || "");
+
+    while (currentId) {
+      const parentId = entryDocsById.get(currentId)?.meta.parentEntryId || null;
+      if (!parentId) break;
+      toOpen.add(parentId);
+      currentId = parentId;
+    }
+
+    if (!toOpen.size) return;
+
+    setCollapsedEntryIds((prev) => prev.filter((id) => !toOpen.has(id)));
   }
 
   function startEditEntry(entry: EntryRow) {
@@ -695,6 +735,12 @@ export function AllianceGuidesCommandCenter() {
     return () => { dead = true; };
   }, [editingBlocks]);
 
+  useEffect(() => {
+    if (selectedEntryId) {
+      expandEntryPath(selectedEntryId);
+    }
+  }, [selectedEntryId, entryDocsById]);
+
   async function loadSections() {
     if (!allianceCode) return;
     setError(null);
@@ -764,11 +810,13 @@ export function AllianceGuidesCommandCenter() {
       void loadEntries(selectedSectionId);
       stopEditEntry();
       setNewEntryParentId(null);
+      setCollapsedEntryIds([]);
     } else {
       setEntries([]);
       setSelectedEntryId(null);
       stopEditEntry();
       setNewEntryParentId(null);
+      setCollapsedEntryIds([]);
     }
   }, [selectedSectionId]);
 
@@ -962,10 +1010,33 @@ export function AllianceGuidesCommandCenter() {
     const selected = id === String(selectedEntryId || "");
     const own = isOwnEntry(entry);
     const children = childMap.get(id) || [];
+    const hasChildren = children.length > 0;
+    const collapsed = hasChildren ? isCollapsed(id) : false;
 
     return (
       <div key={id} style={{ display: "grid", gap: 8 }}>
-        <div style={{ marginLeft: depth * 16 }}>
+        <div style={{ marginLeft: depth * 16, display: "flex", gap: 8, alignItems: "stretch" }}>
+          <div style={{ width: 34, flex: "0 0 34px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {hasChildren ? (
+              <button
+                type="button"
+                className="zombie-btn"
+                onClick={() => toggleCollapsed(id)}
+                style={{
+                  width: 34,
+                  minWidth: 34,
+                  padding: "8px 0",
+                  borderRadius: 10,
+                }}
+                title={collapsed ? "Expand" : "Collapse"}
+              >
+                {collapsed ? "▸" : "▾"}
+              </button>
+            ) : (
+              <div style={{ opacity: 0.35, fontSize: 12 }}>•</div>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={() => {
@@ -974,7 +1045,7 @@ export function AllianceGuidesCommandCenter() {
             }}
             className="zombie-btn"
             style={{
-              width: "100%",
+              flex: 1,
               textAlign: "left",
               padding: 12,
               borderRadius: 14,
@@ -989,12 +1060,14 @@ export function AllianceGuidesCommandCenter() {
               {niceDate(entry.updated_at || entry.created_at)}
             </div>
             <div style={{ opacity: 0.68, fontSize: 11, marginTop: 4 }}>
-              {depth > 0 ? "Subpage" : "Page"}{own ? " • Yours" : ""}
+              {depth > 0 ? "Subpage" : "Page"}
+              {own ? " • Yours" : ""}
+              {hasChildren ? ` • ${children.length} child${children.length === 1 ? "" : "ren"}` : ""}
             </div>
           </button>
         </div>
 
-        {children.length ? (
+        {hasChildren && !collapsed ? (
           <div style={{ display: "grid", gap: 8 }}>
             {children.map((child) => renderEntryNode(child, depth + 1))}
           </div>
@@ -1196,9 +1269,9 @@ export function AllianceGuidesCommandCenter() {
         <div
           className="zombie-card"
           style={{
-            flex: "0 0 300px",
-            minWidth: 280,
-            maxWidth: 340,
+            flex: "0 0 320px",
+            minWidth: 300,
+            maxWidth: 380,
             width: "100%",
             padding: 12,
             borderRadius: 18,
@@ -1215,15 +1288,24 @@ export function AllianceGuidesCommandCenter() {
             </div>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="zombie-btn" type="button" onClick={() => setNewEntryParentId(null)}>
-                Top-level
+              <button className="zombie-btn" type="button" onClick={expandAllGroups}>
+                Expand All
               </button>
-              {selectedEntry && canCreateOwnEntries ? (
-                <button className="zombie-btn" type="button" onClick={() => setNewEntryParentId(String(selectedEntry.id))}>
-                  New Subpage
-                </button>
-              ) : null}
+              <button className="zombie-btn" type="button" onClick={collapseAllGroups}>
+                Collapse All
+              </button>
             </div>
+          </div>
+
+          <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={() => setNewEntryParentId(null)}>
+              Top-level
+            </button>
+            {selectedEntry && canCreateOwnEntries ? (
+              <button className="zombie-btn" type="button" onClick={() => setNewEntryParentId(String(selectedEntry.id))}>
+                New Subpage
+              </button>
+            ) : null}
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
