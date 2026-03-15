@@ -24,6 +24,26 @@ function Pill(props: { text: string }) {
   );
 }
 
+function SectionCard(props: { title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="zombie-card"
+      style={{
+        padding: 16,
+        background: "rgba(0,0,0,0.22)",
+      }}
+    >
+      <div style={{ fontWeight: 950, fontSize: 18 }}>{props.title}</div>
+      {props.subtitle ? (
+        <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4, marginBottom: 12 }}>{props.subtitle}</div>
+      ) : (
+        <div style={{ height: 12 }} />
+      )}
+      {props.children}
+    </div>
+  );
+}
+
 export default function OwnerApprovalCenterPage() {
   const nav = useNavigate();
 
@@ -33,110 +53,91 @@ export default function OwnerApprovalCenterPage() {
 
   async function openDossierByUserId(uid: string) {
     const u = String(uid || "").trim();
-    if (!u) { alert("Enter a user_id."); return; }
+    if (!u) {
+      alert("Enter a user_id.");
+      return;
+    }
     const pid = await resolvePlayerIdFromUserId(u);
-    if (!pid) { alert("No player_id found for that user_id."); return; }
+    if (!pid) {
+      alert("No player_id found for that user_id.");
+      return;
+    }
     nav(`/dossier/${encodeURIComponent(pid)}`);
   }
 
   function openDossierByPlayerId(pid: string) {
     const p = String(pid || "").trim();
-    if (!p) { alert("Enter a player_id."); return; }
+    if (!p) {
+      alert("Enter a player_id.");
+      return;
+    }
     nav(`/dossier/${encodeURIComponent(p)}`);
   }
 
   return (
-    <div
-      style={{
-        width: "100%",
-        maxWidth: "none",
-        margin: 0,
-        padding: 16,
-        display: "grid",
-        gap: 12,
-      }}
-    >
+    <div style={{ width: "100%", maxWidth: 1440, margin: "0 auto", display: "grid", gap: 12 }}>
       <div
         className="zombie-card"
         style={{
-          padding: 16,
+          padding: 20,
           background: "linear-gradient(180deg, rgba(16,20,26,0.98), rgba(8,10,14,0.94))",
           border: "1px solid rgba(255,255,255,0.10)",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <div>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+          <div style={{ minWidth: 280 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
               <Pill text="APPROVALS" />
               <Pill text="ASSIGNMENTS" />
               <Pill text="RLS ENFORCED" />
             </div>
 
-            <div style={{ fontSize: 28, fontWeight: 950, lineHeight: 1.05 }}>
+            <div style={{ fontSize: 32, fontWeight: 950, lineHeight: 1.05 }}>
               Owner Approval Hub
             </div>
 
-            <div style={{ opacity: 0.82, marginTop: 8, lineHeight: 1.6, maxWidth: 820 }}>
+            <div style={{ opacity: 0.84, marginTop: 10, lineHeight: 1.7, maxWidth: 860 }}>
               Approve requests, assign alliance access, and jump into dossiers from one full-width workspace.
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="zombie-btn" type="button" onClick={() => nav("/owner")}>Owner</button>
-            <button className="zombie-btn" type="button" onClick={() => nav("/owner/ops")}>Ops</button>
-            <button className="zombie-btn" type="button" onClick={() => nav("/owner/dossier")}>Dossier Lookup</button>
-            <button className="zombie-btn" type="button" onClick={() => nav("/owner/requests")}>Requests</button>
-          </div>
-        </div>
-      </div>
-
-      <div
-        className="zombie-card"
-        style={{
-          padding: 14,
-          background: "rgba(0,0,0,0.22)",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div>
-            <div style={{ fontWeight: 900, fontSize: 16 }}>View Mode</div>
-            <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-              Switch between approvals, assignments, or both.
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="zombie-btn" type="button" onClick={() => setTab("both")} style={{ fontWeight: tab === "both" ? 900 : 700 }}>
-              Both
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={() => nav("/owner")} style={{ padding: "10px 12px" }}>
+              Owner
             </button>
-            <button className="zombie-btn" type="button" onClick={() => setTab("approve")} style={{ fontWeight: tab === "approve" ? 900 : 700 }}>
-              Approvals
+            <button className="zombie-btn" type="button" onClick={() => nav("/owner/ops")} style={{ padding: "10px 12px" }}>
+              Ops
             </button>
-            <button className="zombie-btn" type="button" onClick={() => setTab("assign")} style={{ fontWeight: tab === "assign" ? 900 : 700 }}>
-              Assign
+            <button className="zombie-btn" type="button" onClick={() => nav("/owner/dossier")} style={{ padding: "10px 12px" }}>
+              Dossier Lookup
+            </button>
+            <button className="zombie-btn" type="button" onClick={() => nav("/owner/requests")} style={{ padding: "10px 12px" }}>
+              Requests
             </button>
           </div>
         </div>
       </div>
 
-      <div
-        className="zombie-card"
-        style={{
-          padding: 14,
-          background: "rgba(0,0,0,0.24)",
-        }}
-      >
-        <div style={{ fontWeight: 900, fontSize: 16 }}>Dossier Jump</div>
-        <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-          Open a player dossier by user_id or player_id.
+      <SectionCard title="View mode" subtitle="Switch between approvals, assignments, or both.">
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="zombie-btn" type="button" onClick={() => setTab("both")} style={{ padding: "10px 12px", fontWeight: tab === "both" ? 900 : 700 }}>
+            Both
+          </button>
+          <button className="zombie-btn" type="button" onClick={() => setTab("approve")} style={{ padding: "10px 12px", fontWeight: tab === "approve" ? 900 : 700 }}>
+            Approvals
+          </button>
+          <button className="zombie-btn" type="button" onClick={() => setTab("assign")} style={{ padding: "10px 12px", fontWeight: tab === "assign" ? 900 : 700 }}>
+            Assign
+          </button>
         </div>
+      </SectionCard>
 
+      <SectionCard title="Dossier jump" subtitle="Open a player dossier by user_id or player_id.">
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) auto",
             gap: 10,
-            marginTop: 12,
             alignItems: "center",
           }}
         >
@@ -167,15 +168,15 @@ export default function OwnerApprovalCenterPage() {
             }}
           />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="zombie-btn" type="button" onClick={() => openDossierByUserId(dossierUserId)}>
+            <button className="zombie-btn" type="button" onClick={() => openDossierByUserId(dossierUserId)} style={{ padding: "10px 12px" }}>
               Resolve + Open
             </button>
-            <button className="zombie-btn" type="button" onClick={() => openDossierByPlayerId(dossierPlayerId)}>
+            <button className="zombie-btn" type="button" onClick={() => openDossierByPlayerId(dossierPlayerId)} style={{ padding: "10px 12px" }}>
               Open
             </button>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <div
         style={{
@@ -187,38 +188,23 @@ export default function OwnerApprovalCenterPage() {
         }}
       >
         {tab !== "assign" ? (
-          <div className="zombie-card" style={{ padding: 12, minWidth: 0 }}>
-            <div style={{ fontWeight: 950, fontSize: 18, marginBottom: 4 }}>✅ Approvals</div>
-            <div style={{ opacity: 0.72, fontSize: 12, marginBottom: 10 }}>
-              Review and approve incoming requests.
-            </div>
+          <SectionCard title="✅ Approvals" subtitle="Review and approve incoming requests.">
             <ApprovalsPane />
-          </div>
+          </SectionCard>
         ) : null}
 
         {tab !== "approve" ? (
-          <div className="zombie-card" style={{ padding: 12, minWidth: 0 }}>
-            <div style={{ fontWeight: 950, fontSize: 18, marginBottom: 4 }}>🪪 Assign</div>
-            <div style={{ opacity: 0.72, fontSize: 12, marginBottom: 10 }}>
-              Assign alliance access and role after approval.
-            </div>
+          <SectionCard title="🪪 Assign" subtitle="Assign alliance access and role after approval.">
             <AssignPane />
-          </div>
+          </SectionCard>
         ) : null}
       </div>
 
-      <div
-        className="zombie-card"
-        style={{
-          padding: 14,
-          background: "rgba(0,0,0,0.20)",
-        }}
-      >
-        <div style={{ fontWeight: 900, fontSize: 15 }}>Workflow</div>
-        <div style={{ opacity: 0.78, marginTop: 8, lineHeight: 1.6 }}>
-          1) Approve request. 2) Assign alliance and role. 3) Open dossier only when extra context is needed.
+      <SectionCard title="Workflow" subtitle="Keep the approval flow simple and fast.">
+        <div style={{ opacity: 0.82, lineHeight: 1.7 }}>
+          1) Approve the request. 2) Assign alliance and role. 3) Open dossier only when extra context is needed.
         </div>
-      </div>
+      </SectionCard>
     </div>
   );
 }
