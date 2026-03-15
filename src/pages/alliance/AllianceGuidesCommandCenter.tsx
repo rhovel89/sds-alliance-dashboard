@@ -38,6 +38,15 @@ type PageBlock =
       caption?: string;
     };
 
+type NotebookMeta = {
+  parentEntryId: string | null;
+};
+
+type NotebookDoc = {
+  meta: NotebookMeta;
+  blocks: PageBlock[];
+};
+
 const SECTION_NAME_COL = "title";
 const BODY_JSON_PREFIX = "__NOTEBOOK_JSON__:";
 
@@ -78,6 +87,10 @@ function makeChecklistBlock(): PageBlock {
     items: ["New item"],
     checked: [false],
   };
+}
+
+function emptyMeta(): NotebookMeta {
+  return { parentEntryId: null };
 }
 
 function normalizeBlock(raw: any): PageBlock | null {
@@ -125,27 +138,52 @@ function normalizeBlock(raw: any): PageBlock | null {
   };
 }
 
-function parseStoredBody(raw: unknown): PageBlock[] {
+function parseStoredBody(raw: unknown): NotebookDoc {
   const body = String(raw ?? "");
 
   if (!body.trim()) {
-    return [makeTextBlock("")];
+    return {
+      meta: emptyMeta(),
+      blocks: [makeTextBlock("")],
+    };
   }
 
   if (body.startsWith(BODY_JSON_PREFIX)) {
     try {
       const parsed = JSON.parse(body.slice(BODY_JSON_PREFIX.length));
+
       if (Array.isArray(parsed)) {
         const blocks = parsed.map(normalizeBlock).filter(Boolean) as PageBlock[];
-        if (blocks.length) return blocks;
+        return {
+          meta: emptyMeta(),
+          blocks: blocks.length ? blocks : [makeTextBlock("")],
+        };
+      }
+
+      if (parsed && typeof parsed === "object") {
+        const meta: NotebookMeta = {
+          parentEntryId: s(parsed?.meta?.parentEntryId) || null,
+        };
+
+        const blocks = Array.isArray(parsed?.blocks)
+          ? (parsed.blocks.map(normalizeBlock).filter(Boolean) as PageBlock[])
+          : [];
+
+        return {
+          meta,
+          blocks: blocks.length ? blocks : [makeTextBlock("")],
+        };
       }
     } catch {}
   }
 
-  return [makeTextBlock(body)];
+  return {
+    meta: emptyMeta(),
+    blocks: [makeTextBlock(body)],
+  };
 }
 
-function serializeBlocks(blocks: PageBlock[]): string {
+function serializeDoc(meta: NotebookMeta, blocks: PageBlock[]): string {
   const cleaned = blocks
     .map(normalizeBlock)
     .filter(Boolean)
@@ -177,7 +215,13 @@ function serializeBlocks(blocks: PageBlock[]): string {
       };
     });
 
-  return BODY_JSON_PREFIX + JSON.stringify(cleaned);
+  return BODY_JSON_PREFIX + JSON.stringify({
+    version: 2,
+    meta: {
+      parentEntryId: meta.parentEntryId || null,
+    },
+    blocks: cleaned,
+  });
 }
 
 async function resolveImageUrls(blocks: PageBlock[]): Promise<Record<string, string>> {
@@ -196,6 +240,20 @@ async function resolveImageUrls(blocks: PageBlock[]): Promise<Record<string, str
   }
 
   return next;
+}
+
+function collectDescendantIds(
+  parentId: string,
+  childMap: Map<string, EntryRow[]>,
+  out: Set<string>
+) {
+  const kids = childMap.get(parentId) || [];
+  for (const child of kids) {
+    const id = String(child.id || "");
+    if (!id || out.has(id)) continue;
+    out.add(id);
+    collectDescendantIds(id, childMap, out);
+  }
 }
 
 function renderBlock(block: PageBlock, imageUrls: Record<string, string>) {
@@ -341,15 +399,79 @@ export function AllianceGuidesCommandCenter() {
 
   const [newEntryTitle, setNewEntryTitle] = useState("");
   const [newEntryBody, setNewEntryBody] = useState("");
+  const [newEntryParentId, setNewEntryParentId] = useState<string | null>(null);
 
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editingEntryTitle, setEditingEntryTitle] = useState("");
   const [editingBlocks, setEditingBlocks] = useState<PageBlock[]>([]);
+  const [editingParentId, setEditingParentId] = useState<string | null>(null);
 
   const [selectedImageUrls, setSelectedImageUrls] = useState<Record<string, string>>({});
   const [editingImageUrls, setEditingImageUrls] = useState<Record<string, string>>({});
 
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const entryDocsById = useMemo(() => {
+    const map = new Map<string, NotebookDoc>();
+    for (const entry of entries) {
+      const id = String(entry.id || "");
+      if (!id) continue;
+      map.set(id, parseStoredBody(entry.body ?? ""));
+    }
+    return map;
+  }, [entries]);
+
+  const entryMapById = useMemo(() => {
+    const map = new Map<string, EntryRow>();
+    for (const entry of entries) {
+      const id = String(entry.id || "");
+      if (!id) continue;
+      map.set(id, entry);
+    }
+    return map;
+  }, [entries]);
+
+  const childMap = useMemo(() => {
+    const map = new Map<string, EntryRow[]>();
+
+    for (const entry of entries) {
+      const id = String(entry.id || "");
+      if (!id) continue;
+
+      const pid = entryDocsById.get(id)?.meta.parentEntryId || null;
+      if (!pid || !entryMapById.has(pid) || pid === id) continue;
+
+      if (!map.has(pid)) map.set(pid, []);
+      map.get(pid)!.push(entry);
+    }
+
+    for (const [k, arr] of map.entries()) {
+      arr.sort((a, b) => {
+        const ta = Date.parse(String(a.created_at || 0)) || 0;
+        const tb = Date.parse(String(b.created_at || 0)) || 0;
+        return ta - tb;
+      });
+      map.set(k, arr);
+    }
+
+    return map;
+  }, [entries, entryDocsById, entryMapById]);
+
+  const rootEntries = useMemo(() => {
+    const rows = entries.filter((entry) => {
+      const id = String(entry.id || "");
+      const pid = entryDocsById.get(id)?.meta.parentEntryId || null;
+      return !pid || !entryMapById.has(pid) || pid === id;
+    });
+
+    rows.sort((a, b) => {
+      const ta = Date.parse(String(a.created_at || 0)) || 0;
+      const tb = Date.parse(String(b.created_at || 0)) || 0;
+      return ta - tb;
+    });
+
+    return rows;
+  }, [entries, entryDocsById, entryMapById]);
 
   const selectedSection = useMemo(
     () => sections.find((x) => String(x.id) === String(selectedSectionId || "")) ?? null,
@@ -361,10 +483,22 @@ export function AllianceGuidesCommandCenter() {
     [entries, selectedEntryId]
   );
 
-  const selectedEntryBlocks = useMemo(
+  const selectedEntryDoc = useMemo(
     () => parseStoredBody(selectedEntry?.body ?? ""),
     [selectedEntry]
   );
+
+  const selectedEntryBlocks = selectedEntryDoc.blocks;
+  const selectedEntryParentId = selectedEntryDoc.meta.parentEntryId || null;
+  const selectedParentEntry = selectedEntryParentId ? entryMapById.get(selectedEntryParentId) ?? null : null;
+
+  const invalidParentIds = useMemo(() => {
+    const out = new Set<string>();
+    if (!editingEntryId) return out;
+    out.add(editingEntryId);
+    collectDescendantIds(editingEntryId, childMap, out);
+    return out;
+  }, [editingEntryId, childMap]);
 
   function isOwnEntry(entry: EntryRow) {
     return !!currentUserId && String(entry?.created_by || "") === String(currentUserId);
@@ -376,15 +510,18 @@ export function AllianceGuidesCommandCenter() {
 
   function startEditEntry(entry: EntryRow) {
     if (!canEditEntry(entry)) return;
+    const doc = parseStoredBody(entry.body ?? "");
     setEditingEntryId(String(entry.id));
     setEditingEntryTitle(String(entry.title || ""));
-    setEditingBlocks(parseStoredBody(entry.body ?? ""));
+    setEditingBlocks(doc.blocks);
+    setEditingParentId(doc.meta.parentEntryId || null);
   }
 
   function stopEditEntry() {
     setEditingEntryId(null);
     setEditingEntryTitle("");
     setEditingBlocks([]);
+    setEditingParentId(null);
     setEditingImageUrls({});
   }
 
@@ -626,10 +763,12 @@ export function AllianceGuidesCommandCenter() {
     if (selectedSectionId) {
       void loadEntries(selectedSectionId);
       stopEditEntry();
+      setNewEntryParentId(null);
     } else {
       setEntries([]);
       setSelectedEntryId(null);
       stopEditEntry();
+      setNewEntryParentId(null);
     }
   }, [selectedSectionId]);
 
@@ -716,8 +855,11 @@ export function AllianceGuidesCommandCenter() {
     const title = newEntryTitle.trim();
     if (!title) return;
 
-    const bodyBlocks = [makeTextBlock(newEntryBody)];
-    const storedBody = serializeBlocks(bodyBlocks);
+    const blocks = [makeTextBlock(newEntryBody)];
+    const body = serializeDoc(
+      { parentEntryId: newEntryParentId || null },
+      blocks
+    );
 
     setError(null);
 
@@ -731,7 +873,7 @@ export function AllianceGuidesCommandCenter() {
       section_id: selectedSectionId,
       alliance_code: allianceCode,
       title,
-      body: storedBody,
+      body,
       created_by: userRes.user.id,
     };
 
@@ -748,6 +890,7 @@ export function AllianceGuidesCommandCenter() {
 
     setNewEntryTitle("");
     setNewEntryBody("");
+    setNewEntryParentId(null);
     await loadEntries(selectedSectionId);
     if (ins.data?.id) setSelectedEntryId(String(ins.data.id));
   }
@@ -761,7 +904,13 @@ export function AllianceGuidesCommandCenter() {
     const title = editingEntryTitle.trim();
     if (!title) return;
 
-    const storedBody = serializeBlocks(editingBlocks);
+    const nextParentId =
+      editingParentId && editingParentId !== editingEntryId ? editingParentId : null;
+
+    const body = serializeDoc(
+      { parentEntryId: nextParentId },
+      editingBlocks
+    );
 
     setError(null);
 
@@ -769,7 +918,7 @@ export function AllianceGuidesCommandCenter() {
       .from("guide_section_entries")
       .update({
         title,
-        body: storedBody,
+        body,
         updated_at: new Date().toISOString(),
       } as any)
       .eq("id", editingEntryId);
@@ -808,6 +957,52 @@ export function AllianceGuidesCommandCenter() {
     await loadEntries(selectedSectionId);
   }
 
+  function renderEntryNode(entry: EntryRow, depth = 0): React.ReactNode {
+    const id = String(entry.id || "");
+    const selected = id === String(selectedEntryId || "");
+    const own = isOwnEntry(entry);
+    const children = childMap.get(id) || [];
+
+    return (
+      <div key={id} style={{ display: "grid", gap: 8 }}>
+        <div style={{ marginLeft: depth * 16 }}>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedEntryId(id);
+              stopEditEntry();
+            }}
+            className="zombie-btn"
+            style={{
+              width: "100%",
+              textAlign: "left",
+              padding: 12,
+              borderRadius: 14,
+              border: selected ? "1px solid rgba(255,255,255,0.20)" : "1px solid rgba(255,255,255,0.10)",
+              background: selected ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
+            }}
+          >
+            <div style={{ fontWeight: 900 }}>
+              {s(entry.title || "Untitled")}
+            </div>
+            <div style={{ opacity: 0.68, fontSize: 12, marginTop: 4 }}>
+              {niceDate(entry.updated_at || entry.created_at)}
+            </div>
+            <div style={{ opacity: 0.68, fontSize: 11, marginTop: 4 }}>
+              {depth > 0 ? "Subpage" : "Page"}{own ? " • Yours" : ""}
+            </div>
+          </button>
+        </div>
+
+        {children.length ? (
+          <div style={{ display: "grid", gap: 8 }}>
+            {children.map((child) => renderEntryNode(child, depth + 1))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   if (!allianceCode) return <div style={{ padding: 16 }}>Missing alliance id in URL.</div>;
 
   return (
@@ -840,7 +1035,7 @@ export function AllianceGuidesCommandCenter() {
               {allianceCode} Guides
             </div>
             <div style={{ opacity: 0.78, fontSize: 13, marginTop: 6 }}>
-              Sections across the top. Pages down the left. Rich page blocks on the right.
+              Sections at the top. Pages and subpages on the left. Notebook content on the right.
             </div>
           </div>
 
@@ -1001,9 +1196,9 @@ export function AllianceGuidesCommandCenter() {
         <div
           className="zombie-card"
           style={{
-            flex: "0 0 280px",
-            minWidth: 260,
-            maxWidth: 320,
+            flex: "0 0 300px",
+            minWidth: 280,
+            maxWidth: 340,
             width: "100%",
             padding: 12,
             borderRadius: 18,
@@ -1011,53 +1206,29 @@ export function AllianceGuidesCommandCenter() {
             background: "rgba(255,255,255,0.03)",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <div>
               <div style={{ opacity: 0.7, fontSize: 12 }}>Pages</div>
               <div style={{ fontWeight: 900, fontSize: 18, marginTop: 2 }}>
-                {loadingEntries ? "Loading…" : `${entries.length} page${entries.length === 1 ? "" : "s"}`}
+                {loadingEntries ? "Loading…" : `${entries.length} total`}
               </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="zombie-btn" type="button" onClick={() => setNewEntryParentId(null)}>
+                Top-level
+              </button>
+              {selectedEntry && canCreateOwnEntries ? (
+                <button className="zombie-btn" type="button" onClick={() => setNewEntryParentId(String(selectedEntry.id))}>
+                  New Subpage
+                </button>
+              ) : null}
             </div>
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            {entries.map((entry) => {
-              const selected = String(entry.id) === String(selectedEntryId || "");
-              const own = isOwnEntry(entry);
-
-              return (
-                <button
-                  key={String(entry.id)}
-                  type="button"
-                  onClick={() => {
-                    setSelectedEntryId(String(entry.id));
-                    stopEditEntry();
-                  }}
-                  className="zombie-btn"
-                  style={{
-                    textAlign: "left",
-                    padding: 12,
-                    borderRadius: 14,
-                    border: selected ? "1px solid rgba(255,255,255,0.20)" : "1px solid rgba(255,255,255,0.10)",
-                    background: selected ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
-                  }}
-                >
-                  <div style={{ fontWeight: 900 }}>
-                    {s(entry.title || "Untitled")}
-                  </div>
-                  <div style={{ opacity: 0.68, fontSize: 12, marginTop: 4 }}>
-                    {niceDate(entry.updated_at || entry.created_at)}
-                  </div>
-                  {own ? (
-                    <div style={{ opacity: 0.68, fontSize: 11, marginTop: 4 }}>
-                      Yours
-                    </div>
-                  ) : null}
-                </button>
-              );
-            })}
-
-            {!entries.length ? (
+            {rootEntries.map((entry) => renderEntryNode(entry, 0))}
+            {!rootEntries.length ? (
               <div style={{ opacity: 0.75, padding: "6px 2px" }}>
                 No pages in this section yet.
               </div>
@@ -1090,8 +1261,32 @@ export function AllianceGuidesCommandCenter() {
                 >
                   <div style={{ fontWeight: 900, fontSize: 16 }}>New page</div>
                   <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-                    Create a new notebook page in this section.
+                    Create a top-level page or a nested subpage.
                   </div>
+
+                  {newEntryParentId ? (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: 10,
+                        borderRadius: 12,
+                        border: "1px solid rgba(120,180,255,0.28)",
+                        background: "rgba(120,180,255,0.08)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div style={{ fontSize: 12 }}>
+                        Creating as subpage under: <b>{s(entryMapById.get(newEntryParentId)?.title || "Selected page")}</b>
+                      </div>
+                      <button className="zombie-btn" type="button" onClick={() => setNewEntryParentId(null)}>
+                        Clear
+                      </button>
+                    </div>
+                  ) : null}
 
                   <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
                     <input
@@ -1142,6 +1337,12 @@ export function AllianceGuidesCommandCenter() {
                     <>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
                         <div>
+                          {selectedParentEntry ? (
+                            <div style={{ opacity: 0.68, fontSize: 12, marginBottom: 6 }}>
+                              {s(selectedParentEntry.title)} / <b>{s(selectedEntry.title || "Untitled")}</b>
+                            </div>
+                          ) : null}
+
                           <div style={{ fontSize: 28, fontWeight: 950 }}>
                             {s(selectedEntry.title || "Untitled")}
                           </div>
@@ -1149,19 +1350,28 @@ export function AllianceGuidesCommandCenter() {
                             Created: {niceDate(selectedEntry.created_at)}
                             {selectedEntry.updated_at ? ` • Updated: ${niceDate(selectedEntry.updated_at)}` : ""}
                             {isOwnEntry(selectedEntry) ? " • Yours" : ""}
+                            {selectedEntryParentId ? " • Subpage" : " • Page"}
                           </div>
                         </div>
 
-                        {canEditEntry(selectedEntry) ? (
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <button className="zombie-btn" type="button" onClick={() => startEditEntry(selectedEntry)}>
-                              Edit Page
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {canCreateOwnEntries ? (
+                            <button className="zombie-btn" type="button" onClick={() => setNewEntryParentId(String(selectedEntry.id))}>
+                              New Subpage
                             </button>
-                            <button className="zombie-btn" type="button" onClick={() => void deleteEntry(String(selectedEntry.id))}>
-                              Delete Page
-                            </button>
-                          </div>
-                        ) : null}
+                          ) : null}
+
+                          {canEditEntry(selectedEntry) ? (
+                            <>
+                              <button className="zombie-btn" type="button" onClick={() => startEditEntry(selectedEntry)}>
+                                Edit Page
+                              </button>
+                              <button className="zombie-btn" type="button" onClick={() => void deleteEntry(String(selectedEntry.id))}>
+                                Delete Page
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div
@@ -1182,7 +1392,7 @@ export function AllianceGuidesCommandCenter() {
                         <div>
                           <div style={{ fontWeight: 900, fontSize: 16 }}>Edit page</div>
                           <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-                            Add headings, notes, checklists, and inline image blocks.
+                            Add headings, notes, checklists, inline image blocks, and set parent page.
                           </div>
                         </div>
 
@@ -1221,6 +1431,25 @@ export function AllianceGuidesCommandCenter() {
                           style={{ padding: "10px 12px", width: "100%", fontWeight: 900 }}
                           placeholder="Page title"
                         />
+
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <div style={{ opacity: 0.72, fontSize: 12 }}>Parent page</div>
+                          <select
+                            className="zombie-input"
+                            value={editingParentId || ""}
+                            onChange={(e) => setEditingParentId(s(e.target.value) || null)}
+                            style={{ padding: "10px 12px", width: "100%" }}
+                          >
+                            <option value="">(top-level page)</option>
+                            {entries
+                              .filter((entry) => !invalidParentIds.has(String(entry.id)))
+                              .map((entry) => (
+                                <option key={String(entry.id)} value={String(entry.id)}>
+                                  {s(entry.title || "Untitled")}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
 
                         {editingBlocks.map((block, idx) => (
                           <div
