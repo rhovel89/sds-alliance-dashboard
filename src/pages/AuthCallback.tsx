@@ -18,9 +18,12 @@ export default function AuthCallback() {
         const params = new URLSearchParams(window.location.search);
         const code = params.get("code");
 
+        let sessionUser: any = null;
+
         if (code) {
           setStatus("Exchanging login code...");
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
           if (error) {
             console.error("exchangeCodeForSession failed:", error);
@@ -28,24 +31,25 @@ export default function AuthCallback() {
             return;
           }
 
+          sessionUser = data?.user ?? data?.session?.user ?? null;
+
           window.history.replaceState({}, document.title, "/auth/callback");
         }
 
         setStatus("Loading session...");
 
-        let user: any = null;
-
-        for (let i = 0; i < 10; i++) {
-          const u = await supabase.auth.getUser();
-          user = u.data.user ?? null;
-          if (user) break;
-          await sleep(250);
+        if (!sessionUser) {
+          for (let i = 0; i < 12; i++) {
+            const { data: sessionData } = await supabase.auth.getSession();
+            sessionUser = sessionData.session?.user ?? null;
+            if (sessionUser) break;
+            await sleep(250);
+          }
         }
 
-        if (!user) {
-          if (!cancelled) {
-            setStatus("No session found after login.");
-          }
+        if (!sessionUser) {
+          console.error("No session found after login.");
+          if (!cancelled) setStatus("No session found after login.");
           return;
         }
 
@@ -66,7 +70,7 @@ export default function AuthCallback() {
         const { data: membership } = await supabase
           .from("alliance_members")
           .select("alliance_code")
-          .eq("user_id", user.id)
+          .eq("user_id", sessionUser.id)
           .limit(1)
           .maybeSingle();
 
