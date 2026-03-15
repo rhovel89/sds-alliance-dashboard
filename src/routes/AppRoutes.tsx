@@ -17,6 +17,7 @@ import MyAlliance from "../pages/MyAlliance";
 import EventsPage from "../pages/EventsPage";
 
 import AllianceHQMap from "../pages/dashboard/AllianceHQMap";
+import AllianceHQMapExportPage from "../pages/dashboard/AllianceHQMapExportPage";
 import PermissionsPage from "../pages/dashboard/Permissions";
 import AllianceCalendarPage from "../pages/calendar/AllianceCalendarPage";
 
@@ -229,7 +230,7 @@ export default function AppRoutes() {
         <Route path="guides" element={<AllianceGuidesPage />} />
         <Route path="roster" element={<RequireAllianceAccess><AllianceRosterPage /></RequireAllianceAccess>} />
 
-        <Route path="hq-map" element={<AllianceHQMap />} />
+        <Route path="hq-map" element={<AllianceHQMapExportPage />} />
         <Route path="calendar" element={<RequireAllianceAccess><AllianceCalendarPage /></RequireAllianceAccess>} />
             <Route path="discord-webhooks" element={<RequireAllianceAccess><AllianceDiscordWebhooksPage /></RequireAllianceAccess>} />
 
@@ -314,6 +315,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
