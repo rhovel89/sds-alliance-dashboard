@@ -73,10 +73,27 @@ type MailItem = {
   alliance_code: string | null;
   state_code: string | null;
   body: string;
+  unread_count?: number | null;
+  thread_key?: string | null;
 };
 
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
 function toNum(v: any, fallback = 0) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
+function previewMailBody(v: unknown) {
+  const text = String(v ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return "(no preview)";
+  return text.length > 180 ? `${text.slice(0, 180)}…` : text;
+}
+
+function prettyMailDate(v: unknown) {
+  try {
+    const d = new Date(String(v ?? ""));
+    if (Number.isNaN(d.getTime())) return String(v ?? "");
+    return d.toLocaleString();
+  } catch {
+    return String(v ?? "");
+  }
+}
 
 const TEXT = "#f3f7f2";
 const MUTED = "rgba(243,247,242,0.88)";
@@ -115,6 +132,12 @@ export default function MeDashboardPage() {
 
   const selectedPlayer = useMemo(() => players.find((p) => p.id === selectedPlayerId) ?? null, [players, selectedPlayerId]);
   const selectedAllianceProfile = useMemo(() => alliances.find((a) => a.id === selectedProfileId) ?? null, [alliances, selectedProfileId]);
+  const unreadMailCount = useMemo(
+    () => myMail.reduce((sum, row) => sum + Number(row.unread_count || 0), 0),
+    [myMail]
+  );
+
+  const latestMailPreview = useMemo(() => myMail[0] ?? null, [myMail]);
 
   useEffect(() => {
     let mounted = true;
@@ -208,7 +231,7 @@ export default function MeDashboardPage() {
   async function refreshMyMail() {
     const res = await supabase
       .from("v_my_mail_inbox")
-      .select("id,created_at,kind,subject,alliance_code,state_code,body")
+      .select("id,created_at,kind,subject,alliance_code,state_code,body,unread_count,thread_key")
       .order("created_at", { ascending: false })
       .limit(10);
 
@@ -397,7 +420,7 @@ export default function MeDashboardPage() {
     { label: "Players", value: players.length, sub: "Linked to this account" },
     { label: "Alliances", value: alliances.length, sub: "Profiles available" },
     { label: "Events Today", value: eventsToday.length, sub: "Upcoming operations" },
-    { label: "Mail", value: myMail.length, sub: "Latest inbox items" },
+    { label: "Mail", value: unreadMailCount, sub: unreadMailCount > 0 ? "Unread waiting" : "Inbox clear" },
   ];
 
   return (
@@ -787,9 +810,89 @@ export default function MeDashboardPage() {
       <div style={{ opacity: 0.6, marginTop: 12, fontSize: 12 }}>
         Tip: delegated posting for Alliance Alerts is controlled by <code>alliance_access_grants.can_post_alerts</code>.
       </div>
-    </div>
+    
+      <div
+        className="zombie-card"
+        style={{
+          padding: 16,
+          borderRadius: 18,
+          marginTop: 16,
+          background: "linear-gradient(180deg, rgba(18,18,24,0.94), rgba(10,10,14,0.96))",
+          border: "1px solid rgba(255,255,255,0.14)",
+          color: "rgba(255,255,255,0.96)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 950, color: "#fff" }}>📬 Mail Preview</div>
+            <div style={{ color: "rgba(255,255,255,0.82)", marginTop: 4, fontSize: 13 }}>
+              {unreadMailCount > 0 ? `${unreadMailCount} unread message(s)` : "No unread mail right now"}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Link to="/mail">Mail Home</Link>
+            <Link to="/mail-threads">Threads</Link>
+          </div>
+        </div>
+
+        {latestMailPreview ? (
+          <div
+            style={{
+              marginTop: 14,
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: 16,
+              padding: 14,
+              background: Number(latestMailPreview.unread_count || 0) > 0
+                ? "rgba(255,255,255,0.08)"
+                : "rgba(255,255,255,0.04)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ fontWeight: 900, color: "#fff" }}>
+                {latestMailPreview.subject || "(no subject)"}
+              </div>
+              <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 12 }}>
+                {prettyMailDate(latestMailPreview.created_at)}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 8, color: "rgba(255,255,255,0.88)", lineHeight: 1.5 }}>
+              {previewMailBody(latestMailPreview.body)}
+            </div>
+
+            <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              {Number(latestMailPreview.unread_count || 0) > 0 ? (
+                <div
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,0.10)",
+                    border: "1px solid rgba(255,255,255,0.16)",
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: 900,
+                  }}
+                >
+                  Unread • {Number(latestMailPreview.unread_count || 0)}
+                </div>
+              ) : null}
+
+              <Link to={latestMailPreview.thread_key ? `/mail-threads?thread=${encodeURIComponent(String(latestMailPreview.thread_key))}` : "/mail-threads"}>
+                Open thread
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginTop: 14, color: "rgba(255,255,255,0.72)" }}>
+            No mail to preview yet.
+          </div>
+        )}
+      </div>
+</div>
   );
 }
+
 
 
 
