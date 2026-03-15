@@ -13,33 +13,14 @@ type EntryRow = Record<string, any>;
 type BlockType = "heading" | "text" | "checklist" | "image";
 
 type PageBlock =
-  | {
-      id: string;
-      type: "heading";
-      text?: string;
-    }
-  | {
-      id: string;
-      type: "text";
-      text?: string;
-    }
-  | {
-      id: string;
-      type: "checklist";
-      items?: string[];
-      checked?: boolean[];
-    }
-  | {
-      id: string;
-      type: "image";
-      storage_path: string;
-      file_name?: string;
-      mime_type?: string | null;
-      caption?: string;
-    };
+  | { id: string; type: "heading"; text?: string }
+  | { id: string; type: "text"; text?: string }
+  | { id: string; type: "checklist"; items?: string[]; checked?: boolean[] }
+  | { id: string; type: "image"; storage_path: string; file_name?: string; mime_type?: string | null; caption?: string };
 
 type NotebookMeta = {
   parentEntryId: string | null;
+  sortKey: number | null;
 };
 
 type NotebookDoc = {
@@ -52,6 +33,11 @@ const BODY_JSON_PREFIX = "__NOTEBOOK_JSON__:";
 
 function s(v: unknown) {
   return String(v ?? "").trim();
+}
+
+function asNum(v: unknown): number | null {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 function makeId() {
@@ -90,7 +76,7 @@ function makeChecklistBlock(): PageBlock {
 }
 
 function emptyMeta(): NotebookMeta {
-  return { parentEntryId: null };
+  return { parentEntryId: null, sortKey: null };
 }
 
 function normalizeBlock(raw: any): PageBlock | null {
@@ -98,19 +84,11 @@ function normalizeBlock(raw: any): PageBlock | null {
   if (!["heading", "text", "checklist", "image"].includes(type)) return null;
 
   if (type === "heading") {
-    return {
-      id: s(raw?.id) || makeId(),
-      type,
-      text: String(raw?.text ?? ""),
-    };
+    return { id: s(raw?.id) || makeId(), type, text: String(raw?.text ?? "") };
   }
 
   if (type === "text") {
-    return {
-      id: s(raw?.id) || makeId(),
-      type,
-      text: String(raw?.text ?? ""),
-    };
+    return { id: s(raw?.id) || makeId(), type, text: String(raw?.text ?? "") };
   }
 
   if (type === "image") {
@@ -163,6 +141,7 @@ function parseStoredBody(raw: unknown): NotebookDoc {
       if (parsed && typeof parsed === "object") {
         const meta: NotebookMeta = {
           parentEntryId: s(parsed?.meta?.parentEntryId) || null,
+          sortKey: asNum(parsed?.meta?.sortKey),
         };
 
         const blocks = Array.isArray(parsed?.blocks)
@@ -216,9 +195,10 @@ function serializeDoc(meta: NotebookMeta, blocks: PageBlock[]): string {
     });
 
   return BODY_JSON_PREFIX + JSON.stringify({
-    version: 2,
+    version: 3,
     meta: {
       parentEntryId: meta.parentEntryId || null,
+      sortKey: meta.sortKey ?? null,
     },
     blocks: cleaned,
   });
@@ -242,11 +222,7 @@ async function resolveImageUrls(blocks: PageBlock[]): Promise<Record<string, str
   return next;
 }
 
-function collectDescendantIds(
-  parentId: string,
-  childMap: Map<string, EntryRow[]>,
-  out: Set<string>
-) {
+function collectDescendantIds(parentId: string, childMap: Map<string, EntryRow[]>, out: Set<string>) {
   const kids = childMap.get(parentId) || [];
   for (const child of kids) {
     const id = String(child.id || "");
@@ -305,13 +281,7 @@ function renderBlock(block: PageBlock, imageUrls: Record<string, string>) {
 
   if (block.type === "image") {
     return (
-      <div
-        key={block.id}
-        style={{
-          display: "grid",
-          gap: 8,
-        }}
-      >
+      <div key={block.id} style={{ display: "grid", gap: 8 }}>
         {imageUrls[block.id] ? (
           <img
             src={imageUrls[block.id]}
@@ -358,7 +328,7 @@ function renderBlock(block: PageBlock, imageUrls: Record<string, string>) {
         opacity: 0.96,
       }}
     >
-      {String(block.text ?? "")}
+      {String((block as any).text ?? "")}
     </div>
   );
 }
@@ -391,6 +361,7 @@ export function AllianceGuidesCommandCenter() {
 
   const [loadingSections, setLoadingSections] = useState(false);
   const [loadingEntries, setLoadingEntries] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [newSectionName, setNewSectionName] = useState("");
@@ -433,6 +404,41 @@ export function AllianceGuidesCommandCenter() {
     return map;
   }, [entries]);
 
+  function compareEntries(a: EntryRow, b: EntryRow) {
+    const da = entryDocsById.get(String(a.id || ""))?.meta.sortKey;
+    const db = entryDocsById.get(String(b.id || ""))?.meta.sortKey;
+
+    const aHas = Number.isFinite(da as number);
+    const bHas = Number.isFinite(db as number);
+
+    if (aHas && bHas && da !== db) return Number(da) - Number(db);
+    if (aHas && !bHas) return -1;
+    if (!aHas && bHas) return 1;
+
+    const ta = Date.parse(String(a.created_at || 0)) || 0;
+    const tb = Date.parse(String(b.created_at || 0)) || 0;
+    if (ta !== tb) return ta - tb;
+
+    return String(a.title || "").localeCompare(String(b.title || ""));
+  }
+
+  function getParentIdForEntry(entryId: string): string | null {
+    return entryDocsById.get(String(entryId || ""))?.meta.parentEntryId || null;
+  }
+
+  function getSortKeyForEntry(entryId: string): number | null {
+    return entryDocsById.get(String(entryId || ""))?.meta.sortKey ?? null;
+  }
+
+  function getChildren(parentId: string | null): EntryRow[] {
+    return [...entries]
+      .filter((entry) => {
+        const pid = getParentIdForEntry(String(entry.id || ""));
+        return (pid || null) === (parentId || null);
+      })
+      .sort(compareEntries);
+  }
+
   const childMap = useMemo(() => {
     const map = new Map<string, EntryRow[]>();
 
@@ -440,7 +446,7 @@ export function AllianceGuidesCommandCenter() {
       const id = String(entry.id || "");
       if (!id) continue;
 
-      const pid = entryDocsById.get(id)?.meta.parentEntryId || null;
+      const pid = getParentIdForEntry(id);
       if (!pid || !entryMapById.has(pid) || pid === id) continue;
 
       if (!map.has(pid)) map.set(pid, []);
@@ -448,36 +454,23 @@ export function AllianceGuidesCommandCenter() {
     }
 
     for (const [k, arr] of map.entries()) {
-      arr.sort((a, b) => {
-        const ta = Date.parse(String(a.created_at || 0)) || 0;
-        const tb = Date.parse(String(b.created_at || 0)) || 0;
-        return ta - tb;
-      });
-      map.set(k, arr);
+      map.set(k, [...arr].sort(compareEntries));
     }
 
     return map;
   }, [entries, entryDocsById, entryMapById]);
 
   const rootEntries = useMemo(() => {
-    const rows = entries.filter((entry) => {
-      const id = String(entry.id || "");
-      const pid = entryDocsById.get(id)?.meta.parentEntryId || null;
-      return !pid || !entryMapById.has(pid) || pid === id;
-    });
-
-    rows.sort((a, b) => {
-      const ta = Date.parse(String(a.created_at || 0)) || 0;
-      const tb = Date.parse(String(b.created_at || 0)) || 0;
-      return ta - tb;
-    });
-
-    return rows;
+    return [...entries]
+      .filter((entry) => {
+        const id = String(entry.id || "");
+        const pid = getParentIdForEntry(id);
+        return !pid || !entryMapById.has(pid) || pid === id;
+      })
+      .sort(compareEntries);
   }, [entries, entryDocsById, entryMapById]);
 
-  const parentIdsWithChildren = useMemo(() => {
-    return Array.from(childMap.keys());
-  }, [childMap]);
+  const parentIdsWithChildren = useMemo(() => Array.from(childMap.keys()), [childMap]);
 
   const selectedSection = useMemo(
     () => sections.find((x) => String(x.id) === String(selectedSectionId || "")) ?? null,
@@ -537,15 +530,178 @@ export function AllianceGuidesCommandCenter() {
     let currentId = String(entryId || "");
 
     while (currentId) {
-      const parentId = entryDocsById.get(currentId)?.meta.parentEntryId || null;
+      const parentId = getParentIdForEntry(currentId);
       if (!parentId) break;
       toOpen.add(parentId);
       currentId = parentId;
     }
 
     if (!toOpen.size) return;
-
     setCollapsedEntryIds((prev) => prev.filter((id) => !toOpen.has(id)));
+  }
+
+  function getNextSortKey(parentId: string | null) {
+    const sibs = getChildren(parentId);
+    const vals = sibs.map((x) => getSortKeyForEntry(String(x.id || ""))).filter((x): x is number => Number.isFinite(x as number));
+    if (!vals.length) return sibs.length + 1;
+    return Math.max(...vals) + 1;
+  }
+
+  async function saveEntryMeta(entry: EntryRow, nextMeta: Partial<NotebookMeta>) {
+    const doc = parseStoredBody(entry.body ?? "");
+    const merged: NotebookMeta = {
+      parentEntryId: doc.meta.parentEntryId || null,
+      sortKey: doc.meta.sortKey ?? null,
+      ...nextMeta,
+    };
+
+    const body = serializeDoc(merged, doc.blocks);
+
+    const up = await supabase
+      .from("guide_section_entries")
+      .update({
+        body,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("id", String(entry.id));
+
+    return up;
+  }
+
+  async function persistSiblingOrder(parentId: string | null, orderedIds: string[]) {
+    for (let i = 0; i < orderedIds.length; i++) {
+      const id = String(orderedIds[i] || "");
+      const entry = entryMapById.get(id);
+      if (!entry) continue;
+
+      const up = await saveEntryMeta(entry, {
+        parentEntryId: parentId || null,
+        sortKey: i + 1,
+      });
+
+      if (up.error) throw new Error(up.error.message);
+    }
+  }
+
+  async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
+    const id = String(entryId || "");
+    if (!id) return;
+
+    const parentId = getParentIdForEntry(id);
+    const sibs = getChildren(parentId);
+    const ids = sibs.map((x) => String(x.id));
+    const idx = ids.indexOf(id);
+    const swapIdx = idx + dir;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= ids.length) return;
+
+    const clone = [...ids];
+    const temp = clone[idx];
+    clone[idx] = clone[swapIdx];
+    clone[swapIdx] = temp;
+
+    try {
+      setSavingOrder(true);
+      await persistSiblingOrder(parentId, clone);
+      await loadEntries(String(selectedSectionId || ""));
+    } catch (e: any) {
+      setError(String(e?.message || e || "Reorder failed"));
+    } finally {
+      setSavingOrder(false);
+    }
+  }
+
+  async function indentEntry(entryId: string) {
+    const id = String(entryId || "");
+    if (!id) return;
+
+    const parentId = getParentIdForEntry(id);
+    const sibs = getChildren(parentId);
+    const ids = sibs.map((x) => String(x.id));
+    const idx = ids.indexOf(id);
+    if (idx <= 0) return;
+
+    const newParentId = ids[idx - 1];
+    if (!newParentId || newParentId === id) return;
+
+    const oldGroup = ids.filter((x) => x !== id);
+    const newGroup = [...getChildren(newParentId).map((x) => String(x.id)), id];
+
+    try {
+      setSavingOrder(true);
+      await persistSiblingOrder(parentId, oldGroup);
+      await persistSiblingOrder(newParentId, newGroup);
+      expandEntryPath(id);
+      await loadEntries(String(selectedSectionId || ""));
+    } catch (e: any) {
+      setError(String(e?.message || e || "Indent failed"));
+    } finally {
+      setSavingOrder(false);
+    }
+  }
+
+  async function outdentEntry(entryId: string) {
+    const id = String(entryId || "");
+    if (!id) return;
+
+    const parentId = getParentIdForEntry(id);
+    if (!parentId) return;
+
+    const parentEntry = entryMapById.get(parentId);
+    if (!parentEntry) return;
+
+    const grandParentId = getParentIdForEntry(parentId);
+    const oldGroup = getChildren(parentId).map((x) => String(x.id)).filter((x) => x !== id);
+
+    const grandIds = getChildren(grandParentId).map((x) => String(x.id));
+    const parentIdx = grandIds.indexOf(parentId);
+    if (parentIdx < 0) return;
+
+    const nextGrand = [...grandIds];
+    nextGrand.splice(parentIdx + 1, 0, id);
+
+    try {
+      setSavingOrder(true);
+      await persistSiblingOrder(parentId, oldGroup);
+
+      const seen = new Set<string>();
+      const deduped = nextGrand.filter((x) => {
+        if (seen.has(x)) return false;
+        seen.add(x);
+        return true;
+      });
+
+      await persistSiblingOrder(grandParentId, deduped);
+      expandEntryPath(id);
+      await loadEntries(String(selectedSectionId || ""));
+    } catch (e: any) {
+      setError(String(e?.message || e || "Outdent failed"));
+    } finally {
+      setSavingOrder(false);
+    }
+  }
+
+  function canIndent(entry: EntryRow, depth: number) {
+    const parentId = getParentIdForEntry(String(entry.id || ""));
+    const sibs = getChildren(parentId).map((x) => String(x.id));
+    const idx = sibs.indexOf(String(entry.id || ""));
+    return idx > 0;
+  }
+
+  function canOutdent(entry: EntryRow, depth: number) {
+    return depth > 0 && !!getParentIdForEntry(String(entry.id || ""));
+  }
+
+  function canMoveUp(entry: EntryRow) {
+    const parentId = getParentIdForEntry(String(entry.id || ""));
+    const sibs = getChildren(parentId).map((x) => String(x.id));
+    return sibs.indexOf(String(entry.id || "")) > 0;
+  }
+
+  function canMoveDown(entry: EntryRow) {
+    const parentId = getParentIdForEntry(String(entry.id || ""));
+    const sibs = getChildren(parentId).map((x) => String(x.id));
+    const idx = sibs.indexOf(String(entry.id || ""));
+    return idx >= 0 && idx < sibs.length - 1;
   }
 
   function startEditEntry(entry: EntryRow) {
@@ -736,9 +892,7 @@ export function AllianceGuidesCommandCenter() {
   }, [editingBlocks]);
 
   useEffect(() => {
-    if (selectedEntryId) {
-      expandEntryPath(selectedEntryId);
-    }
+    if (selectedEntryId) expandEntryPath(selectedEntryId);
   }, [selectedEntryId, entryDocsById]);
 
   async function loadSections() {
@@ -828,12 +982,11 @@ export function AllianceGuidesCommandCenter() {
 
     setError(null);
 
-    const payload: Record<string, any> = {
+    const { error } = await supabase.from("guide_sections").insert({
       alliance_code: allianceCode,
       [SECTION_NAME_COL]: name,
-    };
+    } as any);
 
-    const { error } = await supabase.from("guide_sections").insert(payload);
     if (error) {
       setError(error.message);
       return;
@@ -905,7 +1058,10 @@ export function AllianceGuidesCommandCenter() {
 
     const blocks = [makeTextBlock(newEntryBody)];
     const body = serializeDoc(
-      { parentEntryId: newEntryParentId || null },
+      {
+        parentEntryId: newEntryParentId || null,
+        sortKey: getNextSortKey(newEntryParentId || null),
+      },
       blocks
     );
 
@@ -917,17 +1073,15 @@ export function AllianceGuidesCommandCenter() {
       return;
     }
 
-    const payload: Record<string, any> = {
-      section_id: selectedSectionId,
-      alliance_code: allianceCode,
-      title,
-      body,
-      created_by: userRes.user.id,
-    };
-
     const ins = await supabase
       .from("guide_section_entries")
-      .insert(payload)
+      .insert({
+        section_id: selectedSectionId,
+        alliance_code: allianceCode,
+        title,
+        body,
+        created_by: userRes.user.id,
+      } as any)
       .select("*")
       .single();
 
@@ -952,17 +1106,23 @@ export function AllianceGuidesCommandCenter() {
     const title = editingEntryTitle.trim();
     if (!title) return;
 
-    const nextParentId =
-      editingParentId && editingParentId !== editingEntryId ? editingParentId : null;
+    const currentDoc = parseStoredBody(existing.body ?? "");
+    const oldParentId = currentDoc.meta.parentEntryId || null;
+    const nextParentId = editingParentId && editingParentId !== editingEntryId ? editingParentId : null;
+
+    const nextSortKey =
+      oldParentId === nextParentId
+        ? (currentDoc.meta.sortKey ?? getNextSortKey(nextParentId))
+        : getNextSortKey(nextParentId);
 
     const body = serializeDoc(
-      { parentEntryId: nextParentId },
+      { parentEntryId: nextParentId, sortKey: nextSortKey },
       editingBlocks
     );
 
     setError(null);
 
-    const { error } = await supabase
+    const up = await supabase
       .from("guide_section_entries")
       .update({
         title,
@@ -971,9 +1131,19 @@ export function AllianceGuidesCommandCenter() {
       } as any)
       .eq("id", editingEntryId);
 
-    if (error) {
-      setError(error.message);
+    if (up.error) {
+      setError(up.error.message);
       return;
+    }
+
+    if (oldParentId !== nextParentId) {
+      try {
+        setSavingOrder(true);
+        await persistSiblingOrder(oldParentId, getChildren(oldParentId).map((x) => String(x.id)).filter((x) => x !== editingEntryId));
+      } catch {}
+      finally {
+        setSavingOrder(false);
+      }
     }
 
     stopEditEntry();
@@ -1012,6 +1182,7 @@ export function AllianceGuidesCommandCenter() {
     const children = childMap.get(id) || [];
     const hasChildren = children.length > 0;
     const collapsed = hasChildren ? isCollapsed(id) : false;
+    const editAllowed = canEditEntry(entry);
 
     return (
       <div key={id} style={{ display: "grid", gap: 8 }}>
@@ -1022,12 +1193,7 @@ export function AllianceGuidesCommandCenter() {
                 type="button"
                 className="zombie-btn"
                 onClick={() => toggleCollapsed(id)}
-                style={{
-                  width: 34,
-                  minWidth: 34,
-                  padding: "8px 0",
-                  borderRadius: 10,
-                }}
+                style={{ width: 34, minWidth: 34, padding: "8px 0", borderRadius: 10 }}
                 title={collapsed ? "Expand" : "Collapse"}
               >
                 {collapsed ? "▸" : "▾"}
@@ -1053,9 +1219,7 @@ export function AllianceGuidesCommandCenter() {
               background: selected ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
             }}
           >
-            <div style={{ fontWeight: 900 }}>
-              {s(entry.title || "Untitled")}
-            </div>
+            <div style={{ fontWeight: 900 }}>{s(entry.title || "Untitled")}</div>
             <div style={{ opacity: 0.68, fontSize: 12, marginTop: 4 }}>
               {niceDate(entry.updated_at || entry.created_at)}
             </div>
@@ -1066,6 +1230,23 @@ export function AllianceGuidesCommandCenter() {
             </div>
           </button>
         </div>
+
+        {editAllowed ? (
+          <div style={{ marginLeft: depth * 16 + 42, display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" disabled={!canMoveUp(entry) || savingOrder} onClick={() => void moveEntryUpDown(id, -1)}>
+              ↑ Up
+            </button>
+            <button className="zombie-btn" type="button" disabled={!canMoveDown(entry) || savingOrder} onClick={() => void moveEntryUpDown(id, 1)}>
+              ↓ Down
+            </button>
+            <button className="zombie-btn" type="button" disabled={!canIndent(entry, depth) || savingOrder} onClick={() => void indentEntry(id)}>
+              → Indent
+            </button>
+            <button className="zombie-btn" type="button" disabled={!canOutdent(entry, depth) || savingOrder} onClick={() => void outdentEntry(id)}>
+              ← Outdent
+            </button>
+          </div>
+        ) : null}
 
         {hasChildren && !collapsed ? (
           <div style={{ display: "grid", gap: 8 }}>
@@ -1121,6 +1302,7 @@ export function AllianceGuidesCommandCenter() {
               <span>
                 Mode: <b>{canEditAll ? "Manager" : canCreateOwnEntries ? "Own pages" : "View-only"}</b>
                 {roleState.role ? <span> (role: {roleState.role})</span> : null}
+                {savingOrder ? <span> • Saving order…</span> : null}
               </span>
             )}
           </div>
@@ -1269,9 +1451,9 @@ export function AllianceGuidesCommandCenter() {
         <div
           className="zombie-card"
           style={{
-            flex: "0 0 320px",
-            minWidth: 300,
-            maxWidth: 380,
+            flex: "0 0 340px",
+            minWidth: 320,
+            maxWidth: 420,
             width: "100%",
             padding: 12,
             borderRadius: 18,
@@ -1565,7 +1747,7 @@ export function AllianceGuidesCommandCenter() {
 
                             {block.type === "heading" ? (
                               <input
-                                value={String(block.text ?? "")}
+                                value={String((block as any).text ?? "")}
                                 onChange={(e) => updateBlock(block.id, { text: e.target.value })}
                                 className="zombie-input"
                                 style={{ padding: "10px 12px", width: "100%", fontWeight: 900 }}
@@ -1575,7 +1757,7 @@ export function AllianceGuidesCommandCenter() {
 
                             {block.type === "text" ? (
                               <textarea
-                                value={String(block.text ?? "")}
+                                value={String((block as any).text ?? "")}
                                 onChange={(e) => updateBlock(block.id, { text: e.target.value })}
                                 rows={6}
                                 className="zombie-input"
