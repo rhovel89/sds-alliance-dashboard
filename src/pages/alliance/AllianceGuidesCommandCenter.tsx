@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { GUIDE_MEDIA_BUCKET } from "../../lib/storageBuckets";
 import { useGuidesEditAccess } from "../../hooks/useGuidesEditAccess";
 import GuideEntryAttachmentsPanel from "../../components/guides/GuideEntryAttachmentsPanel";
 import GuideSectionAttachmentsPanel from "../../components/guides/GuideSectionAttachmentsPanel";
@@ -9,15 +10,33 @@ import { useRealtimeRefresh } from "../../hooks/useRealtimeRefresh";
 type SectionRow = Record<string, any>;
 type EntryRow = Record<string, any>;
 
-type BlockType = "heading" | "text" | "checklist";
+type BlockType = "heading" | "text" | "checklist" | "image";
 
-type PageBlock = {
-  id: string;
-  type: BlockType;
-  text?: string;
-  items?: string[];
-  checked?: boolean[];
-};
+type PageBlock =
+  | {
+      id: string;
+      type: "heading";
+      text?: string;
+    }
+  | {
+      id: string;
+      type: "text";
+      text?: string;
+    }
+  | {
+      id: string;
+      type: "checklist";
+      items?: string[];
+      checked?: boolean[];
+    }
+  | {
+      id: string;
+      type: "image";
+      storage_path: string;
+      file_name?: string;
+      mime_type?: string | null;
+      caption?: string;
+    };
 
 const SECTION_NAME_COL = "title";
 const BODY_JSON_PREFIX = "__NOTEBOOK_JSON__:";
@@ -28,6 +47,10 @@ function s(v: unknown) {
 
 function makeId() {
   return `blk_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function safeKeyPart(v: string) {
+  return String(v || "").replace(/[^\w.\-]+/g, "_");
 }
 
 function niceDate(v: unknown) {
@@ -59,7 +82,7 @@ function makeChecklistBlock(): PageBlock {
 
 function normalizeBlock(raw: any): PageBlock | null {
   const type = String(raw?.type || "").trim() as BlockType;
-  if (!["heading", "text", "checklist"].includes(type)) return null;
+  if (!["heading", "text", "checklist", "image"].includes(type)) return null;
 
   if (type === "heading") {
     return {
@@ -74,6 +97,19 @@ function normalizeBlock(raw: any): PageBlock | null {
       id: s(raw?.id) || makeId(),
       type,
       text: String(raw?.text ?? ""),
+    };
+  }
+
+  if (type === "image") {
+    const storagePath = String(raw?.storage_path ?? "");
+    if (!storagePath) return null;
+    return {
+      id: s(raw?.id) || makeId(),
+      type: "image",
+      storage_path: storagePath,
+      file_name: String(raw?.file_name ?? ""),
+      mime_type: raw?.mime_type ?? null,
+      caption: String(raw?.caption ?? ""),
     };
   }
 
@@ -118,22 +154,51 @@ function serializeBlocks(blocks: PageBlock[]): string {
         return {
           id: b!.id,
           type: b!.type,
-          text: String(b!.text ?? ""),
+          text: String((b as any).text ?? ""),
+        };
+      }
+
+      if (b!.type === "image") {
+        return {
+          id: b!.id,
+          type: "image",
+          storage_path: (b as any).storage_path,
+          file_name: String((b as any).file_name ?? ""),
+          mime_type: (b as any).mime_type ?? null,
+          caption: String((b as any).caption ?? ""),
         };
       }
 
       return {
         id: b!.id,
         type: "checklist",
-        items: Array.isArray(b!.items) ? b!.items.map((x) => String(x ?? "")) : [],
-        checked: Array.isArray(b!.checked) ? b!.checked.map((x) => !!x) : [],
+        items: Array.isArray((b as any).items) ? (b as any).items.map((x: any) => String(x ?? "")) : [],
+        checked: Array.isArray((b as any).checked) ? (b as any).checked.map((x: any) => !!x) : [],
       };
     });
 
   return BODY_JSON_PREFIX + JSON.stringify(cleaned);
 }
 
-function renderBlock(block: PageBlock) {
+async function resolveImageUrls(blocks: PageBlock[]): Promise<Record<string, string>> {
+  const next: Record<string, string> = {};
+
+  for (const block of blocks) {
+    if (block.type !== "image") continue;
+
+    const signed = await supabase.storage
+      .from(GUIDE_MEDIA_BUCKET)
+      .createSignedUrl(block.storage_path, 60 * 30);
+
+    if (!signed.error && signed.data?.signedUrl) {
+      next[block.id] = signed.data.signedUrl;
+    }
+  }
+
+  return next;
+}
+
+function renderBlock(block: PageBlock, imageUrls: Record<string, string>) {
   if (block.type === "heading") {
     return (
       <div
@@ -176,6 +241,51 @@ function renderBlock(block: PageBlock) {
             </label>
           ))
         )}
+      </div>
+    );
+  }
+
+  if (block.type === "image") {
+    return (
+      <div
+        key={block.id}
+        style={{
+          display: "grid",
+          gap: 8,
+        }}
+      >
+        {imageUrls[block.id] ? (
+          <img
+            src={imageUrls[block.id]}
+            alt={block.file_name || "Guide image"}
+            style={{
+              display: "block",
+              width: "100%",
+              height: "auto",
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              minHeight: 220,
+              display: "grid",
+              placeItems: "center",
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.08)",
+              opacity: 0.72,
+            }}
+          >
+            image loading…
+          </div>
+        )}
+
+        {s(block.caption) ? (
+          <div style={{ opacity: 0.74, fontSize: 12 }}>
+            {block.caption}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -236,6 +346,11 @@ export function AllianceGuidesCommandCenter() {
   const [editingEntryTitle, setEditingEntryTitle] = useState("");
   const [editingBlocks, setEditingBlocks] = useState<PageBlock[]>([]);
 
+  const [selectedImageUrls, setSelectedImageUrls] = useState<Record<string, string>>({});
+  const [editingImageUrls, setEditingImageUrls] = useState<Record<string, string>>({});
+
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+
   const selectedSection = useMemo(
     () => sections.find((x) => String(x.id) === String(selectedSectionId || "")) ?? null,
     [sections, selectedSectionId]
@@ -270,6 +385,7 @@ export function AllianceGuidesCommandCenter() {
     setEditingEntryId(null);
     setEditingEntryTitle("");
     setEditingBlocks([]);
+    setEditingImageUrls({});
   }
 
   function addBlock(type: BlockType) {
@@ -282,7 +398,7 @@ export function AllianceGuidesCommandCenter() {
 
   function updateBlock(blockId: string, patch: Partial<PageBlock>) {
     setEditingBlocks((prev) =>
-      prev.map((b) => (String(b.id) === String(blockId) ? { ...b, ...patch } : b))
+      prev.map((b) => (String(b.id) === String(blockId) ? ({ ...b, ...patch } as PageBlock) : b))
     );
   }
 
@@ -352,6 +468,48 @@ export function AllianceGuidesCommandCenter() {
     );
   }
 
+  async function addImageBlocks(files: FileList | null) {
+    if (!files || !files.length) return;
+    if (!editingEntryId || !selectedSectionId) {
+      setError("Create and open a page first, then add images while editing.");
+      return;
+    }
+
+    const userRes = await supabase.auth.getUser();
+    const uid = userRes.data?.user?.id || null;
+    if (!uid) {
+      setError("You must be logged in to upload images.");
+      return;
+    }
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const safeName = safeKeyPart(file.name || `image-${Date.now()}.png`);
+      const storagePath = `${allianceCode}/inline/${selectedSectionId}/${editingEntryId}/${Date.now()}-${safeName}`;
+
+      const up = await supabase.storage.from(GUIDE_MEDIA_BUCKET).upload(storagePath, file, {
+        upsert: false,
+        contentType: file.type || undefined,
+      });
+
+      if (up.error) {
+        setError(up.error.message);
+        return;
+      }
+
+      const newBlock: PageBlock = {
+        id: makeId(),
+        type: "image",
+        storage_path: storagePath,
+        file_name: file.name || safeName,
+        mime_type: file.type || null,
+        caption: "",
+      };
+
+      setEditingBlocks((prev) => [...prev, newBlock]);
+    }
+  }
+
   useRealtimeRefresh({
     channel: `rt_guides_${allianceCode}`,
     enabled: !!allianceCode,
@@ -381,6 +539,24 @@ export function AllianceGuidesCommandCenter() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    let dead = false;
+    (async () => {
+      const urls = await resolveImageUrls(selectedEntryBlocks);
+      if (!dead) setSelectedImageUrls(urls);
+    })();
+    return () => { dead = true; };
+  }, [selectedEntryBlocks]);
+
+  useEffect(() => {
+    let dead = false;
+    (async () => {
+      const urls = await resolveImageUrls(editingBlocks);
+      if (!dead) setEditingImageUrls(urls);
+    })();
+    return () => { dead = true; };
+  }, [editingBlocks]);
 
   async function loadSections() {
     if (!allianceCode) return;
@@ -997,7 +1173,7 @@ export function AllianceGuidesCommandCenter() {
                           gap: 16,
                         }}
                       >
-                        {selectedEntryBlocks.map(renderBlock)}
+                        {selectedEntryBlocks.map((block) => renderBlock(block, selectedImageUrls))}
                       </div>
                     </>
                   ) : (
@@ -1006,7 +1182,7 @@ export function AllianceGuidesCommandCenter() {
                         <div>
                           <div style={{ fontWeight: 900, fontSize: 16 }}>Edit page</div>
                           <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-                            Add headings, note blocks, and checklist blocks.
+                            Add headings, notes, checklists, and inline image blocks.
                           </div>
                         </div>
 
@@ -1020,6 +1196,20 @@ export function AllianceGuidesCommandCenter() {
                           <button className="zombie-btn" type="button" onClick={() => addBlock("checklist")}>
                             + Checklist
                           </button>
+                          <button className="zombie-btn" type="button" onClick={() => imageInputRef.current?.click()}>
+                            + Image Block
+                          </button>
+                          <input
+                            ref={imageInputRef}
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            style={{ display: "none" }}
+                            onChange={(e) => {
+                              void addImageBlocks(e.target.files);
+                              e.target.value = "";
+                            }}
+                          />
                         </div>
                       </div>
 
@@ -1046,7 +1236,13 @@ export function AllianceGuidesCommandCenter() {
                           >
                             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                               <div style={{ fontWeight: 900, opacity: 0.82 }}>
-                                {block.type === "heading" ? "Heading" : block.type === "checklist" ? "Checklist" : "Note"} block
+                                {block.type === "heading"
+                                  ? "Heading"
+                                  : block.type === "checklist"
+                                  ? "Checklist"
+                                  : block.type === "image"
+                                  ? "Image"
+                                  : "Note"} block
                               </div>
 
                               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1106,6 +1302,49 @@ export function AllianceGuidesCommandCenter() {
                                 </div>
                               </div>
                             ) : null}
+
+                            {block.type === "image" ? (
+                              <div style={{ display: "grid", gap: 10 }}>
+                                {editingImageUrls[block.id] ? (
+                                  <img
+                                    src={editingImageUrls[block.id]}
+                                    alt={block.file_name || "Guide image"}
+                                    style={{
+                                      display: "block",
+                                      width: "100%",
+                                      height: "auto",
+                                      borderRadius: 14,
+                                      border: "1px solid rgba(255,255,255,0.08)",
+                                    }}
+                                  />
+                                ) : (
+                                  <div
+                                    style={{
+                                      minHeight: 220,
+                                      display: "grid",
+                                      placeItems: "center",
+                                      borderRadius: 14,
+                                      border: "1px solid rgba(255,255,255,0.08)",
+                                      opacity: 0.72,
+                                    }}
+                                  >
+                                    image loading…
+                                  </div>
+                                )}
+
+                                <div style={{ opacity: 0.72, fontSize: 12 }}>
+                                  {block.file_name || "Image"}
+                                </div>
+
+                                <input
+                                  value={String(block.caption ?? "")}
+                                  onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
+                                  className="zombie-input"
+                                  style={{ padding: "10px 12px", width: "100%" }}
+                                  placeholder="Caption (optional)"
+                                />
+                              </div>
+                            ) : null}
                           </div>
                         ))}
 
@@ -1124,7 +1363,6 @@ export function AllianceGuidesCommandCenter() {
                   <div style={{ marginTop: 18 }}>
                     <GuideEntryAttachmentsPanel
                       allianceCode={allianceCode}
-                      sectionId={String(selectedSectionId)}
                       entryId={String(selectedEntry.id)}
                       canEdit={canEditEntry(selectedEntry)}
                     />
