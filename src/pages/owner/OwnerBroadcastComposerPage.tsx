@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseBrowserClient";
 import SupportBundleButton from "../../components/system/SupportBundleButton";
-import { sendDiscordBot } from "../../lib/discordEdgeSend";
+import { callDiscordBroadcast, sendDiscordBot } from "../../lib/discordEdgeSend";
 import { fetchRoleStoreFromDb, fetchChannelStoreFromDb } from "../../lib/discordMappingsStore";
 
 type RoleMapStore = {
@@ -478,23 +478,9 @@ export default function OwnerBroadcastComposerPage() {
 
     setSending(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-
-      if (!accessToken) {
-        throw new Error("No active Supabase session. Sign in again and retry.");
-      }
-
-      const r = await supabase.functions.invoke("discord-broadcast", {
-        body: payload,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if ((r as any).error) {
-        const e = (r as any).error;
-        throw new Error(e?.message || JSON.stringify(e));
+      const r = await callDiscordBroadcast(payload);
+      if (!r.ok) {
+        throw new Error(r.error || JSON.stringify(r.data || {}));
       }
 
       appendLog({
@@ -714,6 +700,7 @@ return (<div style={{ padding: 14 }}>
     </div>
   );
 }
+
 
 
 
