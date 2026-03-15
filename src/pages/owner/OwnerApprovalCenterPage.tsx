@@ -78,7 +78,18 @@ export default function OwnerApprovalCenterPage() {
   }
 
   return (
-    <div style={{ width: "100%", maxWidth: 1440, margin: "0 auto", padding: 16, display: "grid", gap: 12 }}>
+    <div
+      style={{
+        width: "calc(100vw - 32px)",
+        maxWidth: "none",
+        marginLeft: "calc(50% - 50vw + 16px)",
+        marginRight: 0,
+        padding: 16,
+        display: "grid",
+        gap: 12,
+        boxSizing: "border-box",
+      }}
+    >
       <div
         className="zombie-card"
         style={{
@@ -211,3 +222,4 @@ export default function OwnerApprovalCenterPage() {
     </div>
   );
 }
+
