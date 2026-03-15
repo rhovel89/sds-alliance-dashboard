@@ -188,6 +188,7 @@ export default function AppRoutes() {
 
       {/* This must handle BOTH auth callback AND dashboard selector */}
       <Route path="/dashboard" element={<DashboardEntry />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* Onboarding */}
       <Route path="/onboarding" element={<RequestAccessPage />} />
@@ -313,6 +314,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
