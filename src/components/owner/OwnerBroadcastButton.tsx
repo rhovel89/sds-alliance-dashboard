@@ -1,16 +1,18 @@
-import React, { useState } from "react";
-import { OwnerBroadcastModal } from "./OwnerBroadcastModal";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
 export function OwnerBroadcastButton() {
-  const [open, setOpen] = useState(false);
+  const nav = useNavigate();
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => setOpen(true)}>
-        📣 Open Owner Broadcast
-      </button>
-      <OwnerBroadcastModal open={open} onClose={() => setOpen(false)} />
-    </div>
+    <button
+      type="button"
+      className="zombie-btn"
+      onClick={() => nav("/owner/broadcast")}
+      style={{ padding: "10px 12px" }}
+    >
+      📣 Open Owner Broadcast
+    </button>
   );
 }
 
