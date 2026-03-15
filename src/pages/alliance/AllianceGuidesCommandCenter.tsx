@@ -548,42 +548,22 @@ export function AllianceGuidesCommandCenter() {
   }
 
   async function saveEntryMeta(entry: EntryRow, nextMeta: Partial<NotebookMeta>) {
-    const doc = parseStoredBody(entry.body ?? "");
-    const merged: NotebookMeta = {
-      parentEntryId: doc.meta.parentEntryId || null,
-      sortKey: doc.meta.sortKey ?? null,
-      ...nextMeta,
-    };
+  const doc = parseStoredBody(entry.body ?? "");
+  const merged: NotebookMeta = {
+    parentEntryId: doc.meta.parentEntryId || null,
+    sortKey: doc.meta.sortKey ?? null,
+    ...nextMeta,
+  };
 
-    const body = serializeDoc(merged, doc.blocks);
+  const body = serializeDoc(merged, doc.blocks);
 
-    const up = await supabase
-      .from("guide_section_entries")
-      .update({
-        body,
-        updated_at: new Date().toISOString(),
-      } as any)
-      .eq("id", String(entry.id));
+  return await safeUpdateById("guide_section_entries", String(entry.id), {
+    body,
+    updated_at: new Date().toISOString(),
+  });
+}
 
-    return up;
-  }
-
-  async function persistSiblingOrder(parentId: string | null, orderedIds: string[]) {
-    for (let i = 0; i < orderedIds.length; i++) {
-      const id = String(orderedIds[i] || "");
-      const entry = entryMapById.get(id);
-      if (!entry) continue;
-
-      const up = await saveEntryMeta(entry, {
-        parentEntryId: parentId || null,
-        sortKey: i + 1,
-      });
-
-      if (up.error) throw new Error(up.error.message);
-    }
-  }
-
-  async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
+async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
     const id = String(entryId || "");
     if (!id) return;
 
@@ -1003,33 +983,30 @@ export function AllianceGuidesCommandCenter() {
   }
 
   async function saveEditSection() {
-    if (!canEditAll) return;
-    if (!editingSectionId) return;
+  if (!canEditAll) return;
+  if (!editingSectionId) return;
 
-    const name = editingSectionName.trim();
-    if (!name) return;
+  const name = editingSectionName.trim();
+  if (!name) return;
 
-    setError(null);
+  setError(null);
 
-    const { error } = await supabase
-      .from("guide_sections")
-      .update({
-        [SECTION_NAME_COL]: name,
-        updated_at: new Date().toISOString(),
-      } as any)
-      .eq("id", editingSectionId);
+  const up = await safeUpdateById("guide_sections", editingSectionId, {
+    [SECTION_NAME_COL]: name,
+    updated_at: new Date().toISOString(),
+  });
 
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    setEditingSectionId(null);
-    setEditingSectionName("");
-    await loadSections();
+  if (up.error) {
+    setError(up.error.message);
+    return;
   }
 
-  async function deleteSection(sectionId: string) {
+  setEditingSectionId(null);
+  setEditingSectionName("");
+  await loadSections();
+}
+
+async function deleteSection(sectionId: string) {
     if (!canEditAll) return;
     const ok = confirm("Delete this section? Entries inside it will be deleted too.");
     if (!ok) return;
@@ -1098,59 +1075,59 @@ export function AllianceGuidesCommandCenter() {
   }
 
   async function saveEditEntry() {
-    if (!editingEntryId || !selectedSectionId) return;
+  if (!editingEntryId || !selectedSectionId) return;
 
-    const existing = entries.find((x) => String(x.id) === String(editingEntryId));
-    if (!existing || !canEditEntry(existing)) return;
+  const existing = entries.find((x) => String(x.id) === String(editingEntryId));
+  if (!existing || !canEditEntry(existing)) return;
 
-    const title = editingEntryTitle.trim();
-    if (!title) return;
+  const title = editingEntryTitle.trim();
+  if (!title) return;
 
-    const currentDoc = parseStoredBody(existing.body ?? "");
-    const oldParentId = currentDoc.meta.parentEntryId || null;
-    const nextParentId = editingParentId && editingParentId !== editingEntryId ? editingParentId : null;
+  const currentDoc = parseStoredBody(existing.body ?? "");
+  const oldParentId = currentDoc.meta.parentEntryId || null;
+  const nextParentId = editingParentId && editingParentId !== editingEntryId ? editingParentId : null;
 
-    const nextSortKey =
-      oldParentId === nextParentId
-        ? (currentDoc.meta.sortKey ?? getNextSortKey(nextParentId))
-        : getNextSortKey(nextParentId);
+  const nextSortKey =
+    oldParentId === nextParentId
+      ? (currentDoc.meta.sortKey ?? getNextSortKey(nextParentId))
+      : getNextSortKey(nextParentId);
 
-    const body = serializeDoc(
-      { parentEntryId: nextParentId, sortKey: nextSortKey },
-      editingBlocks
-    );
+  const body = serializeDoc(
+    { parentEntryId: nextParentId, sortKey: nextSortKey },
+    editingBlocks
+  );
 
-    setError(null);
+  setError(null);
 
-    const up = await supabase
-      .from("guide_section_entries")
-      .update({
-        title,
-        body,
-        updated_at: new Date().toISOString(),
-      } as any)
-      .eq("id", editingEntryId);
+  const up = await safeUpdateById("guide_section_entries", editingEntryId, {
+    title,
+    body,
+    updated_at: new Date().toISOString(),
+  });
 
-    if (up.error) {
-      setError(up.error.message);
-      return;
-    }
-
-    if (oldParentId !== nextParentId) {
-      try {
-        setSavingOrder(true);
-        await persistSiblingOrder(oldParentId, getChildren(oldParentId).map((x) => String(x.id)).filter((x) => x !== editingEntryId));
-      } catch {}
-      finally {
-        setSavingOrder(false);
-      }
-    }
-
-    stopEditEntry();
-    await loadEntries(selectedSectionId);
+  if (up.error) {
+    setError(up.error.message);
+    return;
   }
 
-  async function deleteEntry(entryId: string) {
+  if (oldParentId !== nextParentId) {
+    try {
+      setSavingOrder(true);
+      await persistSiblingOrder(
+        oldParentId,
+        getChildren(oldParentId).map((x) => String(x.id)).filter((x) => x !== editingEntryId)
+      );
+    } catch {}
+    finally {
+      setSavingOrder(false);
+    }
+  }
+
+  stopEditEntry();
+  await loadEntries(selectedSectionId);
+}
+
+async function deleteEntry(entryId: string) {
     if (!selectedSectionId) return;
 
     const existing = entries.find((x) => String(x.id) === String(entryId));
@@ -1883,3 +1860,31 @@ export function AllianceGuidesCommandCenter() {
     </div>
   );
 }
+function isMissingColumnError(error: any, col: string) {
+  const msg = String(error?.message || "").toLowerCase();
+  return msg.includes(col.toLowerCase()) && (msg.includes("column") || msg.includes("schema cache"));
+}
+
+async function safeUpdateById(
+  table: string,
+  id: string,
+  patch: Record<string, any>
+) {
+  const run = (p: Record<string, any>) =>
+    supabase.from(table).update(p as any).eq("id", id);
+
+  let res = await run(patch);
+  if (!res.error) return res;
+
+  if (
+    Object.prototype.hasOwnProperty.call(patch, "updated_at") &&
+    isMissingColumnError(res.error, "updated_at")
+  ) {
+    const retry = { ...patch };
+    delete retry.updated_at;
+    res = await run(retry);
+  }
+
+  return res;
+}
+
