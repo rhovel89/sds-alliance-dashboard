@@ -560,10 +560,12 @@ async function saveEntryMeta(entry: EntryRow, nextMeta: Partial<NotebookMeta>) {
 
   const body = serializeDoc(merged, doc.blocks);
 
-  return safeUpdateById("guide_section_entries", String(entry.id), {
-    body,
-    updated_at: new Date().toISOString(),
-  });
+  return supabase
+    .from("guide_section_entries")
+    .update({
+      body,
+    } as any)
+    .eq("id", String(entry.id));
 }
 async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
     const id = String(entryId || "");
@@ -993,13 +995,16 @@ async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
 
   setError(null);
 
-  const up = await safeUpdateById("guide_sections", editingSectionId, {
-    [SECTION_NAME_COL]: name,
-    updated_at: new Date().toISOString(),
-  });
+  const up = await supabase
+    .from("guide_sections")
+    .update({
+      [SECTION_NAME_COL]: name,
+    } as any)
+    .eq("id", editingSectionId);
 
   if (up.error) {
     const msg = String(up.error.message || "Section save failed");
+    console.error("guide section save failed", up.error);
     setError(msg);
     alert(msg);
     return;
@@ -1102,14 +1107,22 @@ async function deleteSection(sectionId: string) {
 
   setError(null);
 
-  const up = await safeUpdateById("guide_section_entries", editingEntryId, {
-    title,
-    body,
-    updated_at: new Date().toISOString(),
-  });
+  const up = await supabase
+    .from("guide_section_entries")
+    .update({
+      title,
+      body,
+    } as any)
+    .eq("id", editingEntryId);
 
   if (up.error) {
     const msg = String(up.error.message || "Entry save failed");
+    console.error("guide entry save failed", {
+      error: up.error,
+      entryId: editingEntryId,
+      titleLength: title.length,
+      bodyPreview: body.slice(0, 400),
+    });
     setError(msg);
     alert(msg);
     return;
@@ -1122,8 +1135,9 @@ async function deleteSection(sectionId: string) {
         oldParentId,
         getChildren(oldParentId).map((x) => String(x.id)).filter((x) => x !== editingEntryId)
       );
-    } catch {}
-    finally {
+    } catch (e) {
+      console.error("persistSiblingOrder failed", e);
+    } finally {
       setSavingOrder(false);
     }
   }
@@ -1891,6 +1905,7 @@ async function safeUpdateById(
 
   return res;
 }
+
 
 
 
