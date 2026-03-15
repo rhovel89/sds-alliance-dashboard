@@ -11,9 +11,23 @@ type EntryRow = Record<string, any>;
 
 const SECTION_NAME_COL = "title";
 
+function s(v: unknown) {
+  return String(v ?? "").trim();
+}
+
+function niceDate(v: unknown) {
+  try {
+    const d = new Date(String(v ?? ""));
+    if (Number.isNaN(d.getTime())) return String(v ?? "");
+    return d.toLocaleString();
+  } catch {
+    return String(v ?? "");
+  }
+}
+
 export function AllianceGuidesCommandCenter() {
   const { alliance_id } = useParams();
-  const allianceCode = useMemo(() => (alliance_id || "").toString(), [alliance_id]);
+  const allianceCode = useMemo(() => String(alliance_id || "").trim().toUpperCase(), [alliance_id]);
 
   const [currentUserId, setCurrentUserId] = useState<string>("");
 
@@ -33,6 +47,7 @@ export function AllianceGuidesCommandCenter() {
 
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 
   const [entries, setEntries] = useState<EntryRow[]>([]);
 
@@ -49,6 +64,16 @@ export function AllianceGuidesCommandCenter() {
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editingEntryTitle, setEditingEntryTitle] = useState("");
   const [editingEntryBody, setEditingEntryBody] = useState("");
+
+  const selectedSection = useMemo(
+    () => sections.find((x) => String(x.id) === String(selectedSectionId || "")) ?? null,
+    [sections, selectedSectionId]
+  );
+
+  const selectedEntry = useMemo(
+    () => entries.find((x) => String(x.id) === String(selectedEntryId || "")) ?? null,
+    [entries, selectedEntryId]
+  );
 
   function isOwnEntry(entry: EntryRow) {
     return !!currentUserId && String(entry?.created_by || "") === String(currentUserId);
@@ -110,10 +135,11 @@ export function AllianceGuidesCommandCenter() {
     setSections(rows);
 
     if (rows.length > 0) {
-      const stillExists = selectedSectionId && rows.some((r) => r.id === selectedSectionId);
-      if (!stillExists) setSelectedSectionId(rows[0].id);
+      const stillExists = selectedSectionId && rows.some((r) => String(r.id) === String(selectedSectionId));
+      if (!stillExists) setSelectedSectionId(String(rows[0].id));
     } else {
       setSelectedSectionId(null);
+      setSelectedEntryId(null);
     }
   }
 
@@ -132,10 +158,19 @@ export function AllianceGuidesCommandCenter() {
     if (error) {
       setError(error.message);
       setEntries([]);
+      setSelectedEntryId(null);
       return;
     }
 
-    setEntries((data || []) as EntryRow[]);
+    const rows = (data || []) as EntryRow[];
+    setEntries(rows);
+
+    if (rows.length > 0) {
+      const stillExists = selectedEntryId && rows.some((r) => String(r.id) === String(selectedEntryId));
+      if (!stillExists) setSelectedEntryId(String(rows[0].id));
+    } else {
+      setSelectedEntryId(null);
+    }
   }
 
   useEffect(() => {
@@ -144,7 +179,10 @@ export function AllianceGuidesCommandCenter() {
 
   useEffect(() => {
     if (selectedSectionId) void loadEntries(selectedSectionId);
-    else setEntries([]);
+    else {
+      setEntries([]);
+      setSelectedEntryId(null);
+    }
   }, [selectedSectionId]);
 
   async function createSection() {
@@ -172,26 +210,25 @@ export function AllianceGuidesCommandCenter() {
 
   function startEditSection(section: SectionRow) {
     if (!canEditAll) return;
-    setEditingSectionId(section.id);
-    setEditingSectionName((section[SECTION_NAME_COL] || "").toString());
+    setEditingSectionId(String(section.id));
+    setEditingSectionName(String(section[SECTION_NAME_COL] || ""));
   }
 
   async function saveEditSection() {
     if (!canEditAll) return;
     if (!editingSectionId) return;
+
     const name = editingSectionName.trim();
     if (!name) return;
 
     setError(null);
 
-    const payload: Record<string, any> = {
-      [SECTION_NAME_COL]: name,
-      updated_at: new Date().toISOString(),
-    };
-
     const { error } = await supabase
       .from("guide_sections")
-      .update(payload)
+      .update({
+        [SECTION_NAME_COL]: name,
+        updated_at: new Date().toISOString(),
+      } as any)
       .eq("id", editingSectionId);
 
     if (error) {
@@ -206,12 +243,16 @@ export function AllianceGuidesCommandCenter() {
 
   async function deleteSection(sectionId: string) {
     if (!canEditAll) return;
-    const ok = confirm("Delete this section? Entries inside will be deleted too.");
+    const ok = confirm("Delete this section? Entries inside it will be deleted too.");
     if (!ok) return;
 
     setError(null);
 
-    const { error } = await supabase.from("guide_sections").delete().eq("id", sectionId);
+    const { error } = await supabase
+      .from("guide_sections")
+      .delete()
+      .eq("id", sectionId);
+
     if (error) {
       setError(error.message);
       return;
@@ -244,22 +285,28 @@ export function AllianceGuidesCommandCenter() {
       created_by: userRes.user.id,
     };
 
-    const { error } = await supabase.from("guide_section_entries").insert(payload);
-    if (error) {
-      setError(error.message);
+    const ins = await supabase
+      .from("guide_section_entries")
+      .insert(payload)
+      .select("*")
+      .single();
+
+    if (ins.error) {
+      setError(ins.error.message);
       return;
     }
 
     setNewEntryTitle("");
     setNewEntryBody("");
     await loadEntries(selectedSectionId);
+    if (ins.data?.id) setSelectedEntryId(String(ins.data.id));
   }
 
   function startEditEntry(entry: EntryRow) {
     if (!canEditEntry(entry)) return;
-    setEditingEntryId(entry.id);
-    setEditingEntryTitle((entry.title || "").toString());
-    setEditingEntryBody((entry.body || "").toString());
+    setEditingEntryId(String(entry.id));
+    setEditingEntryTitle(String(entry.title || ""));
+    setEditingEntryBody(String(entry.body || ""));
   }
 
   async function saveEditEntry() {
@@ -274,15 +321,13 @@ export function AllianceGuidesCommandCenter() {
 
     setError(null);
 
-    const payload: Record<string, any> = {
-      title,
-      body,
-      updated_at: new Date().toISOString(),
-    };
-
     const { error } = await supabase
       .from("guide_section_entries")
-      .update(payload)
+      .update({
+        title,
+        body,
+        updated_at: new Date().toISOString(),
+      } as any)
       .eq("id", editingEntryId);
 
     if (error) {
@@ -302,12 +347,16 @@ export function AllianceGuidesCommandCenter() {
     const existing = entries.find((x) => String(x.id) === String(entryId));
     if (!existing || !canEditEntry(existing)) return;
 
-    const ok = confirm("Delete this entry?");
+    const ok = confirm("Delete this page?");
     if (!ok) return;
 
     setError(null);
 
-    const { error } = await supabase.from("guide_section_entries").delete().eq("id", entryId);
+    const { error } = await supabase
+      .from("guide_section_entries")
+      .delete()
+      .eq("id", entryId);
+
     if (error) {
       setError(error.message);
       return;
@@ -319,250 +368,436 @@ export function AllianceGuidesCommandCenter() {
   if (!allianceCode) return <div style={{ padding: 16 }}>Missing alliance id in URL.</div>;
 
   return (
-    <div style={{ padding: 16 }}>
-      <h2 style={{ marginTop: 0 }}>Alliance Guides</h2>
+    <div
+      style={{
+        padding: 16,
+        display: "grid",
+        gap: 14,
+        width: "100%",
+        maxWidth: "100%",
+        minWidth: 0,
+        overflowX: "hidden",
+      }}
+    >
+      <div
+        className="zombie-card"
+        style={{
+          padding: 14,
+          borderRadius: 18,
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: "linear-gradient(180deg, rgba(22,26,36,0.96), rgba(12,15,22,0.96))",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.12em", opacity: 0.68 }}>
+              ALLIANCE NOTEBOOK
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 950, marginTop: 4 }}>
+              {allianceCode} Guides
+            </div>
+            <div style={{ opacity: 0.78, fontSize: 13, marginTop: 6 }}>
+              Sections across the top. Pages down the left. Selected page on the right.
+            </div>
+          </div>
 
-      <div style={{ marginBottom: 12, opacity: 0.9 }}>
-        {roleState.loading ? (
-          <span>Checking permissions…</span>
-        ) : roleState.error ? (
-          <span>Role check issue: {roleState.error}</span>
-        ) : (
-          <span>
-            Mode: <b>{canEditAll ? "Manager" : canCreateOwnEntries ? "Own entries" : "View-only"}</b>
-            {roleState.role ? <span> (role: {roleState.role})</span> : null}
-          </span>
-        )}
-      </div>
-
-      {error ? (
-        <div style={{ marginBottom: 12, padding: 10, border: "1px solid #ff6b6b" }}>
-          <b>Error:</b> {error}
-          <div style={{ marginTop: 6, opacity: 0.9 }}>
-            Backend RLS still enforces permissions. If you should have more access, membership/RLS needs review.
+          <div style={{ opacity: 0.86, fontSize: 13 }}>
+            {roleState.loading ? (
+              <span>Checking permissions…</span>
+            ) : roleState.error ? (
+              <span>Role check issue: {roleState.error}</span>
+            ) : (
+              <span>
+                Mode: <b>{canEditAll ? "Manager" : canCreateOwnEntries ? "Own pages" : "View-only"}</b>
+                {roleState.role ? <span> (role: {roleState.role})</span> : null}
+              </span>
+            )}
           </div>
         </div>
-      ) : null}
 
-      <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-        <div style={{ width: 320, border: "1px solid rgba(255,255,255,0.15)", padding: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <b>Sections</b>
-            {loadingSections ? <span style={{ opacity: 0.8 }}>Loading…</span> : null}
+        {error ? (
+          <div
+            style={{
+              marginTop: 12,
+              padding: 10,
+              borderRadius: 12,
+              border: "1px solid rgba(255,120,120,0.35)",
+              background: "rgba(255,120,120,0.08)",
+            }}
+          >
+            <b>Error:</b> {error}
           </div>
+        ) : null}
+      </div>
+
+      <div
+        className="zombie-card"
+        style={{
+          padding: 12,
+          borderRadius: 18,
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: "rgba(255,255,255,0.03)",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ display: "flex", gap: 10, alignItems: "stretch", overflowX: "auto", paddingBottom: 6 }}>
+          {sections.map((section) => {
+            const selected = String(section.id) === String(selectedSectionId || "");
+            const title = s(section[SECTION_NAME_COL] || section.title || section.name || "Untitled");
+
+            return (
+              <button
+                key={String(section.id)}
+                type="button"
+                className="zombie-btn"
+                onClick={() => {
+                  setSelectedSectionId(String(section.id));
+                  setEditingSectionId(null);
+                  setEditingSectionName("");
+                }}
+                style={{
+                  padding: "12px 16px",
+                  borderRadius: 14,
+                  whiteSpace: "nowrap",
+                  fontWeight: selected ? 900 : 700,
+                  border: selected ? "1px solid rgba(255,255,255,0.20)" : "1px solid rgba(255,255,255,0.10)",
+                  background: selected ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
+                }}
+              >
+                {title}
+              </button>
+            );
+          })}
 
           {canEditAll ? (
-            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: 4 }}>
               <input
                 value={newSectionName}
                 onChange={(e) => setNewSectionName(e.target.value)}
-                placeholder="New section name"
-                style={{ flex: 1 }}
+                placeholder="New section"
+                className="zombie-input"
+                style={{ padding: "10px 12px", minWidth: 180 }}
               />
-              <button onClick={createSection}>Add</button>
+              <button className="zombie-btn" type="button" onClick={createSection}>
+                + Section
+              </button>
             </div>
-          ) : (
-            <div style={{ marginTop: 10, opacity: 0.85 }}>
-              You can view sections and add your own entries inside them.
-            </div>
-          )}
+          ) : null}
 
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-            {sections.map((s) => {
-              const name = (s[SECTION_NAME_COL] || (s.title ?? s.name ?? s.section_name) || "Untitled").toString();
-              const selected = s.id === selectedSectionId;
+          {!sections.length ? (
+            <div style={{ opacity: 0.75, padding: "12px 4px" }}>No sections yet.</div>
+          ) : null}
+        </div>
+      </div>
+
+      {selectedSection ? (
+        <div
+          className="zombie-card"
+          style={{
+            padding: 12,
+            borderRadius: 18,
+            border: "1px solid rgba(255,255,255,0.10)",
+            background: "rgba(255,255,255,0.03)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <div>
+              <div style={{ opacity: 0.7, fontSize: 12 }}>Selected section</div>
+              <div style={{ fontSize: 20, fontWeight: 900, marginTop: 4 }}>
+                {s(selectedSection[SECTION_NAME_COL] || selectedSection.title || "Untitled")}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <GuideSectionAttachmentsPanel
+                allianceCode={allianceCode}
+                sectionId={String(selectedSection.id)}
+                canEdit={canEditAll}
+              />
+
+              {canEditAll ? (
+                <>
+                  <button className="zombie-btn" type="button" onClick={() => startEditSection(selectedSection)}>
+                    Rename Section
+                  </button>
+                  <button className="zombie-btn" type="button" onClick={() => void deleteSection(String(selectedSection.id))}>
+                    Delete Section
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </div>
+
+          {canEditAll && editingSectionId === String(selectedSection.id) ? (
+            <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                value={editingSectionName}
+                onChange={(e) => setEditingSectionName(e.target.value)}
+                className="zombie-input"
+                style={{ padding: "10px 12px", minWidth: 240, flex: 1 }}
+              />
+              <button className="zombie-btn" type="button" onClick={() => void saveEditSection()}>
+                Save
+              </button>
+              <button
+                className="zombie-btn"
+                type="button"
+                onClick={() => {
+                  setEditingSectionId(null);
+                  setEditingSectionName("");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start", minWidth: 0 }}>
+        <div
+          className="zombie-card"
+          style={{
+            flex: "0 0 280px",
+            minWidth: 260,
+            maxWidth: 320,
+            width: "100%",
+            padding: 12,
+            borderRadius: 18,
+            border: "1px solid rgba(255,255,255,0.10)",
+            background: "rgba(255,255,255,0.03)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+            <div>
+              <div style={{ opacity: 0.7, fontSize: 12 }}>Pages</div>
+              <div style={{ fontWeight: 900, fontSize: 18, marginTop: 2 }}>
+                {loadingEntries ? "Loading…" : `${entries.length} page${entries.length === 1 ? "" : "s"}`}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            {entries.map((entry) => {
+              const selected = String(entry.id) === String(selectedEntryId || "");
+              const own = isOwnEntry(entry);
 
               return (
-                <div
-                  key={s.id}
-                  style={{
-                    padding: 10,
-                    border: selected ? "1px solid rgba(120,255,120,0.5)" : "1px solid rgba(255,255,255,0.12)",
-                    cursor: "pointer",
+                <button
+                  key={String(entry.id)}
+                  type="button"
+                  onClick={() => {
+                    setSelectedEntryId(String(entry.id));
+                    setEditingEntryId(null);
+                    setEditingEntryTitle("");
+                    setEditingEntryBody("");
                   }}
-                  onClick={() => setSelectedSectionId(s.id)}
+                  className="zombie-btn"
+                  style={{
+                    textAlign: "left",
+                    padding: 12,
+                    borderRadius: 14,
+                    border: selected ? "1px solid rgba(255,255,255,0.20)" : "1px solid rgba(255,255,255,0.10)",
+                    background: selected ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
+                  }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {name}
-                    </div>
-
-                    {canEditAll ? (
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startEditSection(s);
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void deleteSection(s.id);
-                          }}
-                        >
-                          Del
-                        </button>
-                      </div>
-                    ) : null}
+                  <div style={{ fontWeight: 900 }}>
+                    {s(entry.title || "Untitled")}
                   </div>
-
-                  {canEditAll && editingSectionId === s.id ? (
-                    <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                      <input
-                        value={editingSectionName}
-                        onChange={(e) => setEditingSectionName(e.target.value)}
-                        style={{ flex: 1 }}
-                      />
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void saveEditSection();
-                        }}
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingSectionId(null);
-                          setEditingSectionName("");
-                        }}
-                      >
-                        Cancel
-                      </button>
+                  <div style={{ opacity: 0.68, fontSize: 12, marginTop: 4 }}>
+                    {niceDate(entry.updated_at || entry.created_at)}
+                  </div>
+                  {own ? (
+                    <div style={{ opacity: 0.68, fontSize: 11, marginTop: 4 }}>
+                      Yours
                     </div>
                   ) : null}
-                </div>
+                </button>
               );
             })}
 
-            {sections.length === 0 ? <div style={{ opacity: 0.8 }}>No sections yet.</div> : null}
+            {!entries.length ? (
+              <div style={{ opacity: 0.75, padding: "6px 2px" }}>
+                No pages in this section yet.
+              </div>
+            ) : null}
           </div>
         </div>
 
-        <div style={{ flex: 1, border: "1px solid rgba(255,255,255,0.15)", padding: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <b>Entries</b>
-            <div style={{ marginTop: 10 }}>
-              {selectedSectionId ? (
-                <GuideSectionAttachmentsPanel
-                  allianceCode={allianceCode}
-                  sectionId={String(selectedSectionId)}
-                  canEdit={canEditAll}
-                />
-              ) : null}
-            </div>
-            {loadingEntries ? <span style={{ opacity: 0.8 }}>Loading…</span> : null}
-          </div>
-
-          {!selectedSectionId ? (
-            <div style={{ marginTop: 12, opacity: 0.85 }}>Select a section to view entries.</div>
-          ) : (
-            <>
+        <div
+          className="zombie-card"
+          style={{
+            flex: "1 1 720px",
+            minWidth: 0,
+            width: "100%",
+            padding: 14,
+            borderRadius: 18,
+            border: "1px solid rgba(255,255,255,0.10)",
+            background: "linear-gradient(180deg, rgba(24,28,38,0.96), rgba(14,17,24,0.96))",
+          }}
+        >
+          {selectedSectionId ? (
+            <div style={{ display: "grid", gap: 14 }}>
               {canCreateOwnEntries ? (
-                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-                  <input
-                    value={newEntryTitle}
-                    onChange={(e) => setNewEntryTitle(e.target.value)}
-                    placeholder="Entry title"
-                  />
-                  <textarea
-                    value={newEntryBody}
-                    onChange={(e) => setNewEntryBody(e.target.value)}
-                    placeholder="Entry body"
-                    rows={6}
-                  />
-                  <div>
-                    <button onClick={createEntry}>Add Entry</button>
+                <div
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 16,
+                    padding: 14,
+                    background: "rgba(255,255,255,0.03)",
+                  }}
+                >
+                  <div style={{ fontWeight: 900, fontSize: 16 }}>New page</div>
+                  <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
+                    Add a new page inside this section.
+                  </div>
+
+                  <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                    <input
+                      value={newEntryTitle}
+                      onChange={(e) => setNewEntryTitle(e.target.value)}
+                      placeholder="Page title"
+                      className="zombie-input"
+                      style={{ padding: "10px 12px", width: "100%" }}
+                    />
+                    <textarea
+                      value={newEntryBody}
+                      onChange={(e) => setNewEntryBody(e.target.value)}
+                      placeholder="Start writing..."
+                      rows={6}
+                      className="zombie-input"
+                      style={{ padding: "10px 12px", width: "100%" }}
+                    />
+                    <div>
+                      <button className="zombie-btn" type="button" onClick={createEntry}>
+                        + Add Page
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div style={{ marginTop: 10, opacity: 0.85 }}>
-                  Sign in to add your own entries.
+                <div
+                  style={{
+                    border: "1px solid rgba(255,180,120,0.20)",
+                    borderRadius: 16,
+                    padding: 14,
+                    background: "rgba(255,180,120,0.08)",
+                  }}
+                >
+                  Sign in to add your own pages.
                 </div>
               )}
 
-              <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-                {entries.map((en) => {
-                  const isEditing = editingEntryId === en.id;
-                  const canEditThisEntry = canEditEntry(en);
-
-                  return (
-                    <div
-                      key={en.id}
-                      style={{
-                        padding: 12,
-                        border: "1px solid rgba(255,255,255,0.12)",
-                      }}
-                    >
-                      {!isEditing ? (
-                        <>
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                            <div style={{ fontWeight: 700 }}>
-                              {(en.title || "Untitled").toString()}
-                              {isOwnEntry(en) ? (
-                                <span style={{ marginLeft: 8, opacity: 0.65, fontSize: 12 }}>(yours)</span>
-                              ) : null}
-                            </div>
-
-                            {canEditThisEntry ? (
-                              <div style={{ display: "flex", gap: 6 }}>
-                                <button onClick={() => startEditEntry(en)}>Edit</button>
-                                <button onClick={() => void deleteEntry(en.id)}>Del</button>
-                              </div>
-                            ) : null}
+              {selectedEntry ? (
+                <div
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 18,
+                    padding: 18,
+                    background: "rgba(255,255,255,0.03)",
+                  }}
+                >
+                  {!editingEntryId || String(editingEntryId) !== String(selectedEntry.id) ? (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                        <div>
+                          <div style={{ fontSize: 28, fontWeight: 950 }}>
+                            {s(selectedEntry.title || "Untitled")}
                           </div>
-
-                          <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
-                            {(en.body || "").toString()}
+                          <div style={{ opacity: 0.68, fontSize: 12, marginTop: 6 }}>
+                            Created: {niceDate(selectedEntry.created_at)}
+                            {selectedEntry.updated_at ? ` • Updated: ${niceDate(selectedEntry.updated_at)}` : ""}
+                            {isOwnEntry(selectedEntry) ? " • Yours" : ""}
                           </div>
-                        </>
-                      ) : (
-                        <>
-                          <input
-                            value={editingEntryTitle}
-                            onChange={(e) => setEditingEntryTitle(e.target.value)}
-                            style={{ width: "100%" }}
-                          />
-                          <textarea
-                            value={editingEntryBody}
-                            onChange={(e) => setEditingEntryBody(e.target.value)}
-                            rows={8}
-                            style={{ width: "100%", marginTop: 8 }}
-                          />
-                          <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                            <button onClick={() => void saveEditEntry()}>Save</button>
-                            <button
-                              onClick={() => {
-                                setEditingEntryId(null);
-                                setEditingEntryTitle("");
-                                setEditingEntryBody("");
-                              }}
-                            >
-                              Cancel
+                        </div>
+
+                        {canEditEntry(selectedEntry) ? (
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button className="zombie-btn" type="button" onClick={() => startEditEntry(selectedEntry)}>
+                              Edit Page
+                            </button>
+                            <button className="zombie-btn" type="button" onClick={() => void deleteEntry(String(selectedEntry.id))}>
+                              Delete Page
                             </button>
                           </div>
-                        </>
-                      )}
+                        ) : null}
+                      </div>
 
-                      <GuideEntryAttachmentsPanel
-                        allianceCode={allianceCode}
-                        sectionId={selectedSectionId}
-                        entryId={String(en.id)}
-                        canEdit={canEditThisEntry}
-                      />
-                    </div>
-                  );
-                })}
+                      <div
+                        style={{
+                          marginTop: 18,
+                          paddingTop: 18,
+                          borderTop: "1px solid rgba(255,255,255,0.08)",
+                          whiteSpace: "pre-wrap",
+                          lineHeight: 1.7,
+                          fontSize: 15,
+                        }}
+                      >
+                        {s(selectedEntry.body)}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontWeight: 900, fontSize: 16 }}>Edit page</div>
+                      <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                        <input
+                          value={editingEntryTitle}
+                          onChange={(e) => setEditingEntryTitle(e.target.value)}
+                          className="zombie-input"
+                          style={{ padding: "10px 12px", width: "100%" }}
+                        />
+                        <textarea
+                          value={editingEntryBody}
+                          onChange={(e) => setEditingEntryBody(e.target.value)}
+                          rows={10}
+                          className="zombie-input"
+                          style={{ padding: "10px 12px", width: "100%" }}
+                        />
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button className="zombie-btn" type="button" onClick={() => void saveEditEntry()}>
+                            Save
+                          </button>
+                          <button
+                            className="zombie-btn"
+                            type="button"
+                            onClick={() => {
+                              setEditingEntryId(null);
+                              setEditingEntryTitle("");
+                              setEditingEntryBody("");
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
-                {entries.length === 0 ? (
-                  <div style={{ opacity: 0.8 }}>No entries in this section yet.</div>
-                ) : null}
-              </div>
-            </>
+                  <div style={{ marginTop: 18 }}>
+                    <GuideEntryAttachmentsPanel
+                      allianceCode={allianceCode}
+                      sectionId={String(selectedSectionId)}
+                      entryId={String(selectedEntry.id)}
+                      canEdit={canEditEntry(selectedEntry)}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 18,
+                    padding: 18,
+                    background: "rgba(255,255,255,0.03)",
+                    opacity: 0.82,
+                  }}
+                >
+                  Select a page from the left rail to view it here.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ opacity: 0.8 }}>Select or create a section to begin.</div>
           )}
         </div>
       </div>
