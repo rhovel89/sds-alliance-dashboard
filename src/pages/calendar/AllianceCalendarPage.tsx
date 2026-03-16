@@ -420,21 +420,23 @@ export default function AllianceCalendarPage() {
   const [typesHint, setTypesHint] = useState<string | null>(null);
 
   const [showModal, setShowModal] = useState(false);
+const [displayUtc, setDisplayUtc] = useState(false);
 
   const makeEmptyForm = () => ({
-    title: "",
-    event_category: "Alliance",         // Alliance | State
-    event_type: "Reminder",             // from dropdown or "__new__"
-    new_event_type: "",                 // when "__new__"
-    start_date: "",
-    start_time: "",
-    end_date: "",
-    end_time: "",
-    recurring_enabled: false,
-    recurrence_type: "weekly",
-    recurrence_days: [] as string[],
-    recurrence_end_date: "",
-  });
+  title: "",
+  event_category: "Alliance",
+  event_type: "Reminder",
+  new_event_type: "",
+  start_date: "",
+  start_time: "",
+  end_date: "",
+  end_time: "",
+  recurring_enabled: false,
+  recurrence_type: "weekly",
+  recurrence_days: [] as string[],
+  recurrence_end_date: "",
+  time_mode: "local" as "local" | "utc",
+});
 
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [form, setForm] = useState(makeEmptyForm());
@@ -442,6 +444,40 @@ export default function AllianceCalendarPage() {
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth());
   const [year, setYear] = useState(today.getFullYear());
+
+const parseFormDateTime = (date: string, time: string, mode: "local" | "utc") => {
+  const dm = String(date || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const tm = String(time || "").match(/^(\d{2}):(\d{2})/);
+  if (!dm || !tm) return new Date(NaN);
+
+  const y = Number(dm[1]);
+  const mo = Number(dm[2]);
+  const da = Number(dm[3]);
+  const hh = Number(tm[1]);
+  const mm = Number(tm[2]);
+
+  if (mode === "utc") {
+    return new Date(Date.UTC(y, mo - 1, da, hh, mm, 0, 0));
+  }
+
+  return new Date(y, mo - 1, da, hh, mm, 0, 0);
+};
+
+const hhmmss = (d: Date) =>
+  `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
+
+const formatEventTimeLabel = (e: any) => {
+  const utcIso = String((e?._occurrence_time_utc || e?.start_time_utc || ""));
+
+  if (displayUtc && utcIso) {
+    const d = new Date(utcIso);
+    if (!Number.isNaN(d.getTime())) {
+      return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
+    }
+  }
+
+  return formatEventTimeLabel(e);
+};
 
   const daysInMonth = useMemo(
     () => new Date(year, month + 1, 0).getDate(),
@@ -562,30 +598,25 @@ export default function AllianceCalendarPage() {
     const name = (form.new_event_type || "").trim();
     if (!name) throw new Error("New event type name required.");
 
-    // if no table, just return the text (still works)
     if (!typesOk) return name;
+    if (!canEdit) return name;
 
-    // Only managers can write; respect canEdit
-    if (!canEdit && !isOwner) return name;
+    const ins = await supabase
+      .from("alliance_event_types")
+      .insert({
+        alliance_code: upperAlliance,
+        category: cat,
+        name,
+        created_by: userId ?? null,
+      } as any)
+      .select("id")
+      .maybeSingle();
 
-    const payload: any = {
-      alliance_code: upperAlliance,
-      category: cat,
-      name,
-      created_by: userId ?? null,
-      updated_at: new Date().toISOString(),
-    };
-
-    const res = await supabase
-  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
-
-    if (res.error) {
-      // fallback: still allow event to save with the raw name
-      console.warn("Could not save new event type:", res.error);
+    if (ins.error && ins.error.code !== "23505") {
+      console.warn("Could not save new event type:", ins.error);
       return name;
     }
 
-    // refresh list
     await loadEventTypes();
     return name;
   };
@@ -602,29 +633,23 @@ export default function AllianceCalendarPage() {
       const n = String((form as any).new_event_type ?? "").trim();
       if (!n) return alert("Enter a new event type name.");
       eventType = n;
-
-      // Best-effort: save event type (do NOT crash if DB rejects)
-      try {
-        await supabase
-  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
-        await loadEventTypes();
-      } catch (e) {
-        console.warn("Event type save failed (continuing):", e);
-      }
     }if (!cleanTitle) return alert("Event Title required.");
     if (!userId) return alert("No user session.");
 
-    const startLocal = new Date(`${form.start_date}T${form.start_time}`);
-    const endLocal = new Date(`${form.end_date}T${form.end_time}`);
+    const startInstant = parseFormDateTime(form.start_date, form.start_time, form.time_mode as any);
+    const endInstant = parseFormDateTime(form.end_date, form.end_time, form.time_mode as any);
 
-    if (Number.isNaN(startLocal.getTime()) || Number.isNaN(endLocal.getTime()))
+    if (Number.isNaN(startInstant.getTime()) || Number.isNaN(endInstant.getTime()))
       return alert("Start/End date & time required.");
 
-    if (endLocal <= startLocal) return alert("End must be after start.");
+    if (endInstant <= startInstant) return alert("End must be after start.");
+
+    const storageStart = new Date(startInstant.getTime());
+    const storageEnd = new Date(endInstant.getTime());
 
     const durationMinutes = Math.max(
       1,
-      Math.round((endLocal.getTime() - startLocal.getTime()) / 60000)
+      Math.round((endInstant.getTime() - startInstant.getTime()) / 60000)
     );
 
     const chosenType = await upsertTypeIfNeeded();
@@ -645,18 +670,18 @@ export default function AllianceCalendarPage() {
 
       title: cleanTitle,
       created_by: userId,
-      start_time_utc: startLocal.toISOString(),
+      start_time_utc: startInstant.toISOString(),
       duration_minutes: durationMinutes,
-      timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      timezone_origin: form.time_mode === "utc" ? "UTC" : (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
 
       event_category: chosenCategory,
       event_type: chosenType,
 
       event_name: cleanTitle,
-      start_date: form.start_date,
-      start_time: form.start_time,
-      end_date: form.end_date,
-      end_time: form.end_time,
+      start_date: toLocalISODate(storageStart),
+      start_time: hhmmss(storageStart),
+      end_date: toLocalISODate(storageEnd),
+      end_time: hhmmss(storageEnd),
 
       recurring_enabled: form.recurring_enabled,
       recurrence_type: form.recurrence_type || null,
@@ -926,10 +951,14 @@ const deleteEvent = async (arg: any) => {
   // Manager tools: delete type
   const deleteType = async (id: string) => {
     if (!canEdit) return;
-    if (!typesOk) return alert("Event type catalog is not available (fallback mode).");
+    if (!typesOk) return alert("Event type catalog is not available.");
     if (!confirm("Delete this event type?")) return;
 
-  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
+    const del = await supabase.from("alliance_event_types").delete().eq("id", id);
+    if (del.error) {
+      alert(del.error.message);
+      return;
+    }
 
     await loadEventTypes();
   };
@@ -999,7 +1028,7 @@ const deleteEvent = async (arg: any) => {
                   }}
                   title={canEdit ? "Click to delete" : undefined}
                 >
-                  {occurrenceLocalTime(e)}{" "}
+                  {formatEventTimeLabel(e)}{" "}
                   - {e.title}
                 </div>
               ))}
@@ -1028,7 +1057,7 @@ const deleteEvent = async (arg: any) => {
                     style={{ border: "1px solid #333", borderRadius: 8, padding: 10 }}
                   >
                     <div style={{ fontWeight: 700 }}>
-                      {occurrenceLocalTime(e)}{" "}
+                      {formatEventTimeLabel(e)}{" "}
                       - {e.title}
                     </div>
                     {e.event_category ? <div style={{ opacity: 0.9, fontSize: 12 }}>{String(e.event_category)}</div> : null}
@@ -1108,9 +1137,9 @@ const deleteEvent = async (arg: any) => {
                 value={form.event_type}
                 onChange={(e) => setForm({ ...form, event_type: e.target.value })}
               >
-                {EVENT_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
+                {(optionsForCategory.length ? optionsForCategory.map((t) => t.name) : EVENT_TYPES).map((t) => (
+  <option key={t} value={t}>{t}</option>
+))}
                 <option value="__new__">+ New (custom)</option>
               </select>
             </label>
@@ -1128,6 +1157,27 @@ const deleteEvent = async (arg: any) => {
               </div>
             </div>
           ) : null}
+
+          <div style={{ marginTop: 12, marginBottom: 10, display: "grid", gap: 6 }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={form.time_mode === "utc"}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    time_mode: e.target.checked ? "utc" : "local",
+                  }))
+                }
+              />
+              <span>Puzzle & Survival UTC input</span>
+            </label>
+            <div style={{ fontSize: 12, opacity: 0.78 }}>
+              {form.time_mode === "utc"
+                ? "Dates/times entered here are treated as UTC and converted safely for the calendar."
+                : "Dates/times entered here are treated as your local time."}
+            </div>
+          </div>
 
           <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
             <input
@@ -1172,6 +1222,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
