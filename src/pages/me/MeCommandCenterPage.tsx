@@ -262,6 +262,8 @@ export default function MeCommandCenterPage() {
           />
         </div>
 
+        <WeeklyAgendaCard />
+
         <div
           className="zombie-card"
           style={{
@@ -302,6 +304,7 @@ export default function MeCommandCenterPage() {
     </>
   );
 }
+
 
 
 
