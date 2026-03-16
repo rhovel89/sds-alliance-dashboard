@@ -7,6 +7,7 @@ import MeAllianceAlertsPanel from "../../components/me/MeAllianceAlertsPanel";
 import MeStateAlertsCard from "../../components/me/MeStateAlertsCard";
 import MeStateAnnouncementsCard from "../../components/me/MeStateAnnouncementsCard";
 import MeAllianceAnnouncementsCard from "../../components/me/MeAllianceAnnouncementsCard";
+import WeeklyAgendaCard from "../../components/dashboard/WeeklyAgendaCard";
 
 type TroopType = "Fighter" | "Shooter" | "Rider";
 type TierLevel = "T5" | "T6" | "T7" | "T8" | "T9" | "T10" | "T11" | "T12" | "T13" | "T14";
@@ -892,6 +893,7 @@ export default function MeDashboardPage() {
 </div>
   );
 }
+
 
 
 
