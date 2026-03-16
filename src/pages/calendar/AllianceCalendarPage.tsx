@@ -241,7 +241,7 @@ type CalendarLocalExpandedEvent = EventRow & {
   _occurrence_local_time: string;
 };
 
-const CAL_LOCAL_DAY_MAP_2: Record<string, number> = {
+const CAL_DAY_TO_NUM: Record<string, number> = {
   sun: 0, sunday: 0,
   mon: 1, monday: 1,
   tue: 2, tues: 2, tuesday: 2,
@@ -251,114 +251,85 @@ const CAL_LOCAL_DAY_MAP_2: Record<string, number> = {
   sat: 6, saturday: 6,
 };
 
-function calLocalDayNum2(v: string): number | null {
-  const k = String(v || "").trim().toLowerCase();
-  return Object.prototype.hasOwnProperty.call(CAL_LOCAL_DAY_MAP_2, k) ? CAL_LOCAL_DAY_MAP_2[k] : null;
-}
-
-function calParseYmd2(iso: string): { y: number; m: number; d: number } | null {
+function parseYmdLocal(iso: string): { y: number; m: number; d: number } | null {
   const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return null;
   return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
 }
 
-function calIsoYmd2(y: number, m: number, d: number) {
+function ymdString(y: number, m: number, d: number) {
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
-function calDisplayTime2(ev: any) {
-  const st = String(ev?.start_time || "").trim();
-  const tm = st.match(/^(\d{2}):(\d{2})/);
-  if (tm) {
-    const d = new Date(2000, 0, 1, Number(tm[1]), Number(tm[2]), 0, 0);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }
-
-  if (ev?.start_time_utc) {
-    const d = new Date(String(ev.start_time_utc));
-    if (!Number.isNaN(d.getTime())) {
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    }
-  }
-
-  return "";
+function parseHmLocal(v: string): { hh: number; mm: number } {
+  const m = String(v || "").match(/^(\d{2}):(\d{2})/);
+  if (!m) return { hh: 0, mm: 0 };
+  return { hh: Number(m[1]), mm: Number(m[2]) };
 }
 
-function calHourMinute2(ev: any): { hh: number; mm: number } {
-  const st = String(ev?.start_time || "").trim();
-  const tm = st.match(/^(\d{2}):(\d{2})/);
-  if (tm) {
-    return { hh: Number(tm[1]), mm: Number(tm[2]) };
-  }
-
-  if (ev?.start_time_utc) {
-    const d = new Date(String(ev.start_time_utc));
-    if (!Number.isNaN(d.getTime())) {
-      return { hh: d.getHours(), mm: d.getMinutes() };
-    }
-  }
-
-  return { hh: 0, mm: 0 };
+function dateFromYmdNoon(iso: string): Date | null {
+  const p = parseYmdLocal(iso);
+  if (!p) return null;
+  return new Date(p.y, p.m - 1, p.d, 12, 0, 0, 0);
 }
 
-function calBaseDateNoon2(ev: any): Date | null {
-  const sd = String(ev?.start_date || "").trim();
-  const parsed = calParseYmd2(sd);
-  if (parsed) {
-    return new Date(parsed.y, parsed.m - 1, parsed.d, 12, 0, 0, 0);
-  }
-
-  if (ev?.start_time_utc) {
-    const d = new Date(String(ev.start_time_utc));
-    if (!Number.isNaN(d.getTime())) {
-      return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
-    }
-  }
-
-  return null;
-}
-
-function calLocalWeekStart2(d: Date) {
+function startOfWeekLocalNoon(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay(), 12, 0, 0, 0);
 }
 
-function calParseEndLocal2(v: any): Date | null {
-  const parsed = calParseYmd2(String(v || ""));
-  if (!parsed) return null;
-  return new Date(parsed.y, parsed.m - 1, parsed.d, 23, 59, 59, 999);
-}
+function recurrenceDayNums(ev: any): number[] {
+  const raw = Array.isArray(ev?.recurrence_days)
+    ? ev.recurrence_days
+    : Array.isArray(ev?.days_of_week)
+    ? ev.days_of_week
+    : [];
 
-function calOccurrenceTimeLabel2(ev: any) {
-  return String(ev?._occurrence_local_time || calDisplayTime2(ev) || "");
-}
+  const nums = raw
+    .map((x: any) => {
+      const key = String(x || "").trim().toLowerCase();
+      return Object.prototype.hasOwnProperty.call(CAL_DAY_TO_NUM, key) ? CAL_DAY_TO_NUM[key] : null;
+    })
+    .filter((x: number | null): x is number => x !== null);
 
-function calOccurrenceLocalDate2(ev: any) {
-  if (ev?._occurrence_local_date) return String(ev._occurrence_local_date);
+  if (nums.length) return nums;
 
-  const sd = String(ev?.start_date || "").trim();
-  if (sd) return sd;
+  const baseDate = dateFromYmdNoon(String(ev?.start_date || ""));
+  if (baseDate) return [baseDate.getDay()];
 
   if (ev?.start_time_utc) {
     const d = new Date(String(ev.start_time_utc));
-    if (!Number.isNaN(d.getTime())) return toLocalISODate(d);
+    if (!Number.isNaN(d.getTime())) return [d.getDay()];
   }
 
-  return "";
+  return [];
 }
 
-function expandEventsForMonthCalendarLocal2(rows: EventRow[], year: number, month: number): CalendarLocalExpandedEvent[] {
+function localTimeLabelFromEvent(ev: any) {
+  const hm = parseHmLocal(String(ev?.start_time || ""));
+  const d = new Date(2000, 0, 1, hm.hh, hm.mm, 0, 0);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function occurrenceLocalDate(ev: any) {
+  return String(ev?._occurrence_local_date || ev?.start_date || "");
+}
+
+function occurrenceLocalTime(ev: any) {
+  if (ev?._occurrence_local_time) return String(ev._occurrence_local_time);
+  return localTimeLabelFromEvent(ev);
+}
+
+function expandMonthLocally(rows: EventRow[], year: number, month: number): CalendarLocalExpandedEvent[] {
   const out: CalendarLocalExpandedEvent[] = [];
   const maxDay = new Date(year, month + 1, 0).getDate();
 
   for (const ev of rows) {
-    const baseDateNoon = calBaseDateNoon2(ev);
+    const baseDateIso = String(ev.start_date || "");
+    const baseDateNoon = dateFromYmdNoon(baseDateIso);
     if (!baseDateNoon) continue;
 
-    const baseDateIso = calOccurrenceLocalDate2(ev);
-    const baseTimeLabel = calDisplayTime2(ev);
-    const hm = calHourMinute2(ev);
-
-    const baseOccurrenceLocal = new Date(
+    const hm = parseHmLocal(String(ev.start_time || ""));
+    const baseDateTime = new Date(
       baseDateNoon.getFullYear(),
       baseDateNoon.getMonth(),
       baseDateNoon.getDate(),
@@ -368,71 +339,62 @@ function expandEventsForMonthCalendarLocal2(rows: EventRow[], year: number, mont
       0
     );
 
+    const baseTimeLabel = baseDateTime.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
     out.push({
       ...(ev as any),
       _source_event_id: String(ev.id),
-      _occurrence_time_utc: String(ev.start_time_utc || baseOccurrenceLocal.toISOString()),
+      _occurrence_time_utc: String(ev.start_time_utc || baseDateTime.toISOString()),
       _occurrence_local_date: baseDateIso,
       _occurrence_local_time: baseTimeLabel,
-      start_time_utc: String(ev.start_time_utc || baseOccurrenceLocal.toISOString()),
+      start_time_utc: String(ev.start_time_utc || baseDateTime.toISOString()),
     });
 
     const rtype = String(ev.recurrence_type || ev.recurrence || "").toLowerCase();
     const recurring = !!ev.recurring_enabled && !!rtype;
     if (!recurring) continue;
 
-    const endLocal = calParseEndLocal2(ev.recurrence_end_date);
-
-    const rawDays = Array.isArray(ev.recurrence_days)
-      ? ev.recurrence_days
-      : Array.isArray((ev as any).days_of_week)
-      ? (ev as any).days_of_week
-      : [];
-
-    const parsedDays = rawDays
-      .map((x: any) => calLocalDayNum2(String(x)))
-      .filter((x: number | null): x is number => x !== null);
-
-    const allowedDays =
-      (rtype === "weekly" || rtype === "biweekly")
-        ? (parsedDays.length ? parsedDays : [baseDateNoon.getDay()])
-        : [];
+    const allowedDays = recurrenceDayNums(ev);
+    const endDateNoon = dateFromYmdNoon(String(ev.recurrence_end_date || ""));
 
     for (let day = 1; day <= maxDay; day++) {
-      const candDateNoon = new Date(year, month, day, 12, 0, 0, 0);
-      const candDateIso = calIsoYmd2(year, month + 1, day);
+      const candNoon = new Date(year, month, day, 12, 0, 0, 0);
+      const candIso = ymdString(year, month + 1, day);
 
-      if (candDateNoon < baseDateNoon) continue;
-      if (endLocal && candDateNoon > endLocal) continue;
+      if (candNoon < baseDateNoon) continue;
+      if (endDateNoon && candNoon > endDateNoon) continue;
 
       if (rtype === "daily") {
-        // keep
+        // ok
       } else if (rtype === "weekly") {
-        if (!allowedDays.includes(candDateNoon.getDay())) continue;
+        if (!allowedDays.includes(candNoon.getDay())) continue;
       } else if (rtype === "biweekly") {
-        if (!allowedDays.includes(candDateNoon.getDay())) continue;
+        if (!allowedDays.includes(candNoon.getDay())) continue;
 
-        const baseWeek = calLocalWeekStart2(baseDateNoon).getTime();
-        const candWeek = calLocalWeekStart2(candDateNoon).getTime();
+        const baseWeek = startOfWeekLocalNoon(baseDateNoon).getTime();
+        const candWeek = startOfWeekLocalNoon(candNoon).getTime();
         const weeksDiff = Math.floor((candWeek - baseWeek) / (7 * 24 * 60 * 60 * 1000));
         if (weeksDiff % 2 !== 0) continue;
       } else if (rtype === "monthly") {
-        if (day !== baseDateNoon.getDate()) continue;
+        if (candNoon.getDate() !== baseDateNoon.getDate()) continue;
       } else {
         continue;
       }
 
-      if (candDateIso === baseDateIso) continue;
+      if (candIso === baseDateIso) continue;
 
-      const candLocal = new Date(year, month, day, hm.hh, hm.mm, 0, 0);
+      const candDateTime = new Date(year, month, day, hm.hh, hm.mm, 0, 0);
 
       out.push({
         ...(ev as any),
         _source_event_id: String(ev.id),
-        _occurrence_time_utc: candLocal.toISOString(),
-        _occurrence_local_date: candDateIso,
+        _occurrence_time_utc: candDateTime.toISOString(),
+        _occurrence_local_date: candIso,
         _occurrence_local_time: baseTimeLabel,
-        start_time_utc: candLocal.toISOString(),
+        start_time_utc: candDateTime.toISOString(),
       });
     }
   }
@@ -488,8 +450,8 @@ export default function AllianceCalendarPage() {
 
   // Expand recurring events for the visible month (page-local stable local-date renderer)
   const expandedEvents = useMemo(() => {
-    return expandEventsForMonthStable(events as any, year, month) as any[];
-  }, [events, year, month]);
+  return expandMonthLocally(events as any, year, month) as any[];
+}, [events, year, month]);
 
   useEffect(() => {
     (async () => {
@@ -964,9 +926,9 @@ const trySkipOccurrence = async (eventId: string, occurrenceIso: string, sourceE
 
   // Calendar day match using local occurrence dates
   const isSameDay = (e: any, y: number, m: number, d: number) => {
-    const want = `${y}-${pad2(m + 1)}-${pad2(d)}`;
-    return calOccurrenceLocalDate2(e) === want;
-  };
+  const want = `${y}-${pad2(m + 1)}-${pad2(d)}`;
+  return occurrenceLocalDate(e) === want;
+};
 
   const selectedDayEvents = useMemo(() => {
     if (!selectedDay) return [];
@@ -1049,7 +1011,7 @@ const trySkipOccurrence = async (eventId: string, occurrenceIso: string, sourceE
                   }}
                   title={canEdit ? "Click to delete" : undefined}
                 >
-                  {calOccurrenceTimeLabel2(e)}{" "}
+                  {occurrenceLocalTime(e)}{" "}
                   - {e.title}
                 </div>
               ))}
@@ -1078,7 +1040,7 @@ const trySkipOccurrence = async (eventId: string, occurrenceIso: string, sourceE
                     style={{ border: "1px solid #333", borderRadius: 8, padding: 10 }}
                   >
                     <div style={{ fontWeight: 700 }}>
-                      {calOccurrenceTimeLabel2(e)}{" "}
+                      {occurrenceLocalTime(e)}{" "}
                       - {e.title}
                     </div>
                     {e.event_category ? <div style={{ opacity: 0.9, fontSize: 12 }}>{String(e.event_category)}</div> : null}
@@ -1222,6 +1184,7 @@ const trySkipOccurrence = async (eventId: string, occurrenceIso: string, sourceE
     </div>
   );
 }
+
 
 
 
