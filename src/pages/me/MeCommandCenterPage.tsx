@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import WeeklyAgendaCard from "../../components/dashboard/WeeklyAgendaCard";
 
 import ActionDrawer from "../../components/commandcenter/ActionDrawer";
 import LegacyMe from "./MeDashboardPage";
@@ -301,3 +302,4 @@ export default function MeCommandCenterPage() {
     </>
   );
 }
+
