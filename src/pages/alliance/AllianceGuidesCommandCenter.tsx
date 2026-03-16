@@ -1212,6 +1212,7 @@ async function deleteEntry(entryId: string) {
               borderRadius: 14,
               border: selected ? "1px solid rgba(255,255,255,0.20)" : "1px solid rgba(255,255,255,0.10)",
               background: selected ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
+                  color: "rgba(243,247,242,0.96)",
             }}
           >
             <div style={{ fontWeight: 900 }}>{s(entry.title || "Untitled")}</div>
@@ -1350,6 +1351,7 @@ async function deleteEntry(entryId: string) {
                   fontWeight: selected ? 900 : 700,
                   border: selected ? "1px solid rgba(255,255,255,0.20)" : "1px solid rgba(255,255,255,0.10)",
                   background: selected ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)",
+                  color: "rgba(243,247,242,0.96)",
                 }}
               >
                 {title}
@@ -1364,7 +1366,13 @@ async function deleteEntry(entryId: string) {
                 onChange={(e) => setNewSectionName(e.target.value)}
                 placeholder="New section"
                 className="zombie-input"
-                style={{ padding: "10px 12px", minWidth: 180 }}
+                style={{
+                  padding: "10px 12px",
+                  minWidth: 180,
+                  color: "rgba(243,247,242,0.96)",
+                  background: "rgba(10,14,12,0.92)",
+                  border: "1px solid rgba(160,255,160,0.16)"
+                }}
               />
               <button className="zombie-btn" type="button" onClick={createSection}>
                 + Section
@@ -1422,7 +1430,14 @@ async function deleteEntry(entryId: string) {
                 value={editingSectionName}
                 onChange={(e) => setEditingSectionName(e.target.value)}
                 className="zombie-input"
-                style={{ padding: "10px 12px", minWidth: 240, flex: 1 }}
+                style={{
+                padding: "10px 12px",
+                minWidth: 240,
+                flex: 1,
+                color: "rgba(243,247,242,0.96)",
+                background: "rgba(10,14,12,0.92)",
+                border: "1px solid rgba(160,255,160,0.16)"
+              }}
               />
               <button className="zombie-btn" type="button" onClick={() => void saveEditSection()}>
                 Save
@@ -1905,6 +1920,8 @@ async function safeUpdateById(
 
   return res;
 }
+
+
 
 
 
