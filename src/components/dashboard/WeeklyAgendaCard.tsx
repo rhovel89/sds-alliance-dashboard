@@ -29,6 +29,8 @@ type ExpandedAgendaEvent = EventRow & {
   _occurrence_local_time: string;
 };
 
+type ViewMode = "day" | "tomorrow" | "week";
+
 const DAY_MAP: Record<string, number> = {
   sun: 0, sunday: 0,
   mon: 1, monday: 1,
@@ -107,10 +109,10 @@ function occurrenceLocalTime(ev: any) {
   return localTimeLabelFromEvent(ev);
 }
 
-function expandWeekLocally(rows: EventRow[], weekStartNoon: Date): ExpandedAgendaEvent[] {
+function expandRangeLocally(rows: EventRow[], rangeStartNoon: Date, numDays: number): ExpandedAgendaEvent[] {
   const out: ExpandedAgendaEvent[] = [];
-  const weekDays: Date[] = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(weekStartNoon.getFullYear(), weekStartNoon.getMonth(), weekStartNoon.getDate(), 12, 0, 0, 0);
+  const rangeDays: Date[] = Array.from({ length: numDays }).map((_, i) => {
+    const d = new Date(rangeStartNoon.getFullYear(), rangeStartNoon.getMonth(), rangeStartNoon.getDate(), 12, 0, 0, 0);
     d.setDate(d.getDate() + i);
     return d;
   });
@@ -136,10 +138,10 @@ function expandWeekLocally(rows: EventRow[], weekStartNoon: Date): ExpandedAgend
       minute: "2-digit",
     });
 
-    const weekStartIso = toLocalISODate(weekDays[0]);
-    const weekEndIso = toLocalISODate(weekDays[6]);
+    const rangeStartIso = toLocalISODate(rangeDays[0]);
+    const rangeEndIso = toLocalISODate(rangeDays[rangeDays.length - 1]);
 
-    if (baseDateIso >= weekStartIso && baseDateIso <= weekEndIso) {
+    if (baseDateIso >= rangeStartIso && baseDateIso <= rangeEndIso) {
       out.push({
         ...(ev as any),
         _source_event_id: String(ev.id),
@@ -157,7 +159,7 @@ function expandWeekLocally(rows: EventRow[], weekStartNoon: Date): ExpandedAgend
     const allowedDays = recurrenceDayNums(ev);
     const endDateNoon = dateFromYmdNoon(String(ev.recurrence_end_date || ""));
 
-    for (const candNoon of weekDays) {
+    for (const candNoon of rangeDays) {
       const candIso = toLocalISODate(candNoon);
 
       if (candNoon < baseDateNoon) continue;
@@ -206,6 +208,20 @@ function expandWeekLocally(rows: EventRow[], weekStartNoon: Date): ExpandedAgend
   return out;
 }
 
+function dedupeExpanded(items: ExpandedAgendaEvent[]) {
+  const map = new Map<string, ExpandedAgendaEvent>();
+  for (const item of items) {
+    const key = [
+      item._source_event_id,
+      item._occurrence_local_date,
+      item._occurrence_time_utc,
+      item.title || item.event_name || ""
+    ].join("__");
+    if (!map.has(key)) map.set(key, item);
+  }
+  return Array.from(map.values());
+}
+
 function formatUtcLabel(utcIso: string) {
   const d = new Date(utcIso);
   if (Number.isNaN(d.getTime())) return "";
@@ -228,6 +244,16 @@ function weekRangeLabel(weekStartNoon: Date) {
   return `${a} – ${b}`;
 }
 
+function tabButtonStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: "6px 10px",
+    borderRadius: 10,
+    border: active ? "1px solid rgba(120,255,120,0.35)" : "1px solid #333",
+    background: active ? "rgba(120,255,120,0.10)" : "rgba(255,255,255,0.03)",
+    fontWeight: 800,
+  };
+}
+
 export default function WeeklyAgendaCard() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
@@ -240,12 +266,23 @@ export default function WeeklyAgendaCard() {
       return false;
     }
   });
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
 
-  const weekStart = useMemo(() => {
+  const todayNoon = useMemo(() => {
     const now = new Date();
-    const noon = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
-    return startOfWeekLocalNoon(noon);
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
   }, []);
+
+  const tomorrowNoon = useMemo(() => {
+    const d = new Date(todayNoon.getFullYear(), todayNoon.getMonth(), todayNoon.getDate(), 12, 0, 0, 0);
+    d.setDate(d.getDate() + 1);
+    return d;
+  }, [todayNoon]);
+
+  const weekStart = useMemo(() => startOfWeekLocalNoon(todayNoon), [todayNoon]);
+
+  const todayIso = useMemo(() => toLocalISODate(todayNoon), [todayNoon]);
+  const tomorrowIso = useMemo(() => toLocalISODate(tomorrowNoon), [tomorrowNoon]);
 
   useEffect(() => {
     try {
@@ -319,7 +356,12 @@ export default function WeeklyAgendaCard() {
 
         if (evs.error) throw evs.error;
 
-        const expanded = expandWeekLocally((evs.data || []) as any, weekStart)
+        const weekItems = expandRangeLocally((evs.data || []) as any, weekStart, 7);
+        const tomorrowItems = tomorrowIso > toLocalISODate(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6, 12, 0, 0, 0))
+          ? expandRangeLocally((evs.data || []) as any, tomorrowNoon, 1)
+          : [];
+
+        const expanded = dedupeExpanded([...weekItems, ...tomorrowItems])
           .sort((a, b) => {
             const da = new Date(String(a._occurrence_time_utc || a.start_time_utc || "")).getTime();
             const db = new Date(String(b._occurrence_time_utc || b.start_time_utc || "")).getTime();
@@ -343,11 +385,26 @@ export default function WeeklyAgendaCard() {
     return () => {
       cancelled = true;
     };
-  }, [weekStart]);
+  }, [weekStart, tomorrowIso, tomorrowNoon]);
+
+  const filteredItems = useMemo(() => {
+    if (viewMode === "day") {
+      return items.filter((item) => occurrenceLocalDate(item) === todayIso);
+    }
+    if (viewMode === "tomorrow") {
+      return items.filter((item) => occurrenceLocalDate(item) === tomorrowIso);
+    }
+    return items.filter((item) => {
+      const iso = occurrenceLocalDate(item);
+      const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate(), 12, 0, 0, 0);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      return iso >= toLocalISODate(weekStart) && iso <= toLocalISODate(weekEnd);
+    });
+  }, [items, viewMode, todayIso, tomorrowIso, weekStart]);
 
   const grouped = useMemo(() => {
     const map: Record<string, ExpandedAgendaEvent[]> = {};
-    for (const item of items) {
+    for (const item of filteredItems) {
       const key = occurrenceLocalDate(item);
       if (!map[key]) map[key] = [];
       map[key].push(item);
@@ -359,10 +416,17 @@ export default function WeeklyAgendaCard() {
         day: key,
         items: map[key],
       }));
-  }, [items]);
+  }, [filteredItems]);
 
   const modeLabel = displayUtc ? "Puzzle & Survival UTC" : "Local";
   const firstAlliance = allianceCodes[0] || "";
+
+  const subtitle =
+    viewMode === "day"
+      ? `Today's agenda • ${formatDayHeader(todayIso)}`
+      : viewMode === "tomorrow"
+      ? `Tomorrow's agenda • ${formatDayHeader(tomorrowIso)}`
+      : `Alliance agenda for ${weekRangeLabel(weekStart)}`;
 
   return (
     <div
@@ -387,9 +451,9 @@ export default function WeeklyAgendaCard() {
         }}
       >
         <div>
-          <div style={{ fontSize: 20, fontWeight: 950 }}>This Week</div>
+          <div style={{ fontSize: 20, fontWeight: 950 }}>Agenda</div>
           <div style={{ fontSize: 12, opacity: 0.76, marginTop: 4 }}>
-            Alliance agenda for {weekRangeLabel(weekStart)}
+            {subtitle}
           </div>
         </div>
 
@@ -426,16 +490,30 @@ export default function WeeklyAgendaCard() {
         </div>
       </div>
 
+      <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button type="button" className="zombie-btn" onClick={() => setViewMode("day")} style={tabButtonStyle(viewMode === "day")}>
+          Day
+        </button>
+        <button type="button" className="zombie-btn" onClick={() => setViewMode("tomorrow")} style={tabButtonStyle(viewMode === "tomorrow")}>
+          Tomorrow
+        </button>
+        <button type="button" className="zombie-btn" onClick={() => setViewMode("week")} style={tabButtonStyle(viewMode === "week")}>
+          Week
+        </button>
+      </div>
+
       <div style={{ marginTop: 8, fontSize: 12, opacity: 0.72 }}>
-        Showing this week only • Mode: {modeLabel}
+        Showing {viewMode === "day" ? "today only" : viewMode === "tomorrow" ? "tomorrow only" : "this week"} • Mode: {modeLabel}
       </div>
 
       {loading ? (
-        <div style={{ marginTop: 14, opacity: 0.78 }}>Loading weekly agenda…</div>
+        <div style={{ marginTop: 14, opacity: 0.78 }}>Loading agenda…</div>
       ) : msg ? (
         <div style={{ marginTop: 14, opacity: 0.82 }}>{msg}</div>
       ) : grouped.length === 0 ? (
-        <div style={{ marginTop: 14, opacity: 0.78 }}>No events scheduled this week.</div>
+        <div style={{ marginTop: 14, opacity: 0.78 }}>
+          No events scheduled for {viewMode === "day" ? "today" : viewMode === "tomorrow" ? "tomorrow" : "this week"}.
+        </div>
       ) : (
         <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
           {grouped.map((group) => (
