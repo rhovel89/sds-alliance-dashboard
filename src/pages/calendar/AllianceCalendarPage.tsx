@@ -757,6 +757,16 @@ const tryTruncateSeries = async (eventId: string, occurrenceIso: string) => {
   throw lastErr || new Error("Could not truncate recurring series.");
 };
 
+const isRecurringEvent = (e: any) => {
+  const rt = String(e?.recurrence_type ?? e?.recurrence ?? e?.frequency ?? "").toLowerCase();
+  if (rt && rt !== "none" && rt !== "single") return true;
+  if (Array.isArray(e?.recurrence_days) && e.recurrence_days.length) return true;
+  if (Array.isArray(e?.days_of_week) && e.days_of_week.length) return true;
+  const interval = Number(e?.recurrence_interval ?? e?.interval ?? 0);
+  if (Number.isFinite(interval) && interval > 0) return true;
+  return false;
+};
+
 const deleteEvent = async (arg: any) => {
     if (!canEdit) return;
 
@@ -1070,6 +1080,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
