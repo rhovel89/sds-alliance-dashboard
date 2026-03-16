@@ -729,6 +729,23 @@ export default function AllianceCalendarPage() {
       return "";
     }
   };
+const prevIsoDay = (iso: string) => {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return "";
+
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const da = Number(m[3]);
+
+  const d = new Date(y, mo - 1, da, 12, 0, 0, 0);
+  d.setDate(d.getDate() - 1);
+
+  const yy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+};
+
 const tryTruncateSeries = async (eventId: string, occurrenceIso: string) => {
   const prev = prevIsoDay(occurrenceIso);
   if (!prev) throw new Error("Could not compute previous day for truncation.");
@@ -1155,6 +1172,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
