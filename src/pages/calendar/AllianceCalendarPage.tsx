@@ -729,149 +729,35 @@ export default function AllianceCalendarPage() {
       return "";
     }
   };
-  const prevIsoDay = (iso: string) => {
-    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return "";
-    const y = Number(m[1]); const mo = Number(m[2]); const da = Number(m[3]);
-    const d = new Date(y, mo - 1, da);
-    d.setDate(d.getDate() - 1);
-    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-  };
-  const isRecurringEvent = (e: any) => {
-    const rt = String(e?.recurrence_type ?? e?.frequency ?? "").toLowerCase();
-    if (rt && rt !== "none" && rt !== "single") return true;
-    if (Array.isArray(e?.recurrence_days) && e.recurrence_days.length) return true;
-    if (Array.isArray(e?.daysOfWeek) && e.daysOfWeek.length) return true;
-    const interval = Number(e?.recurrence_interval ?? e?.interval ?? 0);
-    if (Number.isFinite(interval) && interval > 0) return true;
-    return false;
-  };
+const tryTruncateSeries = async (eventId: string, occurrenceIso: string) => {
+  const prev = prevIsoDay(occurrenceIso);
+  if (!prev) throw new Error("Could not compute previous day for truncation.");
 
-  const toLocalHHmm = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const attempts: any[] = [
+    { recurrence_end_date: prev },
+    { recurrence_until: prev },
+    { until_date: prev },
+    { recurrence_end: prev },
+  ];
 
-const findNextOccurrenceUtc = (sourceEvent: any, afterUtc: string): string | null => {
-  const afterMs = new Date(afterUtc).getTime();
-  if (!Number.isFinite(afterMs)) return null;
+  let lastErr: any = null;
 
-  for (let offset = 0; offset < 36; offset++) {
-    const probeMonth = month + offset;
-    const probeYear = year + Math.floor(probeMonth / 12);
-    const normalizedMonth = ((probeMonth % 12) + 12) % 12;
+  for (const patch of attempts) {
+    const up = await supabase.from("alliance_events").update(patch as any).eq("id", eventId);
+    if (!up.error) return;
 
-    const expanded = expandEventsForMonth([sourceEvent], probeYear, normalizedMonth) as any[];
+    lastErr = up.error;
+    const msg = String(up.error.message || "").toLowerCase();
 
-    const candidates = expanded
-      .map((x) => String((x as any)._occurrence_time_utc || getEventStartUtc(x) || ""))
-      .filter(Boolean)
-      .map((iso) => ({ iso, ms: new Date(iso).getTime() }))
-      .filter((x) => Number.isFinite(x.ms) && x.ms > afterMs)
-      .sort((a, b) => a.ms - b.ms);
-
-    if (candidates.length) return candidates[0].iso;
-  }
-
-  return null;
-};
-
-const insertClonedSeries = async (sourceEvent: any, nextUtc: string): Promise<string | null> => {
-  const nextStart = new Date(nextUtc);
-  const duration = Math.max(1, Number(sourceEvent?.duration_minutes || 60));
-  const nextEnd = new Date(nextStart.getTime() + duration * 60000);
-
-  const recurrenceDays = Array.isArray(sourceEvent?.recurrence_days)
-    ? sourceEvent.recurrence_days
-    : Array.isArray(sourceEvent?.days_of_week)
-    ? sourceEvent.days_of_week
-    : null;
-
-  const basePayload: any = {
-    alliance_id: sourceEvent?.alliance_id || upperAlliance,
-    title: String(sourceEvent?.title || sourceEvent?.event_name || "").trim(),
-    created_by: userId || sourceEvent?.created_by || null,
-    start_time_utc: nextUtc,
-    duration_minutes: duration,
-    timezone_origin: sourceEvent?.timezone_origin || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-
-    event_category: sourceEvent?.event_category || null,
-    event_type: sourceEvent?.event_type || null,
-
-    event_name: sourceEvent?.event_name || sourceEvent?.title || null,
-    start_date: toLocalISODate(nextStart),
-    start_time: toLocalHHmm(nextStart),
-    end_date: toLocalISODate(nextEnd),
-    end_time: toLocalHHmm(nextEnd),
-
-    recurring_enabled: !!sourceEvent?.recurring_enabled,
-    recurrence_type: sourceEvent?.recurrence_type || sourceEvent?.recurrence || null,
-    recurrence_days: recurrenceDays,
-    recurrence_end_date: sourceEvent?.recurrence_end_date || null,
-  };
-
-  const resA = await supabase.from("alliance_events").insert(basePayload).select("id").single();
-
-  if (!resA.error) return String(resA.data?.id || "");
-
-  const msg = String(resA.error.message || "").toLowerCase();
-  const missingEventCategory = msg.includes("column") && msg.includes("event_category");
-  const missingRecCols =
-    msg.includes("column") &&
-    (msg.includes("recurrence_type") || msg.includes("recurrence_days"));
-
-  if (missingEventCategory) {
-    const payloadNoCat = { ...basePayload };
-    delete payloadNoCat.event_category;
-
-    const retry = await supabase.from("alliance_events").insert(payloadNoCat).select("id").single();
-    if (retry.error) throw retry.error;
-    return String(retry.data?.id || "");
-  }
-
-  if (missingRecCols) {
-    const payloadLegacy = {
-      ...basePayload,
-      recurrence: basePayload.recurrence_type,
-      days_of_week: basePayload.recurrence_days,
-    };
-
-    delete payloadLegacy.recurrence_type;
-    delete payloadLegacy.recurrence_days;
-
-    const retry = await supabase.from("alliance_events").insert(payloadLegacy).select("id").single();
-    if (retry.error) throw retry.error;
-    return String(retry.data?.id || "");
-  }
-
-  throw resA.error;
-};
-
-const trySkipOccurrence = async (eventId: string, occurrenceIso: string, sourceEvent?: any) => {
-  const source = sourceEvent || events.find((x: any) => String(x.id) === String(eventId));
-  if (!source) throw new Error("Could not locate source recurring event.");
-
-  const occurrenceUtc = String((source as any)._occurrence_time_utc || getEventStartUtc(source) || "");
-  if (!occurrenceUtc) throw new Error("Could not locate occurrence start time.");
-
-  const nextUtc = findNextOccurrenceUtc(source, occurrenceUtc);
-
-  // If no later occurrence exists, deleting this one is just truncating the series
-  if (!nextUtc) {
-    await tryTruncateSeries(eventId, occurrenceIso);
-    return;
-  }
-
-  const cloneId = await insertClonedSeries(source, nextUtc);
-
-  try {
-    await tryTruncateSeries(eventId, occurrenceIso);
-  } catch (err) {
-    if (cloneId) {
-      await supabase.from("alliance_events").delete().eq("id", cloneId);
+    if (msg.includes("column") && (msg.includes("does not exist") || msg.includes("schema cache") || msg.includes("unknown"))) {
+      continue;
     }
-    throw err;
   }
+
+  throw lastErr || new Error("Could not truncate recurring series.");
 };
 
-  const deleteEvent = async (arg: any) => {
+const deleteEvent = async (arg: any) => {
     if (!canEdit) return;
 
     const id = typeof arg === "string" ? arg : getDeleteId(arg);
@@ -1184,6 +1070,8 @@ const trySkipOccurrence = async (eventId: string, occurrenceIso: string, sourceE
     </div>
   );
 }
+
+
 
 
 
