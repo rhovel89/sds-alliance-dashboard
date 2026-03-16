@@ -420,7 +420,13 @@ export default function AllianceCalendarPage() {
   const [typesHint, setTypesHint] = useState<string | null>(null);
 
   const [showModal, setShowModal] = useState(false);
-const [displayUtc, setDisplayUtc] = useState(false);
+const [displayUtc, setDisplayUtc] = useState<boolean>(() => {
+  try {
+    return localStorage.getItem("calendar.timeMode") === "utc";
+  } catch {
+    return false;
+  }
+});
 
   const makeEmptyForm = () => ({
   title: "",
@@ -513,6 +519,12 @@ const formatEventTimeLabel = (e: any) => {
       setUserId(data?.user?.id ?? null);
     })();
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("calendar.timeMode", displayUtc ? "utc" : "local");
+    } catch {}
+  }, [displayUtc]);
 
   const refetch = async () => {
     if (!upperAlliance) return;
@@ -993,16 +1005,51 @@ const deleteEvent = async (arg: any) => {
 
       {typesHint ? <div style={{ marginTop: 10, opacity: 0.85 }}>{typesHint}</div> : null}
 
-      <div style={{ marginTop: 20 }}>
+      <div
+  style={{
+    marginTop: 20,
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
+    alignItems: "center",
+  }}
+>
   <strong>{monthLabel}</strong>
+
+  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+    <div style={{ fontSize: 12, opacity: 0.82 }}>Show all event times as:</div>
+
+    <button
+      type="button"
+      onClick={() => setDisplayUtc(false)}
+      style={{
+        padding: "6px 10px",
+        borderRadius: 10,
+        border: !displayUtc ? "1px solid rgba(120,255,120,0.35)" : "1px solid #333",
+        background: !displayUtc ? "rgba(120,255,120,0.10)" : "rgba(255,255,255,0.03)",
+      }}
+    >
+      Local
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setDisplayUtc(true)}
+      style={{
+        padding: "6px 10px",
+        borderRadius: 10,
+        border: displayUtc ? "1px solid rgba(120,180,255,0.35)" : "1px solid #333",
+        background: displayUtc ? "rgba(120,180,255,0.12)" : "rgba(255,255,255,0.03)",
+      }}
+    >
+      Puzzle & Survival UTC
+    </button>
+  </div>
 </div>
 
-<div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
-  Debug:
-  {" "}
-  {expandedEvents.slice(0, 12).map((e: any) =>
-    `${String(e.title || e.event_name || "event")}=${String(e._occurrence_local_date || "no-date")}`
-  ).join(" | ")}
+<div style={{ marginTop: 8, fontSize: 12, opacity: 0.72 }}>
+  This changes display/export only. Saved events stay unchanged.
 </div>
 
       <div
@@ -1240,6 +1287,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
