@@ -997,8 +997,16 @@ const trySkipOccurrence = async (eventId: string, occurrenceIso: string, sourceE
       {typesHint ? <div style={{ marginTop: 10, opacity: 0.85 }}>{typesHint}</div> : null}
 
       <div style={{ marginTop: 20 }}>
-        <strong>{monthLabel}</strong>
-      </div>
+  <strong>{monthLabel}</strong>
+</div>
+
+<div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
+  Debug:
+  {" "}
+  {expandedEvents.slice(0, 12).map((e: any) =>
+    `${String(e.title || e.event_name || "event")}=${String(e._occurrence_local_date || "no-date")}`
+  ).join(" | ")}
+</div>
 
       <div
         style={{
@@ -1214,6 +1222,7 @@ const trySkipOccurrence = async (eventId: string, occurrenceIso: string, sourceE
     </div>
   );
 }
+
 
 
 
