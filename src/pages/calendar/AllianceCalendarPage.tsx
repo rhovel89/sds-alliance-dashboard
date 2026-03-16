@@ -467,7 +467,7 @@ const hhmmss = (d: Date) =>
   `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
 
 const formatEventTimeLabel = (e: any) => {
-  const utcIso = String((e?._occurrence_time_utc || e?.start_time_utc || ""));
+  const utcIso = String(e?._occurrence_time_utc || e?.start_time_utc || "");
 
   if (displayUtc && utcIso) {
     const d = new Date(utcIso);
@@ -476,7 +476,25 @@ const formatEventTimeLabel = (e: any) => {
     }
   }
 
-  return formatEventTimeLabel(e);
+  if (e?._occurrence_local_time) {
+    return String(e._occurrence_local_time);
+  }
+
+  const st = String(e?.start_time || "").trim();
+  const tm = st.match(/^(\d{2}):(\d{2})/);
+  if (tm) {
+    const d = new Date(2000, 0, 1, Number(tm[1]), Number(tm[2]), 0, 0);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  if (utcIso) {
+    const d = new Date(utcIso);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+  }
+
+  return "";
 };
 
   const daysInMonth = useMemo(
@@ -1222,6 +1240,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
