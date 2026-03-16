@@ -767,6 +767,81 @@ const isRecurringEvent = (e: any) => {
   return false;
 };
 
+const trySkipOccurrence = async (eventId: string, occurrenceIso: string, sourceEvent?: any) => {
+  const source = sourceEvent || events.find((x: any) => String(x.id) === String(eventId));
+  if (!source) throw new Error("Could not locate source recurring event.");
+
+  const baseTime = String(source?.start_time || "00:00").trim();
+  const hm = baseTime.match(/^(\d{2}):(\d{2})/);
+  const hh = hm ? Number(hm[1]) : 0;
+  const mm = hm ? Number(hm[2]) : 0;
+
+  const findNextOccurrenceIso = () => {
+    const start = parseISODateLocal(String(occurrenceIso || ""));
+    for (let offset = 1; offset <= 370; offset++) {
+      const probe = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 12, 0, 0, 0);
+      probe.setDate(probe.getDate() + offset);
+
+      const probeIso = toLocalISODate(probe);
+      const expanded = expandMonthLocally([source] as any, probe.getFullYear(), probe.getMonth()) as any[];
+
+      const hit = expanded.find((row: any) => String(row?._occurrence_local_date || "") === probeIso);
+      if (hit) return probeIso;
+    }
+    return null;
+  };
+
+  const nextIso = findNextOccurrenceIso();
+
+  // No later occurrence: truncating the series is enough
+  if (!nextIso) {
+    await tryTruncateSeries(eventId, occurrenceIso);
+    return;
+  }
+
+  const nextStart = parseISODateLocal(nextIso);
+  nextStart.setHours(hh, mm, 0, 0);
+
+  const duration = Math.max(1, Number(source?.duration_minutes || 60));
+  const nextEnd = new Date(nextStart.getTime() + duration * 60000);
+
+  const recurrenceDays = Array.isArray(source?.recurrence_days)
+    ? source.recurrence_days
+    : Array.isArray(source?.days_of_week)
+    ? source.days_of_week
+    : null;
+
+  const payload: any = {
+    alliance_id: source?.alliance_id,
+    title: String(source?.title || source?.event_name || "").trim(),
+    event_name: source?.event_name || source?.title || null,
+    created_by: userId || source?.created_by || null,
+    start_date: nextIso,
+    start_time: baseTime,
+    end_date: toLocalISODate(nextEnd),
+    end_time: `${String(nextEnd.getHours()).padStart(2, "0")}:${String(nextEnd.getMinutes()).padStart(2, "0")}:00`,
+    start_time_utc: nextStart.toISOString(),
+    duration_minutes: duration,
+    timezone_origin: source?.timezone_origin || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    recurring_enabled: !!source?.recurring_enabled,
+    recurrence_type: source?.recurrence_type || source?.recurrence || null,
+    recurrence_days: recurrenceDays,
+    recurrence_end_date: source?.recurrence_end_date || null,
+    event_type: source?.event_type || null,
+    event_category: source?.event_category || null,
+  };
+
+  const ins = await supabase.from("alliance_events").insert(payload as any).select("id").single();
+  if (ins.error) throw ins.error;
+
+  try {
+    await tryTruncateSeries(eventId, occurrenceIso);
+  } catch (err) {
+    await supabase.from("alliance_events").delete().eq("id", String(ins.data?.id || ""));
+    throw err;
+  }
+};
+
 const deleteEvent = async (arg: any) => {
     if (!canEdit) return;
 
@@ -1080,6 +1155,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
