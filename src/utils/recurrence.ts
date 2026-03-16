@@ -1,13 +1,8 @@
 export type RecurrenceType = "daily" | "weekly" | "biweekly" | "monthly";
 
-/**
- * Broad shape used by calendar. Keep fields optional so we don't break older rows.
- * We also include meta fields for virtual (expanded) occurrences.
- */
 export type CalendarEventRow = {
   id: string;
 
-  // common event columns your calendar UI uses
   title?: string | null;
   event_type?: string | null;
   event_name?: string | null;
@@ -18,26 +13,21 @@ export type CalendarEventRow = {
   duration_minutes?: number | null;
   timezone_origin?: string | null;
 
-  // canonical
   start_time_utc?: string | null;
 
-  // legacy helpers (some schemas store these)
   start_date?: string | null; // YYYY-MM-DD
-  start_time?: string | null; // HH:mm
-  end_date?: string | null;   // YYYY-MM-DD
-  end_time?: string | null;   // HH:mm
+  start_time?: string | null; // HH:mm or HH:mm:ss
+  end_date?: string | null;
+  end_time?: string | null;
 
-  // recurrence
   recurring_enabled?: boolean | null;
   recurrence_type?: RecurrenceType | string | null;
   recurrence_days?: string[] | null;
-  recurrence_end_date?: string | null; // YYYY-MM-DD
+  recurrence_end_date?: string | null;
 
-  // fallback names some older schemas use
   recurrence?: string | null;
   days_of_week?: string[] | null;
 
-  // meta for expanded instances (virtual occurrences)
   instance_id?: string | null;
   _source_event_id?: string;
   _occurrence_time_utc?: string;
@@ -58,148 +48,157 @@ function toDow(v: string): number | null {
   return k in DAY_MAP ? DAY_MAP[k] : null;
 }
 
-/**
- * Returns the event start time in UTC ISO string.
- * Prefers start_time_utc. Falls back to (start_date + start_time) treated as LOCAL time.
- * Avoids "YYYY-MM-DD" Date() UTC parsing bugs by manual parse.
- */
-export function getEventStartUtc(e: CalendarEventRow): string | null {
-  if (e.start_time_utc) return String(e.start_time_utc);
-
-  const sd = (e.start_date ?? "").trim();
-  const st = (e.start_time ?? "").trim();
-
-  if (sd && st) {
-    const d = new Date(`${sd}T${st}`);
-    if (!isNaN(d.getTime())) return d.toISOString();
-  }
+function parseLocalStart(e: CalendarEventRow): Date | null {
+  const sd = String(e.start_date ?? "").trim();
+  const st = String(e.start_time ?? "").trim();
 
   if (sd) {
-    const parts = sd.split("-").map(Number);
-    if (parts.length === 3) {
-      const [y, m, d] = parts;
-      // LOCAL midnight (safe, no UTC string parsing)
-      const dt = new Date(y, (m || 1) - 1, d || 1, 0, 0, 0, 0);
-      if (!isNaN(dt.getTime())) return dt.toISOString();
+    const dm = sd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dm) {
+      const y = Number(dm[1]);
+      const mo = Number(dm[2]);
+      const da = Number(dm[3]);
+
+      let hh = 0;
+      let mm = 0;
+
+      if (st) {
+        const tm = st.match(/^(\d{2}):(\d{2})/);
+        if (tm) {
+          hh = Number(tm[1]);
+          mm = Number(tm[2]);
+        }
+      }
+
+      const dt = new Date(y, mo - 1, da, hh, mm, 0, 0);
+      if (!Number.isNaN(dt.getTime())) return dt;
     }
+  }
+
+  if (e.start_time_utc) {
+    const d = new Date(String(e.start_time_utc));
+    if (!Number.isNaN(d.getTime())) return d;
   }
 
   return null;
 }
 
-/**
- * For expanded (virtual) occurrences, delete should target the original event id.
- */
+export function getEventStartUtc(e: CalendarEventRow): string | null {
+  if (e.start_time_utc) return String(e.start_time_utc);
+
+  const local = parseLocalStart(e);
+  if (!local) return null;
+  return local.toISOString();
+}
+
 export function getDeleteId(e: CalendarEventRow): string {
   return String((e as any)._source_event_id ?? e.id);
 }
 
-function daysInUtcMonth(y: number, m: number) {
-  return new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+function daysInLocalMonth(y: number, m: number) {
+  return new Date(y, m + 1, 0).getDate();
 }
 
-function startOfUtcWeek(d: Date) {
-  const day = d.getUTCDay();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
+function startOfLocalWeek(d: Date) {
+  const day = d.getDay();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - day, 0, 0, 0, 0);
 }
 
-function parseEndClamp(endDate: any): Date | null {
+function parseEndClampLocal(endDate: any): Date | null {
   if (!endDate) return null;
   const [yy, mm, dd] = String(endDate).split("-").map(Number);
   if (!yy || !mm || !dd) return null;
-  return new Date(Date.UTC(yy, mm - 1, dd, 23, 59, 59, 999));
+  return new Date(yy, mm - 1, dd, 23, 59, 59, 999);
 }
 
-/**
- * Expand recurring events into occurrences for the requested month.
- * Output events include meta fields:
- *   _source_event_id, _occurrence_time_utc
- */
 export function expandEventsForMonth<T extends CalendarEventRow>(
   events: T[],
   year: number,
   month: number
 ): T[] {
-  const monthStart = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
-  const monthEnd = new Date(Date.UTC(year, month, daysInUtcMonth(year, month), 23, 59, 59, 999));
+  const monthStart = new Date(year, month, 1, 0, 0, 0, 0);
+  const monthEnd = new Date(year, month, daysInLocalMonth(year, month), 23, 59, 59, 999);
 
   const out: T[] = [];
 
   for (const ev of events) {
-    const baseIso = getEventStartUtc(ev);
-    if (!baseIso) continue;
+    const baseLocal = parseLocalStart(ev);
+    if (!baseLocal) continue;
 
-    const base = new Date(baseIso);
+    const baseUtcIso = getEventStartUtc(ev);
+    if (!baseUtcIso) continue;
+
     const enabled = !!ev.recurring_enabled;
-    const rtype = String(ev.recurrence_type ?? "").toLowerCase() as RecurrenceType;
+    const rtype = String(ev.recurrence_type ?? ev.recurrence ?? "").toLowerCase() as RecurrenceType;
+    const endClamp = parseEndClampLocal(ev.recurrence_end_date);
 
-    const endClamp = parseEndClamp(ev.recurrence_end_date);
-
-    // Include base row (mark meta)
     out.push({
       ...(ev as any),
-      start_time_utc: base.toISOString(),
+      start_time_utc: baseUtcIso,
       _source_event_id: ev.id,
-      _occurrence_time_utc: base.toISOString(),
+      _occurrence_time_utc: baseUtcIso,
     });
 
     if (!enabled || !rtype) continue;
 
-    const baseH = base.getUTCHours();
-    const baseM = base.getUTCMinutes();
-    const baseS = base.getUTCSeconds();
-    const baseMs = base.getUTCMilliseconds();
+    const baseH = baseLocal.getHours();
+    const baseM = baseLocal.getMinutes();
+    const baseS = baseLocal.getSeconds();
+    const baseMs = baseLocal.getMilliseconds();
 
-    const rawDays = Array.isArray(ev.recurrence_days) ? ev.recurrence_days : [];
-    const parsedDays = rawDays.map(toDow).filter((x): x is number => x !== null);
+    const rawDays = Array.isArray(ev.recurrence_days)
+      ? ev.recurrence_days
+      : Array.isArray(ev.days_of_week)
+      ? ev.days_of_week
+      : [];
+
+    const parsedDays = rawDays.map((x) => toDow(String(x))).filter((x): x is number => x !== null);
 
     const allowedDays =
       (rtype === "weekly" || rtype === "biweekly")
-        ? (parsedDays.length ? parsedDays : [base.getUTCDay()])
+        ? (parsedDays.length ? parsedDays : [baseLocal.getDay()])
         : [];
 
-    const maxDay = daysInUtcMonth(year, month);
+    const maxDay = daysInLocalMonth(year, month);
 
     for (let day = 1; day <= maxDay; day++) {
-      const cand = new Date(Date.UTC(year, month, day, baseH, baseM, baseS, baseMs));
+      const candLocal = new Date(year, month, day, baseH, baseM, baseS, baseMs);
 
-      if (cand < monthStart || cand > monthEnd) continue;
-      if (cand < base) continue;
-      if (endClamp && cand > endClamp) continue;
+      if (candLocal < monthStart || candLocal > monthEnd) continue;
+      if (candLocal < baseLocal) continue;
+      if (endClamp && candLocal > endClamp) continue;
 
       if (rtype === "daily") {
         // ok
       } else if (rtype === "weekly") {
-        if (!allowedDays.includes(cand.getUTCDay())) continue;
+        if (!allowedDays.includes(candLocal.getDay())) continue;
       } else if (rtype === "biweekly") {
-        if (!allowedDays.includes(cand.getUTCDay())) continue;
+        if (!allowedDays.includes(candLocal.getDay())) continue;
 
-        const baseWeek = startOfUtcWeek(base).getTime();
-        const candWeek = startOfUtcWeek(cand).getTime();
+        const baseWeek = startOfLocalWeek(baseLocal).getTime();
+        const candWeek = startOfLocalWeek(candLocal).getTime();
         const weeksDiff = Math.floor((candWeek - baseWeek) / (7 * 24 * 60 * 60 * 1000));
         if (weeksDiff % 2 !== 0) continue;
       } else if (rtype === "monthly") {
-        const baseDay = base.getUTCDate();
-        const dim = daysInUtcMonth(cand.getUTCFullYear(), cand.getUTCMonth());
+        const baseDay = baseLocal.getDate();
+        const dim = daysInLocalMonth(candLocal.getFullYear(), candLocal.getMonth());
         const effectiveDay = Math.min(baseDay, dim);
-        if (cand.getUTCDate() !== effectiveDay) continue;
+        if (candLocal.getDate() !== effectiveDay) continue;
       } else {
         continue;
       }
 
-      // skip base timestamp duplicate
-      if (cand.toISOString() === base.toISOString()) continue;
+      const candUtcIso = candLocal.toISOString();
+      if (candUtcIso === baseUtcIso) continue;
 
       out.push({
         ...(ev as any),
-        start_time_utc: cand.toISOString(),
+        start_time_utc: candUtcIso,
         _source_event_id: ev.id,
-        _occurrence_time_utc: cand.toISOString(),
+        _occurrence_time_utc: candUtcIso,
       });
     }
   }
 
   return out;
 }
-
-

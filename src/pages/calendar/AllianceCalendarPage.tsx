@@ -68,6 +68,369 @@ const EVENT_TYPES = [
   "Alliance Showdown",
   "FireFlies",
 ];
+
+const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"] as const;
+
+function weekdayNameFromLocalIsoDate(isoDate: string) {
+  const m = String(isoDate || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return "Sun";
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const dt = new Date(y, mo - 1, d, 12, 0, 0, 0);
+  return DAY_NAMES[dt.getDay()];
+}
+const LOCAL_DAY_MAP: Record<string, number> = {
+  sun: 0, sunday: 0,
+  mon: 1, monday: 1,
+  tue: 2, tues: 2, tuesday: 2,
+  wed: 3, wednesday: 3,
+  thu: 4, thur: 4, thurs: 4, thursday: 4,
+  fri: 5, friday: 5,
+  sat: 6, saturday: 6,
+};
+
+function localDowFromToken(v: string): number | null {
+  const k = String(v || "").trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(LOCAL_DAY_MAP, k) ? LOCAL_DAY_MAP[k] : null;
+}
+
+function parseEventLocalStart(ev: any): Date | null {
+  const sd = String(ev?.start_date || "").trim();
+  const st = String(ev?.start_time || "").trim();
+
+  if (sd) {
+    const dm = sd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dm) {
+      const y = Number(dm[1]);
+      const mo = Number(dm[2]);
+      const da = Number(dm[3]);
+
+      let hh = 0;
+      let mm = 0;
+
+      if (st) {
+        const tm = st.match(/^(\d{2}):(\d{2})/);
+        if (tm) {
+          hh = Number(tm[1]);
+          mm = Number(tm[2]);
+        }
+      }
+
+      const dt = new Date(y, mo - 1, da, hh, mm, 0, 0);
+      if (!Number.isNaN(dt.getTime())) return dt;
+    }
+  }
+
+  if (ev?.start_time_utc) {
+    const dt = new Date(String(ev.start_time_utc));
+    if (!Number.isNaN(dt.getTime())) return dt;
+  }
+
+  return null;
+}
+
+function parseRecurrenceEndLocal(v: any): Date | null {
+  if (!v) return null;
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+
+  return new Date(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    23, 59, 59, 999
+  );
+}
+
+function localWeekStart(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay(), 0, 0, 0, 0);
+}
+
+function expandEventsForMonthStable(rows: EventRow[], year: number, month: number): EventRow[] {
+  const out: EventRow[] = [];
+  const monthStart = new Date(year, month, 1, 0, 0, 0, 0);
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+  for (const ev of rows) {
+    const baseLocal = parseEventLocalStart(ev);
+    if (!baseLocal) continue;
+
+    const baseUtc = String(ev.start_time_utc || baseLocal.toISOString());
+    const recurrenceType = String(ev.recurrence_type || ev.recurrence || "").toLowerCase();
+    const recurring = !!ev.recurring_enabled && !!recurrenceType;
+    const recurrenceEnd = parseRecurrenceEndLocal(ev.recurrence_end_date);
+
+    out.push({
+      ...(ev as any),
+      start_time_utc: baseUtc,
+      _source_event_id: ev.id,
+      _occurrence_time_utc: baseUtc,
+    });
+
+    if (!recurring) continue;
+
+    const rawDays = Array.isArray(ev.recurrence_days)
+      ? ev.recurrence_days
+      : Array.isArray((ev as any).days_of_week)
+      ? (ev as any).days_of_week
+      : [];
+
+    const parsedDays = rawDays
+      .map((x: any) => localDowFromToken(String(x)))
+      .filter((x: number | null): x is number => x !== null);
+
+    const allowedDays =
+      (recurrenceType === "weekly" || recurrenceType === "biweekly")
+        ? (parsedDays.length ? parsedDays : [baseLocal.getDay()])
+        : [];
+
+    const maxDay = new Date(year, month + 1, 0).getDate();
+
+    for (let day = 1; day <= maxDay; day++) {
+      const candLocal = new Date(
+        year,
+        month,
+        day,
+        baseLocal.getHours(),
+        baseLocal.getMinutes(),
+        baseLocal.getSeconds(),
+        baseLocal.getMilliseconds()
+      );
+
+      if (candLocal < baseLocal) continue;
+      if (candLocal < monthStart || candLocal > monthEnd) continue;
+      if (recurrenceEnd && candLocal > recurrenceEnd) continue;
+
+      if (recurrenceType === "daily") {
+        // keep
+      } else if (recurrenceType === "weekly") {
+        if (!allowedDays.includes(candLocal.getDay())) continue;
+      } else if (recurrenceType === "biweekly") {
+        if (!allowedDays.includes(candLocal.getDay())) continue;
+
+        const baseWeek = localWeekStart(baseLocal).getTime();
+        const candWeek = localWeekStart(candLocal).getTime();
+        const weeksDiff = Math.floor((candWeek - baseWeek) / (7 * 24 * 60 * 60 * 1000));
+        if (weeksDiff % 2 !== 0) continue;
+      } else if (recurrenceType === "monthly") {
+        if (candLocal.getDate() !== baseLocal.getDate()) continue;
+      } else {
+        continue;
+      }
+
+      const candUtc = candLocal.toISOString();
+      if (candUtc === baseUtc) continue;
+
+      out.push({
+        ...(ev as any),
+        start_time_utc: candUtc,
+        _source_event_id: ev.id,
+        _occurrence_time_utc: candUtc,
+      });
+    }
+  }
+
+  return out;
+}
+
+type CalendarLocalExpandedEvent = EventRow & {
+  _source_event_id: string;
+  _occurrence_time_utc: string;
+  _occurrence_local_date: string;
+  _occurrence_local_time: string;
+};
+
+const CAL_LOCAL_DAY_MAP_2: Record<string, number> = {
+  sun: 0, sunday: 0,
+  mon: 1, monday: 1,
+  tue: 2, tues: 2, tuesday: 2,
+  wed: 3, wednesday: 3,
+  thu: 4, thur: 4, thurs: 4, thursday: 4,
+  fri: 5, friday: 5,
+  sat: 6, saturday: 6,
+};
+
+function calLocalDayNum2(v: string): number | null {
+  const k = String(v || "").trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(CAL_LOCAL_DAY_MAP_2, k) ? CAL_LOCAL_DAY_MAP_2[k] : null;
+}
+
+function calParseBaseLocal2(ev: any): Date | null {
+  const sd = String(ev?.start_date || "").trim();
+  const st = String(ev?.start_time || "").trim();
+
+  if (sd) {
+    const dm = sd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dm) {
+      const y = Number(dm[1]);
+      const mo = Number(dm[2]);
+      const da = Number(dm[3]);
+
+      let hh = 0;
+      let mm = 0;
+
+      if (st) {
+        const tm = st.match(/^(\d{2}):(\d{2})/);
+        if (tm) {
+          hh = Number(tm[1]);
+          mm = Number(tm[2]);
+        }
+      }
+
+      const dt = new Date(y, mo - 1, da, hh, mm, 0, 0);
+      if (!Number.isNaN(dt.getTime())) return dt;
+    }
+  }
+
+  if (ev?.start_time_utc) {
+    const dt = new Date(String(ev.start_time_utc));
+    if (!Number.isNaN(dt.getTime())) return dt;
+  }
+
+  return null;
+}
+
+function calLocalWeekStart2(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay(), 0, 0, 0, 0);
+}
+
+function calParseEndLocal2(v: any): Date | null {
+  if (!v) return null;
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+
+  return new Date(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    23, 59, 59, 999
+  );
+}
+
+function calOccurrenceTimeLabel2(ev: any) {
+  if (ev?._occurrence_local_time) return String(ev._occurrence_local_time);
+
+  const d = calParseBaseLocal2(ev);
+  if (!d) return "";
+
+  return d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function calOccurrenceLocalDate2(ev: any) {
+  if (ev?._occurrence_local_date) return String(ev._occurrence_local_date);
+
+  const d = calParseBaseLocal2(ev);
+  if (!d) return "";
+
+  return toLocalISODate(d);
+}
+
+function expandEventsForMonthCalendarLocal2(rows: EventRow[], year: number, month: number): CalendarLocalExpandedEvent[] {
+  const out: CalendarLocalExpandedEvent[] = [];
+  const monthStart = new Date(year, month, 1, 0, 0, 0, 0);
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+  const maxDay = new Date(year, month + 1, 0).getDate();
+
+  for (const ev of rows) {
+    const baseLocal = calParseBaseLocal2(ev);
+    if (!baseLocal) continue;
+
+    const baseUtc = String(ev.start_time_utc || baseLocal.toISOString());
+    const baseLocalDate = toLocalISODate(baseLocal);
+    const baseLocalTime = baseLocal.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    out.push({
+      ...(ev as any),
+      start_time_utc: baseUtc,
+      _source_event_id: String(ev.id),
+      _occurrence_time_utc: baseUtc,
+      _occurrence_local_date: baseLocalDate,
+      _occurrence_local_time: baseLocalTime,
+    });
+
+    const rtype = String(ev.recurrence_type || ev.recurrence || "").toLowerCase();
+    const recurring = !!ev.recurring_enabled && !!rtype;
+    if (!recurring) continue;
+
+    const endLocal = calParseEndLocal2(ev.recurrence_end_date);
+
+    const rawDays = Array.isArray(ev.recurrence_days)
+      ? ev.recurrence_days
+      : Array.isArray((ev as any).days_of_week)
+      ? (ev as any).days_of_week
+      : [];
+
+    const parsedDays = rawDays
+      .map((x: any) => calLocalDayNum2(String(x)))
+      .filter((x: number | null): x is number => x !== null);
+
+    const allowedDays =
+      (rtype === "weekly" || rtype === "biweekly")
+        ? (parsedDays.length ? parsedDays : [baseLocal.getDay()])
+        : [];
+
+    for (let day = 1; day <= maxDay; day++) {
+      const candLocal = new Date(
+        year,
+        month,
+        day,
+        baseLocal.getHours(),
+        baseLocal.getMinutes(),
+        baseLocal.getSeconds(),
+        baseLocal.getMilliseconds()
+      );
+
+      if (candLocal < baseLocal) continue;
+      if (candLocal < monthStart || candLocal > monthEnd) continue;
+      if (endLocal && candLocal > endLocal) continue;
+
+      if (rtype === "daily") {
+        // ok
+      } else if (rtype === "weekly") {
+        if (!allowedDays.includes(candLocal.getDay())) continue;
+      } else if (rtype === "biweekly") {
+        if (!allowedDays.includes(candLocal.getDay())) continue;
+
+        const baseWeek = calLocalWeekStart2(baseLocal).getTime();
+        const candWeek = calLocalWeekStart2(candLocal).getTime();
+        const weeksDiff = Math.floor((candWeek - baseWeek) / (7 * 24 * 60 * 60 * 1000));
+        if (weeksDiff % 2 !== 0) continue;
+      } else if (rtype === "monthly") {
+        if (candLocal.getDate() !== baseLocal.getDate()) continue;
+      } else {
+        continue;
+      }
+
+      const candLocalDate = toLocalISODate(candLocal);
+      const candLocalTime = candLocal.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const candUtc = candLocal.toISOString();
+
+      if (candLocalDate === baseLocalDate && candLocalTime === baseLocalTime) continue;
+
+      out.push({
+        ...(ev as any),
+        start_time_utc: candUtc,
+        _source_event_id: String(ev.id),
+        _occurrence_time_utc: candUtc,
+        _occurrence_local_date: candLocalDate,
+        _occurrence_local_time: candLocalTime,
+      });
+    }
+  }
+
+  return out;
+}
+
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = (alliance_id || "").toUpperCase();
@@ -114,9 +477,9 @@ export default function AllianceCalendarPage() {
     [month, year]
   );
 
-  // Expand recurring events for the visible month (client-side)
+  // Expand recurring events for the visible month (page-local stable local-date renderer)
   const expandedEvents = useMemo(() => {
-    return expandEventsForMonth(events as any, year, month) as any[];
+    return expandEventsForMonthStable(events as any, year, month) as any[];
   }, [events, year, month]);
 
   useEffect(() => {
@@ -257,7 +620,7 @@ export default function AllianceCalendarPage() {
   };
 
   const saveEvent = async () => {
-    if (!canEdit && !isOwner) return;
+    if (!canEdit) return;
 
     const cleanTitle = form.title.trim();
 
@@ -296,31 +659,37 @@ export default function AllianceCalendarPage() {
     const chosenType = await upsertTypeIfNeeded();
     const chosenCategory = (form.event_category || "Alliance").trim() || "Alliance";
 
+    const normalizedRecurrenceDays =
+      form.recurring_enabled &&
+      (form.recurrence_type === "weekly" || form.recurrence_type === "biweekly")
+        ? (
+            Array.isArray(form.recurrence_days) && form.recurrence_days.length
+              ? form.recurrence_days
+              : [weekdayNameFromLocalIsoDate(form.start_date)]
+          )
+        : form.recurrence_days;
+
     const basePayload: any = {
       alliance_id: upperAlliance,
 
-      // REQUIRED NOT NULL COLUMNS (your newer schema)
       title: cleanTitle,
       created_by: userId,
       start_time_utc: startLocal.toISOString(),
       duration_minutes: durationMinutes,
       timezone_origin: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
 
-      // category + type
       event_category: chosenCategory,
       event_type: chosenType,
 
-      // Optional legacy columns (keep existing behavior)
       event_name: cleanTitle,
       start_date: form.start_date,
-      end_date: form.end_date,
       start_time: form.start_time,
+      end_date: form.end_date,
       end_time: form.end_time,
 
-      // Recurrence
       recurring_enabled: form.recurring_enabled,
       recurrence_type: form.recurrence_type || null,
-      recurrence_days: form.recurrence_days,
+      recurrence_days: normalizedRecurrenceDays,
       recurrence_end_date: form.recurrence_end_date || null,
     };
 
@@ -329,7 +698,7 @@ export default function AllianceCalendarPage() {
     const payloadA = {
       ...basePayload,
       ...(wantRecurring
-        ? { recurrence_type: form.recurrence_type, recurrence_days: form.recurrence_days }
+        ? { recurrence_type: form.recurrence_type, recurrence_days: normalizedRecurrenceDays }
         : { recurrence_type: null, recurrence_days: null }),
     };
 
@@ -359,7 +728,7 @@ export default function AllianceCalendarPage() {
         const payloadB = {
           ...basePayload,
           ...(wantRecurring
-            ? { recurrence: form.recurrence_type, days_of_week: form.recurrence_days }
+            ? { recurrence: form.recurrence_type, days_of_week: normalizedRecurrenceDays }
             : { recurrence: null, days_of_week: null }),
         };
         const resB = await supabase.from("alliance_events").insert(payloadB).select("id").single();
@@ -407,52 +776,132 @@ export default function AllianceCalendarPage() {
     return false;
   };
 
-  const trySkipOccurrence = async (eventId: string, occurrenceIso: string) => {
-    const attempts: any[] = [
-      { event_id: eventId, occurrence_iso: occurrenceIso, kind: "skip" },
-      { event_id: eventId, occurrence_date: occurrenceIso, kind: "skip" },
-      { event_id: eventId, date_iso: occurrenceIso, kind: "skip" },
-      { event_id: eventId, occurrence_iso: occurrenceIso, action: "skip" },
-      { event_id: eventId, occurrence_date: occurrenceIso, action: "skip" },
-    ];
+  const toLocalHHmm = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 
-    let lastErr: any = null;
-    for (const payload of attempts) {
-      const ins = await supabase.from("alliance_event_exceptions").insert(payload as any);
-      if (!ins.error) return;
-      lastErr = ins.error;
-      const msg = String(ins.error.message || "").toLowerCase();
-      if (msg.includes("column") && (msg.includes("does not exist") || msg.includes("unknown"))) continue;
-      if (msg.includes("relation") && msg.includes("does not exist")) break;
-      continue;
-    }
-    throw lastErr || new Error("Could not create occurrence exception.");
+const findNextOccurrenceUtc = (sourceEvent: any, afterUtc: string): string | null => {
+  const afterMs = new Date(afterUtc).getTime();
+  if (!Number.isFinite(afterMs)) return null;
+
+  for (let offset = 0; offset < 36; offset++) {
+    const probeMonth = month + offset;
+    const probeYear = year + Math.floor(probeMonth / 12);
+    const normalizedMonth = ((probeMonth % 12) + 12) % 12;
+
+    const expanded = expandEventsForMonth([sourceEvent], probeYear, normalizedMonth) as any[];
+
+    const candidates = expanded
+      .map((x) => String((x as any)._occurrence_time_utc || getEventStartUtc(x) || ""))
+      .filter(Boolean)
+      .map((iso) => ({ iso, ms: new Date(iso).getTime() }))
+      .filter((x) => Number.isFinite(x.ms) && x.ms > afterMs)
+      .sort((a, b) => a.ms - b.ms);
+
+    if (candidates.length) return candidates[0].iso;
+  }
+
+  return null;
+};
+
+const insertClonedSeries = async (sourceEvent: any, nextUtc: string): Promise<string | null> => {
+  const nextStart = new Date(nextUtc);
+  const duration = Math.max(1, Number(sourceEvent?.duration_minutes || 60));
+  const nextEnd = new Date(nextStart.getTime() + duration * 60000);
+
+  const recurrenceDays = Array.isArray(sourceEvent?.recurrence_days)
+    ? sourceEvent.recurrence_days
+    : Array.isArray(sourceEvent?.days_of_week)
+    ? sourceEvent.days_of_week
+    : null;
+
+  const basePayload: any = {
+    alliance_id: sourceEvent?.alliance_id || upperAlliance,
+    title: String(sourceEvent?.title || sourceEvent?.event_name || "").trim(),
+    created_by: userId || sourceEvent?.created_by || null,
+    start_time_utc: nextUtc,
+    duration_minutes: duration,
+    timezone_origin: sourceEvent?.timezone_origin || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+
+    event_category: sourceEvent?.event_category || null,
+    event_type: sourceEvent?.event_type || null,
+
+    event_name: sourceEvent?.event_name || sourceEvent?.title || null,
+    start_date: toLocalISODate(nextStart),
+    start_time: toLocalHHmm(nextStart),
+    end_date: toLocalISODate(nextEnd),
+    end_time: toLocalHHmm(nextEnd),
+
+    recurring_enabled: !!sourceEvent?.recurring_enabled,
+    recurrence_type: sourceEvent?.recurrence_type || sourceEvent?.recurrence || null,
+    recurrence_days: recurrenceDays,
+    recurrence_end_date: sourceEvent?.recurrence_end_date || null,
   };
 
-  const tryTruncateSeries = async (eventId: string, occurrenceIso: string) => {
-    const prev = prevIsoDay(occurrenceIso);
-    if (!prev) throw new Error("Could not compute previous day for truncation.");
-    const attempts: any[] = [
-      { recurrence_end_date: prev },
-      { recurrence_until: prev },
-      { until_date: prev },
-      { recurrence_end: prev },
-    ];
+  const resA = await supabase.from("alliance_events").insert(basePayload).select("id").single();
 
-    let lastErr: any = null;
-    for (const patch of attempts) {
-      const up = await supabase.from("alliance_events").update(patch as any).eq("id", eventId);
-      if (!up.error) return;
-      lastErr = up.error;
-      const msg = String(up.error.message || "").toLowerCase();
-      if (msg.includes("column") && msg.includes("does not exist")) continue;
-      continue;
+  if (!resA.error) return String(resA.data?.id || "");
+
+  const msg = String(resA.error.message || "").toLowerCase();
+  const missingEventCategory = msg.includes("column") && msg.includes("event_category");
+  const missingRecCols =
+    msg.includes("column") &&
+    (msg.includes("recurrence_type") || msg.includes("recurrence_days"));
+
+  if (missingEventCategory) {
+    const payloadNoCat = { ...basePayload };
+    delete payloadNoCat.event_category;
+
+    const retry = await supabase.from("alliance_events").insert(payloadNoCat).select("id").single();
+    if (retry.error) throw retry.error;
+    return String(retry.data?.id || "");
+  }
+
+  if (missingRecCols) {
+    const payloadLegacy = {
+      ...basePayload,
+      recurrence: basePayload.recurrence_type,
+      days_of_week: basePayload.recurrence_days,
+    };
+
+    delete payloadLegacy.recurrence_type;
+    delete payloadLegacy.recurrence_days;
+
+    const retry = await supabase.from("alliance_events").insert(payloadLegacy).select("id").single();
+    if (retry.error) throw retry.error;
+    return String(retry.data?.id || "");
+  }
+
+  throw resA.error;
+};
+
+const trySkipOccurrence = async (eventId: string, occurrenceIso: string, sourceEvent?: any) => {
+  const source = sourceEvent || events.find((x: any) => String(x.id) === String(eventId));
+  if (!source) throw new Error("Could not locate source recurring event.");
+
+  const occurrenceUtc = String((source as any)._occurrence_time_utc || getEventStartUtc(source) || "");
+  if (!occurrenceUtc) throw new Error("Could not locate occurrence start time.");
+
+  const nextUtc = findNextOccurrenceUtc(source, occurrenceUtc);
+
+  // If no later occurrence exists, deleting this one is just truncating the series
+  if (!nextUtc) {
+    await tryTruncateSeries(eventId, occurrenceIso);
+    return;
+  }
+
+  const cloneId = await insertClonedSeries(source, nextUtc);
+
+  try {
+    await tryTruncateSeries(eventId, occurrenceIso);
+  } catch (err) {
+    if (cloneId) {
+      await supabase.from("alliance_events").delete().eq("id", cloneId);
     }
-    throw lastErr || new Error("Could not truncate recurring series.");
-  };
+    throw err;
+  }
+};
 
   const deleteEvent = async (arg: any) => {
-    if (!canEdit && !isOwner) return;
+    if (!canEdit) return;
 
     const id = typeof arg === "string" ? arg : getDeleteId(arg);
     const e = typeof arg === "string" ? { id } : arg;
@@ -461,7 +910,7 @@ export default function AllianceCalendarPage() {
 
     const recurring = isRecurringEvent(e);
     const utc = String(getEventStartUtc(e) || "");
-    const occurrenceIso = utc ? toLocalIsoFromUtc(utc) : "";
+    const occurrenceIso = String((e as any)?._occurrence_local_date || (utc ? toLocalIsoFromUtc(utc) : ""));
 
     // Non-recurring: keep old behavior
     if (!recurring || !occurrenceIso) {
@@ -488,7 +937,7 @@ export default function AllianceCalendarPage() {
         await tryTruncateSeries(id, occurrenceIso);
       } else {
         if (!confirm("Delete THIS occurrence only?")) return;
-        await trySkipOccurrence(id, occurrenceIso);
+        await trySkipOccurrence(id, occurrenceIso, e);
       }
     } catch (err: any) {
       alert(String(err?.message || err || "Delete failed"));
@@ -504,24 +953,20 @@ export default function AllianceCalendarPage() {
     });
   }, [month, year]);
 
-  // Calendar day match using local conversion from UTC instant
-  const isSameDay = (utcString: string, y: number, m: number, d: number) => {
-    const local = new Date(utcString);
-    return (
-      local.getFullYear() === y &&
-      local.getMonth() === m &&
-      local.getDate() === d
-    );
+  // Calendar day match using local occurrence dates
+  const isSameDay = (e: any, y: number, m: number, d: number) => {
+    const want = `${y}-${pad2(m + 1)}-${pad2(d)}`;
+    return calOccurrenceLocalDate2(e) === want;
   };
 
   const selectedDayEvents = useMemo(() => {
     if (!selectedDay) return [];
-    return expandedEvents.filter((e: any) => isSameDay(String(getEventStartUtc(e) || ""), year, month, selectedDay));
+    return expandedEvents.filter((e: any) => isSameDay(e, year, month, selectedDay));
   }, [expandedEvents, selectedDay, year, month]);
 
   // Manager tools: delete type
   const deleteType = async (id: string) => {
-    if (!canEdit && !isOwner) return;
+    if (!canEdit) return;
     if (!typesOk) return alert("Event type catalog is not available (fallback mode).");
     if (!confirm("Delete this event type?")) return;
 
@@ -557,9 +1002,7 @@ export default function AllianceCalendarPage() {
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
 
-          const dayEvents = expandedEvents.filter((e: any) =>
-            isSameDay(String(getEventStartUtc(e) || ""), year, month, day)
-          );
+          const dayEvents = expandedEvents.filter((e: any) => isSameDay(e, year, month, day));
 
           return (
             <div
@@ -589,10 +1032,7 @@ export default function AllianceCalendarPage() {
                   }}
                   title={canEdit ? "Click to delete" : undefined}
                 >
-                  {new Date(String(getEventStartUtc(e) || "")).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}{" "}
+                  {calOccurrenceTimeLabel2(e)}{" "}
                   - {e.title}
                 </div>
               ))}
@@ -621,10 +1061,7 @@ export default function AllianceCalendarPage() {
                     style={{ border: "1px solid #333", borderRadius: 8, padding: 10 }}
                   >
                     <div style={{ fontWeight: 700 }}>
-                      {new Date(String(getEventStartUtc(e) || "")).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}{" "}
+                      {calOccurrenceTimeLabel2(e)}{" "}
                       - {e.title}
                     </div>
                     {e.event_category ? <div style={{ opacity: 0.9, fontSize: 12 }}>{String(e.event_category)}</div> : null}
@@ -755,6 +1192,8 @@ export default function AllianceCalendarPage() {
             onRecurrenceTypeChange={(v) => setForm((prev) => ({ ...prev, recurrence_type: v as any }))}
             daysOfWeek={form.recurrence_days}
             onDaysOfWeekChange={(v) => setForm((prev) => ({ ...prev, recurrence_days: v }))}
+            endDate={form.recurrence_end_date}
+            onEndDateChange={(v) => setForm((prev) => ({ ...prev, recurrence_end_date: v }))}
           />
 
           <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
@@ -766,6 +1205,12 @@ export default function AllianceCalendarPage() {
     </div>
   );
 }
+
+
+
+
+
+
 
 
 
