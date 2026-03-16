@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
 import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 import { supabase } from "../../lib/supabaseClient";
+import WeeklyAgendaCard from "../../components/dashboard/WeeklyAgendaCard";
 
 function s(v: any) { return v === null || v === undefined ? "" : String(v); }
 function shortId(x: string) { const t = s(x); return t ? (t.slice(0, 8) + "…" + t.slice(-6)) : ""; }
@@ -253,6 +254,8 @@ export default function MeDossierPage() {
           </div>
         </div>
       </div>
+          <WeeklyAgendaCard />
     </CommandCenterShell>
   );
 }
+
