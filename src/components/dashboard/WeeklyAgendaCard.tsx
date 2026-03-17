@@ -29,7 +29,7 @@ type ExpandedAgendaEvent = EventRow & {
   _occurrence_local_time: string;
 };
 
-type ViewMode = "day" | "tomorrow" | "week";
+type ViewMode = "day" | "tomorrow";
 
 const DAY_MAP: Record<string, number> = {
   sun: 0, sunday: 0,
@@ -235,15 +235,6 @@ function formatDayHeader(iso: string) {
   return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
 }
 
-function weekRangeLabel(weekStartNoon: Date) {
-  const weekEnd = new Date(weekStartNoon.getFullYear(), weekStartNoon.getMonth(), weekStartNoon.getDate(), 12, 0, 0, 0);
-  weekEnd.setDate(weekEnd.getDate() + 6);
-
-  const a = weekStartNoon.toLocaleDateString([], { month: "short", day: "numeric" });
-  const b = weekEnd.toLocaleDateString([], { month: "short", day: "numeric" });
-  return `${a} – ${b}`;
-}
-
 function tabButtonStyle(active: boolean): React.CSSProperties {
   return {
     padding: "6px 10px",
@@ -266,7 +257,7 @@ export default function WeeklyAgendaCard() {
       return false;
     }
   });
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [viewMode, setViewMode] = useState<ViewMode>("day");
 
   const todayNoon = useMemo(() => {
     const now = new Date();
@@ -357,9 +348,7 @@ export default function WeeklyAgendaCard() {
         if (evs.error) throw evs.error;
 
         const weekItems = expandRangeLocally((evs.data || []) as any, weekStart, 7);
-        const tomorrowItems = tomorrowIso > toLocalISODate(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6, 12, 0, 0, 0))
-          ? expandRangeLocally((evs.data || []) as any, tomorrowNoon, 1)
-          : [];
+        const tomorrowItems = expandRangeLocally((evs.data || []) as any, tomorrowNoon, 1);
 
         const expanded = dedupeExpanded([...weekItems, ...tomorrowItems])
           .sort((a, b) => {
@@ -373,7 +362,7 @@ export default function WeeklyAgendaCard() {
         }
       } catch (e: any) {
         if (!cancelled) {
-          setMsg(String(e?.message || e || "Failed to load weekly agenda."));
+          setMsg(String(e?.message || e || "Failed to load agenda."));
           setItems([]);
         }
       } finally {
@@ -385,22 +374,14 @@ export default function WeeklyAgendaCard() {
     return () => {
       cancelled = true;
     };
-  }, [weekStart, tomorrowIso, tomorrowNoon]);
+  }, [weekStart, tomorrowNoon]);
 
   const filteredItems = useMemo(() => {
     if (viewMode === "day") {
       return items.filter((item) => occurrenceLocalDate(item) === todayIso);
     }
-    if (viewMode === "tomorrow") {
-      return items.filter((item) => occurrenceLocalDate(item) === tomorrowIso);
-    }
-    return items.filter((item) => {
-      const iso = occurrenceLocalDate(item);
-      const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate(), 12, 0, 0, 0);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      return iso >= toLocalISODate(weekStart) && iso <= toLocalISODate(weekEnd);
-    });
-  }, [items, viewMode, todayIso, tomorrowIso, weekStart]);
+    return items.filter((item) => occurrenceLocalDate(item) === tomorrowIso);
+  }, [items, viewMode, todayIso, tomorrowIso]);
 
   const grouped = useMemo(() => {
     const map: Record<string, ExpandedAgendaEvent[]> = {};
@@ -420,13 +401,9 @@ export default function WeeklyAgendaCard() {
 
   const modeLabel = displayUtc ? "Puzzle & Survival UTC" : "Local";
   const firstAlliance = allianceCodes[0] || "";
-
-  const subtitle =
-    viewMode === "day"
-      ? `Today's agenda • ${formatDayHeader(todayIso)}`
-      : viewMode === "tomorrow"
-      ? `Tomorrow's agenda • ${formatDayHeader(tomorrowIso)}`
-      : `Alliance agenda for ${weekRangeLabel(weekStart)}`;
+  const subtitle = viewMode === "day"
+    ? `Today's agenda • ${formatDayHeader(todayIso)}`
+    : `Tomorrow's agenda • ${formatDayHeader(tomorrowIso)}`;
 
   return (
     <div
@@ -497,13 +474,10 @@ export default function WeeklyAgendaCard() {
         <button type="button" className="zombie-btn" onClick={() => setViewMode("tomorrow")} style={tabButtonStyle(viewMode === "tomorrow")}>
           Tomorrow
         </button>
-        <button type="button" className="zombie-btn" onClick={() => setViewMode("week")} style={tabButtonStyle(viewMode === "week")}>
-          Week
-        </button>
       </div>
 
       <div style={{ marginTop: 8, fontSize: 12, opacity: 0.72 }}>
-        Showing {viewMode === "day" ? "today only" : viewMode === "tomorrow" ? "tomorrow only" : "this week"} • Mode: {modeLabel}
+        Showing {viewMode === "day" ? "today only" : "tomorrow only"} • Mode: {modeLabel}
       </div>
 
       {loading ? (
@@ -512,7 +486,7 @@ export default function WeeklyAgendaCard() {
         <div style={{ marginTop: 14, opacity: 0.82 }}>{msg}</div>
       ) : grouped.length === 0 ? (
         <div style={{ marginTop: 14, opacity: 0.78 }}>
-          No events scheduled for {viewMode === "day" ? "today" : viewMode === "tomorrow" ? "tomorrow" : "this week"}.
+          No events scheduled for {viewMode === "day" ? "today" : "tomorrow"}.
         </div>
       ) : (
         <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
