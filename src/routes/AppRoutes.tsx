@@ -264,7 +264,7 @@ export default function AppRoutes() {
       <Route path="/owner/discord-defaults" element={<RequireAdmin><OwnerDiscordDefaultsPage /></RequireAdmin>} />
       <Route path="/owner/scheduled-sends" element={<RequireAdmin><OwnerScheduledDiscordSendsPage /></RequireAdmin>} />
       <Route path="/owner/directory-editor" element={<RequireAdmin><OwnerAllianceDirectoryEditorPage /></RequireAdmin>} />
-      <Route path="/state/789/achievements" element={<CommandCenterShell navTitle="ACHIEVEMENTS — STATE 789" navItems={[{ label: "Dashboard", to: "/state/789", icon: "🗺️" },{ label: "Achievements", to: "/state/789/achievements", icon: "🏆" },{ label: "Progress", to: "/state/789/achievements-progress", icon: "📈" },{ label: "Tracker", to: "/state/789/achievements-tracker", icon: "🧾" }]}><State789AchievementsWarRoomPage /></CommandCenterShell>} />
+      <Route path="/state/789/achievements" element={<CommandCenterShell navTitle="ACHIEVEMENTS — STATE 789" navItems={[{ label: "Dashboard", to: "/state/789", icon: "🗺️" },{ label: "Achievements", to: "/state/789/achievements", icon: "🏆" },{ label: "Progress", to: "/state/789/achievements-progress", icon: "📈" },{ label: "Tracker", to: "/state/789/achievements-tracker", icon: "🧾" }]}><OwnerStateAchievementsPage /></CommandCenterShell>} />
       <Route path="/owner/achievements/requests" element={<RequireAdmin><OwnerAchievementRequestsPage /></RequireAdmin>} />
       <Route path="/owner/achievements/config" element={<RequireAdmin><OwnerAchievementConfigPage /></RequireAdmin>} />
       <Route path="/owner/achievements/access" element={<RequireAdmin><OwnerAchievementAccessPage /></RequireAdmin>} />
@@ -317,6 +317,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
