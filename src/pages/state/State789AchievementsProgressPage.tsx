@@ -192,7 +192,7 @@ export default function State789AchievementsProgressPage() {
         <h2 style={{ margin: 0 }}>🏆 State 789 — Achievements Progress</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789")}>Back to State</button>
-          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements")}>Player Form</button>
+          <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements-form")}>Player Form</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements-tracker")}>Tracker</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={copySummaryJson}>Copy Summary JSON</button>
