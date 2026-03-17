@@ -987,9 +987,13 @@ async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
     setEditingSectionId(String(section.id));
     setEditingSectionName(String(section[SECTION_NAME_COL] || ""));
   }
-
   async function saveEditSection() {
-    if (!canEdit) return;
+    const canEditNow =
+      !!roleState?.canEditGuides ||
+      !!ownerFlags?.is_app_admin ||
+      !!ownerFlags?.is_dashboard_owner;
+
+    if (!canEditNow) return;
     if (!editingSectionId) return;
     if (savingSection) return;
 
@@ -1001,7 +1005,6 @@ async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
       return;
     }
 
-    // No-op save: do not hit the database
     if (name === originalName) {
       setEditingSectionId(null);
       setEditingSectionName("");
@@ -1013,7 +1016,6 @@ async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
     setSavingSection(true);
 
     try {
-      // Keep the update as small as possible to avoid triggering expensive work unnecessarily
       const payload: Record<string, any> = {
         [SECTION_NAME_COL]: name,
       };
@@ -1044,19 +1046,9 @@ async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
     } finally {
       setSavingSection(false);
     }
-  if (up.error) {
-    const msg = String(up.error.message || "Section save failed");
-    console.error("guide section save failed", up.error);
-    setError(msg);
-    alert(msg);
-    return;
   }
 
-  setEditingSectionId(null);
-  setEditingSectionName("");
-  await loadSections();
-}
-async function deleteSection(sectionId: string) {
+  async function deleteSection(sectionId: string) {
     if (!canEditAll) return;
     const ok = confirm("Delete this section? Entries inside it will be deleted too.");
     if (!ok) return;
@@ -1962,6 +1954,7 @@ async function safeUpdateById(
 
   return res;
 }
+
 
 
 
