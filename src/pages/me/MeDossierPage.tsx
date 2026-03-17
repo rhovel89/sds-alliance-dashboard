@@ -133,15 +133,16 @@ export default function MeDossierPage() {
 
   return (
     <CommandCenterShell
-      title="Dossier Sheet"
-      subtitle="Identity • memberships • defaults • zombie command center"
+      title="My Dossier"
+      subtitle="Overview • memberships • Discord defaults • quick links"
       modules={modules}
       activeModuleKey="dossier"
       onSelectModule={onSelectModule}
       topRight={
         <div style={{ display:"flex", gap: 8, flexWrap:"wrap" }}>
+          <button className="zombie-btn" type="button" onClick={() => nav("/me")}>Back</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/me/dossier-sheet")}>Print Sheet</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/dashboard")}>Dashboard</button>
-          <button className="zombie-btn" type="button" onClick={() => nav("/owner/approval-center")}>Approval Center</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/state/789")}>State 789</button>
         </div>
       }
@@ -258,4 +259,5 @@ export default function MeDossierPage() {
     </CommandCenterShell>
   );
 }
+
 

@@ -84,14 +84,14 @@ export default function DossierSheetPage() {
   return (
     <CommandCenterShell
       title="My Dossier Sheet"
-      subtitle="Identity + memberships • printable intel page"
+      subtitle="Printable version of your dossier"
       modules={modules}
-      activeModuleKey="me"
+      activeModuleKey="dossier"
       onSelectModule={onSelectModule}
       topRight={
         <div style={{ display:"flex", gap: 8, flexWrap:"wrap" }}>
           <button className="zombie-btn" type="button" onClick={printSheet}>Print / Save PDF</button>
-          <button className="zombie-btn" type="button" onClick={() => nav("/me")}>Back</button>
+          <button className="zombie-btn" type="button" onClick={() => nav("/me/dossier")}>Back to My Dossier</button>
         </div>
       }
     >
@@ -180,3 +180,4 @@ export default function DossierSheetPage() {
     </CommandCenterShell>
   );
 }
+

@@ -298,7 +298,8 @@ export default function AppRoutes() {
       <Route path="/state/789/threads" element={<State789ThreadsPage />} />
       <Route path="/onboarding/pending" element={<AwaitingApprovalPage />} />
       <Route path="/owner/approval-center" element={<OwnerApprovalCenterPage />} />
-      <Route path="/me/dossier" element={<DossierSheetPage />} />
+      <Route path="/me/dossier" element={<MeDossierPage />} />
+      <Route path="/me/dossier-sheet" element={<DossierSheetPage />} />
       <Route path="/owner/dossier" element={<OwnerDossierLookupPage />} />
       <Route path="/dossier/:playerId" element={<PlayerDossierPage />} />
         <Route path="/owner/route-check" element={<OwnerRouteChecklistPage />} />
@@ -317,6 +318,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 
