@@ -16,12 +16,39 @@ type Props = {
   title: string;
   filenamePrefix: string;
   children: React.ReactNode;
+  exportDisplayUtc?: boolean;
+  onExportDisplayUtcChange?: (v: boolean) => void;
+  extraMessage?: string;
+  onExtraMessageChange?: (v: string) => void;
 };
 
 function tsLabel() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
+
+function getCalendarTimeModeLabel(exportDisplayUtc?: boolean) {
+  if (typeof exportDisplayUtc === "boolean") {
+    return exportDisplayUtc ? "Puzzle & Survival UTC" : "Local";
+  }
+
+  try {
+    return localStorage.getItem("calendar.timeMode") === "utc"
+      ? "Puzzle & Survival UTC"
+      : "Local";
+  } catch {
+    return "Local";
+  }
+}
+
+async function waitForCapturePaint() {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+  await new Promise((resolve) => setTimeout(resolve, 80));
 }
 
 export default function AlliancePageExportDiscordTools(props: Props) {
@@ -44,6 +71,10 @@ export default function AlliancePageExportDiscordTools(props: Props) {
     () => webhooks.filter((w) => w.active !== false),
     [webhooks]
   );
+
+  const modeLabel = getCalendarTimeModeLabel(props.exportDisplayUtc);
+  const modeTag = modeLabel === "Puzzle & Survival UTC" ? "utc" : "local";
+  const extraMessage = String(props.extraMessage || "").trim();
 
   useEffect(() => {
     let cancelled = false;
@@ -102,23 +133,27 @@ export default function AlliancePageExportDiscordTools(props: Props) {
       throw new Error("Capture area not found.");
     }
 
+    await waitForCapturePaint();
+
     const dataUrl = await toPng(captureRef.current, {
       cacheBust: true,
       pixelRatio: 2,
       backgroundColor: "#0b1117",
     });
 
+    const fileName = `${allianceCode || "alliance"}-${filenamePrefix}-${modeTag}-${tsLabel()}.png`;
+
     if (downloadAlso) {
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = `${allianceCode || "alliance"}-${filenamePrefix}-${tsLabel()}.png`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
     }
 
     const blob = await (await fetch(dataUrl)).blob();
-    const name = `alliance-${allianceCode || "unknown"}/${filenamePrefix}-${tsLabel()}.png`;
+    const name = `alliance-${allianceCode || "unknown"}/${filenamePrefix}-${modeTag}-${tsLabel()}.png`;
 
     const up = await supabase.storage
       .from("exports")
@@ -139,7 +174,7 @@ export default function AlliancePageExportDiscordTools(props: Props) {
     setMsg("");
     try {
       const url = await exportPngAndUpload(true);
-      setMsg(`PNG exported ✅\n${url}`);
+      setMsg(`PNG exported ✅ (${modeLabel})\n${url}`);
     } catch (e: any) {
       setMsg(`Export failed: ${String(e?.message || e)}`);
     } finally {
@@ -153,7 +188,7 @@ export default function AlliancePageExportDiscordTools(props: Props) {
     try {
       const url = lastPublicUrl || (await exportPngAndUpload(false));
       await navigator.clipboard.writeText(url);
-      setMsg(`PNG link copied ✅\n${url}`);
+      setMsg(`PNG link copied ✅ (${modeLabel})\n${url}`);
     } catch (e: any) {
       setMsg(`Copy failed: ${String(e?.message || e)}`);
     } finally {
@@ -208,8 +243,10 @@ export default function AlliancePageExportDiscordTools(props: Props) {
       webhookId;
 
     const content =
-      `📦 **${allianceCode || "Alliance"} ${title} Export**\n` +
-      `Generated: ${new Date().toLocaleString()}\n` +
+      `📦 **${allianceCode || "Alliance"} ${title} Export**` + "\n" +
+      `Generated: ${new Date().toLocaleString()}` + "\n" +
+      `Time Mode: ${modeLabel}` + "\n" +
+      (extraMessage ? `Note: ${extraMessage}` + "\n" : "") +
       url;
 
     const q = await supabase.rpc("queue_discord_send" as any, {
@@ -224,6 +261,8 @@ export default function AlliancePageExportDiscordTools(props: Props) {
         webhook_id: webhookId,
         webhook_label: label,
         public_url: url,
+        time_mode: modeTag,
+        note: extraMessage || null,
       },
     } as any);
 
@@ -245,7 +284,12 @@ export default function AlliancePageExportDiscordTools(props: Props) {
         activeWebhooks.find((x) => String(x.id) === webhookId)?.label ||
         webhookId;
 
-      setMsg(`Queued to Discord ✅\nWebhook: ${label}\n${url}`);
+      setMsg(
+        `Queued to Discord ✅ (${modeLabel})\n` +
+        `Webhook: ${label}\n` +
+        (extraMessage ? `Note: ${extraMessage}\n` : "") +
+        url
+      );
     } catch (e: any) {
       setMsg(`Discord send failed: ${String(e?.message || e)}`);
     } finally {
@@ -269,7 +313,7 @@ export default function AlliancePageExportDiscordTools(props: Props) {
         <div
           className="zombie-card"
           style={{
-            width: "min(480px, calc(100vw - 24px))",
+            width: "min(520px, calc(100vw - 24px))",
             maxWidth: "calc(100vw - 24px)",
             padding: 12,
             pointerEvents: "auto",
@@ -284,7 +328,43 @@ export default function AlliancePageExportDiscordTools(props: Props) {
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            <div style={{ opacity: 0.75, fontSize: 12 }}>Webhook destination</div>
+            <div style={{ opacity: 0.75, fontSize: 12 }}>Export timezone</div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                className="zombie-btn"
+                type="button"
+                style={{
+                  padding: "10px 12px",
+                  border: modeTag === "local" ? "1px solid rgba(120,255,120,0.35)" : undefined,
+                  background: modeTag === "local" ? "rgba(120,255,120,0.10)" : undefined,
+                }}
+                onClick={() => props.onExportDisplayUtcChange?.(false)}
+                disabled={busy}
+              >
+                Local
+              </button>
+
+              <button
+                className="zombie-btn"
+                type="button"
+                style={{
+                  padding: "10px 12px",
+                  border: modeTag === "utc" ? "1px solid rgba(120,180,255,0.35)" : undefined,
+                  background: modeTag === "utc" ? "rgba(120,180,255,0.12)" : undefined,
+                }}
+                onClick={() => props.onExportDisplayUtcChange?.(true)}
+                disabled={busy}
+              >
+                Puzzle & Survival UTC
+              </button>
+            </div>
+
+            <div style={{ opacity: 0.7, fontSize: 12 }}>
+              Current export mode: <b>{modeLabel}</b>
+            </div>
+
+            <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>Webhook destination</div>
 
             <select
               className="zombie-input"
@@ -309,6 +389,20 @@ export default function AlliancePageExportDiscordTools(props: Props) {
               </b>
             </div>
 
+            <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
+              Message to include with Discord send (optional)
+            </div>
+
+            <textarea
+              className="zombie-input"
+              value={String(props.extraMessage || "")}
+              onChange={(e) => props.onExtraMessageChange?.(e.target.value)}
+              rows={3}
+              placeholder="Add a short note to send with the calendar export..."
+              style={{ width: "100%", padding: "10px 12px", resize: "vertical" }}
+              disabled={busy}
+            />
+
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
                 className="zombie-btn"
@@ -327,7 +421,7 @@ export default function AlliancePageExportDiscordTools(props: Props) {
                 disabled={busy}
                 onClick={handleExport}
               >
-                {busy ? "WORKING..." : "Export PNG"}
+                {busy ? "WORKING..." : `Export PNG (${modeTag.toUpperCase()})`}
               </button>
 
               <button
@@ -360,10 +454,9 @@ export default function AlliancePageExportDiscordTools(props: Props) {
         </div>
       </div>
 
-      <div ref={captureRef} style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}> 
+      <div ref={captureRef} style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
         {props.children}
       </div>
     </div>
   );
 }
-
