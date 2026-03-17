@@ -971,7 +971,8 @@ export default function OwnerStateAchievementsPage() {
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/owner")}>Back to Owner</button>
-            <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements")}>Player Form</button>
+            <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements-form")}>Player Form</button>
+            <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements-progress")}>Progress</button>
             <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={() => window.location.assign("/state/789/achievements-tracker")}>Tracker</button>
             <button className="zombie-btn" type="button" style={{ padding: "10px 12px" }} onClick={loadAll}>Refresh</button>
             <SupportBundleButton />
@@ -1579,6 +1580,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
