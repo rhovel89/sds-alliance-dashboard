@@ -367,6 +367,8 @@ export function AllianceGuidesCommandCenter() {
   const [newSectionName, setNewSectionName] = useState("");
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionName, setEditingSectionName] = useState("");
+  const [editingSectionOriginalName, setEditingSectionOriginalName] = useState("");
+  const [savingSection, setSavingSection] = useState(false);
 
   const [newEntryTitle, setNewEntryTitle] = useState("");
   const [newEntryBody, setNewEntryBody] = useState("");
@@ -987,21 +989,61 @@ async function moveEntryUpDown(entryId: string, dir: -1 | 1) {
   }
 
   async function saveEditSection() {
-  if (!canEditAll) return;
-  if (!editingSectionId) return;
+    if (!canEdit) return;
+    if (!editingSectionId) return;
+    if (savingSection) return;
 
-  const name = editingSectionName.trim();
-  if (!name) return;
+    const name = editingSectionName.trim();
+    const originalName = editingSectionOriginalName.trim();
 
-  setError(null);
+    if (!name) {
+      setError("Section name cannot be empty.");
+      return;
+    }
 
-  const up = await supabase
-    .from("guide_sections")
-    .update({
-      [SECTION_NAME_COL]: name,
-    } as any)
-    .eq("id", editingSectionId);
+    // No-op save: do not hit the database
+    if (name === originalName) {
+      setEditingSectionId(null);
+      setEditingSectionName("");
+      setEditingSectionOriginalName("");
+      return;
+    }
 
+    setError(null);
+    setSavingSection(true);
+
+    try {
+      // Keep the update as small as possible to avoid triggering expensive work unnecessarily
+      const payload: Record<string, any> = {
+        [SECTION_NAME_COL]: name,
+      };
+
+      const { data, error } = await supabase
+        .from("guide_sections")
+        .update(payload)
+        .eq("id", editingSectionId)
+        .eq("alliance_code", allianceCode)
+        .select("id")
+        .maybeSingle();
+
+      if (error) {
+        console.error("guide section save failed", error);
+        setError(error.message || "Failed to save section.");
+        return;
+      }
+
+      if (!data?.id) {
+        setError("Section not found or you do not have permission to edit it.");
+        return;
+      }
+
+      setEditingSectionId(null);
+      setEditingSectionName("");
+      setEditingSectionOriginalName("");
+      await loadSections();
+    } finally {
+      setSavingSection(false);
+    }
   if (up.error) {
     const msg = String(up.error.message || "Section save failed");
     console.error("guide section save failed", up.error);
@@ -1920,6 +1962,9 @@ async function safeUpdateById(
 
   return res;
 }
+
+
+
 
 
 
