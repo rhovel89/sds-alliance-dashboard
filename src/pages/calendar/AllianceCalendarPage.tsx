@@ -1,897 +1,1311 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { supabase } from "../../lib/supabaseBrowserClient";
-import DailyBriefingPanel from "../../components/me/DailyBriefingPanel";
-import MeTodayEventsPanel from "../../components/me/MeTodayEventsPanel";
-import MeAllianceAlertsPanel from "../../components/me/MeAllianceAlertsPanel";
-import MeStateAlertsCard from "../../components/me/MeStateAlertsCard";
-import MeStateAnnouncementsCard from "../../components/me/MeStateAnnouncementsCard";
-import MeAllianceAnnouncementsCard from "../../components/me/MeAllianceAnnouncementsCard";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { supabase } from "../../lib/supabaseClient";
+import { useHQPermissions } from "../../hooks/useHQPermissions";
+import { useAllianceManagerAccess } from "../../hooks/useAllianceManagerAccess";
+import { RecurringControls } from "../../components/calendar/RecurringControls";
+import { toLocalISODate, parseISODateLocal } from "../../utils/dateLocal";
+import {
+  expandEventsForMonth,
+  getDeleteId,
+  getEventStartUtc,
+  type CalendarEventRow,
+  type RecurrenceType,
+} from "../../utils/recurrence";
 
-type TroopType = "Fighter" | "Shooter" | "Rider";
-type TierLevel = "T5" | "T6" | "T7" | "T8" | "T9" | "T10" | "T11" | "T12" | "T13" | "T14";
-const TROOP_TYPES: TroopType[] = ["Fighter", "Shooter", "Rider"];
-const TIERS: TierLevel[] = ["T5","T6","T7","T8","T9","T10","T11","T12","T13","T14"];
+type EventRow = CalendarEventRow & {
+  title?: string | null;
+  event_type?: string | null;
+  event_category?: string | null;
+  created_by?: string | null;
+  duration_minutes?: number | null;
+  timezone_origin?: string | null;
+  start_time_utc?: string | null;
+  start_date?: string | null;
+  start_time?: string | null;
+  end_date?: string | null;
+  end_time?: string | null;
 
-type PlayerRow = {
-  id: string;
-  auth_user_id: string | null;
-  name: string | null;
-  game_name: string | null;
-  note: string | null;
-  discord_name?: string | null;
-  timezone?: string | null;
-  state_code?: string | null;
-  last_alliance_code?: string | null;
+  // expanded fields are already supported by CalendarEventRow meta types
+  instance_id?: string | null;
 };
 
-type PlayerAllianceRow = {
+type EventTypeRow = {
   id: string;
-  player_id: string;
   alliance_code: string;
-  alliance_id?: string | null;
-  role: string | null;
-  role_key: string | null;
-  in_game_name?: string | null;
-  notes?: string | null;
+  category: string; // 'Alliance' | 'State'
+  name: string;
 };
 
-type HQRow = {
-  id: string;
-  profile_id: string;
-  hq_name: string;
-  hq_level: number;
-  lair_level: number;
-  lair_percent: number;
-  troop_size: number;
-  march_size: number;
-  rally_size: number;
-  troop_type: TroopType;
-  tier_level: TierLevel;
-  updated_at?: string;
+const DEFAULT_EVENT_TYPES = [
+  "State vs. State",
+  "Reminder",
+  "Sonic",
+  "Dead Rising",
+  "Defense of Alliance",
+  "Wasteland King",
+  "Valiance Conquest",
+  "Tundra",
+  "Alliance Clash",
+  "Alliance Showdown",
+  "FireFlies",
+];
+
+const CATEGORY_OPTIONS = [
+  { value: "Alliance", label: "Alliance Event" },
+  { value: "State", label: "State Event" },
+];
+const EVENT_TYPES = [
+  "State vs. State",
+  "Reminder",
+  "Sonic",
+  "Dead Rising",
+  "Defense of Alliance",
+  "Wasteland King",
+  "Valiance Conquest",
+  "Tundra",
+  "Alliance Clash",
+  "Alliance Showdown",
+  "FireFlies",
+];
+
+const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"] as const;
+
+function weekdayNameFromLocalIsoDate(isoDate: string) {
+  const m = String(isoDate || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return "Sun";
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const dt = new Date(y, mo - 1, d, 12, 0, 0, 0);
+  return DAY_NAMES[dt.getDay()];
+}
+const LOCAL_DAY_MAP: Record<string, number> = {
+  sun: 0, sunday: 0,
+  mon: 1, monday: 1,
+  tue: 2, tues: 2, tuesday: 2,
+  wed: 3, wednesday: 3,
+  thu: 4, thur: 4, thurs: 4, thursday: 4,
+  fri: 5, friday: 5,
+  sat: 6, saturday: 6,
 };
 
-type EventRow = {
-  event_id: string;
-  alliance_id: string;
-  starts_at: string;
-  title: string;
-  raw: any;
-};
-
-type AchRow = {
-  id: string;
-  created_at: string;
-  request: any;
-};
-
-type MailItem = {
-  id: string;
-  created_at: string;
-  kind: string;
-  subject: string;
-  alliance_code: string | null;
-  state_code: string | null;
-  body: string;
-  unread_count?: number | null;
-  thread_key?: string | null;
-};
-
-function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
-function toNum(v: any, fallback = 0) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
-function previewMailBody(v: unknown) {
-  const text = String(v ?? "").replace(/\s+/g, " ").trim();
-  if (!text) return "(no preview)";
-  return text.length > 180 ? `${text.slice(0, 180)}…` : text;
+function localDowFromToken(v: string): number | null {
+  const k = String(v || "").trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(LOCAL_DAY_MAP, k) ? LOCAL_DAY_MAP[k] : null;
 }
 
-function prettyMailDate(v: unknown) {
-  try {
-    const d = new Date(String(v ?? ""));
-    if (Number.isNaN(d.getTime())) return String(v ?? "");
-    return d.toLocaleString();
-  } catch {
-    return String(v ?? "");
-  }
-}
+function parseEventLocalStart(ev: any): Date | null {
+  const sd = String(ev?.start_date || "").trim();
+  const st = String(ev?.start_time || "").trim();
 
-const TEXT = "#f3f7f2";
-const MUTED = "rgba(243,247,242,0.88)";
-const SOFT = "rgba(243,247,242,0.72)";
-const PANEL = "rgba(10,14,12,0.82)";
-const BORDER = "1px solid rgba(160,255,160,0.14)";
-const LINK = "#9ef7b9";
+  if (sd) {
+    const dm = sd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dm) {
+      const y = Number(dm[1]);
+      const mo = Number(dm[2]);
+      const da = Number(dm[3]);
 
-export default function MeDashboardPage() {
-  const [userId, setUserId] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<string>("");
+      let hh = 0;
+      let mm = 0;
 
-  const [players, setPlayers] = useState<PlayerRow[]>([]);
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
-
-  const [alliances, setAlliances] = useState<PlayerAllianceRow[]>([]);
-  const [selectedProfileId, setSelectedProfileId] = useState<string>("");
-
-  const [hqs, setHqs] = useState<HQRow[]>([]);
-  const [eventsToday, setEventsToday] = useState<EventRow[]>([]);
-  const [myAchievements, setMyAchievements] = useState<AchRow[]>([]);
-  const [myMail, setMyMail] = useState<MailItem[]>([]);
-
-  const [hqDraft, setHqDraft] = useState<Partial<HQRow>>(() => ({
-    hq_name: "",
-    hq_level: 1,
-    lair_level: 1,
-    lair_percent: 0,
-    troop_size: 0,
-    march_size: 0,
-    rally_size: 0,
-    troop_type: "Fighter",
-    tier_level: "T10",
-  }));
-
-  const selectedPlayer = useMemo(() => players.find((p) => p.id === selectedPlayerId) ?? null, [players, selectedPlayerId]);
-  const selectedAllianceProfile = useMemo(() => alliances.find((a) => a.id === selectedProfileId) ?? null, [alliances, selectedProfileId]);
-  const unreadMailCount = useMemo(
-    () => myMail.reduce((sum, row) => sum + Number(row.unread_count || 0), 0),
-    [myMail]
-  );
-
-  const latestMailPreview = useMemo(() => myMail[0] ?? null, [myMail]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      const { data } = await supabase.auth.getUser();
-      const uid = data.user?.id ?? "";
-      if (!mounted) return;
-      setUserId(uid);
-      if (uid) await refreshAll(uid);
-    })();
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      const uid = session?.user?.id ?? "";
-      setUserId(uid);
-      if (uid) void refreshAll(uid);
-      else {
-        setPlayers([]);
-        setAlliances([]);
-        setHqs([]);
-        setEventsToday([]);
-        setMyAchievements([]);
-        setMyMail([]);
+      if (st) {
+        const tm = st.match(/^(\d{2}):(\d{2})/);
+        if (tm) {
+          hh = Number(tm[1]);
+          mm = Number(tm[2]);
+        }
       }
+
+      const dt = new Date(y, mo - 1, da, hh, mm, 0, 0);
+      if (!Number.isNaN(dt.getTime())) return dt;
+    }
+  }
+
+  if (ev?.start_time_utc) {
+    const dt = new Date(String(ev.start_time_utc));
+    if (!Number.isNaN(dt.getTime())) return dt;
+  }
+
+  return null;
+}
+
+function parseRecurrenceEndLocal(v: any): Date | null {
+  if (!v) return null;
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+
+  return new Date(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    23, 59, 59, 999
+  );
+}
+
+function localWeekStart(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay(), 0, 0, 0, 0);
+}
+
+function expandEventsForMonthStable(rows: EventRow[], year: number, month: number): EventRow[] {
+  const out: EventRow[] = [];
+  const monthStart = new Date(year, month, 1, 0, 0, 0, 0);
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+  for (const ev of rows) {
+    const baseLocal = parseEventLocalStart(ev);
+    if (!baseLocal) continue;
+
+    const baseUtc = String(ev.start_time_utc || baseLocal.toISOString());
+    const recurrenceType = String(ev.recurrence_type || ev.recurrence || "").toLowerCase();
+    const recurring = !!ev.recurring_enabled && !!recurrenceType;
+    const recurrenceEnd = parseRecurrenceEndLocal(ev.recurrence_end_date);
+
+    out.push({
+      ...(ev as any),
+      start_time_utc: baseUtc,
+      _source_event_id: ev.id,
+      _occurrence_time_utc: baseUtc,
     });
 
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
+    if (!recurring) continue;
+
+    const rawDays = Array.isArray(ev.recurrence_days)
+      ? ev.recurrence_days
+      : Array.isArray((ev as any).days_of_week)
+      ? (ev as any).days_of_week
+      : [];
+
+    const parsedDays = rawDays
+      .map((x: any) => localDowFromToken(String(x)))
+      .filter((x: number | null): x is number => x !== null);
+
+    const allowedDays =
+      (recurrenceType === "weekly" || recurrenceType === "biweekly")
+        ? (parsedDays.length ? parsedDays : [baseLocal.getDay()])
+        : [];
+
+    const maxDay = new Date(year, month + 1, 0).getDate();
+
+    for (let day = 1; day <= maxDay; day++) {
+      const candLocal = new Date(
+        year,
+        month,
+        day,
+        baseLocal.getHours(),
+        baseLocal.getMinutes(),
+        baseLocal.getSeconds(),
+        baseLocal.getMilliseconds()
+      );
+
+      if (candLocal < baseLocal) continue;
+      if (candLocal < monthStart || candLocal > monthEnd) continue;
+      if (recurrenceEnd && candLocal > recurrenceEnd) continue;
+
+      if (recurrenceType === "daily") {
+        // keep
+      } else if (recurrenceType === "weekly") {
+        if (!allowedDays.includes(candLocal.getDay())) continue;
+      } else if (recurrenceType === "biweekly") {
+        if (!allowedDays.includes(candLocal.getDay())) continue;
+
+        const baseWeek = localWeekStart(baseLocal).getTime();
+        const candWeek = localWeekStart(candLocal).getTime();
+        const weeksDiff = Math.floor((candWeek - baseWeek) / (7 * 24 * 60 * 60 * 1000));
+        if (weeksDiff % 2 !== 0) continue;
+      } else if (recurrenceType === "monthly") {
+        if (candLocal.getDate() !== baseLocal.getDate()) continue;
+      } else {
+        continue;
+      }
+
+      const candUtc = candLocal.toISOString();
+      if (candUtc === baseUtc) continue;
+
+      out.push({
+        ...(ev as any),
+        start_time_utc: candUtc,
+        _source_event_id: ev.id,
+        _occurrence_time_utc: candUtc,
+      });
+    }
+  }
+
+  return out;
+}
+
+type CalendarLocalExpandedEvent = EventRow & {
+  _source_event_id: string;
+  _occurrence_time_utc: string;
+  _occurrence_local_date: string;
+  _occurrence_local_time: string;
+};
+
+const CAL_DAY_TO_NUM: Record<string, number> = {
+  sun: 0, sunday: 0,
+  mon: 1, monday: 1,
+  tue: 2, tues: 2, tuesday: 2,
+  wed: 3, wednesday: 3,
+  thu: 4, thur: 4, thurs: 4, thursday: 4,
+  fri: 5, friday: 5,
+  sat: 6, saturday: 6,
+};
+
+function parseYmdLocal(iso: string): { y: number; m: number; d: number } | null {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
+}
+
+function ymdString(y: number, m: number, d: number) {
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function parseHmLocal(v: string): { hh: number; mm: number } {
+  const m = String(v || "").match(/^(\d{2}):(\d{2})/);
+  if (!m) return { hh: 0, mm: 0 };
+  return { hh: Number(m[1]), mm: Number(m[2]) };
+}
+
+function dateFromYmdNoon(iso: string): Date | null {
+  const p = parseYmdLocal(iso);
+  if (!p) return null;
+  return new Date(p.y, p.m - 1, p.d, 12, 0, 0, 0);
+}
+
+function startOfWeekLocalNoon(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay(), 12, 0, 0, 0);
+}
+
+function recurrenceDayNums(ev: any): number[] {
+  const raw = Array.isArray(ev?.recurrence_days)
+    ? ev.recurrence_days
+    : Array.isArray(ev?.days_of_week)
+    ? ev.days_of_week
+    : [];
+
+  const nums = raw
+    .map((x: any) => {
+      const key = String(x || "").trim().toLowerCase();
+      return Object.prototype.hasOwnProperty.call(CAL_DAY_TO_NUM, key) ? CAL_DAY_TO_NUM[key] : null;
+    })
+    .filter((x: number | null): x is number => x !== null);
+
+  if (nums.length) return nums;
+
+  const baseDate = dateFromYmdNoon(String(ev?.start_date || ""));
+  if (baseDate) return [baseDate.getDay()];
+
+  if (ev?.start_time_utc) {
+    const d = new Date(String(ev.start_time_utc));
+    if (!Number.isNaN(d.getTime())) return [d.getDay()];
+  }
+
+  return [];
+}
+
+function localTimeLabelFromEvent(ev: any) {
+  const hm = parseHmLocal(String(ev?.start_time || ""));
+  const d = new Date(2000, 0, 1, hm.hh, hm.mm, 0, 0);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function occurrenceLocalDate(ev: any) {
+  return String(ev?._occurrence_local_date || ev?.start_date || "");
+}
+
+function occurrenceLocalTime(ev: any) {
+  if (ev?._occurrence_local_time) return String(ev._occurrence_local_time);
+  return localTimeLabelFromEvent(ev);
+}
+
+function expandMonthLocally(rows: EventRow[], year: number, month: number): CalendarLocalExpandedEvent[] {
+  const out: CalendarLocalExpandedEvent[] = [];
+  const maxDay = new Date(year, month + 1, 0).getDate();
+
+  for (const ev of rows) {
+    const baseDateIso = String(ev.start_date || "");
+    const baseDateNoon = dateFromYmdNoon(baseDateIso);
+    if (!baseDateNoon) continue;
+
+    const hm = parseHmLocal(String(ev.start_time || ""));
+    const baseDateTime = new Date(
+      baseDateNoon.getFullYear(),
+      baseDateNoon.getMonth(),
+      baseDateNoon.getDate(),
+      hm.hh,
+      hm.mm,
+      0,
+      0
+    );
+
+    const baseTimeLabel = baseDateTime.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    out.push({
+      ...(ev as any),
+      _source_event_id: String(ev.id),
+      _occurrence_time_utc: String(ev.start_time_utc || baseDateTime.toISOString()),
+      _occurrence_local_date: baseDateIso,
+      _occurrence_local_time: baseTimeLabel,
+      start_time_utc: String(ev.start_time_utc || baseDateTime.toISOString()),
+    });
+
+    const rtype = String(ev.recurrence_type || ev.recurrence || "").toLowerCase();
+    const recurring = !!ev.recurring_enabled && !!rtype;
+    if (!recurring) continue;
+
+    const allowedDays = recurrenceDayNums(ev);
+    const endDateNoon = dateFromYmdNoon(String(ev.recurrence_end_date || ""));
+
+    for (let day = 1; day <= maxDay; day++) {
+      const candNoon = new Date(year, month, day, 12, 0, 0, 0);
+      const candIso = ymdString(year, month + 1, day);
+
+      if (candNoon < baseDateNoon) continue;
+      if (endDateNoon && candNoon > endDateNoon) continue;
+
+      if (rtype === "daily") {
+        // ok
+      } else if (rtype === "weekly") {
+        if (!allowedDays.includes(candNoon.getDay())) continue;
+      } else if (rtype === "biweekly") {
+        if (!allowedDays.includes(candNoon.getDay())) continue;
+
+        const baseWeek = startOfWeekLocalNoon(baseDateNoon).getTime();
+        const candWeek = startOfWeekLocalNoon(candNoon).getTime();
+        const weeksDiff = Math.floor((candWeek - baseWeek) / (7 * 24 * 60 * 60 * 1000));
+        if (weeksDiff % 2 !== 0) continue;
+      } else if (rtype === "monthly") {
+        if (candNoon.getDate() !== baseDateNoon.getDate()) continue;
+      } else {
+        continue;
+      }
+
+      if (candIso === baseDateIso) continue;
+
+      const candDateTime = new Date(year, month, day, hm.hh, hm.mm, 0, 0);
+
+      out.push({
+        ...(ev as any),
+        _source_event_id: String(ev.id),
+        _occurrence_time_utc: candDateTime.toISOString(),
+        _occurrence_local_date: candIso,
+        _occurrence_local_time: baseTimeLabel,
+        start_time_utc: candDateTime.toISOString(),
+      });
+    }
+  }
+
+  return out;
+}
+
+export default function AllianceCalendarPage() {
+  const { alliance_id } = useParams<{ alliance_id: string }>();
+  const upperAlliance = (alliance_id || "").toUpperCase();
+  const { canEdit: canEditHQ } = useHQPermissions(upperAlliance);
+  const { isManager, isAppAdmin } = useAllianceManagerAccess(upperAlliance);
+  const canEdit = canEditHQ || isAppAdmin || isManager;
+
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Raw rows from DB
+  const [events, setEvents] = useState<EventRow[]>([]);
+
+  // Event types catalog
+  const [typesOk, setTypesOk] = useState(true);
+  const [eventTypes, setEventTypes] = useState<EventTypeRow[]>([]);
+  const [typesHint, setTypesHint] = useState<string | null>(null);
+
+  const [showModal, setShowModal] = useState(false);
+const [displayUtc, setDisplayUtc] = useState<boolean>(() => {
+  try {
+    return localStorage.getItem("calendar.timeMode") === "utc";
+  } catch {
+    return false;
+  }
+});
+
+  const makeEmptyForm = () => ({
+  title: "",
+  event_category: "Alliance",
+  event_type: "Reminder",
+  new_event_type: "",
+  start_date: "",
+  start_time: "",
+  end_date: "",
+  end_time: "",
+  recurring_enabled: false,
+  recurrence_type: "weekly",
+  recurrence_days: [] as string[],
+  recurrence_end_date: "",
+  time_mode: "local" as "local" | "utc",
+});
+
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [form, setForm] = useState(makeEmptyForm());
+
+  const today = new Date();
+  const [month, setMonth] = useState(today.getMonth());
+  const [year, setYear] = useState(today.getFullYear());
+
+const parseFormDateTime = (date: string, time: string, mode: "local" | "utc") => {
+  const dm = String(date || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const tm = String(time || "").match(/^(\d{2}):(\d{2})/);
+  if (!dm || !tm) return new Date(NaN);
+
+  const y = Number(dm[1]);
+  const mo = Number(dm[2]);
+  const da = Number(dm[3]);
+  const hh = Number(tm[1]);
+  const mm = Number(tm[2]);
+
+  if (mode === "utc") {
+    return new Date(Date.UTC(y, mo - 1, da, hh, mm, 0, 0));
+  }
+
+  return new Date(y, mo - 1, da, hh, mm, 0, 0);
+};
+
+const hhmmss = (d: Date) =>
+  `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
+
+const formatEventTimeLabel = (e: any) => {
+  const utcIso = String(e?._occurrence_time_utc || e?.start_time_utc || "");
+
+  if (displayUtc && utcIso) {
+    const d = new Date(utcIso);
+    if (!Number.isNaN(d.getTime())) {
+      return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
+    }
+  }
+
+  if (e?._occurrence_local_time) {
+    return String(e._occurrence_local_time);
+  }
+
+  const st = String(e?.start_time || "").trim();
+  const tm = st.match(/^(\d{2}):(\d{2})/);
+  if (tm) {
+    const d = new Date(2000, 0, 1, Number(tm[1]), Number(tm[2]), 0, 0);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  if (utcIso) {
+    const d = new Date(utcIso);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+  }
+
+  return "";
+};
+
+  const daysInMonth = useMemo(
+    () => new Date(year, month + 1, 0).getDate(),
+    [month, year]
+  );
+
+  // Expand recurring events for the visible month (page-local stable local-date renderer)
+  const expandedEvents = useMemo(() => {
+  return expandMonthLocally(events as any, year, month) as any[];
+}, [events, year, month]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      setUserId(data?.user?.id ?? null);
+    })();
   }, []);
 
-  async function refreshAll(uid: string) {
-    setLoading(true);
-    setStatus("Loading…");
+  useEffect(() => {
     try {
-      const linksRes = await supabase.from("player_auth_links").select("player_id").eq("user_id", uid);
-      if (linksRes.error) throw linksRes.error;
-      const linkedIds = (linksRes.data ?? []).map((x: any) => String(x.player_id)).filter(Boolean);
+      localStorage.setItem("calendar.timeMode", displayUtc ? "utc" : "local");
+    } catch {}
+  }, [displayUtc]);
 
-      const directRes = await supabase.from("players").select("*").eq("auth_user_id", uid);
-      if (directRes.error) throw directRes.error;
+  const refetch = async () => {
+    if (!upperAlliance) return;
 
-      let linkedPlayers: PlayerRow[] = [];
-      if (linkedIds.length) {
-        const lpRes = await supabase.from("players").select("*").in("id", linkedIds);
-        if (lpRes.error) throw lpRes.error;
-        linkedPlayers = (lpRes.data ?? []) as any;
-      }
-
-      const map = new Map<string, PlayerRow>();
-      (directRes.data ?? []).forEach((p: any) => map.set(String(p.id), p));
-      linkedPlayers.forEach((p: any) => map.set(String(p.id), p));
-      const list = Array.from(map.values());
-
-      setPlayers(list);
-
-      const pick = selectedPlayerId && map.has(selectedPlayerId) ? selectedPlayerId : (list[0]?.id ?? "");
-      setSelectedPlayerId(pick);
-
-      await refreshMyEventsToday();
-      await refreshMyAchievements();
-      await refreshMyMail();
-
-      if (pick) await refreshPlayer(pick);
-      else {
-        setAlliances([]);
-        setSelectedProfileId("");
-        setHqs([]);
-      }
-
-      setStatus("");
-    } catch (e: any) {
-      console.error(e);
-      setStatus(String(e?.message ?? e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function refreshMyEventsToday() {
-    const res = await supabase.from("v_my_events_today").select("*").order("starts_at", { ascending: true });
-    if (!res.error) setEventsToday((res.data ?? []) as any);
-  }
-
-  async function refreshMyAchievements() {
-    const res = await supabase.from("v_my_achievement_cards").select("*").order("created_at", { ascending: false }).limit(20);
-    if (!res.error) setMyAchievements((res.data ?? []) as any);
-  }
-
-  async function refreshMyMail() {
-    const res = await supabase
-      .from("v_my_mail_inbox")
-      .select("id,created_at,kind,subject,alliance_code,state_code,body,unread_count,thread_key")
-      .order("created_at", { ascending: false })
-      .limit(10);
-
-    if (!res.error) setMyMail((res.data ?? []) as any);
-  }
-
-  async function refreshPlayer(playerId: string) {
-    const aRes = await supabase.from("player_alliances").select("*").eq("player_id", playerId);
-    if (aRes.error) throw aRes.error;
-
-    const list = (aRes.data ?? []) as any as PlayerAllianceRow[];
-    list.sort((x, y) => String(x.alliance_code).localeCompare(String(y.alliance_code)));
-    setAlliances(list);
-
-    const lastCode = (selectedPlayer?.last_alliance_code ?? null) as any;
-    const byLast = lastCode ? list.find((x) => x.alliance_code === lastCode) : null;
-    const nextProfileId =
-      (selectedProfileId && list.find((x) => x.id === selectedProfileId))
-        ? selectedProfileId
-        : (byLast?.id ?? list[0]?.id ?? "");
-
-    setSelectedProfileId(nextProfileId);
-    if (nextProfileId) await refreshHqs(nextProfileId);
-    else setHqs([]);
-  }
-
-  async function refreshHqs(profileId: string) {
-    const hRes = await supabase
-      .from("player_alliance_hqs")
+    const { data, error } = await supabase
+      .from("alliance_events")
       .select("*")
-      .eq("profile_id", profileId)
-      .order("updated_at", { ascending: false });
+      .eq("alliance_id", upperAlliance)
+      .order("start_time_utc", { ascending: true });
 
-    if (hRes.error) throw hRes.error;
-    setHqs((hRes.data ?? []) as any);
-  }
-
-  async function createMyPlayer() {
-    if (!userId) return;
-    const name = prompt("Display name (shown in dashboard):")?.trim() || "Player";
-    const game = prompt("Game name (in-game):")?.trim() || name;
-
-    setLoading(true);
-    setStatus("Creating player…");
-    try {
-      const ins = await supabase
-        .from("players")
-        .insert({
-          auth_user_id: userId,
-          name,
-          game_name: game,
-          note: "",
-          discord_name: "",
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
-          state_code: "789",
-          last_alliance_code: null,
-        })
-        .select("*")
-        .single();
-
-      if (ins.error) throw ins.error;
-
-      const p = ins.data as any as PlayerRow;
-      setPlayers((prev) => [p, ...prev]);
-      setSelectedPlayerId(p.id);
-      await refreshPlayer(p.id);
-
-      setStatus("");
-    } catch (e: any) {
-      console.error(e);
-      setStatus(String(e?.message ?? e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function savePlayerField(field: string, value: string) {
-    if (!selectedPlayerId) return;
-    setPlayers((prev) => prev.map((p) => (p.id === selectedPlayerId ? ({ ...(p as any), [field]: value } as any) : p)));
-    const up = await supabase.from("players").update({ [field]: value }).eq("id", selectedPlayerId);
-    if (up.error) setStatus(up.error.message);
-  }
-
-    async function saveAllianceProfileField(field: string, value: string) {
-    if (!selectedProfileId) return;
-    setAlliances((prev) => prev.map((a) => (a.id === selectedProfileId ? ({ ...(a as any), [field]: value } as any) : a)));
-    const up = await supabase.from("player_alliances").update({ [field]: value }).eq("id", selectedProfileId);
-    if (up.error) setStatus(up.error.message);
-  }
-
-  async function saveAllianceProfile() {
-    if (!selectedProfileId || !selectedAllianceProfile) return;
-    setStatus("Saving alliance profile…");
-
-    const up = await supabase
-      .from("player_alliances")
-      .update({
-        in_game_name: String(selectedAllianceProfile.in_game_name ?? ""),
-        notes: String(selectedAllianceProfile.notes ?? ""),
-      })
-      .eq("id", selectedProfileId);
-
-    if (up.error) {
-      setStatus(up.error.message);
+    if (error) {
+      console.error(error);
       return;
     }
 
-    setStatus("Alliance profile saved ✅");
-    window.setTimeout(() => setStatus(""), 1200);
-  }
+    setEvents((data || []) as any);
+  };
 
-  async function selectAllianceProfile(profileId: string) {
-    setSelectedProfileId(profileId);
-    if (profileId) await refreshHqs(profileId);
+  const loadEventTypes = async () => {
+    if (!upperAlliance) return;
 
-    const prof = alliances.find((a) => a.id === profileId);
-    const code = prof?.alliance_code ?? null;
+    try {
+      const res = await supabase
+        .from("alliance_event_types")
+        .select("id,alliance_code,category,name")
+        .eq("alliance_code", upperAlliance)
+        .order("category", { ascending: true })
+        .order("name", { ascending: true });
 
-    if (code && selectedPlayerId) {
-      await supabase.from("players").update({ last_alliance_code: code }).eq("id", selectedPlayerId);
-      setPlayers((prev) => prev.map((p) => (p.id === selectedPlayerId ? ({ ...(p as any), last_alliance_code: code } as any) : p)));
+      if (res.error) throw res.error;
+
+      const rows = (res.data || []) as EventTypeRow[];
+      setEventTypes(rows);
+      setTypesOk(true);
+
+      // Seed defaults if empty AND canEdit
+      if (rows.length === 0 && canEdit) {
+        const seed = DEFAULT_EVENT_TYPES.map((n) => ({
+          alliance_code: upperAlliance,
+          category: "Alliance",
+          name: n,
+          created_by: userId ?? null,
+        })) as any[];
+
+        // requires unique index -> upsert is safe
+        const up = await supabase
+  // NOTE: Writes to alliance_event_types are disabled in Calendar. Manage types in /owner/event-types.
+
+        if (!up.error) {
+          setTypesHint("Seeded default event types ✅");
+          setTimeout(() => setTypesHint(null), 1500);
+
+          const again = await supabase
+            .from("alliance_event_types")
+            .select("id,alliance_code,category,name")
+            .eq("alliance_code", upperAlliance)
+            .order("category", { ascending: true })
+            .order("name", { ascending: true });
+
+          if (!again.error) setEventTypes((again.data || []) as any);
+        }
+      }
+    } catch (e: any) {
+      // Table missing or RLS blocking -> fallback to defaults
+      console.warn("Event types catalog not available:", e?.message ?? e);
+      setTypesOk(false);
+      setEventTypes([]);
+    }
+  };
+
+  useEffect(() => {
+    refetch();
+    loadEventTypes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [upperAlliance, canEdit]);
+
+  const effectiveTypes = useMemo(() => {
+    if (eventTypes.length > 0) return eventTypes;
+    // fallback if table doesn't exist
+    return DEFAULT_EVENT_TYPES.map((n) => ({
+      id: n,
+      alliance_code: upperAlliance,
+      category: "Alliance",
+      name: n,
+    })) as EventTypeRow[];
+  }, [eventTypes, upperAlliance]);
+
+  const optionsForCategory = useMemo(() => {
+    const cat = form.event_category || "Alliance";
+    const list = effectiveTypes.filter((t) => String(t.category || "").toLowerCase() === String(cat).toLowerCase());
+    // if State category has no items, still allow Add New
+    return list;
+  }, [effectiveTypes, form.event_category]);
+
+  const upsertTypeIfNeeded = async (): Promise<string> => {
+    const cat = (form.event_category || "Alliance").trim() || "Alliance";
+    const selected = form.event_type;
+
+    if (selected !== "__new__") return selected;
+
+    const name = (form.new_event_type || "").trim();
+    if (!name) throw new Error("New event type name required.");
+
+    if (!typesOk) return name;
+    if (!canEdit) return name;
+
+    const ins = await supabase
+      .from("alliance_event_types")
+      .insert({
+        alliance_code: upperAlliance,
+        category: cat,
+        name,
+        created_by: userId ?? null,
+      } as any)
+      .select("id")
+      .maybeSingle();
+
+    if (ins.error && ins.error.code !== "23505") {
+      console.warn("Could not save new event type:", ins.error);
+      return name;
+    }
+
+    await loadEventTypes();
+    return name;
+  };
+
+  const saveEvent = async () => {
+    if (!canEdit) return;
+
+    const cleanTitle = form.title.trim();
+
+    
+    let eventType = form.event_type;
+
+    if (eventType === "__new__") {
+      const n = String((form as any).new_event_type ?? "").trim();
+      if (!n) return alert("Enter a new event type name.");
+      eventType = n;
+    }if (!cleanTitle) return alert("Event Title required.");
+    if (!userId) return alert("No user session.");
+
+    const startInstant = parseFormDateTime(form.start_date, form.start_time, form.time_mode as any);
+    const endInstant = parseFormDateTime(form.end_date, form.end_time, form.time_mode as any);
+
+    if (Number.isNaN(startInstant.getTime()) || Number.isNaN(endInstant.getTime()))
+      return alert("Start/End date & time required.");
+
+    if (endInstant <= startInstant) return alert("End must be after start.");
+
+    const storageStart = new Date(startInstant.getTime());
+    const storageEnd = new Date(endInstant.getTime());
+
+    const durationMinutes = Math.max(
+      1,
+      Math.round((endInstant.getTime() - startInstant.getTime()) / 60000)
+    );
+
+    const chosenType = await upsertTypeIfNeeded();
+    const chosenCategory = (form.event_category || "Alliance").trim() || "Alliance";
+
+    const normalizedRecurrenceDays =
+      form.recurring_enabled &&
+      (form.recurrence_type === "weekly" || form.recurrence_type === "biweekly")
+        ? (
+            Array.isArray(form.recurrence_days) && form.recurrence_days.length
+              ? form.recurrence_days
+              : [weekdayNameFromLocalIsoDate(form.start_date)]
+          )
+        : form.recurrence_days;
+
+    const basePayload: any = {
+      alliance_id: upperAlliance,
+
+      title: cleanTitle,
+      created_by: userId,
+      start_time_utc: startInstant.toISOString(),
+      duration_minutes: durationMinutes,
+      timezone_origin: form.time_mode === "utc" ? "UTC" : (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
+
+      event_category: chosenCategory,
+      event_type: chosenType,
+
+      event_name: cleanTitle,
+      start_date: toLocalISODate(storageStart),
+      start_time: hhmmss(storageStart),
+      end_date: toLocalISODate(storageEnd),
+      end_time: hhmmss(storageEnd),
+
+      recurring_enabled: form.recurring_enabled,
+      recurrence_type: form.recurrence_type || null,
+      recurrence_days: normalizedRecurrenceDays,
+      recurrence_end_date: form.recurrence_end_date || null,
+    };
+
+    const wantRecurring = form.recurring_enabled && form.recurrence_type !== "none";
+
+    const payloadA = {
+      ...basePayload,
+      ...(wantRecurring
+        ? { recurrence_type: form.recurrence_type, recurrence_days: normalizedRecurrenceDays }
+        : { recurrence_type: null, recurrence_days: null }),
+    };
+
+    const resA = await supabase.from("alliance_events").insert(payloadA).select("id").single();
+
+    if (resA.error) {
+      const msg = (resA.error.message || "").toLowerCase();
+
+      // If event_category column isn't present, retry without it (safety)
+      const missingEventCategory = msg.includes("column") && msg.includes("event_category");
+
+      // If recurrence columns missing, fallback to legacy recurrence fields
+      const missingRecCols =
+        msg.includes("column") &&
+        (msg.includes("recurrence_type") || msg.includes("recurrence_days"));
+
+      if (missingEventCategory) {
+        const payloadNoCat = { ...payloadA };
+        delete payloadNoCat.event_category;
+        const retry = await supabase.from("alliance_events").insert(payloadNoCat).select("id").single();
+        if (retry.error) {
+          console.error(retry.error);
+          alert(retry.error.message);
+          return;
+        }
+      } else if (missingRecCols) {
+        const payloadB = {
+          ...basePayload,
+          ...(wantRecurring
+            ? { recurrence: form.recurrence_type, days_of_week: normalizedRecurrenceDays }
+            : { recurrence: null, days_of_week: null }),
+        };
+        const resB = await supabase.from("alliance_events").insert(payloadB).select("id").single();
+        if (resB.error) {
+          console.error(resB.error);
+          alert(resB.error.message);
+          return;
+        }
+      } else {
+        console.error(resA.error);
+        alert(resA.error.message);
+        return;
+      }
+    }
+
+    setShowModal(false);
+    setForm(makeEmptyForm());
+    await refetch();
+  };
+
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+  const toLocalIsoFromUtc = (utcString: string) => {
+    try {
+      const d = new Date(String(utcString || ""));
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    } catch {
+      return "";
+    }
+  };
+const prevIsoDay = (iso: string) => {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return "";
+
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const da = Number(m[3]);
+
+  const d = new Date(y, mo - 1, da, 12, 0, 0, 0);
+  d.setDate(d.getDate() - 1);
+
+  const yy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+};
+
+const tryTruncateSeries = async (eventId: string, occurrenceIso: string) => {
+  const prev = prevIsoDay(occurrenceIso);
+  if (!prev) throw new Error("Could not compute previous day for truncation.");
+
+  const attempts: any[] = [
+    { recurrence_end_date: prev },
+    { recurrence_until: prev },
+    { until_date: prev },
+    { recurrence_end: prev },
+  ];
+
+  let lastErr: any = null;
+
+  for (const patch of attempts) {
+    const up = await supabase.from("alliance_events").update(patch as any).eq("id", eventId);
+    if (!up.error) return;
+
+    lastErr = up.error;
+    const msg = String(up.error.message || "").toLowerCase();
+
+    if (msg.includes("column") && (msg.includes("does not exist") || msg.includes("schema cache") || msg.includes("unknown"))) {
+      continue;
     }
   }
 
-  async function addHQ() {
-    if (!selectedProfileId) return alert("Select an alliance first.");
-    const name = String(hqDraft.hq_name ?? "").trim();
-    if (!name) return alert("HQ Name is required.");
+  throw lastErr || new Error("Could not truncate recurring series.");
+};
 
-    const row = {
-      profile_id: selectedProfileId,
-      hq_name: name,
-      hq_level: clamp(toNum(hqDraft.hq_level, 1), 1, 60),
-      lair_level: clamp(toNum(hqDraft.lair_level, 1), 1, 60),
-      lair_percent: clamp(toNum(hqDraft.lair_percent, 0), 0, 100),
-      troop_size: clamp(toNum(hqDraft.troop_size, 0), 0, 999999999),
-      march_size: clamp(toNum(hqDraft.march_size, 0), 0, 999999999),
-      rally_size: clamp(toNum(hqDraft.rally_size, 0), 0, 999999999),
-      troop_type: (hqDraft.troop_type as any) || "Fighter",
-      tier_level: (hqDraft.tier_level as any) || "T10",
-    };
+const isRecurringEvent = (e: any) => {
+  const rt = String(e?.recurrence_type ?? e?.recurrence ?? e?.frequency ?? "").toLowerCase();
+  if (rt && rt !== "none" && rt !== "single") return true;
+  if (Array.isArray(e?.recurrence_days) && e.recurrence_days.length) return true;
+  if (Array.isArray(e?.days_of_week) && e.days_of_week.length) return true;
+  const interval = Number(e?.recurrence_interval ?? e?.interval ?? 0);
+  if (Number.isFinite(interval) && interval > 0) return true;
+  return false;
+};
 
-    const ins = await supabase.from("player_alliance_hqs").insert(row).select("*").single();
-    if (ins.error) return setStatus("Add HQ failed: " + ins.error.message);
+const trySkipOccurrence = async (eventId: string, occurrenceIso: string, sourceEvent?: any) => {
+  const source = sourceEvent || events.find((x: any) => String(x.id) === String(eventId));
+  if (!source) throw new Error("Could not locate source recurring event.");
 
-    setHqs((prev) => [ins.data as any, ...prev]);
-    setHqDraft((p) => ({ ...p, hq_name: "" }));
+  const baseTime = String(source?.start_time || "00:00").trim();
+  const hm = baseTime.match(/^(\d{2}):(\d{2})/);
+  const hh = hm ? Number(hm[1]) : 0;
+  const mm = hm ? Number(hm[2]) : 0;
+
+  const findNextOccurrenceIso = () => {
+    const start = parseISODateLocal(String(occurrenceIso || ""));
+    for (let offset = 1; offset <= 370; offset++) {
+      const probe = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 12, 0, 0, 0);
+      probe.setDate(probe.getDate() + offset);
+
+      const probeIso = toLocalISODate(probe);
+      const expanded = expandMonthLocally([source] as any, probe.getFullYear(), probe.getMonth()) as any[];
+
+      const hit = expanded.find((row: any) => String(row?._occurrence_local_date || "") === probeIso);
+      if (hit) return probeIso;
+    }
+    return null;
+  };
+
+  const nextIso = findNextOccurrenceIso();
+
+  // No later occurrence: truncating the series is enough
+  if (!nextIso) {
+    await tryTruncateSeries(eventId, occurrenceIso);
+    return;
   }
 
-  async function deleteHQ(id: string) {
-    const ok = confirm("Delete this HQ?");
-    if (!ok) return;
-    const del = await supabase.from("player_alliance_hqs").delete().eq("id", id);
-    if (del.error) return setStatus("Delete failed: " + del.error.message);
-    setHqs((prev) => prev.filter((x) => x.id !== id));
+  const nextStart = parseISODateLocal(nextIso);
+  nextStart.setHours(hh, mm, 0, 0);
+
+  const duration = Math.max(1, Number(source?.duration_minutes || 60));
+  const nextEnd = new Date(nextStart.getTime() + duration * 60000);
+
+  const recurrenceDays = Array.isArray(source?.recurrence_days)
+    ? source.recurrence_days
+    : Array.isArray(source?.days_of_week)
+    ? source.days_of_week
+    : null;
+
+  const payload: any = {
+    alliance_id: source?.alliance_id,
+    title: String(source?.title || source?.event_name || "").trim(),
+    event_name: source?.event_name || source?.title || null,
+    created_by: userId || source?.created_by || null,
+    start_date: nextIso,
+    start_time: baseTime,
+    end_date: toLocalISODate(nextEnd),
+    end_time: `${String(nextEnd.getHours()).padStart(2, "0")}:${String(nextEnd.getMinutes()).padStart(2, "0")}:00`,
+    start_time_utc: nextStart.toISOString(),
+    duration_minutes: duration,
+    timezone_origin: source?.timezone_origin || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    recurring_enabled: !!source?.recurring_enabled,
+    recurrence_type: source?.recurrence_type || source?.recurrence || null,
+    recurrence_days: recurrenceDays,
+    recurrence_end_date: source?.recurrence_end_date || null,
+    event_type: source?.event_type || null,
+    event_category: source?.event_category || null,
+  };
+
+  const ins = await supabase.from("alliance_events").insert(payload as any).select("id").single();
+  if (ins.error) throw ins.error;
+
+  try {
+    await tryTruncateSeries(eventId, occurrenceIso);
+  } catch (err) {
+    await supabase.from("alliance_events").delete().eq("id", String(ins.data?.id || ""));
+    throw err;
   }
+};
 
-  async function editHQ(id: string) {
-    const cur = hqs.find((x) => x.id === id);
-    if (!cur) return;
+const deleteEvent = async (arg: any) => {
+    if (!canEdit) return;
 
-    const nextName = prompt("HQ Name:", cur.hq_name)?.trim();
-    if (!nextName) return;
+    const id = typeof arg === "string" ? arg : getDeleteId(arg);
+    const e = typeof arg === "string" ? { id } : arg;
 
-    const next = {
-      hq_name: nextName,
-      hq_level: clamp(Number(prompt("HQ Level:", String(cur.hq_level)) ?? cur.hq_level), 1, 60),
-      lair_level: clamp(Number(prompt("Lair Level:", String(cur.lair_level)) ?? cur.lair_level), 1, 60),
-      lair_percent: clamp(Number(prompt("Lair % (0-100):", String(cur.lair_percent)) ?? cur.lair_percent), 0, 100),
-      troop_size: clamp(Number(prompt("Troop Size:", String(cur.troop_size)) ?? cur.troop_size), 0, 999999999),
-      march_size: clamp(Number(prompt("March Size:", String(cur.march_size)) ?? cur.march_size), 0, 999999999),
-      rally_size: clamp(Number(prompt("Rally Size:", String(cur.rally_size)) ?? cur.rally_size), 0, 999999999),
-    };
+    if (!id) return;
 
-    const up = await supabase.from("player_alliance_hqs").update(next).eq("id", id);
-    if (up.error) return setStatus("Update failed: " + up.error.message);
+    const recurring = isRecurringEvent(e);
+    const utc = String(getEventStartUtc(e) || "");
+    const occurrenceIso = String((e as any)?._occurrence_local_date || (utc ? toLocalIsoFromUtc(utc) : ""));
 
-    setHqs((prev) => prev.map((x) => (x.id === id ? ({ ...x, ...next } as any) : x)));
-  }
+    // Non-recurring: keep old behavior
+    if (!recurring || !occurrenceIso) {
+      if (!confirm("Delete this event?")) return;
+      await supabase.from("alliance_events").delete().eq("id", id);
+      await refetch();
+      return;
+    }
 
-  const calendarLink = selectedAllianceProfile?.alliance_code ? `/dashboard/${selectedAllianceProfile.alliance_code}/calendar` : "";
-  const announcementsLink = selectedAllianceProfile?.alliance_code ? `/dashboard/${selectedAllianceProfile.alliance_code}/announcements` : "";
-  const alertsLink = selectedAllianceProfile?.alliance_code ? `/dashboard/${selectedAllianceProfile.alliance_code}/alerts` : "";
+    const choice = window.prompt(
+      "Recurring event delete:\n\n1 = Delete THIS occurrence only\n2 = Delete THIS and ALL FUTURE\n3 = Delete ENTIRE SERIES\n\nEnter 1 / 2 / 3",
+      "1"
+    );
 
-  const topStats = [
-    { label: "Players", value: players.length, sub: "Linked to this account" },
-    { label: "Alliances", value: alliances.length, sub: "Profiles available" },
-    { label: "Events Today", value: eventsToday.length, sub: "Upcoming operations" },
-    { label: "Mail", value: unreadMailCount, sub: unreadMailCount > 0 ? "Unread waiting" : "Inbox clear" },
-  ];
+    if (!choice) return;
+    const v = String(choice).trim();
+
+    try {
+      if (v === "3") {
+        if (!confirm("Delete ENTIRE series?")) return;
+        await supabase.from("alliance_events").delete().eq("id", id);
+      } else if (v === "2") {
+        if (!confirm("Delete this occurrence and ALL FUTURE occurrences?")) return;
+        await tryTruncateSeries(id, occurrenceIso);
+      } else {
+        if (!confirm("Delete THIS occurrence only?")) return;
+        await trySkipOccurrence(id, occurrenceIso, e);
+      }
+    } catch (err: any) {
+      alert(String(err?.message || err || "Delete failed"));
+    }
+
+    await refetch();
+  };
+
+  const monthLabel = useMemo(() => {
+    return new Date(year, month).toLocaleString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+  }, [month, year]);
+
+  // Calendar day match using local occurrence dates
+  const isSameDay = (e: any, y: number, m: number, d: number) => {
+  const want = `${y}-${pad2(m + 1)}-${pad2(d)}`;
+  return occurrenceLocalDate(e) === want;
+};
+
+  const selectedDayEvents = useMemo(() => {
+    if (!selectedDay) return [];
+    return expandedEvents.filter((e: any) => isSameDay(e, year, month, selectedDay));
+  }, [expandedEvents, selectedDay, year, month]);
+
+  // Manager tools: delete type
+  const deleteType = async (id: string) => {
+    if (!canEdit) return;
+    if (!typesOk) return alert("Event type catalog is not available.");
+    if (!confirm("Delete this event type?")) return;
+
+    const del = await supabase.from("alliance_event_types").delete().eq("id", id);
+    if (del.error) {
+      alert(del.error.message);
+      return;
+    }
+
+    await loadEventTypes();
+  };
 
   return (
-    <div
+    <div style={{ padding: 24 }}>
+      <h2>📅 Alliance Calendar - {upperAlliance}</h2>
+
+      {canEdit && (
+        <button onClick={() => { setForm(makeEmptyForm()); setShowModal(true); }}>
+          + Create Event
+        </button>
+      )}
+
+      {typesHint ? <div style={{ marginTop: 10, opacity: 0.85 }}>{typesHint}</div> : null}
+
+      <div
+  style={{
+    marginTop: 20,
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
+    alignItems: "center",
+  }}
+>
+  <strong>{monthLabel}</strong>
+
+  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+    <div style={{ fontSize: 12, opacity: 0.82 }}>Show all event times as:</div>
+
+    <button
+      type="button"
+      onClick={() => setDisplayUtc(false)}
       style={{
-        padding: "16px 20px 28px 20px",
-        width: "100%",
-        maxWidth: "none",
-        margin: 0,
-        color: TEXT,
-        background: "linear-gradient(180deg, #07110b 0%, #0b1510 100%)",
-        minHeight: "100vh",
+        padding: "6px 10px",
+        borderRadius: 10,
+        border: !displayUtc ? "1px solid rgba(120,255,120,0.35)" : "1px solid #333",
+        background: !displayUtc ? "rgba(120,255,120,0.10)" : "rgba(255,255,255,0.03)",
       }}
     >
+      Local
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setDisplayUtc(true)}
+      style={{
+        padding: "6px 10px",
+        borderRadius: 10,
+        border: displayUtc ? "1px solid rgba(120,180,255,0.35)" : "1px solid #333",
+        background: displayUtc ? "rgba(120,180,255,0.12)" : "rgba(255,255,255,0.03)",
+      }}
+    >
+      Puzzle & Survival UTC
+    </button>
+  </div>
+</div>
+
+<div style={{ marginTop: 8, fontSize: 12, opacity: 0.72 }}>
+  This changes display/export only. Saved events stay unchanged.
+</div>
+
       <div
-        className="zombie-card"
         style={{
-          padding: 16,
-          borderRadius: 18,
-          marginBottom: 16,
+          marginTop: 20,
           display: "grid",
-          gap: 14,
-          background: PANEL,
-          border: BORDER,
-          color: TEXT,
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gap: 10,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
-          <div>
-            <div style={{ fontSize: 24, fontWeight: 950 }}>Personal Command Center</div>
-            <div style={{ color: MUTED, marginTop: 4, fontSize: 13 }}>
-              Live state intel, alliance traffic, mail, events, and player management in one place.
-            </div>
-            <div style={{ color: SOFT, marginTop: 6, fontSize: 12 }}>
-              {userId ? "Signed in ✅" : "Not signed in"}{loading ? " • Loading…" : ""}{status ? " • " + status : ""}
-            </div>
-          </div>
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link to="/state/789">State Hub</Link>
-            <Link to="/state/789/ops">State Ops</Link>
-            <Link to="/state/789/alerts-db">State Alerts</Link>
-            <Link to="/mail">Mail</Link>
-            {selectedAllianceProfile?.alliance_code ? (
-              <Link to={`/dashboard/${selectedAllianceProfile.alliance_code}`}>Alliance Hub</Link>
-            ) : null}
-            <button disabled={!userId} onClick={() => userId && refreshAll(userId)}>Refresh</button>
-          </div>
-        </div>
+          const dayEvents = expandedEvents.filter((e: any) => isSameDay(e, year, month, day));
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-          {topStats.map((item) => (
+          return (
             <div
-              key={item.label}
+              key={day}
+              onClick={() => setSelectedDay(day)}
               style={{
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.04)",
-                borderRadius: 14,
-                padding: 12,
+                border: "1px solid #444",
+                borderRadius: 8,
+                padding: 10,
+                minHeight: 100,
+                outline: selectedDay === day ? "2px solid #666" : "none",
               }}
             >
-              <div style={{ opacity: 0.72, fontSize: 12 }}>{item.label}</div>
-              <div style={{ fontWeight: 950, fontSize: 24, marginTop: 4 }}>{item.value}</div>
-              <div style={{ opacity: 0.68, fontSize: 12, marginTop: 4 }}>{item.sub}</div>
+              <strong>{day}</strong>
+
+              {dayEvents.map((e: any) => (
+                <div
+                  key={e.instance_id ?? e.id}
+                  style={{
+                    marginTop: 6,
+                    fontSize: 12,
+                    cursor: canEdit ? "pointer" : "default",
+                  }}
+                  onClick={(evt) => {
+                    evt.stopPropagation();
+                    if (canEdit) deleteEvent(e);
+                  }}
+                  title={canEdit ? "Click to delete" : undefined}
+                >
+                  {formatEventTimeLabel(e)}{" "}
+                  - {e.title}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1.7fr) minmax(320px, 1fr)",
-          gap: 16,
-          alignItems: "start",
-          marginBottom: 16,
-        }}
-      >
-        <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-            <MeStateAlertsCard stateCode={selectedPlayer?.state_code ?? "789"} />
-            <MeStateAnnouncementsCard stateCode={selectedPlayer?.state_code ?? "789"} />
-            <MeAllianceAlertsPanel
-              allianceId={selectedAllianceProfile?.alliance_id ?? null}
-              allianceCode={selectedAllianceProfile?.alliance_code ?? null}
-            />
-            <MeAllianceAnnouncementsCard
-              allianceId={selectedAllianceProfile?.alliance_id ?? null}
-              allianceCode={selectedAllianceProfile?.alliance_code ?? null}
-            />
-          </div>
+      {/* Optional Agenda List */}
+      {selectedDay && (
+        <div style={{ marginTop: 18 }}>
+          <h3 style={{ marginBottom: 8 }}>
+            🧟 Agenda - {new Date(year, month, selectedDay).toLocaleDateString()}
+          </h3>
 
-          <MeTodayEventsPanel events={eventsToday} alliances={alliances} />
-
-          <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <div>
-                <div style={{ fontWeight: 950, fontSize: 16 }}>🏆 My Achievements</div>
-                <div style={{ opacity: 0.78, fontSize: 12 }}>Recent achievement requests and progress</div>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 12 }}>
-              {myAchievements.length === 0 ? (
-                <div style={{ opacity: 0.75 }}>No achievement requests found for your account.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {myAchievements.slice(0, 6).map((a) => (
-                    <div
-                      key={a.id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        borderRadius: 12,
-                        padding: 12,
-                      }}
-                    >
-                      <div style={{ fontWeight: 900 }}>{a.request?.title ?? "Achievement"}</div>
-                      <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-                        {new Date(a.created_at).toLocaleString()} • Status: <b>{a.request?.status ?? "pending"}</b>
-                        {a.request?.progress_text ? <> • Progress: <b>{a.request.progress_text}</b></> : null}
-                        {a.request?.completed ? <> • ✅ Completed</> : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gap: 16 }}>
-          <DailyBriefingPanel />
-
-          <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <div>
-                <div style={{ fontWeight: 950, fontSize: 16 }}>📬 My Mail</div>
-                <div style={{ opacity: 0.78, fontSize: 12 }}>Latest inbox activity for your account</div>
-              </div>
-              <Link to="/mail">Open inbox</Link>
-            </div>
-
-            <div style={{ marginTop: 12 }}>
-              {myMail.length === 0 ? (
-                <div style={{ opacity: 0.75 }}>No mail yet.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {myMail.slice(0, 5).map((m) => (
-                    <div
-                      key={m.id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        borderRadius: 12,
-                        padding: 12,
-                      }}
-                    >
-                      <div style={{ fontWeight: 900 }}>[{m.kind}] {m.subject || "(no subject)"}</div>
-                      <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-                        {new Date(m.created_at).toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
-            <div style={{ fontWeight: 950, fontSize: 16 }}>⚡ Quick Actions</div>
-            <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Link to="/state/789/discussion">Discussion</Link>
-              <Link to="/state/789/achievements">Achievements</Link>
-              <Link to="/state/789">State Hub</Link>
-              {selectedAllianceProfile?.alliance_id ? <Link to={`/dashboard/${selectedAllianceProfile.alliance_code}`}>Alliance Hub</Link> : null}
-              {calendarLink ? <Link to={calendarLink}>Calendar</Link> : null}
-              {alertsLink ? <Link to={alertsLink}>Alliance Alerts</Link> : null}
-              {announcementsLink ? <Link to={announcementsLink}>Announcements</Link> : null}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <details open style={{ marginBottom: 16 }}>
-        <summary style={{ cursor: "pointer", fontWeight: 900, marginBottom: 10 }}>Player Profile</summary>
-
-        <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
-          <div style={{ fontWeight: 950, fontSize: 16, marginBottom: 12 }}>Player Profile</div>
-
-          {players.length === 0 ? (
-            <div style={{ opacity: 0.8 }}>
-              No player profile is linked to this account yet.
-              <div style={{ marginTop: 10 }}>
-                <button disabled={!userId} onClick={() => void createMyPlayer()}>Create my player profile</button>
-              </div>
-            </div>
+          {selectedDayEvents.length === 0 ? (
+            <div style={{ opacity: 0.75 }}>No events.</div>
           ) : (
-            <>
-              <select
-                value={selectedPlayerId}
-                onChange={async (e) => {
-                  const pid = e.target.value;
-                  setSelectedPlayerId(pid);
-                  if (pid) await refreshPlayer(pid);
-                }}
-                style={{ minWidth: 360, marginBottom: 12 }}
-              >
-                {players.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {(p.name ?? "Player")} • {p.game_name ?? ""} ({p.id.slice(0, 6)}…)
-                  </option>
+            <div style={{ display: "grid", gap: 8 }}>
+              {selectedDayEvents
+                .slice()
+                .sort((a: any, b: any) => new Date(String(getEventStartUtc(a) || "")).getTime() - new Date(String(getEventStartUtc(b) || "")).getTime())
+                .map((e: any) => (
+                  <div
+                    key={`agenda__${e.instance_id ?? e.id}`}
+                    style={{ border: "1px solid #333", borderRadius: 8, padding: 10 }}
+                  >
+                    <div style={{ fontWeight: 700 }}>
+                      {formatEventTimeLabel(e)}{" "}
+                      - {e.title}
+                    </div>
+                    {e.event_category ? <div style={{ opacity: 0.9, fontSize: 12 }}>{String(e.event_category)}</div> : null}
+                    {e.event_type ? <div style={{ opacity: 0.85, fontSize: 12 }}>{String(e.event_type)}</div> : null}
+                  </div>
                 ))}
-              </select>
-
-              {selectedPlayer ? (
-                <div style={{ display: "grid", gap: 10 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 10 }}>
-                    <div>
-                      <div style={{ opacity: 0.75, fontSize: 12 }}>Display name</div>
-                      <input value={selectedPlayer.name ?? ""} onChange={(e) => void savePlayerField("name", e.target.value)} />
-                    </div>
-                    <div>
-                      <div style={{ opacity: 0.75, fontSize: 12 }}>Game name</div>
-                      <input value={selectedPlayer.game_name ?? ""} onChange={(e) => void savePlayerField("game_name", e.target.value)} />
-                    </div>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 10 }}>
-                    <div>
-                      <div style={{ opacity: 0.75, fontSize: 12 }}>Discord</div>
-                      <input value={String(selectedPlayer.discord_name ?? "")} onChange={(e) => void savePlayerField("discord_name", e.target.value)} />
-                    </div>
-                    <div>
-                      <div style={{ opacity: 0.75, fontSize: 12 }}>Timezone</div>
-                      <input value={String(selectedPlayer.timezone ?? "")} onChange={(e) => void savePlayerField("timezone", e.target.value)} />
-                    </div>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 10 }}>
-                    <div>
-                      <div style={{ opacity: 0.75, fontSize: 12 }}>State</div>
-                      <input value={String(selectedPlayer.state_code ?? "789")} onChange={(e) => void savePlayerField("state_code", e.target.value)} />
-                    </div>
-                    <div>
-                      <div style={{ opacity: 0.75, fontSize: 12 }}>Notes</div>
-                      <input value={selectedPlayer.note ?? ""} onChange={(e) => void savePlayerField("note", e.target.value)} />
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </>
+            </div>
           )}
         </div>
-      </details>
+      )}
 
-      <details style={{ marginBottom: 16 }}>
-        <summary style={{ cursor: "pointer", fontWeight: 900, marginBottom: 10 }}>Alliance Profile + HQs</summary>
-
-        <div className="zombie-card" style={{ padding: 14, borderRadius: 16 }}>
-          <div style={{ fontWeight: 950, fontSize: 16, marginBottom: 12 }}>Alliance Profile + HQs</div>
-
-          {alliances.length === 0 ? (
-            <div style={{ opacity: 0.8 }}>No alliance memberships found for this player (provisioning controls this).</div>
+      {/* Manager: View/delete event types */}
+      {canEdit ? (
+        <div style={{ marginTop: 22, borderTop: "1px solid #333", paddingTop: 14 }}>
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>⚙️ Event Types (per alliance)</div>
+          {!typesOk ? (
+            <div style={{ opacity: 0.8 }}>
+              Event type catalog table not available yet. Calendar will still work with defaults.
+              Run migrations + deploy to enable custom types.
+            </div>
           ) : (
-            <>
-              <select value={selectedProfileId} onChange={(e) => void selectAllianceProfile(e.target.value)} style={{ minWidth: 360 }}>
-                <option value="">Select an alliance…</option>
-                {alliances.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.alliance_code} {a.role ? `• ${a.role}` : ""}
-                  </option>
-                ))}
-              </select>
-
-              {selectedAllianceProfile ? (
-                <>
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", opacity: 0.85, marginTop: 12 }}>
-                    <div>Alliance: <b>{selectedAllianceProfile.alliance_code}</b></div>
-                    {announcementsLink ? <Link to={announcementsLink}>Announcements</Link> : null}
-                    {calendarLink ? <Link to={calendarLink}>Calendar</Link> : null}
-                    {alertsLink ? <Link to={alertsLink}>Alerts</Link> : null}
+            <div style={{ display: "grid", gap: 10 }}>
+              {["Alliance","State"].map((cat) => (
+                <div key={cat} style={{ border: "1px solid #333", borderRadius: 10, padding: 10 }}>
+                  <div style={{ fontWeight: 800, marginBottom: 8 }}>
+                    {cat === "Alliance" ? "Alliance Event Types" : "State Event Types"}
                   </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 10, marginTop: 12 }}>
-                    <div>
-                      <div style={{ opacity: 0.75, fontSize: 12 }}>In-game name (for this alliance)</div>
-                      <input value={String(selectedAllianceProfile.in_game_name ?? "")} onChange={(e) => void saveAllianceProfileField("in_game_name", e.target.value)} />
-                    </div>
-                    <div>
-                      <div style={{ opacity: 0.75, fontSize: 12 }}>Notes</div>
-                      <input value={String(selectedAllianceProfile.notes ?? "")} onChange={(e) => void saveAllianceProfileField("notes", e.target.value)} />
-                    </div>
-                  </div>
-
-                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12, marginTop: 14 }}>
-                    <div style={{ fontWeight: 900 }}>Add HQ</div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10, marginTop: 10 }}>
-                      <div>
-                        <div style={{ opacity: 0.75, fontSize: 12 }}>HQ Name</div>
-                        <input value={String(hqDraft.hq_name ?? "")} onChange={(e) => setHqDraft((p) => ({ ...p, hq_name: e.target.value }))} />
-                      </div>
-                      <div>
-                        <div style={{ opacity: 0.75, fontSize: 12 }}>HQ Level</div>
-                        <input type="number" value={String(hqDraft.hq_level ?? 1)} onChange={(e) => setHqDraft((p) => ({ ...p, hq_level: toNum(e.target.value, 1) }))} />
-                      </div>
-                      <div style={{ display: "flex", alignItems: "flex-end" }}>
-                        <button onClick={() => void addHQ()}>+ Add HQ</button>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 10 }}>
-                      <div>
-                        <div style={{ opacity: 0.75, fontSize: 12 }}>Lair Level</div>
-                        <input type="number" value={String(hqDraft.lair_level ?? 1)} onChange={(e) => setHqDraft((p) => ({ ...p, lair_level: toNum(e.target.value, 1) }))} />
-                      </div>
-                      <div>
-                        <div style={{ opacity: 0.75, fontSize: 12 }}>Lair %</div>
-                        <input type="number" value={String(hqDraft.lair_percent ?? 0)} onChange={(e) => setHqDraft((p) => ({ ...p, lair_percent: toNum(e.target.value, 0) }))} />
-                      </div>
-                      <div>
-                        <div style={{ opacity: 0.75, fontSize: 12 }}>Troop Type</div>
-                        <select value={String(hqDraft.troop_type ?? "Fighter")} onChange={(e) => setHqDraft((p) => ({ ...p, troop_type: e.target.value as any }))}>
-                          {TROOP_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginTop: 10 }}>
-                      <div>
-                        <div style={{ opacity: 0.75, fontSize: 12 }}>Troop Size</div>
-                        <input type="number" value={String(hqDraft.troop_size ?? 0)} onChange={(e) => setHqDraft((p) => ({ ...p, troop_size: toNum(e.target.value, 0) }))} />
-                      </div>
-                      <div>
-                        <div style={{ opacity: 0.75, fontSize: 12 }}>March Size</div>
-                        <input type="number" value={String(hqDraft.march_size ?? 0)} onChange={(e) => setHqDraft((p) => ({ ...p, march_size: toNum(e.target.value, 0) }))} />
-                      </div>
-                      <div>
-                        <div style={{ opacity: 0.75, fontSize: 12 }}>Rally Size</div>
-                        <input type="number" value={String(hqDraft.rally_size ?? 0)} onChange={(e) => setHqDraft((p) => ({ ...p, rally_size: toNum(e.target.value, 0) }))} />
-                      </div>
-                      <div>
-                        <div style={{ opacity: 0.75, fontSize: 12 }}>Tier</div>
-                        <select value={String(hqDraft.tier_level ?? "T10")} onChange={(e) => setHqDraft((p) => ({ ...p, tier_level: e.target.value as any }))}>
-                          {TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12, marginTop: 14 }}>
-                    <div style={{ fontWeight: 900 }}>HQ List ({hqs.length})</div>
-                    <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-                      {hqs.length === 0 ? (
-                        <div style={{ opacity: 0.7 }}>No HQs yet.</div>
-                      ) : (
-                        hqs.map((hq) => (
-                          <div key={hq.id} style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: 12 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                              <div>
-                                <div style={{ fontWeight: 900 }}>{hq.hq_name} • HQ {hq.hq_level}</div>
-                                <div style={{ opacity: 0.75, fontSize: 12 }}>
-                                  Lair {hq.lair_level} ({hq.lair_percent}%) • {hq.troop_type} • {hq.tier_level}
-                                </div>
-                                <div style={{ opacity: 0.75, fontSize: 12 }}>
-                                  Troop {hq.troop_size} • March {hq.march_size} • Rally {hq.rally_size}
-                                </div>
-                              </div>
-                              <div style={{ display: "flex", gap: 8 }}>
-                                <button onClick={() => void editHQ(hq.id)}>Edit</button>
-                                <button onClick={() => void deleteHQ(hq.id)}>Delete</button>
-                              </div>
-                            </div>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    {eventTypes.filter((t) => String(t.category).toLowerCase() === cat.toLowerCase()).length === 0 ? (
+                      <div style={{ opacity: 0.75 }}>None yet. Add from the Create Event modal (+ Add new type...).</div>
+                    ) : (
+                      eventTypes
+                        .filter((t) => String(t.category).toLowerCase() === cat.toLowerCase())
+                        .map((t) => (
+                          <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                            <div style={{ opacity: 0.95 }}>{t.name}</div>
+                            <button onClick={() => deleteType(t.id)} style={{ padding: "6px 10px", borderRadius: 10 }}>
+                              Delete
+                            </button>
                           </div>
                         ))
-                      )}
-                    </div>
+                    )}
                   </div>
-                </>
-              ) : (
-                <div style={{ opacity: 0.75, marginTop: 12 }}>Select an alliance profile above to manage HQs.</div>
-              )}
-            </>
+                </div>
+              ))}
+            </div>
           )}
         </div>
-      </details>
+      ) : null}
 
-      <div style={{ opacity: 0.6, marginTop: 12, fontSize: 12 }}>
-        Tip: delegated posting for Alliance Alerts is controlled by <code>alliance_access_grants.can_post_alerts</code>.
-      </div>
-    
-      <div
-        className="zombie-card"
-        style={{
-          padding: 16,
-          borderRadius: 18,
-          marginTop: 16,
-          background: "linear-gradient(180deg, rgba(18,18,24,0.94), rgba(10,10,14,0.96))",
-          border: "1px solid rgba(255,255,255,0.14)",
-          color: "rgba(255,255,255,0.96)",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 950, color: "#fff" }}>📬 Mail Preview</div>
-            <div style={{ color: "rgba(255,255,255,0.82)", marginTop: 4, fontSize: 13 }}>
-              {unreadMailCount > 0 ? `${unreadMailCount} unread message(s)` : "No unread mail right now"}
+      {showModal && (
+        <div style={{ marginTop: 20 }}>
+          <h3>Create Event</h3>
+
+          <input
+            placeholder="Title"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+          />
+
+          <div style={{ marginTop: 10, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span>Category</span>
+              <select
+                value={form.event_category}
+                onChange={(e) => setForm({ ...form, event_category: e.target.value })}
+              >
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span>Event Type</span>
+              <select
+                value={form.event_type}
+                onChange={(e) => setForm({ ...form, event_type: e.target.value })}
+              >
+                {(optionsForCategory.length ? optionsForCategory.map((t) => t.name) : EVENT_TYPES).map((t) => (
+  <option key={t} value={t}>{t}</option>
+))}
+                <option value="__new__">+ New (custom)</option>
+              </select>
+            </label>
+          </div>
+
+          {form.event_type === "__new__" ? (
+            <div style={{ marginTop: 10 }}>
+              <input
+                placeholder="New event type name (ex: Hunt Mastery)"
+                value={form.new_event_type}
+                onChange={(e) => setForm({ ...form, new_event_type: e.target.value })}
+              />
+              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+                When you save, this will be added to the dropdown for {upperAlliance}.
+              </div>
+            </div>
+          ) : null}
+
+          <div style={{ marginTop: 12, marginBottom: 10, display: "grid", gap: 6 }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={form.time_mode === "utc"}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    time_mode: e.target.checked ? "utc" : "local",
+                  }))
+                }
+              />
+              <span>Puzzle & Survival UTC input</span>
+            </label>
+            <div style={{ fontSize: 12, opacity: 0.78 }}>
+              {form.time_mode === "utc"
+                ? "Dates/times entered here are treated as UTC and converted safely for the calendar."
+                : "Dates/times entered here are treated as your local time."}
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link to="/mail">Mail Home</Link>
-            <Link to="/mail-threads">Threads</Link>
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            <input
+              type="date"
+              value={form.start_date}
+              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+            />
+            <input
+              type="time"
+              value={form.start_time}
+              onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+            />
+            <input
+              type="date"
+              value={form.end_date}
+              onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+            />
+            <input
+              type="time"
+              value={form.end_time}
+              onChange={(e) => setForm({ ...form, end_time: e.target.value })}
+            />
+          </div>
+
+          <RecurringControls
+            enabled={form.recurring_enabled}
+            onEnabledChange={(v) => setForm((prev) => ({ ...prev, recurring_enabled: v }))}
+            recurrenceType={form.recurrence_type as any}
+            onRecurrenceTypeChange={(v) => setForm((prev) => ({ ...prev, recurrence_type: v as any }))}
+            daysOfWeek={form.recurrence_days}
+            onDaysOfWeekChange={(v) => setForm((prev) => ({ ...prev, recurrence_days: v }))}
+            endDate={form.recurrence_end_date}
+            onEndDateChange={(v) => setForm((prev) => ({ ...prev, recurrence_end_date: v }))}
+          />
+
+          <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+            <button onClick={saveEvent}>Save</button>
+            <button onClick={() => setShowModal(false)}>Cancel</button>
           </div>
         </div>
-
-        {latestMailPreview ? (
-          <div
-            style={{
-              marginTop: 14,
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 16,
-              padding: 14,
-              background: Number(latestMailPreview.unread_count || 0) > 0
-                ? "rgba(255,255,255,0.08)"
-                : "rgba(255,255,255,0.04)",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <div style={{ fontWeight: 900, color: "#fff" }}>
-                {latestMailPreview.subject || "(no subject)"}
-              </div>
-              <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 12 }}>
-                {prettyMailDate(latestMailPreview.created_at)}
-              </div>
-            </div>
-
-            <div style={{ marginTop: 8, color: "rgba(255,255,255,0.88)", lineHeight: 1.5 }}>
-              {previewMailBody(latestMailPreview.body)}
-            </div>
-
-            <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              {Number(latestMailPreview.unread_count || 0) > 0 ? (
-                <div
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: 999,
-                    background: "rgba(255,255,255,0.10)",
-                    border: "1px solid rgba(255,255,255,0.16)",
-                    color: "#fff",
-                    fontSize: 12,
-                    fontWeight: 900,
-                  }}
-                >
-                  Unread • {Number(latestMailPreview.unread_count || 0)}
-                </div>
-              ) : null}
-
-              <Link to={latestMailPreview.thread_key ? `/mail-threads?thread=${encodeURIComponent(String(latestMailPreview.thread_key))}` : "/mail-threads"}>
-                Open thread
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div style={{ marginTop: 14, color: "rgba(255,255,255,0.72)" }}>
-            No mail to preview yet.
-          </div>
-        )}
-      </div>
-</div>
+      )}
+    </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
