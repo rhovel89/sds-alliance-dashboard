@@ -137,7 +137,7 @@ export default function MyMailShellPage() {
 
   return (
     <div style={{ padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center", minWidth: 0 }}>
         <h2 style={{ margin: 0 }}>✉️ My Mail (UI shell)</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={exportJson}>Export</button>
@@ -148,16 +148,16 @@ export default function MyMailShellPage() {
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <input className="zombie-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", minWidth: 220 }} />
-          <input className="zombie-input" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="Filter tag…" style={{ padding: "10px 12px", minWidth: 180 }} />
+          <input className="zombie-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", minWidth: 0, width: "100%", flex: 1 }} />
+          <input className="zombie-input" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="Filter tag…" style={{ padding: "10px 12px", minWidth: 0, width: "100%", flex: 1 }} />
           <div style={{ opacity: 0.75, fontSize: 12 }}>Threads: {store.threads.length}</div>
           <div style={{ opacity: 0.75, fontSize: 12 }}>UTC: {store.updatedUtc}</div>
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(300px, 1fr) minmax(320px, 1.1fr)", gap: 12 }}>
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
         <div className="zombie-card">
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center", minWidth: 0 }}>
             <div style={{ fontWeight: 900 }}>Inbox</div>
             <button className="zombie-btn" style={{ padding: "8px 10px", fontSize: 12 }} onClick={newThread}>+ New</button>
           </div>
