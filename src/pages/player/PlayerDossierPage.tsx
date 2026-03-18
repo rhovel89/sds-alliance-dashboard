@@ -67,7 +67,7 @@ export default function PlayerDossierPage() {
         .order("alliance_code", { ascending: true });
 
       if (!cancelled) {
-        if (m.error) setStatus((prev) => prev ? prev : m.error.message);
+        if (m.error && !status) setStatus(m.error.message);
         setMemberships((m.data || []) as any[]);
       }
 
@@ -126,7 +126,7 @@ export default function PlayerDossierPage() {
           <div>
             <div style={{ fontSize: 30, fontWeight: 950, lineHeight: 1.05 }}>Player Dossier Sheet</div>
             <div style={{ opacity: 0.84, marginTop: 10, lineHeight: 1.7 }}>
-              Owner-visible player dossier and HQ summary.
+              Clean owner-view dossier for a single player.
             </div>
           </div>
 
@@ -144,7 +144,7 @@ export default function PlayerDossierPage() {
       {loading ? <div style={{ opacity: 0.75 }}>Loading…</div> : null}
 
       {status ? (
-        <div style={{ marginBottom: 0, border: "1px solid rgba(176,18,27,0.35)", background: "rgba(176,18,27,0.12)", borderRadius: 12, padding: 10 }}>
+        <div style={{ border: "1px solid rgba(176,18,27,0.35)", background: "rgba(176,18,27,0.12)", borderRadius: 12, padding: 10 }}>
           {status}
         </div>
       ) : null}
@@ -175,6 +175,11 @@ export default function PlayerDossierPage() {
                 <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Game Name</div>
                 <div style={{ fontWeight: 900 }}>{s(player.game_name || player.name || "(none)")}</div>
               </div>
+              <div style={{ gridColumn: "1 / -1", fontSize: 12, opacity: 0.72 }}>
+                created_at: {player?.created_at ? new Date(String(player.created_at)).toLocaleString() : "—"}
+                {" • "}
+                updated_at: {player?.updated_at ? new Date(String(player.updated_at)).toLocaleString() : "—"}
+              </div>
             </div>
           )}
         </div>
@@ -183,12 +188,12 @@ export default function PlayerDossierPage() {
           <div style={{ fontWeight: 950, fontSize: 16 }}>Alliance Memberships</div>
           <div style={{ opacity: 0.7, fontSize: 12, marginTop: 6 }}>Source: player_alliances</div>
 
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
             {memberships.map((m: any, i: number) => (
               <div key={String(m.id || i)} style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.18)", borderRadius: 12, padding: 10 }}>
                 <div style={{ fontWeight: 900 }}>
-                  {String(m.alliance_code || m.alliance_id || "Alliance")}
-                  <span style={{ opacity: 0.7, fontWeight: 700 }}> • role: {String(m.role || "")}</span>
+                  {s(m.alliance_code || m.alliance_id || "Alliance")}
+                  <span style={{ opacity: 0.7, fontWeight: 700 }}> • role: {s(m.role || "")}</span>
                 </div>
               </div>
             ))}
