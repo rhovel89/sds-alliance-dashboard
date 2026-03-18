@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
 type Alliance = { code: string; name: string; enabled: boolean };
-type Player = { id: string; game_name: string; note: string | null; created_at: string };
+type Player = {
+  id: string;
+  game_name: string;
+  name?: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at?: string | null;
+};
+
 type PlayerAlliance = {
   id: string;
   player_id: string;
@@ -16,10 +24,9 @@ type PlayerAuthLink = {
 };
 
 type PlayerHqSummary = {
-  id?: string;
-  profile_id?: string | null;
+  id: string;
+  profile_id: string;
   alliance_code?: string | null;
-  alliance_id?: string | null;
   hq_name?: string | null;
   hq_level?: number | null;
   is_primary?: boolean | null;
@@ -27,7 +34,6 @@ type PlayerHqSummary = {
   troop_tier?: string | null;
   troop_size?: number | null;
   march_size?: number | null;
-  march_size_no_heroes?: number | null;
   rally_size?: number | null;
   coord_x?: number | null;
   coord_y?: number | null;
@@ -40,35 +46,28 @@ function normCode(v: string) {
   return v.trim().toUpperCase();
 }
 
-function safeNum(v: any) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+function s(v: unknown) {
+  return v === null || v === undefined ? "" : String(v);
 }
 
 export default function OwnerPlayersPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
-
   const [alliances, setAlliances] = useState<Alliance[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [assignments, setAssignments] = useState<Record<string, PlayerAlliance[]>>({});
   const [links, setLinks] = useState<Record<string, string>>({});
   const [hqRowsByPlayer, setHqRowsByPlayer] = useState<Record<string, PlayerHqSummary[]>>({});
   const [hqLoading, setHqLoading] = useState(false);
-
   const [search, setSearch] = useState("");
   const [allianceFilter, setAllianceFilter] = useState("");
-
   const [gameName, setGameName] = useState("");
   const [note, setNote] = useState("");
   const [addAlliance, setAddAlliance] = useState("");
   const [addRole, setAddRole] = useState<PlayerAlliance["role"]>("member");
-
   const [linkPlayerId, setLinkPlayerId] = useState("");
   const [linkUserId, setLinkUserId] = useState("");
-
   const title = useMemo(() => "🧟 Owner — Players", []);
 
   async function boot() {
@@ -85,7 +84,6 @@ export default function OwnerPlayersPage() {
 
     const ok = !!adminRes.data;
     setIsAdmin(ok);
-
     if (ok) await fetchAll();
   }
 
@@ -98,11 +96,11 @@ export default function OwnerPlayersPage() {
       setHqLoading(false);
       return setError(a.error.message);
     }
-    setAlliances((a.data ?? []) as any);
+    setAlliances((a.data ?? []) as Alliance[]);
 
     const p = await supabase
       .from("players")
-      .select("id, game_name, note, created_at")
+      .select("id, game_name, name, note, created_at, updated_at")
       .order("created_at", { ascending: false })
       .limit(200);
 
@@ -111,7 +109,7 @@ export default function OwnerPlayersPage() {
       return setError(p.error.message);
     }
 
-    const playerRows = (p.data ?? []) as any as Player[];
+    const playerRows = (p.data ?? []) as Player[];
     setPlayers(playerRows);
 
     const ids = playerRows.map((x) => x.id);
@@ -161,56 +159,42 @@ export default function OwnerPlayersPage() {
     });
     setLinks(linkMap);
 
-    const nextHqs: Record<string, PlayerHqSummary[]> = {};
-
     try {
-      const hqA = await supabase
+      const hqRes = await supabase
         .from("player_alliance_hqs")
-        .select("*")
+        .select("id, profile_id, alliance_code, hq_name, hq_level, is_primary, troop_type, troop_tier, troop_size, march_size, rally_size, coord_x, coord_y, updated_at")
         .in("profile_id", ids);
 
-      if (!hqA.error && (hqA.data ?? []).length > 0) {
-        (hqA.data ?? []).forEach((row: any) => {
+      const hqMap: Record<string, PlayerHqSummary[]> = {};
+
+      if (!hqRes.error) {
+        (hqRes.data ?? []).forEach((row: any) => {
           const key = String(row.profile_id || "");
           if (!key) return;
-          nextHqs[key] = nextHqs[key] ?? [];
-          nextHqs[key].push(row as PlayerHqSummary);
+          hqMap[key] = hqMap[key] ?? [];
+          hqMap[key].push(row as PlayerHqSummary);
         });
-      } else {
-        const hqB = await supabase
-          .from("player_hqs")
-          .select("*")
-          .in("profile_id", ids);
 
-        if (!hqB.error) {
-          (hqB.data ?? []).forEach((row: any) => {
-            const key = String(row.profile_id || "");
-            if (!key) return;
-            nextHqs[key] = nextHqs[key] ?? [];
-            nextHqs[key].push(row as PlayerHqSummary);
+        Object.keys(hqMap).forEach((k) => {
+          hqMap[k].sort((a, b) => {
+            const ap = a.is_primary ? 1 : 0;
+            const bp = b.is_primary ? 1 : 0;
+            if (ap !== bp) return bp - ap;
+            const al = Number(a.hq_level ?? 0);
+            const bl = Number(b.hq_level ?? 0);
+            if (al !== bl) return bl - al;
+            return s(a.hq_name).localeCompare(s(b.hq_name));
           });
-        }
+        });
       }
-    } catch {
-      // Keep page working even if HQ tables vary.
+
+      setHqRowsByPlayer(hqMap);
+    } catch (e) {
+      console.error("HQ load failed", e);
+      setHqRowsByPlayer({});
+    } finally {
+      setHqLoading(false);
     }
-
-    Object.keys(nextHqs).forEach((k) => {
-      nextHqs[k].sort((a, b) => {
-        const ap = a.is_primary === true ? 0 : 1;
-        const bp = b.is_primary === true ? 0 : 1;
-        if (ap !== bp) return ap - bp;
-
-        const al = safeNum(a.hq_level) ?? 0;
-        const bl = safeNum(b.hq_level) ?? 0;
-        if (al !== bl) return bl - al;
-
-        return String(a.hq_name || "").localeCompare(String(b.hq_name || ""));
-      });
-    });
-
-    setHqRowsByPlayer(nextHqs);
-    setHqLoading(false);
   }
 
   useEffect(() => {
@@ -234,22 +218,12 @@ export default function OwnerPlayersPage() {
 
       const haystack = [
         p.game_name,
+        p.name,
         p.note,
         p.id,
         linkedUserId,
         ...asn.map((a) => `${a.alliance_code} ${a.role}`),
-        ...hqs.map((h) =>
-          [
-            h.hq_name,
-            h.hq_level,
-            h.alliance_code,
-            h.alliance_id,
-            h.troop_type,
-            h.troop_tier,
-            h.coord_x,
-            h.coord_y,
-          ].join(" ")
-        ),
+        ...hqs.map((h) => [h.hq_name, h.hq_level, h.alliance_code, h.troop_type, h.troop_tier, h.coord_x, h.coord_y].join(" ")),
       ]
         .join(" ")
         .toLowerCase();
@@ -260,7 +234,6 @@ export default function OwnerPlayersPage() {
 
   async function addPlayer() {
     setError(null);
-
     const gn = gameName.trim();
     if (!gn) return alert("Game Name required.");
 
@@ -278,14 +251,14 @@ export default function OwnerPlayersPage() {
       return;
     }
 
-    const pa = await supabase.from("player_alliances").insert({
+    const pa2 = await supabase.from("player_alliances").insert({
       player_id: created.data.id,
       alliance_code: allianceCode,
       role: addRole,
     });
 
-    if (pa.error) {
-      setError(pa.error.message);
+    if (pa2.error) {
+      setError(pa2.error.message);
       return;
     }
 
@@ -293,70 +266,59 @@ export default function OwnerPlayersPage() {
     setNote("");
     setAddAlliance("");
     setAddRole("member");
-
     await fetchAll();
   }
 
   async function addAssignment(player_id: string, alliance_code: string, role: PlayerAlliance["role"]) {
     setError(null);
-
     const res = await supabase.from("player_alliances").insert({
       player_id,
       alliance_code: normCode(alliance_code),
       role,
     });
-
     if (res.error) {
       setError(res.error.message);
       return;
     }
-
     await fetchAll();
   }
 
   async function updateAssignment(id: string, role: PlayerAlliance["role"]) {
     setError(null);
-
     const res = await supabase.from("player_alliances").update({ role }).eq("id", id);
     if (res.error) {
       setError(res.error.message);
       return;
     }
-
     await fetchAll();
   }
 
   async function removeAssignment(id: string) {
     const ok = confirm("Remove this alliance assignment?");
     if (!ok) return;
-
     setError(null);
     const res = await supabase.from("player_alliances").delete().eq("id", id);
     if (res.error) {
       setError(res.error.message);
       return;
     }
-
     await fetchAll();
   }
 
   async function deletePlayer(id: string) {
     const ok = confirm("Delete player roster entry? (Removes all their assignments too.)");
     if (!ok) return;
-
     setError(null);
     const res = await supabase.from("players").delete().eq("id", id);
     if (res.error) {
       setError(res.error.message);
       return;
     }
-
     await fetchAll();
   }
 
   async function linkPlayer() {
     setError(null);
-
     const pid = linkPlayerId.trim();
     const uid = linkUserId.trim();
     if (!pid) return alert("Player ID required.");
@@ -367,7 +329,6 @@ export default function OwnerPlayersPage() {
       .upsert({ player_id: pid, user_id: uid }, { onConflict: "player_id" });
 
     if (link.error) return setError(link.error.message);
-
     alert("Linked. Roles now auto-sync to dashboard access automatically.");
     await fetchAll();
   }
@@ -375,14 +336,12 @@ export default function OwnerPlayersPage() {
   async function unlinkPlayer(player_id: string) {
     const ok = confirm("Unlink this player from their Supabase user? (Roster-managed dashboard access will be removed automatically.)");
     if (!ok) return;
-
     setError(null);
     const res = await supabase.from("player_auth_links").delete().eq("player_id", player_id);
     if (res.error) {
       setError(res.error.message);
       return;
     }
-
     await fetchAll();
   }
 
@@ -444,15 +403,9 @@ export default function OwnerPlayersPage() {
 
       <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12, marginBottom: 16 }}>
         <div style={{ fontWeight: 900, marginBottom: 10 }}>Add Player (Game Name + Alliance Tag)</div>
-
         <div style={{ display: "grid", gap: 8, maxWidth: 820 }}>
-          <input
-            placeholder='Game Name (ex: "Seven")'
-            value={gameName}
-            onChange={(e) => setGameName(e.target.value)}
-          />
+          <input placeholder='Game Name (ex: "Seven")' value={gameName} onChange={(e) => setGameName(e.target.value)} />
           <input placeholder="Optional note" value={note} onChange={(e) => setNote(e.target.value)} />
-
           <select value={addAlliance} onChange={(e) => setAddAlliance(e.target.value)}>
             <option value="">Select alliance…</option>
             {alliances.filter((a) => a.enabled).map((a) => (
@@ -461,35 +414,23 @@ export default function OwnerPlayersPage() {
               </option>
             ))}
           </select>
-
-          <select value={addRole} onChange={(e) => setAddRole(e.target.value as any)}>
+          <select value={addRole} onChange={(e) => setAddRole(e.target.value as PlayerAlliance["role"])}>
             {ROLES.map((r) => (
               <option key={r} value={r}>
                 {r}
               </option>
             ))}
           </select>
-
           <button onClick={addPlayer}>Create Player</button>
         </div>
       </div>
 
       <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12, marginBottom: 16 }}>
         <div style={{ fontWeight: 900, marginBottom: 10 }}>Link Player → Supabase User UUID</div>
-
         <div style={{ display: "grid", gap: 8, maxWidth: 820 }}>
-          <input
-            placeholder="Player ID (uuid) — tip: click 'Use for Link' on a player card"
-            value={linkPlayerId}
-            onChange={(e) => setLinkPlayerId(e.target.value)}
-          />
-          <input
-            placeholder="User UUID (auth.users.id)"
-            value={linkUserId}
-            onChange={(e) => setLinkUserId(e.target.value)}
-          />
+          <input placeholder="Player ID (uuid) — tip: click 'Use for Link' on a player card" value={linkPlayerId} onChange={(e) => setLinkPlayerId(e.target.value)} />
+          <input placeholder="User UUID (auth.users.id)" value={linkUserId} onChange={(e) => setLinkUserId(e.target.value)} />
           <button onClick={linkPlayer}>Link Player</button>
-
           <div style={{ opacity: 0.75, fontSize: 12 }}>
             No auto-assign on OAuth. Linking triggers DB auto-sync for dashboard access. Unlink removes roster-managed access automatically.
           </div>
@@ -498,12 +439,7 @@ export default function OwnerPlayersPage() {
 
       <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12, marginBottom: 12 }}>
         <div style={{ fontWeight: 900, marginBottom: 10 }}>Search / Filter Players</div>
-        <input
-          placeholder="Search name, alliance, user id, HQ, coords…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
+        <input placeholder="Search name, alliance, user id, HQ, coords…" value={search} onChange={(e) => setSearch(e.target.value)} />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
           <select value={allianceFilter} onChange={(e) => setAllianceFilter(e.target.value)}>
             <option value="">All alliances</option>
@@ -513,23 +449,13 @@ export default function OwnerPlayersPage() {
               </option>
             ))}
           </select>
-
           <div style={{ opacity: 0.75, fontSize: 12 }}>
             Showing {filteredPlayers.length} of {players.length} players
-            {hqLoading ? " • HQ loading…" : ""}
           </div>
         </div>
-
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button onClick={fetchAll}>Refresh</button>
-          <button
-            onClick={() => {
-              setSearch("");
-              setAllianceFilter("");
-            }}
-          >
-            Reset Filters
-          </button>
+          <button onClick={() => { setSearch(""); setAllianceFilter(""); }}>Reset Filters</button>
         </div>
       </div>
 
@@ -549,9 +475,10 @@ export default function OwnerPlayersPage() {
               return (
                 <div key={p.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                    <div style={{ fontWeight: 900 }}>{p.game_name}</div>
+                    <div style={{ fontWeight: 900 }}>{p.game_name || p.name || "Unnamed Player"}</div>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                       <button onClick={() => setLinkPlayerId(p.id)}>Use for Link</button>
+                      <a href={`/dossier/${encodeURIComponent(p.id)}`}>Open Dossier</a>
                       <button onClick={() => deletePlayer(p.id)}>Delete Player</button>
                     </div>
                   </div>
@@ -565,12 +492,8 @@ export default function OwnerPlayersPage() {
                     {linkedUserId ? (
                       <>
                         <code>{linkedUserId}</code>{" "}
-                        <button style={{ marginLeft: 10 }} onClick={async () => copyText(linkedUserId)}>
-                          Copy User UUID
-                        </button>
-                        <button style={{ marginLeft: 10 }} onClick={() => unlinkPlayer(p.id)}>
-                          Unlink
-                        </button>
+                        <button style={{ marginLeft: 10 }} onClick={async () => copyText(linkedUserId)}>Copy User UUID</button>
+                        <button style={{ marginLeft: 10 }} onClick={() => unlinkPlayer(p.id)}>Unlink</button>
                       </>
                     ) : (
                       <span style={{ opacity: 0.75 }}>Not linked</span>
@@ -583,33 +506,28 @@ export default function OwnerPlayersPage() {
                     <div style={{ border: "1px solid #222", borderRadius: 10, padding: 10, background: "rgba(255,255,255,0.02)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                         <div style={{ fontWeight: 800 }}>Dossier Snapshot</div>
-                        <a href={"/dossier/" + encodeURIComponent(p.id)}>Open Dossier Sheet</a>
+                        <a href={`/dossier/${encodeURIComponent(p.id)}`}>Open Dossier Sheet</a>
                       </div>
-
                       <div style={{ marginTop: 8, display: "grid", gap: 6, fontSize: 12, opacity: 0.9 }}>
-                        <div>Display Name: <b>{p.game_name || "—"}</b></div>
+                        <div>Display Name: <b>{p.name || p.game_name || "—"}</b></div>
+                        <div>Game Name: <b>{p.game_name || p.name || "—"}</b></div>
                         <div>Player ID: <code>{p.id}</code></div>
                         <div>Linked User: {linkedUserId ? <code>{linkedUserId}</code> : "Not linked"}</div>
                         <div>Alliances: {asn.length ? asn.map((a) => `${a.alliance_code} (${a.role})`).join(", ") : "None yet"}</div>
                         <div>Created: {p.created_at ? new Date(String(p.created_at)).toLocaleString() : "—"}</div>
+                        <div>Updated: {p.updated_at ? new Date(String(p.updated_at)).toLocaleString() : "—"}</div>
                       </div>
                     </div>
 
                     <div style={{ border: "1px solid #222", borderRadius: 10, padding: 10, background: "rgba(255,255,255,0.02)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                         <div style={{ fontWeight: 800 }}>HQ Summary</div>
-                        <div style={{ fontSize: 12, opacity: 0.75 }}>
-                          {hqLoading ? "Loading HQ…" : `${hqs.length} HQ row(s)`}
-                        </div>
+                        <div style={{ fontSize: 12, opacity: 0.75 }}>{hqLoading ? "Loading HQ…" : `${hqs.length} HQ row(s)`}</div>
                       </div>
 
                       {primaryHq ? (
                         <div style={{ marginTop: 8, fontSize: 12, opacity: 0.9 }}>
-                          Primary HQ:{" "}
-                          <b>
-                            {String(primaryHq.hq_name || "HQ")}
-                            {primaryHq.hq_level ? ` • HQ ${String(primaryHq.hq_level)}` : ""}
-                          </b>
+                          Primary HQ: <b>{s(primaryHq.hq_name || "HQ")}{primaryHq.hq_level ? ` • HQ ${s(primaryHq.hq_level)}` : ""}</b>
                         </div>
                       ) : null}
 
@@ -621,23 +539,19 @@ export default function OwnerPlayersPage() {
                             <div key={String(h.id || idx)} style={{ border: "1px solid #333", borderRadius: 8, padding: 8 }}>
                               <div style={{ fontWeight: 800 }}>
                                 {h.is_primary ? "⭐ " : ""}
-                                {String(h.hq_name || "HQ")}
-                                {h.hq_level ? ` • HQ ${String(h.hq_level)}` : ""}
+                                {s(h.hq_name || "HQ")}
+                                {h.hq_level ? ` • HQ ${s(h.hq_level)}` : ""}
                               </div>
-
                               <div style={{ marginTop: 4, fontSize: 12, opacity: 0.82 }}>
-                                Alliance: {String(h.alliance_code || h.alliance_id || "—")}
-                                {h.troop_type ? ` • Type: ${String(h.troop_type)}` : ""}
-                                {h.troop_tier ? ` • Tier: ${String(h.troop_tier)}` : ""}
+                                Alliance: {s(h.alliance_code || "—")}
+                                {h.troop_type ? ` • Type: ${s(h.troop_type)}` : ""}
+                                {h.troop_tier ? ` • Tier: ${s(h.troop_tier)}` : ""}
                               </div>
-
                               <div style={{ marginTop: 4, fontSize: 12, opacity: 0.75 }}>
-                                {safeNum(h.coord_x) !== null && safeNum(h.coord_y) !== null
-                                  ? `Coords: ${String(h.coord_x)}, ${String(h.coord_y)}`
-                                  : "Coords: —"}
-                                {(h.march_size ?? h.march_size_no_heroes) ? ` • March: ${String(h.march_size ?? h.march_size_no_heroes)}` : ""}
-                                {h.rally_size ? ` • Rally: ${String(h.rally_size)}` : ""}
-                                {h.troop_size ? ` • Troops: ${String(h.troop_size)}` : ""}
+                                {h.coord_x != null && h.coord_y != null ? `Coords: ${s(h.coord_x)}, ${s(h.coord_y)}` : "Coords: —"}
+                                {h.march_size ? ` • March: ${s(h.march_size)}` : ""}
+                                {h.rally_size ? ` • Rally: ${s(h.rally_size)}` : ""}
+                                {h.troop_size ? ` • Troops: ${s(h.troop_size)}` : ""}
                               </div>
                             </div>
                           ))}
@@ -655,11 +569,9 @@ export default function OwnerPlayersPage() {
                       {asn.map((a) => (
                         <div key={a.id} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                           <div style={{ fontWeight: 800 }}>{a.alliance_code}</div>
-                          <select value={a.role} onChange={(e) => updateAssignment(a.id, e.target.value as any)}>
+                          <select value={a.role} onChange={(e) => updateAssignment(a.id, e.target.value as PlayerAlliance["role"])}>
                             {ROLES.map((r) => (
-                              <option key={r} value={r}>
-                                {r}
-                              </option>
+                              <option key={r} value={r}>{r}</option>
                             ))}
                           </select>
                           <button onClick={() => removeAssignment(a.id)}>Remove</button>
@@ -695,3 +607,4 @@ export default function OwnerPlayersPage() {
     </div>
   );
 }
+
