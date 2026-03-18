@@ -612,7 +612,7 @@ return (<div style={{ padding: 14 }}>
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ opacity: 0.75, fontSize: 12 }}>Post Target Channel</div>
-          <select className="zombie-input" value={targetChannelName} onChange={(e) => setTargetChannelName(e.target.value)} style={{ padding: "10px 12px", minWidth: 240 }}>
+          <select className="zombie-input" value={targetChannelName} onChange={(e) => setTargetChannelName(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
             <option value="">(none)</option>
             {channelKeys.map((k) => <option key={k} value={k}>{k}{chanLut[k] ? "" : " (no id yet)"}</option>)}
           </select>
@@ -623,7 +623,7 @@ return (<div style={{ padding: 14 }}>
             value={mentionRoleNames}
             onChange={(e) => setMentionRoleNames(e.target.value)}
             placeholder="Leadership,R5"
-            style={{ padding: "10px 12px", minWidth: 240 }}
+            style={{ padding: "10px 12px", width: "100%" }}
           />
 
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={insertTargets}>Insert into Draft</button>
@@ -655,7 +655,7 @@ return (<div style={{ padding: 14 }}>
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(360px, 1.2fr)", gap: 12 }}>
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
         <div className="zombie-card">
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ fontWeight: 900 }}>Templates</div>
@@ -726,6 +726,8 @@ return (<div style={{ padding: 14 }}>
     </div>
   );
 }
+
+
 
 
 

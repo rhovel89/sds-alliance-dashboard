@@ -289,7 +289,7 @@ export default function OwnerDiscordMentionsPage() {
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(320px, 1fr)", gap: 12 }}>
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
         <div className="zombie-card">
           <div style={{ fontWeight: 900 }}>🎭 Role Mentions</div>
           <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -339,3 +339,6 @@ export default function OwnerDiscordMentionsPage() {
     </div>
   );
 }
+
+
+

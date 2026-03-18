@@ -230,7 +230,7 @@ export default function OwnerDiscordDefaultsPage() {
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ opacity: 0.75, fontSize: 12 }}>Default Channel</div>
-          <select className="zombie-input" value={channelName} onChange={(e) => setChannelName(e.target.value)} style={{ padding: "10px 12px", minWidth: 240 }}>
+          <select className="zombie-input" value={channelName} onChange={(e) => setChannelName(e.target.value)} style={{ padding: "10px 12px", width: "100%" }}>
             <option value="">(none)</option>
             {channelKeys.map((k) => (
               <option key={k} value={k}>
@@ -245,7 +245,7 @@ export default function OwnerDiscordDefaultsPage() {
             value={rolesCsv}
             onChange={(e) => setRolesCsv(e.target.value)}
             placeholder="Leadership,R5"
-            style={{ padding: "10px 12px", minWidth: 260 }}
+            style={{ padding: "10px 12px", width: "100%" }}
           />
 
           <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={saveCurrent}>Save</button>
@@ -257,7 +257,7 @@ export default function OwnerDiscordDefaultsPage() {
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(320px, 1fr)", gap: 12 }}>
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
         <div className="zombie-card">
           <div style={{ fontWeight: 900 }}>Known Roles (this scope)</div>
           <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
@@ -287,3 +287,4 @@ export default function OwnerDiscordDefaultsPage() {
     </div>
   );
 }
+

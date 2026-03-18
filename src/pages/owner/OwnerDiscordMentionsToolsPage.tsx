@@ -116,7 +116,7 @@ export default function OwnerDiscordMentionsToolsPage() {
         </div>
       </div>
 
-      <div style={{ marginTop:12, display:"grid", gridTemplateColumns:"minmax(320px,1fr) minmax(320px,1fr)", gap:12 }}>
+      <div style={{ marginTop:12, display:"grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap:12 }}>
         <div className="zombie-card">
           <div style={{ fontWeight:900 }}>Bulk Import</div>
           <div style={{ opacity:0.7, fontSize:12, marginTop:6 }}>
