@@ -272,7 +272,7 @@ export default function OwnerPlayerAssignmentsPage() {
           style={{
             marginTop: 14,
             display: "grid",
-            gridTemplateColumns: "380px 1fr",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
             gap: 16,
           }}
         >
@@ -371,7 +371,7 @@ export default function OwnerPlayerAssignmentsPage() {
                 marginTop: 12,
                 display: "grid",
                 gap: 10,
-                gridTemplateColumns: "1fr 160px 140px",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
               }}
             >
               <div style={{ display: "grid", gap: 6 }}>
@@ -489,5 +489,6 @@ export default function OwnerPlayerAssignmentsPage() {
     </div>
   );
 }
+
 
 
