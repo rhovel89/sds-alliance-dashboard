@@ -460,7 +460,7 @@ export default function MyMailPage() {
           alignItems: "flex-start",
         }}
       >
-        <div style={{ minWidth: 320 }}>
+        <div style={{ minWidth: 0, width: "100%" }}>
           <div style={{ fontSize: 28, fontWeight: 950 }}>📫 Mail Command Center</div>
           <div style={{ opacity: 0.96, marginTop: 6 }}>
             Faster compose, cleaner inbox triage, and a full preview pane without forcing players into thread view first.
@@ -516,11 +516,11 @@ export default function MyMailPage() {
         style={{
           display: "grid",
           gap: 16,
-          gridTemplateColumns: "minmax(320px, 380px) minmax(380px, 1fr) minmax(360px, 0.95fr)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           alignItems: "start",
         }}
       >
-        <div className="zombie-card" style={{ padding: 16, borderRadius: 18, display: "grid", gap: 12 }}>
+        <div className="zombie-card" style={{ padding: 16, borderRadius: 18, display: "grid", gap: 12, minWidth: 0 }}>
           <div>
             <div style={{ fontWeight: 950, fontSize: 20 }}>Compose Direct Mail</div>
             <div style={{ opacity: 0.95, marginTop: 4, fontSize: 12, color: "rgba(245,247,255,0.92)" }}>
@@ -619,7 +619,7 @@ export default function MyMailPage() {
           </div>
         </div>
 
-        <div className="zombie-card" style={{ padding: 16, borderRadius: 18, display: "grid", gap: 12 }}>
+        <div className="zombie-card" style={{ padding: 16, borderRadius: 18, display: "grid", gap: 12, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <div>
               <div style={{ fontWeight: 950, fontSize: 20 }}>Inbox</div>
@@ -655,7 +655,7 @@ export default function MyMailPage() {
             ))}
           </div>
 
-          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "minmax(180px, 220px) minmax(220px, 1fr) auto" }}>
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
             <select
               className="zombie-input"
               value={filterKind}
@@ -775,7 +775,7 @@ export default function MyMailPage() {
           </div>
         </div>
 
-        <div className="zombie-card" style={{ padding: 16, borderRadius: 18, display: "grid", gap: 12, alignSelf: "stretch" }}>
+        <div className="zombie-card" style={{ padding: 16, borderRadius: 18, display: "grid", gap: 12, alignSelf: "stretch", minWidth: 0 }}>
           <div>
             <div style={{ fontWeight: 950, fontSize: 20 }}>Preview</div>
             <div style={{ opacity: 0.95, fontSize: 12, color: "rgba(245,247,255,0.92)" }}>Read the selected message before opening a thread.</div>
@@ -897,3 +897,4 @@ export default function MyMailPage() {
     </div>
   );
 }
+
