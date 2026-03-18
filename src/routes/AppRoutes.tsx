@@ -160,6 +160,7 @@ import AllianceDiscordWebhooksPage from "../pages/dashboard/AllianceDiscordWebho
 import MeDossierPage from "../pages/me/MeDossierPage";
 import OwnerRouteChecklistPage from "../pages/owner/OwnerRouteChecklistPage";
 import OwnerDiscordWebhookRequirementsPage from "../pages/owner/OwnerDiscordWebhookRequirementsPage";
+import OwnerDossiersPage from "../pages/owner/OwnerDossiersPage";
 
 export default function AppRoutes() {
   return (
@@ -303,6 +304,7 @@ export default function AppRoutes() {
       <Route path="/owner/dossier" element={<OwnerDossierLookupPage />} />
       <Route path="/dossier/:playerId" element={<PlayerDossierPage />} />
         <Route path="/owner/route-check" element={<OwnerRouteChecklistPage />} />
+      <Route path="/owner/dossiers" element={<RequireAdmin><OwnerDossiersPage /></RequireAdmin>} />
       <Route path="/owner/discord-webhook-requirements" element={<RequireAdmin><OwnerDiscordWebhookRequirementsPage /></RequireAdmin>} />
       <Route path="/owner/discord-webhook-requirements/*" element={<RequireAdmin><OwnerDiscordWebhookRequirementsPage /></RequireAdmin>} />
       <Route path="*" element={<NotFoundPage />} />
@@ -318,6 +320,7 @@ export default function AppRoutes() {
       </Routes>
   );
 }
+
 
 
 

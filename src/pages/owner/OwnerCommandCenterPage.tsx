@@ -317,6 +317,7 @@ export default function OwnerCommandCenterPage() {
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
               <LinkChip to="/owner/player-intake" label="🧪 Player Intake" />
               <LinkChip to="/owner/approval-center" label="✅ Approval Center" />
+              <LinkChip to="/owner/dossiers" label="🗂️ Player Dossiers" />
               <LinkChip to="/owner/state-achievements" label="🏆 State Achievements" />
               <LinkChip to="/owner/queue-health" label="🩺 Queue Health" />
             </div>
@@ -377,6 +378,7 @@ export default function OwnerCommandCenterPage() {
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <LinkChip to="/owner/requests-provision" label="✅ Requests + Provision" />
             <LinkChip to="/owner/players" label="👤 Players" />
+            <LinkChip to="/owner/dossiers" label="🗂️ Dossiers" />
             <LinkChip to="/owner/players-link" label="🔗 Link / Unlink Auth" />
             <LinkChip to="/owner/membership" label="🧬 Membership Manager" />
             <LinkChip to="/owner/access-control" label="🛡️ Access Control" />
@@ -504,3 +506,4 @@ export default function OwnerCommandCenterPage() {
     </div>
   );
 }
+
