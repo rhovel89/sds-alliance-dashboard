@@ -85,7 +85,7 @@ export default function MeDossierPage() {
       return;
     }
 
-    const ms = (mr.data || []) as any as Membership[];
+    const ms = (mr.data || []) as Membership[];
     setMemberships(ms);
 
     const nextDefaults: Record<string, DefaultRow[]> = {};
@@ -100,7 +100,7 @@ export default function MeDossierPage() {
         .select("kind,webhook_id")
         .eq("alliance_code", ac);
 
-      if (!d.error) nextDefaults[ac] = (d.data || []) as any as DefaultRow[];
+      if (!d.error) nextDefaults[ac] = (d.data || []) as DefaultRow[];
 
       const w = await supabase
         .from("alliance_discord_webhooks")
@@ -108,7 +108,7 @@ export default function MeDossierPage() {
         .eq("alliance_code", ac)
         .order("created_at", { ascending: false });
 
-      if (!w.error) nextHooks[ac] = (w.data || []) as any as WebhookRow[];
+      if (!w.error) nextHooks[ac] = (w.data || []) as WebhookRow[];
     }
 
     setDefaultsByAlliance(nextDefaults);
