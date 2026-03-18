@@ -16,6 +16,31 @@ type MembershipRow = {
   role?: string | null;
 };
 
+type PlayerAuthLinkRow = {
+  player_id: string;
+  user_id: string;
+};
+
+type PlayerHqRow = {
+  id?: string | null;
+  profile_id?: string | null;
+  alliance_code?: string | null;
+  alliance_id?: string | null;
+  hq_name?: string | null;
+  hq_level?: number | null;
+  is_primary?: boolean | null;
+  troop_type?: string | null;
+  troop_tier?: string | null;
+  troop_size?: number | null;
+  march_size?: number | null;
+  march_size_no_heroes?: number | null;
+  rally_size?: number | null;
+  coord_x?: number | null;
+  coord_y?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 function s(v: any) {
   return v === null || v === undefined ? "" : String(v);
 }
@@ -29,11 +54,17 @@ function fmt(v?: string | null) {
   try { return new Date(String(v)).toLocaleString(); } catch { return String(v); }
 }
 
+function numText(v: any) {
+  return v === null || v === undefined || v === "" ? "—" : String(v);
+}
+
 export default function OwnerDossiersPage() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [membershipsByPlayer, setMembershipsByPlayer] = useState<Record<string, MembershipRow[]>>({});
+  const [linksByPlayer, setLinksByPlayer] = useState<Record<string, string>>({});
+  const [hqsByPlayer, setHqsByPlayer] = useState<Record<string, PlayerHqRow[]>>({});
   const [search, setSearch] = useState("");
   const [allianceFilter, setAllianceFilter] = useState("ALL");
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
@@ -51,6 +82,8 @@ export default function OwnerDossiersPage() {
     if (p.error) {
       setPlayers([]);
       setMembershipsByPlayer({});
+      setLinksByPlayer({});
+      setHqsByPlayer({});
       setLoading(false);
       setStatus("Players load failed: " + p.error.message);
       return;
@@ -62,39 +95,114 @@ export default function OwnerDossiersPage() {
     const ids = playerRows.map((x) => String(x.id || "")).filter(Boolean);
     if (!ids.length) {
       setMembershipsByPlayer({});
+      setLinksByPlayer({});
+      setHqsByPlayer({});
       setSelectedPlayerId("");
       setLoading(false);
       return;
     }
+
+    const nextErrors: string[] = [];
 
     const m = await supabase
       .from("player_alliances")
       .select("id, player_id, alliance_code, role")
       .in("player_id", ids);
 
+    const groupedMemberships: Record<string, MembershipRow[]> = {};
     if (m.error) {
-      setMembershipsByPlayer({});
-      setLoading(false);
-      setStatus((prev) => prev ? (prev + " | " + m.error.message) : ("Memberships load failed: " + m.error.message));
-      return;
+      nextErrors.push("Memberships load failed: " + m.error.message);
+    } else {
+      ((m.data || []) as MembershipRow[]).forEach((row) => {
+        const pid = String(row.player_id || "");
+        if (!pid) return;
+        if (!groupedMemberships[pid]) groupedMemberships[pid] = [];
+        groupedMemberships[pid].push(row);
+      });
+
+      Object.keys(groupedMemberships).forEach((k) => {
+        groupedMemberships[k].sort((a, b) => norm(a.alliance_code).localeCompare(norm(b.alliance_code)));
+      });
+    }
+    setMembershipsByPlayer(groupedMemberships);
+
+    const l = await supabase
+      .from("player_auth_links")
+      .select("player_id, user_id")
+      .in("player_id", ids);
+
+    const groupedLinks: Record<string, string> = {};
+    if (l.error) {
+      nextErrors.push("Auth links load failed: " + l.error.message);
+    } else {
+      ((l.data || []) as PlayerAuthLinkRow[]).forEach((row) => {
+        const pid = String(row.player_id || "");
+        const uid = String(row.user_id || "");
+        if (pid && uid) groupedLinks[pid] = uid;
+      });
+    }
+    setLinksByPlayer(groupedLinks);
+
+    const groupedHqs: Record<string, PlayerHqRow[]> = {};
+    const sourceAPlayers = new Set<string>();
+
+    const hqA = await supabase
+      .from("player_alliance_hqs")
+      .select("id, profile_id, alliance_code, hq_name, hq_level, is_primary, troop_type, troop_tier, troop_size, march_size, rally_size, coord_x, coord_y, created_at, updated_at")
+      .in("profile_id", ids);
+
+    if (!hqA.error) {
+      ((hqA.data || []) as PlayerHqRow[]).forEach((row) => {
+        const pid = String(row.profile_id || "");
+        if (!pid) return;
+        sourceAPlayers.add(pid);
+        if (!groupedHqs[pid]) groupedHqs[pid] = [];
+        groupedHqs[pid].push(row);
+      });
+    } else {
+      nextErrors.push("HQ primary source load failed: " + hqA.error.message);
     }
 
-    const grouped: Record<string, MembershipRow[]> = {};
-    ((m.data || []) as MembershipRow[]).forEach((row) => {
-      const pid = String(row.player_id || "");
-      if (!pid) return;
-      if (!grouped[pid]) grouped[pid] = [];
-      grouped[pid].push(row);
+    const hqB = await supabase
+      .from("player_hqs")
+      .select("id, profile_id, alliance_code, alliance_id, hq_name, hq_level, troop_type, troop_tier, troop_size, march_size_no_heroes, rally_size, coord_x, coord_y, created_at, updated_at")
+      .in("profile_id", ids);
+
+    if (!hqB.error) {
+      ((hqB.data || []) as PlayerHqRow[]).forEach((row) => {
+        const pid = String(row.profile_id || "");
+        if (!pid) return;
+        if (sourceAPlayers.has(pid)) return;
+        if (!groupedHqs[pid]) groupedHqs[pid] = [];
+        groupedHqs[pid].push(row);
+      });
+    } else {
+      nextErrors.push("HQ fallback source load failed: " + hqB.error.message);
+    }
+
+    Object.keys(groupedHqs).forEach((k) => {
+      groupedHqs[k].sort((a, b) => {
+        const aPrimary = a.is_primary === true ? 0 : 1;
+        const bPrimary = b.is_primary === true ? 0 : 1;
+        if (aPrimary !== bPrimary) return aPrimary - bPrimary;
+
+        const aLevel = Number(a.hq_level || 0);
+        const bLevel = Number(b.hq_level || 0);
+        if (aLevel !== bLevel) return bLevel - aLevel;
+
+        return s(a.hq_name).localeCompare(s(b.hq_name));
+      });
     });
 
-    Object.keys(grouped).forEach((k) => {
-      grouped[k].sort((a, b) => norm(a.alliance_code).localeCompare(norm(b.alliance_code)));
-    });
+    setHqsByPlayer(groupedHqs);
 
-    setMembershipsByPlayer(grouped);
+    const first =
+      playerRows.find((row) => (groupedMemberships[String(row.id)] || []).length > 0) ||
+      playerRows[0] ||
+      null;
 
-    const first = playerRows.find((row) => (grouped[String(row.id)] || []).length > 0) || playerRows[0] || null;
     setSelectedPlayerId((prev) => prev || String(first?.id || ""));
+    setStatus(nextErrors.join(" | "));
     setLoading(false);
   }
 
@@ -118,6 +226,7 @@ export default function OwnerDossiersPage() {
 
     return players.filter((p) => {
       const memberships = membershipsByPlayer[String(p.id)] || [];
+      const hqs = hqsByPlayer[String(p.id)] || [];
       const allianceCodes = memberships.map((m) => norm(m.alliance_code));
       const matchesAlliance = allianceFilter === "ALL" || allianceCodes.includes(allianceFilter);
 
@@ -126,20 +235,45 @@ export default function OwnerDossiersPage() {
         s(p.name),
         s(p.note),
         s(p.id),
+        s(linksByPlayer[String(p.id)] || ""),
         allianceCodes.join(" "),
+        memberships.map((m) => `${s(m.alliance_code)} ${s(m.role)}`).join(" "),
+        hqs.map((h) => [
+          s(h.hq_name),
+          s(h.hq_level),
+          s(h.troop_type),
+          s(h.troop_tier),
+          s(h.coord_x),
+          s(h.coord_y),
+          s(h.alliance_code || h.alliance_id),
+        ].join(" ")).join(" "),
       ].join(" ").toLowerCase();
 
       const matchesSearch = !q || haystack.includes(q);
 
       return matchesAlliance && matchesSearch;
     });
-  }, [players, membershipsByPlayer, allianceFilter, search]);
+  }, [players, membershipsByPlayer, hqsByPlayer, linksByPlayer, allianceFilter, search]);
 
   const selectedPlayer = useMemo(() => {
     return filteredPlayers.find((p) => String(p.id) === String(selectedPlayerId))
       || players.find((p) => String(p.id) === String(selectedPlayerId))
       || null;
   }, [filteredPlayers, players, selectedPlayerId]);
+
+  const selectedMemberships = useMemo(() => {
+    if (!selectedPlayer) return [];
+    return membershipsByPlayer[String(selectedPlayer.id)] || [];
+  }, [membershipsByPlayer, selectedPlayer]);
+
+  const selectedHqs = useMemo(() => {
+    if (!selectedPlayer) return [];
+    return hqsByPlayer[String(selectedPlayer.id)] || [];
+  }, [hqsByPlayer, selectedPlayer]);
+
+  const primaryHq = useMemo(() => {
+    return selectedHqs.find((x) => x.is_primary === true) || selectedHqs[0] || null;
+  }, [selectedHqs]);
 
   useEffect(() => {
     if (!selectedPlayer && filteredPlayers.length) {
@@ -170,7 +304,7 @@ export default function OwnerDossiersPage() {
             </div>
 
             <div style={{ opacity: 0.84, marginTop: 10, lineHeight: 1.7, maxWidth: 960 }}>
-              View player dossier sheets by alliance without changing the player-facing pages. This page is meant for private owner review.
+              Private owner view of player identity, alliance memberships, HQ details, troop details, and a quick jump into the full dossier page.
             </div>
           </div>
 
@@ -209,7 +343,7 @@ export default function OwnerDossiersPage() {
             className="zombie-input"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search player, note, player id, alliance..."
+            placeholder="Search player, note, player id, alliance, HQ, troops..."
             style={{ padding: "10px 12px" }}
           />
 
@@ -298,11 +432,11 @@ export default function OwnerDossiersPage() {
             padding: 12,
             minHeight: 700,
             display: "grid",
-            gap: 10,
+            gap: 12,
           }}
         >
           {!selectedPlayer ? (
-            <div style={{ opacity: 0.75 }}>Select a player to open the dossier preview.</div>
+            <div style={{ opacity: 0.75 }}>Select a player to view the dossier summary.</div>
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
@@ -328,6 +462,111 @@ export default function OwnerDossiersPage() {
                 </div>
               </div>
 
+              <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+                  <div style={{ fontWeight: 950, fontSize: 16 }}>Identity</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginTop: 12 }}>
+                    <div>
+                      <div style={{ opacity: 0.72, fontSize: 12 }}>Display Name</div>
+                      <div style={{ fontWeight: 900, marginTop: 4 }}>{s(selectedPlayer.name || "—")}</div>
+                    </div>
+                    <div>
+                      <div style={{ opacity: 0.72, fontSize: 12 }}>Game Name</div>
+                      <div style={{ fontWeight: 900, marginTop: 4 }}>{s(selectedPlayer.game_name || selectedPlayer.name || "—")}</div>
+                    </div>
+                    <div>
+                      <div style={{ opacity: 0.72, fontSize: 12 }}>Linked User</div>
+                      <div style={{ fontWeight: 900, marginTop: 4 }}>
+                        {linksByPlayer[String(selectedPlayer.id)] ? <code>{linksByPlayer[String(selectedPlayer.id)]}</code> : "Not linked"}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ opacity: 0.72, fontSize: 12 }}>Created</div>
+                      <div style={{ fontWeight: 900, marginTop: 4 }}>{fmt(selectedPlayer.created_at)}</div>
+                    </div>
+                  </div>
+
+                  {s(selectedPlayer.note) ? (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ opacity: 0.72, fontSize: 12 }}>Note</div>
+                      <div style={{ marginTop: 4 }}>{s(selectedPlayer.note)}</div>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+                  <div style={{ fontWeight: 950, fontSize: 16 }}>Alliance Memberships</div>
+                  <div style={{ opacity: 0.72, fontSize: 12, marginTop: 6 }}>Private owner view of player alliance assignments.</div>
+
+                  <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                    {selectedMemberships.length ? selectedMemberships.map((m) => (
+                      <div
+                        key={String(m.id)}
+                        style={{
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          background: "rgba(0,0,0,0.18)",
+                          borderRadius: 12,
+                          padding: 10,
+                        }}
+                      >
+                        <div style={{ fontWeight: 900 }}>
+                          {norm(m.alliance_code)}
+                          <span style={{ opacity: 0.72, fontWeight: 700 }}> • role: {s(m.role || "member")}</span>
+                        </div>
+                      </div>
+                    )) : (
+                      <div style={{ opacity: 0.75 }}>No alliance memberships found.</div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+                  <div style={{ fontWeight: 950, fontSize: 16 }}>HQ Information</div>
+                  <div style={{ opacity: 0.72, fontSize: 12, marginTop: 6 }}>HQ, troop, march, rally, and coordinates summary.</div>
+
+                  {primaryHq ? (
+                    <div style={{ marginTop: 12, padding: 10, borderRadius: 12, border: "1px solid rgba(120,255,120,0.20)", background: "rgba(120,255,120,0.06)" }}>
+                      <div style={{ fontWeight: 900 }}>
+                        Primary HQ: {s(primaryHq.hq_name || "HQ")}
+                        {primaryHq.hq_level ? ` • HQ ${s(primaryHq.hq_level)}` : ""}
+                      </div>
+                      <div style={{ opacity: 0.76, fontSize: 12, marginTop: 4 }}>
+                        Alliance: {s(primaryHq.alliance_code || primaryHq.alliance_id || "—")}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                    {selectedHqs.length ? selectedHqs.map((h, i) => (
+                      <div
+                        key={String(h.id || i)}
+                        style={{
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          background: "rgba(0,0,0,0.18)",
+                          borderRadius: 12,
+                          padding: 10,
+                        }}
+                      >
+                        <div style={{ fontWeight: 900 }}>
+                          {h.is_primary === true ? "⭐ " : ""}
+                          {s(h.hq_name || "HQ")}
+                          {h.hq_level ? ` • HQ ${s(h.hq_level)}` : ""}
+                        </div>
+
+                        <div style={{ opacity: 0.78, fontSize: 12, marginTop: 6, lineHeight: 1.6 }}>
+                          Alliance: <b>{s(h.alliance_code || h.alliance_id || "—")}</b><br />
+                          Troop Type: <b>{s(h.troop_type || "—")}</b> • Troop Tier: <b>{s(h.troop_tier || "—")}</b><br />
+                          Troop Size: <b>{numText(h.troop_size)}</b> • March Size: <b>{numText(h.march_size ?? h.march_size_no_heroes)}</b> • Rally Size: <b>{numText(h.rally_size)}</b><br />
+                          Coords: <b>{h.coord_x != null && h.coord_y != null ? `${s(h.coord_x)}, ${s(h.coord_y)}` : "—"}</b><br />
+                          Updated: <b>{fmt(h.updated_at || h.created_at)}</b>
+                        </div>
+                      </div>
+                    )) : (
+                      <div style={{ opacity: 0.75 }}>No HQ rows found for this player.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -335,4 +574,3 @@ export default function OwnerDossiersPage() {
     </div>
   );
 }
-
