@@ -1,9 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
-import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 import { supabase } from "../../lib/supabaseClient";
-import WeeklyAgendaCard from "../../components/dashboard/WeeklyAgendaCard";
 
 function s(v: any) { return v === null || v === undefined ? "" : String(v); }
 function shortId(x: string) { const t = s(x); return t ? (t.slice(0, 8) + "…" + t.slice(-6)) : ""; }
@@ -23,10 +20,6 @@ const KIND_LABELS: Record<string, string> = {
 export default function MeDossierPage() {
   const nav = useNavigate();
 
-  const cc = useMemo(() => getCommandCenterModules(), []);
-  const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
-  function onSelectModule(k: string) { const to = cc.find((m) => m.key === k)?.to; if (to) nav(to); }
-
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -39,12 +32,10 @@ export default function MeDossierPage() {
   const [webhooksByAlliance, setWebhooksByAlliance] = useState<Record<string, WebhookRow[]>>({});
 
   async function resolvePlayerId(uid: string): Promise<string> {
-    // canonical: player_auth_links
     const link = await supabase.from("player_auth_links").select("player_id").eq("user_id", uid).maybeSingle();
     const pid = s(link.data?.player_id);
     if (pid) return pid;
 
-    // fallback: oldest players row by auth_user_id (schema-safe)
     const r = await supabase
       .from("players")
       .select("*")
@@ -62,20 +53,26 @@ export default function MeDossierPage() {
 
     const me = await supabase.auth.getUser();
     const uid = s(me.data?.user?.id);
-    if (!uid) { setLoading(false); setStatus("Not signed in."); return; }
+    if (!uid) {
+      setLoading(false);
+      setStatus("Not signed in.");
+      return;
+    }
 
     setUserId(uid);
 
     const pid = await resolvePlayerId(uid);
     setPlayerId(pid);
 
-    if (!pid) { setLoading(false); setStatus("No player record linked yet (player_auth_links missing)."); return; }
+    if (!pid) {
+      setLoading(false);
+      setStatus("No player record linked yet.");
+      return;
+    }
 
-    // Player record (schema-safe)
     const pr = await supabase.from("players").select("*").eq("id", pid).maybeSingle();
     if (!pr.error) setPlayer(pr.data || null);
 
-    // Memberships
     const mr = await supabase
       .from("player_alliances")
       .select("alliance_code,role")
@@ -91,7 +88,6 @@ export default function MeDossierPage() {
     const ms = (mr.data || []) as any as Membership[];
     setMemberships(ms);
 
-    // Per-alliance defaults + webhook labels
     const nextDefaults: Record<string, DefaultRow[]> = {};
     const nextHooks: Record<string, WebhookRow[]> = {};
 
@@ -117,7 +113,6 @@ export default function MeDossierPage() {
 
     setDefaultsByAlliance(nextDefaults);
     setWebhooksByAlliance(nextHooks);
-
     setLoading(false);
   }
 
@@ -132,115 +127,102 @@ export default function MeDossierPage() {
   }
 
   return (
-    <CommandCenterShell
-      title="My Dossier"
-      subtitle="Overview • memberships • Discord defaults • quick links"
-      modules={modules}
-      activeModuleKey="dossier"
-      onSelectModule={onSelectModule}
-      topRight={
-        <div style={{ display:"flex", gap: 8, flexWrap:"wrap" }}>
-          <button className="zombie-btn" type="button" onClick={() => nav("/me")}>Back</button>
-          <button className="zombie-btn" type="button" onClick={() => nav("/me/dossier-sheet")}>Print Sheet</button>
-          <button className="zombie-btn" type="button" onClick={() => nav("/dashboard")}>Dashboard</button>
-          <button className="zombie-btn" type="button" onClick={() => nav("/state/789")}>State 789</button>
+    <div style={{ width: "100%", maxWidth: 1100, margin: "0 auto", display: "grid", gap: 12, padding: 16 }}>
+      <div
+        className="zombie-card"
+        style={{
+          padding: 20,
+          background: "linear-gradient(180deg, rgba(16,20,26,0.98), rgba(8,10,14,0.94))",
+          border: "1px solid rgba(255,255,255,0.10)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontSize: 32, fontWeight: 950, lineHeight: 1.05 }}>My Dossier</div>
+            <div style={{ opacity: 0.84, marginTop: 10, lineHeight: 1.7 }}>
+              Identity, memberships, and Discord defaults in one clean page.
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="zombie-btn" type="button" onClick={() => nav("/me")} style={{ padding: "10px 12px" }}>
+              Back
+            </button>
+            <button className="zombie-btn" type="button" onClick={() => nav("/me/dossier-sheet")} style={{ padding: "10px 12px" }}>
+              Print Sheet
+            </button>
+            <button className="zombie-btn" type="button" onClick={() => nav("/state/789")} style={{ padding: "10px 12px" }}>
+              State 789
+            </button>
+          </div>
         </div>
-      }
-    >
+      </div>
+
       {status ? (
-        <div style={{ marginBottom: 10, border:"1px solid rgba(176,18,27,0.35)", background:"rgba(176,18,27,0.12)", borderRadius: 12, padding: 10 }}>
+        <div style={{ border: "1px solid rgba(176,18,27,0.35)", background: "rgba(176,18,27,0.12)", borderRadius: 12, padding: 10 }}>
           {status}
         </div>
       ) : null}
 
       {loading ? <div style={{ opacity: 0.75 }}>Loading…</div> : null}
 
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(320px, 1fr))", gap: 12, alignItems:"start" }}>
-        {/* Identity card */}
-        <div style={{ border:"1px solid rgba(255,255,255,0.10)", background:"rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", gap: 10, alignItems:"center" }}>
-            <div style={{ fontWeight: 950, fontSize: 16 }}>🧟 CASE FILE — Operator</div>
-            <div style={{ opacity: 0.72, fontSize: 12 }}>CLASSIFIED</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12, alignItems: "start" }}>
+        <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+            <div style={{ fontWeight: 950, fontSize: 16 }}>Identity</div>
+            <div style={{ opacity: 0.72, fontSize: 12 }}>LIVE</div>
           </div>
 
-          <div style={{ marginTop: 10, display:"grid", gridTemplateColumns:"110px 1fr", gap: 12, alignItems:"start" }}>
-            <div style={{
-              height: 110, width: 110, borderRadius: 14,
-              border:"1px solid rgba(255,255,255,0.12)",
-              background:"linear-gradient(180deg, rgba(176,18,27,0.20), rgba(0,0,0,0.35))"
-            }} />
-            <div>
-              <div style={{ fontWeight: 950, fontSize: 18 }}>
-                {s(player?.game_name || player?.name || "Unknown Operator")}
-              </div>
-              <div style={{ opacity: 0.75, marginTop: 6, fontSize: 12 }}>
-                user_id: <code>{shortId(userId)}</code><br />
-                player_id: <code>{shortId(playerId)}</code>
-              </div>
-              <div style={{ display:"flex", gap: 8, flexWrap:"wrap", marginTop: 10 }}>
-                <button className="zombie-btn" type="button" onClick={() => nav("/me")}>Open /me</button>
-                <button className="zombie-btn" type="button" onClick={() => nav("/dashboard")}>Open /dashboard</button>
-              </div>
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontWeight: 950, fontSize: 18 }}>
+              {s(player?.game_name || player?.name || "Unknown Player")}
+            </div>
+            <div style={{ opacity: 0.75, marginTop: 8, fontSize: 12, lineHeight: 1.6 }}>
+              user_id: <code>{shortId(userId)}</code><br />
+              player_id: <code>{shortId(playerId)}</code>
             </div>
           </div>
         </div>
 
-        {/* Memberships */}
-        <div style={{ border:"1px solid rgba(255,255,255,0.10)", background:"rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
-          <div style={{ fontWeight: 950, fontSize: 16 }}>🪖 Alliances (Multi)</div>
-          <div style={{ opacity: 0.72, fontSize: 12, marginTop: 6 }}>RLS enforces access. This panel reflects your membership rows.</div>
+        <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
+          <div style={{ fontWeight: 950, fontSize: 16 }}>Alliance Memberships</div>
+          <div style={{ opacity: 0.72, fontSize: 12, marginTop: 6 }}>Source: player_alliances</div>
 
-          <div style={{ display:"flex", flexDirection:"column", gap: 10, marginTop: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
             {memberships.map((m, i) => {
               const ac = s(m.alliance_code).toUpperCase();
               const role = s(m.role);
-              const base = `/dashboard/${encodeURIComponent(ac)}`;
               return (
-                <div key={i} style={{ border:"1px solid rgba(255,255,255,0.08)", background:"rgba(0,0,0,0.18)", borderRadius: 14, padding: 10 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", gap: 10, flexWrap:"wrap", alignItems:"center" }}>
-                    <div>
-                      <div style={{ fontWeight: 950 }}>{ac} <span style={{ opacity: 0.75, fontWeight: 700 }}>({role || "member"})</span></div>
-                      <div style={{ opacity: 0.70, fontSize: 12, marginTop: 4 }}>
-                        Quick lanes: dashboard • calendar • hq • webhooks
-                      </div>
-                    </div>
-                    <div style={{ display:"flex", gap: 8, flexWrap:"wrap" }}>
-                      <button className="zombie-btn" type="button" onClick={() => nav(base)}>Open</button>
-                      <button className="zombie-btn" type="button" onClick={() => nav(base + "/calendar")}>Calendar</button>
-                      <button className="zombie-btn" type="button" onClick={() => nav(base + "/hq-map")}>HQ Map</button>
-                      <button className="zombie-btn" type="button" onClick={() => nav(base + "/discord-webhooks")}>Webhooks</button>
-                    </div>
+                <div key={i} style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.18)", borderRadius: 14, padding: 10 }}>
+                  <div style={{ fontWeight: 950 }}>
+                    {ac} <span style={{ opacity: 0.75, fontWeight: 700 }}>({role || "member"})</span>
                   </div>
                 </div>
               );
             })}
-            {!memberships.length ? <div style={{ opacity: 0.75 }}>No alliances yet. Complete onboarding + approval.</div> : null}
+            {!memberships.length ? <div style={{ opacity: 0.75 }}>No alliances yet.</div> : null}
           </div>
         </div>
 
-        {/* Defaults overview */}
-        <div style={{ border:"1px solid rgba(255,255,255,0.10)", background:"rgba(255,255,255,0.03)", borderRadius: 14, padding: 12 }}>
-          <div style={{ fontWeight: 950, fontSize: 16 }}>🪝 Discord Defaults (Per Alliance)</div>
+        <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 12, gridColumn: "1 / -1" }}>
+          <div style={{ fontWeight: 950, fontSize: 16 }}>Discord Defaults</div>
           <div style={{ opacity: 0.72, fontSize: 12, marginTop: 6 }}>
-            These defaults power “Send to Discord (Default)” actions.
+            These defaults power your alliance send actions.
           </div>
 
-          <div style={{ display:"flex", flexDirection:"column", gap: 10, marginTop: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
             {memberships.map((m, i) => {
               const ac = s(m.alliance_code).toUpperCase();
               const defaults = defaultsByAlliance[ac] || [];
               const get = (k: string) => defaults.find(d => s(d.kind) === k)?.webhook_id || null;
 
               return (
-                <div key={i} style={{ border:"1px solid rgba(255,255,255,0.08)", background:"rgba(0,0,0,0.18)", borderRadius: 14, padding: 10 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap: 10, flexWrap:"wrap" }}>
-                    <div style={{ fontWeight: 950 }}>{ac}</div>
-                    <button className="zombie-btn" type="button" onClick={() => nav(`/dashboard/${encodeURIComponent(ac)}/discord-webhooks`)}>Manage</button>
-                  </div>
+                <div key={i} style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.18)", borderRadius: 14, padding: 10 }}>
+                  <div style={{ fontWeight: 950 }}>{ac}</div>
 
-                  <div style={{ marginTop: 10, display:"grid", gridTemplateColumns:"1fr 1fr", gap: 8 }}>
+                  <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
                     {Object.keys(KIND_LABELS).map((k) => (
-                      <div key={k} style={{ border:"1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 8, background:"rgba(255,255,255,0.02)" }}>
+                      <div key={k} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 8, background: "rgba(255,255,255,0.02)" }}>
                         <div style={{ fontSize: 12, opacity: 0.75 }}>{KIND_LABELS[k]}</div>
                         <div style={{ fontWeight: 900, marginTop: 4 }}>
                           {labelForWebhook(ac, get(k))}
@@ -251,13 +233,10 @@ export default function MeDossierPage() {
                 </div>
               );
             })}
-            {!memberships.length ? <div style={{ opacity: 0.75 }}>No defaults — join an alliance first.</div> : null}
+            {!memberships.length ? <div style={{ opacity: 0.75 }}>No defaults found.</div> : null}
           </div>
         </div>
       </div>
-          <WeeklyAgendaCard />
-    </CommandCenterShell>
+    </div>
   );
 }
-
-
