@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
-import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 import { supabase } from "../../lib/supabaseClient";
 
 function s(v: any) { return v === null || v === undefined ? "" : String(v); }
@@ -31,10 +30,6 @@ export default function PlayerDossierPage() {
   const nav = useNavigate();
   const params = useParams();
   const playerId = String((params as any)?.playerId || "");
-
-  const cc = useMemo(() => getCommandCenterModules(), []);
-  const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
-  function onSelectModule(k: string) { const to = cc.find(m => m.key === k)?.to; if (to) nav(to); }
 
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
@@ -125,14 +120,10 @@ export default function PlayerDossierPage() {
     <CommandCenterShell
       title="Dossier Sheet"
       subtitle="Printable intel • memberships • HQ summary"
-      modules={modules}
-      activeModuleKey="dossier"
-      onSelectModule={onSelectModule}
-      topRight={
+            topRight={
         <div style={{ display:"flex", gap: 8, flexWrap:"wrap" }}>
           <button className="zombie-btn" type="button" onClick={printSheet}>Print / Save PDF</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/owner/dossier")}>Owner Lookup</button>
-          <button className="zombie-btn" type="button" onClick={() => nav("/owner/players")}>Owner Players</button>
         </div>
       }
     >
@@ -239,3 +230,4 @@ export default function PlayerDossierPage() {
     </CommandCenterShell>
   );
 }
+

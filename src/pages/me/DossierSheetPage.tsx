@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CommandCenterShell from "../../components/commandcenter/CommandCenterShell";
-import { getCommandCenterModules } from "../../components/commandcenter/ccModules";
 import { resolveMyPlayerIdentity, listMyAllianceMemberships } from "../../lib/playerIdentity";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -10,9 +9,6 @@ function nowLocal() { try { return new Date().toLocaleString(); } catch { return
 
 export default function DossierSheetPage() {
   const nav = useNavigate();
-  const cc = useMemo(() => getCommandCenterModules(), []);
-  const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
-  function onSelectModule(k: string) { const to = cc.find(m => m.key === k)?.to; if (to) nav(to); }
 
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
@@ -85,10 +81,7 @@ export default function DossierSheetPage() {
     <CommandCenterShell
       title="My Dossier Sheet"
       subtitle="Printable version of your dossier"
-      modules={modules}
-      activeModuleKey="dossier"
-      onSelectModule={onSelectModule}
-      topRight={
+            topRight={
         <div style={{ display:"flex", gap: 8, flexWrap:"wrap" }}>
           <button className="zombie-btn" type="button" onClick={printSheet}>Print / Save PDF</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/me/dossier")}>Back to My Dossier</button>
@@ -180,4 +173,5 @@ export default function DossierSheetPage() {
     </CommandCenterShell>
   );
 }
+
 
