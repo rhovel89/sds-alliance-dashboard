@@ -32,7 +32,7 @@ export default function OwnerFlowShell(props: { title: string; subtitle?: string
   const step = props.steps[idx] || props.steps[0];
 
   return (
-    <div style={{ padding: 16, maxWidth: 1500, margin: "0 auto" }}>
+    <div style={{ padding: 16, maxWidth: 1500, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 1000 }}>{props.title}</h1>
@@ -50,7 +50,7 @@ export default function OwnerFlowShell(props: { title: string; subtitle?: string
         </div>
       </div>
 
-      <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "340px 1fr", gap: 12, alignItems: "start" }}>
+      <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12, alignItems: "start" }}>
         <div style={{ border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: 12, background: "rgba(0,0,0,0.35)" }}>
           <div style={{ fontWeight: 950, marginBottom: 10 }}>Flow Steps</div>
           <div style={{ display: "grid", gap: 8 }}>
@@ -94,3 +94,4 @@ export default function OwnerFlowShell(props: { title: string; subtitle?: string
     </div>
   );
 }
+
