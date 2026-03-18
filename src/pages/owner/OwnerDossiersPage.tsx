@@ -338,7 +338,7 @@ export default function OwnerDossiersPage() {
           background: "rgba(0,0,0,0.20)",
         }}
       >
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
           <input
             className="zombie-input"
             value={search}
@@ -383,7 +383,7 @@ export default function OwnerDossiersPage() {
             padding: 12,
             display: "grid",
             gap: 10,
-            maxHeight: "75vh",
+            maxHeight: "min(75vh, 720px)",
             overflow: "auto",
           }}
         >
@@ -574,4 +574,7 @@ export default function OwnerDossiersPage() {
     </div>
   );
 }
+
+
+
 
