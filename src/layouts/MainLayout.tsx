@@ -5,8 +5,8 @@ export default function MainLayout() {
   return (
     <div style={{
       display: "flex",
-      width: "100vw",
-      height: "100vh",
+      width: "100%",
+      minHeight: "100dvh",
       background: "#0b0b0b",
       color: "#7cff00"
     }}>
@@ -14,7 +14,9 @@ export default function MainLayout() {
 
       <main style={{
         flex: 1,
-        overflow: "auto",
+        minWidth: 0,
+    overflowX: "hidden",
+    overflowY: "auto",
         padding: 24
       }}>
         <Outlet />
@@ -22,4 +24,5 @@ export default function MainLayout() {
     </div>
   );
 }
+
 
