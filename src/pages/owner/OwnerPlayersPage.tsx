@@ -433,7 +433,6 @@ export default function OwnerPlayersPage() {
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <a className="zombie-btn" style={{ padding: "10px 12px", textDecoration: "none" }} href="/owner">Back to Owner</a>
-            <a className="zombie-btn" style={{ padding: "10px 12px", textDecoration: "none" }} href="/owner/dossiers">Dossiers</a>
             <a className="zombie-btn" style={{ padding: "10px 12px", textDecoration: "none" }} href="/owner/alliances">Alliances</a>
             <a className="zombie-btn" style={{ padding: "10px 12px", textDecoration: "none" }} href="/owner/memberships">Memberships</a>
             <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => void fetchAll()} disabled={loading}>
@@ -745,4 +744,3 @@ export default function OwnerPlayersPage() {
     </div>
   );
 }
-
