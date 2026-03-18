@@ -581,7 +581,7 @@ export default function OwnerLiveOpsPage() {
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(320px, 1.1fr)", gap: 12 }}>
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
         <div className="zombie-card">
           <div style={{ fontWeight: 900 }}>⏱️ Ops Timer</div>
 
@@ -643,3 +643,4 @@ export default function OwnerLiveOpsPage() {
     </div>
   );
 }
+

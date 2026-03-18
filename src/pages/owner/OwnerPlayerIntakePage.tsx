@@ -421,7 +421,7 @@ setStatus("Adding membership…");
         </div>
       ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, marginTop: 14 }}>
         {/* Create player */}
         <div style={{ border: "1px solid rgba(255,255,255,0.16)", borderRadius: 14, padding: 14 }}>
           <div style={{ fontWeight: 900, marginBottom: 8 }}>Add player (even if they haven’t signed in yet)</div>
@@ -435,7 +435,7 @@ setStatus("Adding membership…");
               <div style={{ fontWeight: 900, marginBottom: 8 }}>Assign alliances now (multi-select)</div>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <select value={draftAlliance} onChange={(e) => setDraftAlliance(e.target.value)} style={{ minWidth: 220 }}>
+                <select value={draftAlliance} onChange={(e) => setDraftAlliance(e.target.value)} style={{ width: "100%" }}>
                   <option value="">Select alliance…</option>
                   {alliances.map((a) => {
                     const code = uc(a.code);
@@ -446,7 +446,7 @@ setStatus("Adding membership…");
                   })}
                 </select>
 
-                <select value={draftRole} onChange={(e) => setDraftRole(e.target.value as any)} style={{ minWidth: 140 }}>
+                <select value={draftRole} onChange={(e) => setDraftRole(e.target.value as any)} style={{ width: "100%" }}>
                   {ROLE_OPTIONS.map((r) => (
                     <option key={r} value={r}>{r.toUpperCase()}</option>
                   ))}
@@ -600,7 +600,7 @@ setStatus("Adding membership…");
                     <select
                       value={addDraft.alliance}
                       onChange={(e) => setAddDraft(pid, { alliance: e.target.value })}
-                      style={{ minWidth: 220 }}
+                      style={{ width: "100%" }}
                     >
                       <option value="">Add alliance…</option>
                       {alliances.map((a) => {
@@ -615,7 +615,7 @@ setStatus("Adding membership…");
                     <select
                       value={addDraft.role}
                       onChange={(e) => setAddDraft(pid, { role: e.target.value as any })}
-                      style={{ minWidth: 140 }}
+                      style={{ width: "100%" }}
                     >
                       {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.toUpperCase()}</option>)}
                     </select>
@@ -638,6 +638,7 @@ setStatus("Adding membership…");
     </div>
   );
 }
+
 
 
 
