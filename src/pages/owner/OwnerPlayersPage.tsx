@@ -403,7 +403,7 @@ export default function OwnerPlayersPage() {
 
       <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12, marginBottom: 16 }}>
         <div style={{ fontWeight: 900, marginBottom: 10 }}>Add Player (Game Name + Alliance Tag)</div>
-        <div style={{ display: "grid", gap: 8, maxWidth: 820 }}>
+        <div style={{ display: "grid", gap: 8, maxWidth: "100%" }}>
           <input placeholder='Game Name (ex: "Seven")' value={gameName} onChange={(e) => setGameName(e.target.value)} />
           <input placeholder="Optional note" value={note} onChange={(e) => setNote(e.target.value)} />
           <select value={addAlliance} onChange={(e) => setAddAlliance(e.target.value)}>
@@ -427,7 +427,7 @@ export default function OwnerPlayersPage() {
 
       <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12, marginBottom: 16 }}>
         <div style={{ fontWeight: 900, marginBottom: 10 }}>Link Player → Supabase User UUID</div>
-        <div style={{ display: "grid", gap: 8, maxWidth: 820 }}>
+        <div style={{ display: "grid", gap: 8, maxWidth: "100%" }}>
           <input placeholder="Player ID (uuid) — tip: click 'Use for Link' on a player card" value={linkPlayerId} onChange={(e) => setLinkPlayerId(e.target.value)} />
           <input placeholder="User UUID (auth.users.id)" value={linkUserId} onChange={(e) => setLinkUserId(e.target.value)} />
           <button onClick={linkPlayer}>Link Player</button>
@@ -607,5 +607,6 @@ export default function OwnerPlayersPage() {
     </div>
   );
 }
+
 
 
