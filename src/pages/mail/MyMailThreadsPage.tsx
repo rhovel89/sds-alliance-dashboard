@@ -437,7 +437,7 @@ export default function MyMailThreadsPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
         <div
           style={{
             border: "1px solid rgba(255,255,255,0.10)",
@@ -467,7 +467,7 @@ export default function MyMailThreadsPage() {
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <div style={{ fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "normal", overflowWrap: "anywhere", minWidth: 0 }}>
                     {s(t.subject) || "(no subject)"}
                   </div>
 
@@ -577,6 +577,7 @@ export default function MyMailThreadsPage() {
     </div>
   );
 }
+
 
 
 
