@@ -120,14 +120,14 @@ export default function OwnerDirectoryEditorPage() {
 
       <div className="zombie-card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <input className="zombie-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", minWidth: 240, flex: 1 }} />
+          <input className="zombie-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" style={{ padding: "10px 12px", minWidth: 0, flex: 1 }} />
           <div style={{ marginLeft: "auto", opacity: 0.65, fontSize: 12 }}>
             Key: sad_alliance_directory_v1 • Count: {rows.length}
           </div>
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(340px, 1.1fr)", gap: 12 }}>
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
         <div className="zombie-card">
           <div style={{ fontWeight: 900 }}>Directory</div>
           <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
@@ -165,11 +165,11 @@ export default function OwnerDirectoryEditorPage() {
             </div>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 160 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>State</div>
                 <input className="zombie-input" value={state} onChange={(e) => setState(e.target.value)} placeholder="789" style={{ width: "100%", padding: "10px 12px" }} />
               </div>
-              <div style={{ flex: 1, minWidth: 160 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 6 }}>Active</div>
                 <label style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
                   <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
