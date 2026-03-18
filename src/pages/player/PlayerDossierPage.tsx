@@ -120,7 +120,7 @@ export default function PlayerDossierPage() {
     <CommandCenterShell
       title="Dossier Sheet"
       subtitle="Printable intel • memberships • HQ summary"
-            topRight={
+                        topRight={
         <div style={{ display:"flex", gap: 8, flexWrap:"wrap" }}>
           <button className="zombie-btn" type="button" onClick={printSheet}>Print / Save PDF</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/owner/dossier")}>Owner Lookup</button>
@@ -230,4 +230,6 @@ export default function PlayerDossierPage() {
     </CommandCenterShell>
   );
 }
+
+
 

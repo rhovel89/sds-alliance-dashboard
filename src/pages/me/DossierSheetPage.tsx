@@ -81,7 +81,7 @@ export default function DossierSheetPage() {
     <CommandCenterShell
       title="My Dossier Sheet"
       subtitle="Printable version of your dossier"
-            topRight={
+                        topRight={
         <div style={{ display:"flex", gap: 8, flexWrap:"wrap" }}>
           <button className="zombie-btn" type="button" onClick={printSheet}>Print / Save PDF</button>
           <button className="zombie-btn" type="button" onClick={() => nav("/me/dossier")}>Back to My Dossier</button>
@@ -173,5 +173,7 @@ export default function DossierSheetPage() {
     </CommandCenterShell>
   );
 }
+
+
 
 
