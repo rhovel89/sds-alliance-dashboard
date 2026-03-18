@@ -328,18 +328,6 @@ export default function OwnerDossiersPage() {
                 </div>
               </div>
 
-              <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, overflow: "hidden", minHeight: 620 }}>
-                <iframe
-                  title={`dossier-${String(selectedPlayer.id)}`}
-                  src={`/dossier/${encodeURIComponent(String(selectedPlayer.id))}`}
-                  style={{
-                    width: "100%",
-                    minHeight: 900,
-                    border: "0",
-                    background: "transparent",
-                  }}
-                />
-              </div>
             </>
           )}
         </div>
@@ -347,3 +335,4 @@ export default function OwnerDossiersPage() {
     </div>
   );
 }
+
