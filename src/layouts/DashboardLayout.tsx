@@ -17,8 +17,8 @@ export default function DashboardLayout() {
       <AuthRedirector />
 
       {isAllianceArea ? (
-        <div style={{ display: "flex", gap: 18, alignItems: "stretch" }}>
-          <aside data-sad-sidebar="1" style={{ width: 240, minWidth: 240 }}>
+        <div style={{ display: "flex", gap: 18, alignItems: "stretch", flexWrap: "wrap", minWidth: 0 }}>
+          <aside data-sad-sidebar="1" style={{ width: "100%", maxWidth: 240, minWidth: 0, flex: "1 1 240px" }}>
             <div className="zombie-card" style={{ padding: 12 }}>
               <AllianceSidebarTabs allianceCode={String(alliance_id || "")} />
             </div>
@@ -36,3 +36,4 @@ export default function DashboardLayout() {
     </div>
   );
 }
+
