@@ -1,82 +1,67 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
-type Alliance = { code: string; name?: string | null; enabled?: boolean | null };
-type Player = {
-  id: string;
-  game_name?: string | null;
-  name?: string | null;
-  note?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
+type Alliance = { code: string; name: string; enabled: boolean };
+type Player = { id: string; game_name: string; note: string | null; created_at: string };
 type PlayerAlliance = {
   id: string;
   player_id: string;
   alliance_code: string;
   role: "owner" | "r5" | "r4" | "member" | "viewer";
 };
+
 type PlayerAuthLink = {
   player_id: string;
   user_id: string;
 };
 
+type PlayerHqSummary = {
+  id?: string;
+  profile_id?: string | null;
+  alliance_code?: string | null;
+  alliance_id?: string | null;
+  hq_name?: string | null;
+  hq_level?: number | null;
+  is_primary?: boolean | null;
+  troop_type?: string | null;
+  troop_tier?: string | null;
+  troop_size?: number | null;
+  march_size?: number | null;
+  march_size_no_heroes?: number | null;
+  rally_size?: number | null;
+  coord_x?: number | null;
+  coord_y?: number | null;
+  updated_at?: string | null;
+};
+
 const ROLES: PlayerAlliance["role"][] = ["member", "viewer", "r5", "r4", "owner"];
 
-function s(v: any) {
-  return v === null || v === undefined ? "" : String(v);
-}
-
 function normCode(v: string) {
-  return s(v).trim().toUpperCase();
+  return v.trim().toUpperCase();
 }
 
-function fmtDate(v?: string | null) {
-  if (!v) return "—";
-  try {
-    return new Date(v).toLocaleString();
-  } catch {
-    return String(v);
-  }
-}
-
-function badgeStyle(ok?: boolean): React.CSSProperties {
-  return {
-    fontSize: 12,
-    padding: "4px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: ok ? "rgba(120,255,120,0.08)" : "rgba(255,255,255,0.05)",
-    color: ok ? "#aaffc7" : "rgba(255,255,255,0.88)",
-    fontWeight: 800,
-  };
-}
-
-function sectionStyle(): React.CSSProperties {
-  return {
-    border: "1px solid rgba(255,255,255,0.10)",
-    borderRadius: 14,
-    padding: 14,
-    background: "rgba(255,255,255,0.03)",
-  };
+function safeNum(v: any) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 export default function OwnerPlayersPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   const [alliances, setAlliances] = useState<Alliance[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [assignments, setAssignments] = useState<Record<string, PlayerAlliance[]>>({});
   const [links, setLinks] = useState<Record<string, string>>({});
+  const [hqRowsByPlayer, setHqRowsByPlayer] = useState<Record<string, PlayerHqSummary[]>>({});
+  const [hqLoading, setHqLoading] = useState(false);
 
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [allianceFilter, setAllianceFilter] = useState("ALL");
+  const [allianceFilter, setAllianceFilter] = useState("");
 
   const [gameName, setGameName] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [note, setNote] = useState("");
   const [addAlliance, setAddAlliance] = useState("");
   const [addRole, setAddRole] = useState<PlayerAlliance["role"]>("member");
@@ -105,24 +90,24 @@ export default function OwnerPlayersPage() {
   }
 
   async function fetchAll() {
-    setLoading(true);
     setError(null);
+    setHqLoading(true);
 
     const a = await supabase.from("alliances").select("code, name, enabled").order("code");
     if (a.error) {
-      setLoading(false);
+      setHqLoading(false);
       return setError(a.error.message);
     }
     setAlliances((a.data ?? []) as any);
 
     const p = await supabase
       .from("players")
-      .select("id, game_name, name, note, created_at, updated_at")
+      .select("id, game_name, note, created_at")
       .order("created_at", { ascending: false })
-      .limit(500);
+      .limit(200);
 
     if (p.error) {
-      setLoading(false);
+      setHqLoading(false);
       return setError(p.error.message);
     }
 
@@ -133,7 +118,8 @@ export default function OwnerPlayersPage() {
     if (!ids.length) {
       setAssignments({});
       setLinks({});
-      setLoading(false);
+      setHqRowsByPlayer({});
+      setHqLoading(false);
       return;
     }
 
@@ -143,7 +129,7 @@ export default function OwnerPlayersPage() {
       .in("player_id", ids);
 
     if (pa.error) {
-      setLoading(false);
+      setHqLoading(false);
       return setError(pa.error.message);
     }
 
@@ -154,7 +140,7 @@ export default function OwnerPlayersPage() {
     });
 
     Object.keys(grouped).forEach((k) => {
-      grouped[k].sort((x, y) => s(x.alliance_code).localeCompare(s(y.alliance_code)));
+      grouped[k].sort((x, y) => x.alliance_code.localeCompare(y.alliance_code));
     });
 
     setAssignments(grouped);
@@ -165,7 +151,7 @@ export default function OwnerPlayersPage() {
       .in("player_id", ids);
 
     if (l.error) {
-      setLoading(false);
+      setHqLoading(false);
       return setError(l.error.message);
     }
 
@@ -175,80 +161,115 @@ export default function OwnerPlayersPage() {
     });
     setLinks(linkMap);
 
-    setLoading(false);
+    const nextHqs: Record<string, PlayerHqSummary[]> = {};
+
+    try {
+      const hqA = await supabase
+        .from("player_alliance_hqs")
+        .select("*")
+        .in("profile_id", ids);
+
+      if (!hqA.error && (hqA.data ?? []).length > 0) {
+        (hqA.data ?? []).forEach((row: any) => {
+          const key = String(row.profile_id || "");
+          if (!key) return;
+          nextHqs[key] = nextHqs[key] ?? [];
+          nextHqs[key].push(row as PlayerHqSummary);
+        });
+      } else {
+        const hqB = await supabase
+          .from("player_hqs")
+          .select("*")
+          .in("profile_id", ids);
+
+        if (!hqB.error) {
+          (hqB.data ?? []).forEach((row: any) => {
+            const key = String(row.profile_id || "");
+            if (!key) return;
+            nextHqs[key] = nextHqs[key] ?? [];
+            nextHqs[key].push(row as PlayerHqSummary);
+          });
+        }
+      }
+    } catch {
+      // Keep page working even if HQ tables vary.
+    }
+
+    Object.keys(nextHqs).forEach((k) => {
+      nextHqs[k].sort((a, b) => {
+        const ap = a.is_primary === true ? 0 : 1;
+        const bp = b.is_primary === true ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+
+        const al = safeNum(a.hq_level) ?? 0;
+        const bl = safeNum(b.hq_level) ?? 0;
+        if (al !== bl) return bl - al;
+
+        return String(a.hq_name || "").localeCompare(String(b.hq_name || ""));
+      });
+    });
+
+    setHqRowsByPlayer(nextHqs);
+    setHqLoading(false);
   }
 
   useEffect(() => {
-    void boot();
+    boot();
   }, []);
 
-  const allianceOptions = useMemo(() => {
-    const set = new Set<string>();
-    alliances.forEach((a) => {
-      const code = normCode(s(a.code));
-      if (code) set.add(code);
-    });
-    Object.values(assignments).forEach((list) => {
-      list.forEach((a) => {
-        const code = normCode(s(a.alliance_code));
-        if (code) set.add(code);
-      });
-    });
-    return ["ALL", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
-  }, [alliances, assignments]);
-
   const filteredPlayers = useMemo(() => {
-    const q = s(search).trim().toLowerCase();
+    const q = search.trim().toLowerCase();
 
     return players.filter((p) => {
-      const playerAssignments = assignments[p.id] ?? [];
-      const linkedUserId = s(links[p.id]);
-      const allianceBlob = playerAssignments.map((a) => s(a.alliance_code)).join(" ");
+      const asn = assignments[p.id] ?? [];
+      const linkedUserId = links[p.id] ?? "";
+      const hqs = hqRowsByPlayer[p.id] ?? [];
+
+      const allianceOk =
+        !allianceFilter ||
+        asn.some((a) => normCode(String(a.alliance_code || "")) === normCode(allianceFilter));
+
+      if (!allianceOk) return false;
+      if (!q) return true;
+
       const haystack = [
-        s(p.game_name),
-        s(p.name),
-        s(p.note),
-        s(p.id),
+        p.game_name,
+        p.note,
+        p.id,
         linkedUserId,
-        allianceBlob,
+        ...asn.map((a) => `${a.alliance_code} ${a.role}`),
+        ...hqs.map((h) =>
+          [
+            h.hq_name,
+            h.hq_level,
+            h.alliance_code,
+            h.alliance_id,
+            h.troop_type,
+            h.troop_tier,
+            h.coord_x,
+            h.coord_y,
+          ].join(" ")
+        ),
       ]
         .join(" ")
         .toLowerCase();
 
-      const searchOk = !q || haystack.includes(q);
-      const allianceOk =
-        allianceFilter === "ALL" ||
-        playerAssignments.some((a) => normCode(s(a.alliance_code)) === allianceFilter);
-
-      return searchOk && allianceOk;
+      return haystack.includes(q);
     });
-  }, [players, assignments, links, search, allianceFilter]);
-
-  const linkedCount = useMemo(() => {
-    return players.filter((p) => !!s(links[p.id])).length;
-  }, [players, links]);
-
-  const visibleLinkedCount = useMemo(() => {
-    return filteredPlayers.filter((p) => !!s(links[p.id])).length;
-  }, [filteredPlayers, links]);
+  }, [players, search, assignments, links, allianceFilter, hqRowsByPlayer]);
 
   async function addPlayer() {
     setError(null);
 
-    const gn = s(gameName).trim();
-    const dn = s(displayName).trim();
-    if (!gn && !dn) return alert("Game Name or Display Name required.");
+    const gn = gameName.trim();
+    if (!gn) return alert("Game Name required.");
 
     const allianceCode = normCode(addAlliance);
-    if (!allianceCode) return alert("Alliance code required.");
+    if (!allianceCode) return alert("Alliance code required (ex: SDS).");
 
     const created = await supabase
       .from("players")
-      .insert({
-        game_name: gn || null,
-        name: dn || null,
-        note: s(note).trim() || null,
-      })
+      .insert({ game_name: gn, note: note.trim() || null })
       .select("id")
       .maybeSingle();
 
@@ -269,7 +290,6 @@ export default function OwnerPlayersPage() {
     }
 
     setGameName("");
-    setDisplayName("");
     setNote("");
     setAddAlliance("");
     setAddRole("member");
@@ -337,8 +357,8 @@ export default function OwnerPlayersPage() {
   async function linkPlayer() {
     setError(null);
 
-    const pid = s(linkPlayerId).trim();
-    const uid = s(linkUserId).trim();
+    const pid = linkPlayerId.trim();
+    const uid = linkUserId.trim();
     if (!pid) return alert("Player ID required.");
     if (!uid) return alert("User UUID required.");
 
@@ -346,17 +366,14 @@ export default function OwnerPlayersPage() {
       .from("player_auth_links")
       .upsert({ player_id: pid, user_id: uid }, { onConflict: "player_id" });
 
-    if (link.error) {
-      setError(link.error.message);
-      return;
-    }
+    if (link.error) return setError(link.error.message);
 
     alert("Linked. Roles now auto-sync to dashboard access automatically.");
     await fetchAll();
   }
 
   async function unlinkPlayer(player_id: string) {
-    const ok = confirm("Unlink this player from their Supabase user?");
+    const ok = confirm("Unlink this player from their Supabase user? (Roster-managed dashboard access will be removed automatically.)");
     if (!ok) return;
 
     setError(null);
@@ -384,9 +401,10 @@ export default function OwnerPlayersPage() {
         document.execCommand("copy");
         document.body.removeChild(ta);
       }
-      alert("Copied.");
-    } catch {
-      alert("Copy failed — copy manually.");
+      alert("Copied User UUID.");
+    } catch (e) {
+      console.error(e);
+      alert("Copy failed — please copy manually.");
     }
   }
 
@@ -409,191 +427,114 @@ export default function OwnerPlayersPage() {
   }
 
   return (
-    <div style={{ width: "100%", maxWidth: 1440, margin: "0 auto", padding: 24, display: "grid", gap: 12 }}>
-      <div
-        className="zombie-card"
-        style={{
-          padding: 20,
-          background: "linear-gradient(180deg, rgba(16,20,26,0.98), rgba(8,10,14,0.94))",
-          border: "1px solid rgba(255,255,255,0.10)",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
-          <div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-              <div style={badgeStyle(true)}>OWNER</div>
-              <div style={badgeStyle()}>PLAYERS</div>
-              <div style={badgeStyle()}>ALLIANCE FILTERS</div>
-            </div>
-            <div style={{ fontSize: 30, fontWeight: 950, lineHeight: 1.05 }}>Owner Players Directory</div>
-            <div style={{ opacity: 0.84, marginTop: 10, lineHeight: 1.7, maxWidth: 900 }}>
-              Clean owner view of roster players, their alliance assignments, and linked user IDs. Search fast, filter by alliance, and jump into dossiers.
-            </div>
-          </div>
+    <div style={{ padding: 24 }}>
+      <h2>{title}</h2>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <a className="zombie-btn" style={{ padding: "10px 12px", textDecoration: "none" }} href="/owner">Back to Owner</a>
-            <a className="zombie-btn" style={{ padding: "10px 12px", textDecoration: "none" }} href="/owner/alliances">Alliances</a>
-            <a className="zombie-btn" style={{ padding: "10px 12px", textDecoration: "none" }} href="/owner/memberships">Memberships</a>
-            <button className="zombie-btn" style={{ padding: "10px 12px" }} onClick={() => void fetchAll()} disabled={loading}>
-              {loading ? "Refreshing…" : "Refresh"}
-            </button>
-          </div>
-        </div>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+        <a href="/owner">← Back to Owner</a>
+        <a href="/owner/alliances">Alliances</a>
+        <a href="/owner/memberships">Memberships</a>
       </div>
 
       {error ? (
-        <div
-          style={{
-            border: "1px solid rgba(255,120,120,0.30)",
-            background: "rgba(255,120,120,0.08)",
-            borderRadius: 12,
-            padding: 12,
-          }}
-        >
+        <div style={{ border: "1px solid #733", borderRadius: 8, padding: 10, marginBottom: 12 }}>
           {error}
         </div>
       ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-        <div className="zombie-card" style={{ padding: 14 }}>
-          <div style={{ opacity: 0.7, fontSize: 12, fontWeight: 900 }}>TOTAL PLAYERS</div>
-          <div style={{ fontSize: 26, fontWeight: 950, marginTop: 8 }}>{players.length}</div>
-        </div>
-        <div className="zombie-card" style={{ padding: 14 }}>
-          <div style={{ opacity: 0.7, fontSize: 12, fontWeight: 900 }}>VISIBLE NOW</div>
-          <div style={{ fontSize: 26, fontWeight: 950, marginTop: 8 }}>{filteredPlayers.length}</div>
-        </div>
-        <div className="zombie-card" style={{ padding: 14 }}>
-          <div style={{ opacity: 0.7, fontSize: 12, fontWeight: 900 }}>LINKED USERS</div>
-          <div style={{ fontSize: 26, fontWeight: 950, marginTop: 8 }}>{linkedCount}</div>
-        </div>
-        <div className="zombie-card" style={{ padding: 14 }}>
-          <div style={{ opacity: 0.7, fontSize: 12, fontWeight: 900 }}>VISIBLE LINKED</div>
-          <div style={{ fontSize: 26, fontWeight: 950, marginTop: 8 }}>{visibleLinkedCount}</div>
+      <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12, marginBottom: 16 }}>
+        <div style={{ fontWeight: 900, marginBottom: 10 }}>Add Player (Game Name + Alliance Tag)</div>
+
+        <div style={{ display: "grid", gap: 8, maxWidth: 820 }}>
+          <input
+            placeholder='Game Name (ex: "Seven")'
+            value={gameName}
+            onChange={(e) => setGameName(e.target.value)}
+          />
+          <input placeholder="Optional note" value={note} onChange={(e) => setNote(e.target.value)} />
+
+          <select value={addAlliance} onChange={(e) => setAddAlliance(e.target.value)}>
+            <option value="">Select alliance…</option>
+            {alliances.filter((a) => a.enabled).map((a) => (
+              <option key={a.code} value={a.code}>
+                {a.code} — {a.name}
+              </option>
+            ))}
+          </select>
+
+          <select value={addRole} onChange={(e) => setAddRole(e.target.value as any)}>
+            {ROLES.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+
+          <button onClick={addPlayer}>Create Player</button>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 12 }}>
-        <div style={sectionStyle()}>
-          <div style={{ fontWeight: 900, marginBottom: 10 }}>Add Player</div>
-          <div style={{ display: "grid", gap: 8 }}>
-            <input
-              className="zombie-input"
-              placeholder='Game Name (ex: "Seven")'
-              value={gameName}
-              onChange={(e) => setGameName(e.target.value)}
-              style={{ padding: "10px 12px" }}
-            />
-            <input
-              className="zombie-input"
-              placeholder='Display Name (optional)'
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              style={{ padding: "10px 12px" }}
-            />
-            <input
-              className="zombie-input"
-              placeholder="Optional note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              style={{ padding: "10px 12px" }}
-            />
+      <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12, marginBottom: 16 }}>
+        <div style={{ fontWeight: 900, marginBottom: 10 }}>Link Player → Supabase User UUID</div>
 
-            <select className="zombie-input" value={addAlliance} onChange={(e) => setAddAlliance(e.target.value)} style={{ padding: "10px 12px" }}>
-              <option value="">Select alliance…</option>
-              {alliances.filter((a) => a.enabled !== false).map((a) => (
-                <option key={String(a.code)} value={String(a.code)}>
-                  {String(a.code)} — {String(a.name || a.code)}
-                </option>
-              ))}
-            </select>
+        <div style={{ display: "grid", gap: 8, maxWidth: 820 }}>
+          <input
+            placeholder="Player ID (uuid) — tip: click 'Use for Link' on a player card"
+            value={linkPlayerId}
+            onChange={(e) => setLinkPlayerId(e.target.value)}
+          />
+          <input
+            placeholder="User UUID (auth.users.id)"
+            value={linkUserId}
+            onChange={(e) => setLinkUserId(e.target.value)}
+          />
+          <button onClick={linkPlayer}>Link Player</button>
 
-            <select className="zombie-input" value={addRole} onChange={(e) => setAddRole(e.target.value as any)} style={{ padding: "10px 12px" }}>
-              {ROLES.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-
-            <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={() => void addPlayer()}>
-              Create Player
-            </button>
-          </div>
-        </div>
-
-        <div style={sectionStyle()}>
-          <div style={{ fontWeight: 900, marginBottom: 10 }}>Link Player → User UUID</div>
-          <div style={{ display: "grid", gap: 8 }}>
-            <input
-              className="zombie-input"
-              placeholder="Player ID (uuid)"
-              value={linkPlayerId}
-              onChange={(e) => setLinkPlayerId(e.target.value)}
-              style={{ padding: "10px 12px" }}
-            />
-            <input
-              className="zombie-input"
-              placeholder="User UUID (auth.users.id)"
-              value={linkUserId}
-              onChange={(e) => setLinkUserId(e.target.value)}
-              style={{ padding: "10px 12px" }}
-            />
-            <button className="zombie-btn" style={{ padding: "10px 12px", fontWeight: 900 }} onClick={() => void linkPlayer()}>
-              Link Player
-            </button>
-            <div style={{ opacity: 0.72, fontSize: 12 }}>
-              Linking keeps your existing roster-driven flow and does not change the page structure.
-            </div>
+          <div style={{ opacity: 0.75, fontSize: 12 }}>
+            No auto-assign on OAuth. Linking triggers DB auto-sync for dashboard access. Unlink removes roster-managed access automatically.
           </div>
         </div>
       </div>
 
-      <div style={sectionStyle()}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <div>
-            <div style={{ fontWeight: 900 }}>Filters</div>
-            <div style={{ opacity: 0.72, fontSize: 12, marginTop: 4 }}>
-              Search by player name, note, player ID, linked user ID, or alliance code.
-            </div>
-          </div>
+      <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12, marginBottom: 12 }}>
+        <div style={{ fontWeight: 900, marginBottom: 10 }}>Search / Filter Players</div>
+        <input
+          placeholder="Search name, alliance, user id, HQ, coords…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
 
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+          <select value={allianceFilter} onChange={(e) => setAllianceFilter(e.target.value)}>
+            <option value="">All alliances</option>
+            {alliances.map((a) => (
+              <option key={a.code} value={a.code}>
+                {a.code} — {a.name}
+              </option>
+            ))}
+          </select>
+
+          <div style={{ opacity: 0.75, fontSize: 12 }}>
+            Showing {filteredPlayers.length} of {players.length} players
+            {hqLoading ? " • HQ loading…" : ""}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button onClick={fetchAll}>Refresh</button>
           <button
-            className="zombie-btn"
-            style={{ padding: "8px 10px", fontSize: 12 }}
             onClick={() => {
               setSearch("");
-              setAllianceFilter("ALL");
+              setAllianceFilter("");
             }}
           >
             Reset Filters
           </button>
         </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 220px", gap: 10, marginTop: 12 }}>
-          <input
-            className="zombie-input"
-            placeholder="Search players, UUIDs, notes, alliances..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ padding: "10px 12px" }}
-          />
-          <select
-            className="zombie-input"
-            value={allianceFilter}
-            onChange={(e) => setAllianceFilter(e.target.value)}
-            style={{ padding: "10px 12px" }}
-          >
-            {allianceOptions.map((code) => (
-              <option key={code} value={code}>
-                {code === "ALL" ? "All Alliances" : code}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
-      <div style={sectionStyle()}>
-        <div style={{ fontWeight: 900, marginBottom: 10 }}>Roster ({filteredPlayers.length})</div>
+      <div style={{ border: "1px solid #333", borderRadius: 10, padding: 12 }}>
+        <div style={{ fontWeight: 900, marginBottom: 10 }}>Roster (latest 200)</div>
 
         {filteredPlayers.length === 0 ? (
           <div style={{ opacity: 0.8 }}>No players found.</div>
@@ -602,64 +543,32 @@ export default function OwnerPlayersPage() {
             {filteredPlayers.map((p) => {
               const asn = assignments[p.id] ?? [];
               const linkedUserId = links[p.id] ?? null;
-              const primaryName = s(p.game_name || p.name || "Unnamed Player");
-              const secondaryName =
-                s(p.name) && s(p.name) !== s(p.game_name) ? s(p.name) : "";
+              const hqs = hqRowsByPlayer[p.id] ?? [];
+              const primaryHq = hqs.find((h) => h.is_primary === true) ?? hqs[0] ?? null;
 
               return (
-                <div
-                  key={p.id}
-                  className="zombie-card"
-                  style={{
-                    padding: 14,
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    background: "rgba(0,0,0,0.20)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                        <div style={{ fontWeight: 950, fontSize: 18 }}>{primaryName}</div>
-                        <span style={badgeStyle(!!linkedUserId)}>{linkedUserId ? "Linked" : "Not Linked"}</span>
-                      </div>
-
-                      {secondaryName ? (
-                        <div style={{ opacity: 0.78, marginTop: 4 }}>{secondaryName}</div>
-                      ) : null}
-
-                      <div style={{ marginTop: 8, fontSize: 12, opacity: 0.82, lineHeight: 1.6 }}>
-                        Player ID: <code>{p.id}</code><br />
-                        Created: {fmtDate(p.created_at)}
-                        {p.updated_at ? <> • Updated: {fmtDate(p.updated_at)}</> : null}
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button className="zombie-btn" style={{ padding: "8px 10px" }} onClick={() => setLinkPlayerId(p.id)}>
-                        Use for Link
-                      </button>
-                      <a
-                        className="zombie-btn"
-                        style={{ padding: "8px 10px", textDecoration: "none" }}
-                        href={`/dossier/${encodeURIComponent(p.id)}`}
-                      >
-                        Open Dossier
-                      </a>
-                      <button className="zombie-btn" style={{ padding: "8px 10px" }} onClick={() => void deletePlayer(p.id)}>
-                        Delete
-                      </button>
+                <div key={p.id} style={{ border: "1px solid #222", borderRadius: 10, padding: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ fontWeight: 900 }}>{p.game_name}</div>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button onClick={() => setLinkPlayerId(p.id)}>Use for Link</button>
+                      <button onClick={() => deletePlayer(p.id)}>Delete Player</button>
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 10, fontSize: 13 }}>
-                    <strong>Linked User:</strong>{" "}
+                  <div style={{ marginTop: 6, opacity: 0.8, fontSize: 12 }}>
+                    Player ID: <code>{p.id}</code>
+                  </div>
+
+                  <div style={{ marginTop: 6, opacity: 0.9, fontSize: 12 }}>
+                    Linked User:{" "}
                     {linkedUserId ? (
                       <>
-                        <code>{linkedUserId}</code>
-                        <button className="zombie-btn" style={{ padding: "6px 8px", marginLeft: 10, fontSize: 12 }} onClick={() => void copyText(linkedUserId)}>
-                          Copy
+                        <code>{linkedUserId}</code>{" "}
+                        <button style={{ marginLeft: 10 }} onClick={async () => copyText(linkedUserId)}>
+                          Copy User UUID
                         </button>
-                        <button className="zombie-btn" style={{ padding: "6px 8px", marginLeft: 8, fontSize: 12 }} onClick={() => void unlinkPlayer(p.id)}>
+                        <button style={{ marginLeft: 10 }} onClick={() => unlinkPlayer(p.id)}>
                           Unlink
                         </button>
                       </>
@@ -668,69 +577,111 @@ export default function OwnerPlayersPage() {
                     )}
                   </div>
 
-                  {p.note ? (
-                    <div style={{ marginTop: 10, opacity: 0.88 }}>
-                      <strong>Note:</strong> {p.note}
-                    </div>
-                  ) : null}
+                  {p.note ? <div style={{ marginTop: 6, opacity: 0.85 }}>Note: {p.note}</div> : null}
 
-                  <div style={{ marginTop: 14, fontWeight: 900 }}>Alliance Assignments</div>
+                  <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                    <div style={{ border: "1px solid #222", borderRadius: 10, padding: 10, background: "rgba(255,255,255,0.02)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                        <div style={{ fontWeight: 800 }}>Dossier Snapshot</div>
+                        <a href={"/dossier/" + encodeURIComponent(p.id)}>Open Dossier Sheet</a>
+                      </div>
+
+                      <div style={{ marginTop: 8, display: "grid", gap: 6, fontSize: 12, opacity: 0.9 }}>
+                        <div>Display Name: <b>{p.game_name || "—"}</b></div>
+                        <div>Player ID: <code>{p.id}</code></div>
+                        <div>Linked User: {linkedUserId ? <code>{linkedUserId}</code> : "Not linked"}</div>
+                        <div>Alliances: {asn.length ? asn.map((a) => `${a.alliance_code} (${a.role})`).join(", ") : "None yet"}</div>
+                        <div>Created: {p.created_at ? new Date(String(p.created_at)).toLocaleString() : "—"}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ border: "1px solid #222", borderRadius: 10, padding: 10, background: "rgba(255,255,255,0.02)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                        <div style={{ fontWeight: 800 }}>HQ Summary</div>
+                        <div style={{ fontSize: 12, opacity: 0.75 }}>
+                          {hqLoading ? "Loading HQ…" : `${hqs.length} HQ row(s)`}
+                        </div>
+                      </div>
+
+                      {primaryHq ? (
+                        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.9 }}>
+                          Primary HQ:{" "}
+                          <b>
+                            {String(primaryHq.hq_name || "HQ")}
+                            {primaryHq.hq_level ? ` • HQ ${String(primaryHq.hq_level)}` : ""}
+                          </b>
+                        </div>
+                      ) : null}
+
+                      {hqs.length === 0 ? (
+                        <div style={{ marginTop: 8, opacity: 0.8, fontSize: 12 }}>No HQ rows found.</div>
+                      ) : (
+                        <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                          {hqs.slice(0, 5).map((h, idx) => (
+                            <div key={String(h.id || idx)} style={{ border: "1px solid #333", borderRadius: 8, padding: 8 }}>
+                              <div style={{ fontWeight: 800 }}>
+                                {h.is_primary ? "⭐ " : ""}
+                                {String(h.hq_name || "HQ")}
+                                {h.hq_level ? ` • HQ ${String(h.hq_level)}` : ""}
+                              </div>
+
+                              <div style={{ marginTop: 4, fontSize: 12, opacity: 0.82 }}>
+                                Alliance: {String(h.alliance_code || h.alliance_id || "—")}
+                                {h.troop_type ? ` • Type: ${String(h.troop_type)}` : ""}
+                                {h.troop_tier ? ` • Tier: ${String(h.troop_tier)}` : ""}
+                              </div>
+
+                              <div style={{ marginTop: 4, fontSize: 12, opacity: 0.75 }}>
+                                {safeNum(h.coord_x) !== null && safeNum(h.coord_y) !== null
+                                  ? `Coords: ${String(h.coord_x)}, ${String(h.coord_y)}`
+                                  : "Coords: —"}
+                                {(h.march_size ?? h.march_size_no_heroes) ? ` • March: ${String(h.march_size ?? h.march_size_no_heroes)}` : ""}
+                                {h.rally_size ? ` • Rally: ${String(h.rally_size)}` : ""}
+                                {h.troop_size ? ` • Troops: ${String(h.troop_size)}` : ""}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 10, fontWeight: 800 }}>Alliance Assignments</div>
 
                   {asn.length === 0 ? (
-                    <div style={{ opacity: 0.78, marginTop: 6 }}>None yet.</div>
+                    <div style={{ opacity: 0.8, marginTop: 6 }}>None yet.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
                       {asn.map((a) => (
-                        <div
-                          key={a.id}
-                          style={{
-                            display: "flex",
-                            gap: 10,
-                            flexWrap: "wrap",
-                            alignItems: "center",
-                            padding: 10,
-                            borderRadius: 12,
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            background: "rgba(255,255,255,0.02)",
-                          }}
-                        >
-                          <div style={{ minWidth: 80, fontWeight: 900 }}>{a.alliance_code}</div>
-
-                          <select
-                            className="zombie-input"
-                            value={a.role}
-                            onChange={(e) => void updateAssignment(a.id, e.target.value as any)}
-                            style={{ padding: "8px 10px", minWidth: 120 }}
-                          >
+                        <div key={a.id} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                          <div style={{ fontWeight: 800 }}>{a.alliance_code}</div>
+                          <select value={a.role} onChange={(e) => updateAssignment(a.id, e.target.value as any)}>
                             {ROLES.map((r) => (
-                              <option key={r} value={r}>{r}</option>
+                              <option key={r} value={r}>
+                                {r}
+                              </option>
                             ))}
                           </select>
-
-                          <button className="zombie-btn" style={{ padding: "8px 10px" }} onClick={() => void removeAssignment(a.id)}>
-                            Remove
-                          </button>
+                          <button onClick={() => removeAssignment(a.id)}>Remove</button>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                     <select
-                      className="zombie-input"
                       defaultValue=""
-                      style={{ padding: "10px 12px", minWidth: 260 }}
                       onChange={(e) => {
                         const code = e.target.value;
                         if (!code) return;
-                        void addAssignment(p.id, code, "member");
+                        addAssignment(p.id, code, "member");
                         e.currentTarget.value = "";
                       }}
                     >
                       <option value="">Add alliance…</option>
-                      {alliances.filter((a) => a.enabled !== false).map((a) => (
-                        <option key={String(a.code)} value={String(a.code)}>
-                          {String(a.code)} — {String(a.name || a.code)}
+                      {alliances.filter((a) => a.enabled).map((a) => (
+                        <option key={a.code} value={a.code}>
+                          {a.code} — {a.name}
                         </option>
                       ))}
                     </select>
