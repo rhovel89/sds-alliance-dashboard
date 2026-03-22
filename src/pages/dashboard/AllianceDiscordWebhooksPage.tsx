@@ -15,6 +15,10 @@ type Row = {
 
 type DefaultRow = { alliance_code: string; kind: string; webhook_id: string | null };
 
+function getAllianceCodeFromParams(params: Record<string, string | undefined>) {
+  return (params.code || params.allianceCode || params.alliance_id || params.tag || (Object.values(params)[0] ?? "") || "").toString();
+}
+
 function s(v: any) { return v === null || v === undefined ? "" : String(v); }
 function maskUrl(u: string) {
   const x = s(u);
@@ -38,7 +42,7 @@ const KINDS = [
 export default function AllianceDiscordWebhooksPage() {
   const nav = useNavigate();
   const params = useParams();
-  const allianceCode = s((params as any)?.alliance_id || "").trim();
+  const allianceCode = useMemo(() => getAllianceCodeFromParams(params as any).toUpperCase().trim(), [params]);
 
   const cc = useMemo(() => getCommandCenterModules(), []);
   const modules = useMemo(() => cc.map(({ key, label, hint }) => ({ key, label, hint })), [cc]);
@@ -332,6 +336,8 @@ export default function AllianceDiscordWebhooksPage() {
     </CommandCenterShell>
   );
 }
+
+
 
 
 

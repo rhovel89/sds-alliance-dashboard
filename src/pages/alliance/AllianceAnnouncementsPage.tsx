@@ -138,7 +138,7 @@ export default function AllianceAnnouncementsPage() {
         p_state_code: "789",
         p_alliance_code: String(allianceCode || "").toUpperCase(),
         p_kind: "announcements",
-        p_channel_id: String(discordChannelId || "").trim() || "default:announcements",
+        p_channel_id: "default:announcements",
         p_message: msg,
       } as any);
 
@@ -188,7 +188,7 @@ export default function AllianceAnnouncementsPage() {
           p_state_code: "789",
           p_alliance_code: String(allianceCode || "").toUpperCase(),
           p_kind: "announcements",
-          p_channel_id: String(discordChannelId || "").trim(),
+          p_channel_id: "default:announcements",
           p_message: msg,
         } as any);
 
@@ -214,9 +214,6 @@ export default function AllianceAnnouncementsPage() {
 
   async function queueSendExistingAnnouncement(a: any) {
     try {
-      const ch = String(
-discordChannelId
- || "").trim();
       const t = String(a?.title || "").trim();
       const b = String(a?.body || "").trim();
       const msg =
@@ -229,7 +226,7 @@ discordChannelId
         p_state_code: "789",
         p_alliance_code: String(allianceCode || "").toUpperCase(),
         p_kind: "announcements",
-        p_channel_id: ch || "default:announcements",
+        p_channel_id: "default:announcements",
         p_message: msg,
       } as any);
 
@@ -261,13 +258,8 @@ discordChannelId
         <h2 style={{ margin: 0 }}>📣 Announcements</h2>
         <a href={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ textDecoration: "none" }}>← Back</a>
       </div>
-      <div style={{ marginTop: 12 }}>
-        <details>
-          <summary style={{ cursor: "pointer", fontWeight: 900 }}>⚙️ Discord Channels (R5/R4)</summary>
-          <div style={{ marginTop: 10 }}>
-            <AllianceDiscordChannelsManagerPanel allianceCode={allianceCode} />
-          </div>
-        </details>
+            <div style={{ marginTop: 12, opacity: 0.8, fontSize: 12 }}>
+        Discord delivery uses the alliance default announcements webhook.
       </div>
 
       {canManage ? (
@@ -315,7 +307,7 @@ discordChannelId
                   p_state_code: "789",
                   p_alliance_code: String(allianceCode || "").toUpperCase(),
                   p_kind: "announcements",
-                  p_channel_id: String(discordChannelId || "").trim() || "default:announcements",
+                  p_channel_id: "default:announcements",
                   p_message: msg,
                 } as any);
 
@@ -386,6 +378,7 @@ discordChannelId
     </div>
   );
 }
+
 
 
 
