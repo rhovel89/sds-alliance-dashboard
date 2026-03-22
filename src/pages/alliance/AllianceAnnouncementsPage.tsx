@@ -89,6 +89,84 @@ function buildRoleMentionTokens(keys: string[]) {
   ).map((k) => `{{role:${k}}}`);
 }
 
+function normalizeDiscordRoleToken(v: any): string {
+  return String(v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function extractDiscordRoleIdFromRow(row: any): string {
+  const candidates = [
+    row?.discord_role_id,
+    row?.role_id,
+    row?.discord_id,
+    row?.mention_id,
+    row?.target_id,
+    row?.snowflake,
+  ];
+
+  for (const v of candidates) {
+    const s = String(v ?? "").trim();
+    if (/^\d{5,}$/.test(s)) return s;
+  }
+
+  return "";
+}
+
+async function resolveDiscordRoleMentionsEdgeSafe(input: string, allianceCode: string): Promise<string> {
+  const source = String(input ?? "");
+  if (!/\{\{role:/i.test(source)) return source;
+
+  const lut = new Map<string, string>();
+
+  const addRows = (rows: any[] | null | undefined) => {
+    for (const row of rows ?? []) {
+      const id = extractDiscordRoleIdFromRow(row);
+      if (!id) continue;
+
+      const keys = [
+        row?.role_key,
+        row?.role_name,
+        row?.display_name,
+        row?.name,
+        row?.label,
+        row?.title,
+      ];
+
+      for (const k of keys) {
+        const key = normalizeDiscordRoleToken(k);
+        if (key && !lut.has(key)) lut.set(key, id);
+      }
+    }
+  };
+
+  try {
+    const a = await supabase
+      .from("alliance_discord_role_mentions")
+      .select("*")
+      .eq("alliance_code", String(allianceCode ?? "").toUpperCase());
+    if (!a.error) addRows(a.data as any[]);
+  } catch {}
+
+  try {
+    const s = await supabase
+      .from("state_discord_role_mentions")
+      .select("*")
+      .eq("state_code", "789");
+    if (!s.error) addRows(s.data as any[]);
+  } catch {}
+
+  try {
+    const g = await supabase
+      .from("discord_role_mentions")
+      .select("*");
+    if (!g.error) addRows(g.data as any[]);
+  } catch {}
+
+  return source.replace(/\{\{role:\s*([^}]+)\}\}/gi, (full, rawKey) => {
+    const id = lut.get(normalizeDiscordRoleToken(rawKey));
+    return id ? `<@&${id}>` : full;
+  });
+}
+
 export default function AllianceAnnouncementsPage() {
   const params = useParams();
   const allianceCode = useMemo(() => upper(getAllianceCodeFromParams(params as any)), [params]);
@@ -750,6 +828,7 @@ const load = async () => {
     </div>
   );
 }
+
 
 
 
