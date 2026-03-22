@@ -160,26 +160,57 @@ export default function AllianceAnnouncementsPage() {
   }, [allianceCode]);
 
   const create = async () => {
-    if (!title.trim()) return;
+    const t = title.trim();
+    if (!t) return;
+
+    const b = body.trim();
+    let inserted = false;
+
     setSaving(true);
     try {
       const { error } = await supabase.from("alliance_announcements").insert({
         alliance_code: allianceCode,
-        title: title.trim(),
-        body: body.trim() || null,
+        title: t,
+        body: b || null,
         pinned,
       } as any);
       if (error) throw error;
-      setTitle(""); setBody(""); setPinned(false);
+      inserted = true;
+
+      if (autoSend) {
+        const msg =
+          ("📣 **" + String(allianceCode || "").toUpperCase() + " Announcement**`n") +
+          ("**" + t.slice(0, 180) + "**") +
+          (b ? ("`n" + b.slice(0, 1500)) : "") +
+          ("`nView: https://state789.site/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
+
+        const q = await supabase.rpc("queue_discord_send" as any, {
+          p_state_code: "789",
+          p_alliance_code: String(allianceCode || "").toUpperCase(),
+          p_kind: "announcements",
+          p_channel_id: String(discordChannelId || "").trim(),
+          p_message: msg,
+        } as any);
+
+        if (q.error) throw q.error;
+      }
+
+      setTitle("");
+      setBody("");
+      setPinned(false);
       await load();
+      alert(autoSend ? "Posted + queued to Discord ✅" : "Posted ✅");
     } catch (e) {
       console.error(e);
-      alert("Create failed (permissions or DB).");
+      if (inserted && autoSend) {
+        alert("Announcement posted, but Discord queue failed.");
+      } else {
+        alert(autoSend ? "Post+Send failed (DB/RLS/queue)." : "Create failed (permissions or DB).");
+      }
     } finally {
       setSaving(false);
     }
   };
-
 
   async function queueSendExistingAnnouncement(a: any) {
     try {
@@ -197,7 +228,7 @@ discordChannelId
       const q = await supabase.rpc("queue_discord_send" as any, {
         p_state_code: "789",
         p_alliance_code: String(allianceCode || "").toUpperCase(),
-        p_kind: "alliance_announcement",
+        p_kind: "announcements",
         p_channel_id: ch,
         p_message: msg,
       } as any);
@@ -266,7 +297,7 @@ discordChannelId
               onChange={setDiscordChannelId}
             />
           </div><button disabled={saving || !title.trim()} onClick={create} style={{ padding: "10px 12px", borderRadius: 10 }}>
-            {saving ? "Posting…" : "Post"}
+            {saving ? (autoSend ? "Posting+Sending…" : "Posting…") : (autoSend ? "Post + Send" : "Post")}
           </button>
           <button
             disabled={saving || !title.trim()}
@@ -314,7 +345,7 @@ discordChannelId
             }}
             style={{ padding: "10px 12px", borderRadius: 10, marginLeft: 8 }}
           >
-            {saving ? "Posting+Sending…" : "Post"}
+            {saving ? "Posting+Sending…" : "Post + Send Now"}
           </button>
         </div>
       ) : null}
@@ -367,6 +398,7 @@ discordChannelId
     </div>
   );
 }
+
 
 
 
