@@ -113,7 +113,57 @@ export default function AllianceAnnouncementsPage() {
     [selectedMentionKeys]
   );
 
-  const load = async () => {
+  
+  const resolveDiscordRoleMentions = (input: string) => {
+    try {
+      const raw = window.localStorage.getItem("sad_discord_role_map_v1");
+      const parsed = raw ? JSON.parse(raw) : null;
+
+      const globalMap =
+        parsed && parsed.global && typeof parsed.global === "object"
+          ? parsed.global
+          : {};
+
+      const allianceMap =
+        parsed &&
+        parsed.alliances &&
+        parsed.alliances[allianceCode] &&
+        typeof parsed.alliances[allianceCode] === "object"
+          ? parsed.alliances[allianceCode]
+          : {};
+
+      const lut = new Map<string, string>();
+
+      const addEntries = (obj: Record<string, any>) => {
+        Object.entries(obj || {}).forEach(([k, v]) => {
+          const key = String(k || "").trim().toLowerCase();
+          const id = String(v || "").trim();
+          if (key && id) lut.set(key, id);
+        });
+      };
+
+      addEntries(globalMap);
+      addEntries(allianceMap);
+
+      let out = String(input || "");
+
+      out = out.replace(/\{\{\s*role\s*:\s*([^}]+?)\s*\}\}/gi, (full, roleKey) => {
+        const id = lut.get(String(roleKey || "").trim().toLowerCase());
+        return id ? `<@&${id}>` : full;
+      });
+
+      out = out.replace(/\{\{\s*([^}:][^}]*)\s*\}\}/g, (full, roleKey) => {
+        const id = lut.get(String(roleKey || "").trim().toLowerCase());
+        return id ? `<@&${id}>` : full;
+      });
+
+      return out;
+    } catch (e) {
+      console.error("resolveDiscordRoleMentions failed", e);
+      return String(input || "");
+    }
+  };
+const load = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -578,4 +628,6 @@ export default function AllianceAnnouncementsPage() {
     </div>
   );
 }
+
+
 
