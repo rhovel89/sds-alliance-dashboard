@@ -278,24 +278,12 @@ discordChannelId
           <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
             <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
             Pin to top
-          </label>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9 }}>Discord channel</div>
-          <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          </label>          <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
             <input type="checkbox" checked={autoSend} onChange={(e) => setAutoSend(e.target.checked)} />
             Auto-send to Discord
           </label>
           <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 10 }}>
-            Uses the alliance default announcements webhook.
-          </div>
-            <DiscordChannelSelect
-              scope="alliance"
-              kind="announcements"
-              stateCode="789"
-              allianceCode={allianceCode}
-              value={discordChannelId}
-              onChange={setDiscordChannelId}
-            />
+            Uses the alliance default announcements webhook configured above.
           </div><button disabled={saving || !title.trim()} onClick={create} style={{ padding: "10px 12px", borderRadius: 10 }}>
             {saving ? (autoSend ? "Posting+Sending…" : "Posting…") : (autoSend ? "Post + Send" : "Post")}
           </button>
@@ -398,6 +386,7 @@ discordChannelId
     </div>
   );
 }
+
 
 
 
