@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import PlayerProfileAndHqsPanel from "../../components/player/PlayerProfileAndHqsPanel";
-import DiscordChannelSelect from "../../components/discord/DiscordChannelSelect";
 import AllianceDiscordChannelsManagerPanel from "../../components/alliance/AllianceDiscordChannelsManagerPanel";
 
 type Announcement = {
@@ -12,6 +11,12 @@ type Announcement = {
   body?: string | null;
   pinned?: boolean | null;
   created_at?: string | null;
+};
+
+type DiscordWebhookRow = {
+  id: string;
+  label: string | null;
+  active: boolean | null;
 };
 
 function getAllianceCodeFromParams(params: Record<string, string | undefined>) {
@@ -70,7 +75,8 @@ export default function AllianceAnnouncementsPage() {
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [discordChannelId, setDiscordChannelId] = useState<string>("");
+  const [discordWebhookId, setDiscordWebhookId] = useState<string>("");
+  const [discordWebhookRows, setDiscordWebhookRows] = useState<DiscordWebhookRow[]>([]);
   const [autoSend, setAutoSend] = useState<boolean>(true);
 
   const load = async () => {
@@ -93,6 +99,22 @@ export default function AllianceAnnouncementsPage() {
     }
   };
 
+  const loadDiscordWebhooks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("alliance_discord_webhooks")
+        .select("id, label, active")
+        .eq("alliance_code", allianceCode)
+        .neq("active", false)
+        .order("label", { ascending: true });
+
+      if (error) throw error;
+      setDiscordWebhookRows((data as any) ?? []);
+    } catch (e) {
+      console.error(e);
+      setDiscordWebhookRows([]);
+    }
+  };
   const loadPerms = async () => {
     try {
       const { data: u } = await supabase.auth.getUser();
@@ -109,6 +131,7 @@ export default function AllianceAnnouncementsPage() {
     if (!allianceCode) return;
     load();
     loadPerms();
+    loadDiscordWebhooks();
     const ch = supabase
       .channel("ann_page_" + allianceCode)
       .on("postgres_changes", { event: "*", schema: "public", table: "alliance_announcements", filter: "alliance_code=eq." + allianceCode }, () => load())
@@ -137,7 +160,7 @@ export default function AllianceAnnouncementsPage() {
       const q = await supabase.rpc("queue_discord_send" as any, {
         p_kind: "discord_webhook",
         p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
-        p_channel_id: "default:announcements",
+        p_channel_id: String(discordWebhookId || "").trim() || "default:announcements",
         p_content: msg,
         p_meta: {
           state_code: "789",
@@ -192,7 +215,7 @@ export default function AllianceAnnouncementsPage() {
         const q = await supabase.rpc("queue_discord_send" as any, {
         p_kind: "discord_webhook",
         p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
-        p_channel_id: "default:announcements",
+        p_channel_id: String(discordWebhookId || "").trim() || "default:announcements",
         p_content: msg,
         p_meta: {
           state_code: "789",
@@ -235,7 +258,7 @@ export default function AllianceAnnouncementsPage() {
       const q = await supabase.rpc("queue_discord_send" as any, {
         p_kind: "discord_webhook",
         p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
-        p_channel_id: "default:announcements",
+        p_channel_id: String(discordWebhookId || "").trim() || "default:announcements",
         p_content: msg,
         p_meta: {
           state_code: "789",
@@ -321,7 +344,7 @@ export default function AllianceAnnouncementsPage() {
                 const q = await supabase.rpc("queue_discord_send" as any, {
         p_kind: "discord_webhook",
         p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
-        p_channel_id: "default:announcements",
+        p_channel_id: String(discordWebhookId || "").trim() || "default:announcements",
         p_content: msg,
         p_meta: {
           state_code: "789",
@@ -398,6 +421,7 @@ export default function AllianceAnnouncementsPage() {
     </div>
   );
 }
+
 
 
 
