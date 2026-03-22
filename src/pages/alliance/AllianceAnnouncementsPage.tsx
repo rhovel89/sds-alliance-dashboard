@@ -20,7 +20,21 @@ type DiscordWebhookRow = {
 };
 
 function getAllianceCodeFromParams(params: Record<string, string | undefined>) {
-return (params.code || params.allianceCode || params.tag || (Object.values(params)[0] ?? "") || "").toString();
+  return (params.code || params.allianceCode || params.tag || (Object.values(params)[0] ?? "") || "").toString();
+}
+
+function upper(v: string) {
+  return String(v || "").toUpperCase().trim();
+}
+
+function buildRoleMentionTokens(input: string) {
+  return String(input || "")
+    .split(/[\r\n,]+/)
+    .map((s) => s.trim())
+    .map((s) => s.replace(/^@+/, ""))
+    .filter(Boolean)
+    .map((s) => `{{role:${s}}}`)
+    .join(" ");
 }
 
 async function isAppAdmin(userId: string) {
@@ -55,7 +69,7 @@ async function getAllianceRole(userId: string, allianceCode: string): Promise<st
       .from("player_alliances")
       .select("role")
       .eq("player_id", pid)
-      .eq("alliance_code", allianceCode.toUpperCase())
+      .eq("alliance_code", upper(allianceCode))
       .maybeSingle();
     return (data?.role ?? null) as any;
   } catch {
@@ -65,7 +79,7 @@ async function getAllianceRole(userId: string, allianceCode: string): Promise<st
 
 export default function AllianceAnnouncementsPage() {
   const params = useParams();
-  const allianceCode = useMemo(() => getAllianceCodeFromParams(params as any).toUpperCase().trim(), [params]);
+  const allianceCode = useMemo(() => upper(getAllianceCodeFromParams(params as any)), [params]);
 
   const [items, setItems] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,9 +89,12 @@ export default function AllianceAnnouncementsPage() {
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(false);
   const [saving, setSaving] = useState(false);
+
   const [discordWebhookId, setDiscordWebhookId] = useState<string>("");
   const [discordWebhookRows, setDiscordWebhookRows] = useState<DiscordWebhookRow[]>([]);
-  const [autoSend, setAutoSend] = useState<boolean>(true);
+  const [discordMentionRoles, setDiscordMentionRoles] = useState<string>("");
+
+  const mentionPreview = useMemo(() => buildRoleMentionTokens(discordMentionRoles), [discordMentionRoles]);
 
   const load = async () => {
     setLoading(true);
@@ -99,6 +116,26 @@ export default function AllianceAnnouncementsPage() {
     }
   };
 
+  const loadPerms = async () => {
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      if (!uid) {
+        setCanManage(false);
+        return;
+      }
+      const admin = await isAppAdmin(uid);
+      if (admin) {
+        setCanManage(true);
+        return;
+      }
+      const role = (await getAllianceRole(uid, allianceCode))?.toLowerCase() ?? "";
+      setCanManage(role === "owner" || role === "r5" || role === "r4");
+    } catch {
+      setCanManage(false);
+    }
+  };
+
   const loadDiscordWebhooks = async () => {
     try {
       const { data, error } = await supabase
@@ -115,164 +152,122 @@ export default function AllianceAnnouncementsPage() {
       setDiscordWebhookRows([]);
     }
   };
-  const loadPerms = async () => {
-    try {
-      const { data: u } = await supabase.auth.getUser();
-      const uid = u?.user?.id;
-      if (!uid) { setCanManage(false); return; }
-      const admin = await isAppAdmin(uid);
-      if (admin) { setCanManage(true); return; }
-      const role = (await getAllianceRole(uid, allianceCode))?.toLowerCase() ?? "";
-      setCanManage(role === "owner" || role === "r5" || role === "r4");
-    } catch { setCanManage(false); }
-  };
 
   useEffect(() => {
     if (!allianceCode) return;
-    load();
-    loadPerms();
-    loadDiscordWebhooks();
+
+    void load();
+    void loadPerms();
+    void loadDiscordWebhooks();
+
     const ch = supabase
       .channel("ann_page_" + allianceCode)
-      .on("postgres_changes", { event: "*", schema: "public", table: "alliance_announcements", filter: "alliance_code=eq." + allianceCode }, () => load())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "alliance_announcements", filter: "alliance_code=eq." + allianceCode },
+        () => load()
+      )
       .subscribe();
-  const createAndSend = async () => {
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allianceCode]);
+
+  function buildDiscordMessage(titleText: string, bodyText: string) {
+    const roleLine = buildRoleMentionTokens(discordMentionRoles);
+    const t = String(titleText || "").trim();
+    const b = String(bodyText || "").trim();
+    const link = `${window.location.origin}/dashboard/${encodeURIComponent(upper(allianceCode))}/announcements`;
+
+    return [
+      roleLine || null,
+      `📣 **${upper(allianceCode)} Announcement**`,
+      t ? `**${t.slice(0, 180)}**` : null,
+      b ? b.slice(0, 1500) : null,
+      `View: ${link}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  async function queueAnnouncementToDiscord(titleText: string, bodyText: string) {
+    const msg = buildDiscordMessage(titleText, bodyText);
+
+    const q = await supabase.rpc("queue_discord_send" as any, {
+      p_state_code: "789",
+      p_alliance_code: upper(allianceCode),
+      p_kind: "announcements",
+      p_channel_id: String(discordWebhookId || "").trim() || "default:announcements",
+      p_message: msg,
+    } as any);
+
+    if ((q as any)?.error) throw (q as any).error;
+  }
+
+  async function createOnly() {
     if (!title.trim()) return;
+
     setSaving(true);
     try {
       const { error } = await supabase.from("alliance_announcements").insert({
-        alliance_code: allianceCode,
+        alliance_code: upper(allianceCode),
         title: title.trim(),
         body: body.trim() || null,
         pinned,
       } as any);
+
       if (error) throw error;
-
-      const t = title.trim();
-      const b = body.trim();
-
-      const msg =
-        ("📣 **" + String(allianceCode || "").toUpperCase() + " Announcement**\n") +
-        ("**" + t.slice(0, 180) + "**") +
-        (b ? ("\n" + b.slice(0, 1500)) : "") +
-        ("\nView: https://state789.site/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
-
-      const q = await supabase.rpc("queue_discord_send" as any, {
-        p_kind: "discord_webhook",
-        p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
-        p_channel_id: String(discordWebhookId || "").trim() || "default:announcements",
-        p_content: msg,
-        p_meta: {
-          state_code: "789",
-          alliance_code: String(allianceCode || "").toUpperCase(),
-          kind: "announcements",
-          source: "AllianceAnnouncementsPage",
-        },
-      } as any);
-
-      if (q.error) throw q.error;
-
-      setTitle(""); setBody(""); setPinned(false);
-      await load();
-      alert("Posted + queued to Discord ✅");
-    } catch (e) {
-      console.error(e);
-      alert("Post+Send failed (DB/RLS/queue).");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-    return () => { supabase.removeChannel(ch); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allianceCode]);
-
-  const create = async () => {
-    const t = title.trim();
-    if (!t) return;
-
-    const b = body.trim();
-    let inserted = false;
-
-    setSaving(true);
-    try {
-      const { error } = await supabase.from("alliance_announcements").insert({
-        alliance_code: allianceCode,
-        title: t,
-        body: b || null,
-        pinned,
-      } as any);
-      if (error) throw error;
-      inserted = true;
-
-      if (autoSend) {
-        const msg =
-          ("📣 **" + String(allianceCode || "").toUpperCase() + " Announcement**`n") +
-          ("**" + t.slice(0, 180) + "**") +
-          (b ? ("`n" + b.slice(0, 1500)) : "") +
-          ("`nView: https://state789.site/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
-
-        const q = await supabase.rpc("queue_discord_send" as any, {
-        p_kind: "discord_webhook",
-        p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
-        p_channel_id: String(discordWebhookId || "").trim() || "default:announcements",
-        p_content: msg,
-        p_meta: {
-          state_code: "789",
-          alliance_code: String(allianceCode || "").toUpperCase(),
-          kind: "announcements",
-          source: "AllianceAnnouncementsPage",
-        },
-      } as any);
-
-        if (q.error) throw q.error;
-      }
 
       setTitle("");
       setBody("");
       setPinned(false);
       await load();
-      alert(autoSend ? "Posted + queued to Discord ✅" : "Posted ✅");
     } catch (e) {
       console.error(e);
-      if (inserted && autoSend) {
-        alert("Announcement posted, but Discord queue failed.");
-      } else {
-        alert(autoSend ? "Post+Send failed (DB/RLS/queue)." : "Create failed (permissions or DB).");
-      }
+      alert("Create failed (permissions or DB).");
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  async function queueSendExistingAnnouncement(a: any) {
+  async function createAndSend() {
+    if (!title.trim()) return;
+
+    setSaving(true);
     try {
-      const t = String(a?.title || "").trim();
-      const b = String(a?.body || "").trim();
-      const msg =
-        ("📣 **" + String(allianceCode || "").toUpperCase() + " Announcement**\n") +
-        (t ? ("**" + t.slice(0, 180) + "**\n") : "") +
-        (b ? b : "(no body)") +
-        ("\n\n" + window.location.origin + "/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
+      const t = title.trim();
+      const b = body.trim();
 
-      const q = await supabase.rpc("queue_discord_send" as any, {
-        p_kind: "discord_webhook",
-        p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
-        p_channel_id: String(discordWebhookId || "").trim() || "default:announcements",
-        p_content: msg,
-        p_meta: {
-          state_code: "789",
-          alliance_code: String(allianceCode || "").toUpperCase(),
-          kind: "announcements",
-          source: "AllianceAnnouncementsPage",
-        },
+      const { error } = await supabase.from("alliance_announcements").insert({
+        alliance_code: upper(allianceCode),
+        title: t,
+        body: b || null,
+        pinned,
       } as any);
 
-      if ((q as any)?.error) {
-        alert("Discord queue failed: " + (q as any).error.message);
-      } else {
-        alert("Queued to Discord ✅");
-      }
+      if (error) throw error;
+
+      await queueAnnouncementToDiscord(t, b);
+
+      setTitle("");
+      setBody("");
+      setPinned(false);
+      await load();
+      alert("Posted + queued to Discord ✅");
+    } catch (e: any) {
+      console.error(e);
+      alert("Post+Send failed: " + String(e?.message || e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function queueSendExistingAnnouncement(a: Announcement) {
+    try {
+      await queueAnnouncementToDiscord(String(a?.title || ""), String(a?.body || ""));
+      alert("Queued to Discord ✅");
     } catch (e: any) {
       alert("Discord queue failed: " + String(e?.message || e));
     }
@@ -292,84 +287,138 @@ export default function AllianceAnnouncementsPage() {
 
   return (
     <div style={{ padding: 18, maxWidth: 1100, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <h2 style={{ margin: 0 }}>📣 Announcements</h2>
-        <a href={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ textDecoration: "none" }}>← Back</a>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <a href={`/dashboard/${encodeURIComponent(allianceCode)}/discord-webhooks`} style={{ textDecoration: "none" }}>
+            Manage Discord destinations
+          </a>
+          <a href={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ textDecoration: "none" }}>
+            ← Back
+          </a>
+        </div>
       </div>
-            <div style={{ marginTop: 12, opacity: 0.8, fontSize: 12 }}>
-        Discord delivery uses the alliance default announcements webhook.
+
+      <div style={{ marginTop: 12 }}>
+        <details>
+          <summary style={{ cursor: "pointer", fontWeight: 900 }}>⚙️ Discord role/channel mappings (mentions)</summary>
+          <div style={{ marginTop: 10 }}>
+            <AllianceDiscordChannelsManagerPanel allianceCode={allianceCode} />
+          </div>
+        </details>
+
+        <details style={{ marginTop: 10 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 900 }}>🪝 Discord send destinations</summary>
+          <div style={{ marginTop: 10, opacity: 0.88 }}>
+            Sending now goes through saved Discord webhooks. Add one webhook per Discord channel you want to post into.
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <a href={`/dashboard/${encodeURIComponent(allianceCode)}/discord-webhooks`} style={{ textDecoration: "none" }}>
+              Open Discord Webhooks / Destinations
+            </a>
+          </div>
+        </details>
       </div>
 
       {canManage ? (
         <div style={{ marginTop: 14, border: "1px solid rgba(255,255,255,0.18)", borderRadius: 14, padding: 14 }}>
           <div style={{ fontWeight: 900, marginBottom: 8 }}>New announcement</div>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" style={{ width: "100%", padding: 10, borderRadius: 10, marginBottom: 8 }} />
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Body (optional)" rows={4} style={{ width: "100%", padding: 10, borderRadius: 10, marginBottom: 8 }} />
+
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Title"
+            style={{ width: "100%", padding: 10, borderRadius: 10, marginBottom: 8 }}
+          />
+
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Body (optional)"
+            rows={4}
+            style={{ width: "100%", padding: 10, borderRadius: 10, marginBottom: 8 }}
+          />
+
           <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
             <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
             Pin to top
-          </label>          <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-            <input type="checkbox" checked={autoSend} onChange={(e) => setAutoSend(e.target.checked)} />
-            Auto-send to Discord
           </label>
-          <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 10 }}>
-            Uses the alliance default announcements webhook configured above.
-          </div><button disabled={saving || !title.trim()} onClick={create} style={{ padding: "10px 12px", borderRadius: 10 }}>
-            {saving ? (autoSend ? "Posting+Sending…" : "Posting…") : (autoSend ? "Post + Send" : "Post")}
-          </button>
-          <button
-            disabled={saving || !title.trim()}
-            onClick={async () => {
-              const t = title.trim();
-              if (!t) return;
 
-              setSaving(true);
-              try {
-                const { error } = await supabase.from("alliance_announcements").insert({
-                  alliance_code: allianceCode,
-                  title: t,
-                  body: body.trim() || null,
-                  pinned,
-                } as any);
-                if (error) throw error;
-
-                const b = body.trim();
-
-                const msg =
-                  ("📣 **" + String(allianceCode || "").toUpperCase() + " Announcement**\n") +
-                  ("**" + t.slice(0, 180) + "**") +
-                  (b ? ("\n" + b.slice(0, 1500)) : "") +
-                  ("\nView: https://state789.site/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
-
-                const q = await supabase.rpc("queue_discord_send" as any, {
-        p_kind: "discord_webhook",
-        p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
-        p_channel_id: String(discordWebhookId || "").trim() || "default:announcements",
-        p_content: msg,
-        p_meta: {
-          state_code: "789",
-          alliance_code: String(allianceCode || "").toUpperCase(),
-          kind: "announcements",
-          source: "AllianceAnnouncementsPage",
-        },
-      } as any);
-
-                if (q.error) throw q.error;
-
-                setTitle(""); setBody(""); setPinned(false);
-                await load();
-                alert("Posted + queued to Discord ✅");
-              } catch (e) {
-                console.error(e);
-                alert("Post+Send failed (DB/RLS/queue).");
-              } finally {
-                setSaving(false);
-              }
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: 12,
+              alignItems: "end",
+              marginBottom: 12,
             }}
-            style={{ padding: "10px 12px", borderRadius: 10, marginLeft: 8 }}
           >
-            {saving ? "Posting+Sending…" : "Post + Send Now"}
-          </button>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9, marginBottom: 6 }}>Discord destination</div>
+              <select
+                value={discordWebhookId}
+                onChange={(e) => setDiscordWebhookId(e.target.value)}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 10 }}
+              >
+                <option value="">Default announcements webhook</option>
+                {discordWebhookRows.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {String(r.label || r.id).slice(0, 80)}
+                  </option>
+                ))}
+              </select>
+              <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+                Choose a saved destination, or leave on Default.
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <a href={`/dashboard/${encodeURIComponent(allianceCode)}/discord-webhooks`} style={{ fontSize: 12, textDecoration: "none" }}>
+                  Add another Discord channel destination
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9, marginBottom: 6 }}>Mention roles (optional)</div>
+              <input
+                value={discordMentionRoles}
+                onChange={(e) => setDiscordMentionRoles(e.target.value)}
+                placeholder="Leadership, R4, R5"
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 10 }}
+              />
+              <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
+                Comma separated. Example: Leadership, R4
+              </div>
+              {mentionPreview ? (
+                <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6, wordBreak: "break-word" }}>
+                  Will prepend: {mentionPreview}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          {!discordWebhookRows.length ? (
+            <div style={{ opacity: 0.78, fontSize: 12, marginBottom: 12 }}>
+              No saved Discord destinations found yet. Add one in Discord Webhooks / Destinations, then it will appear in the dropdown here.
+            </div>
+          ) : null}
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              disabled={saving || !title.trim()}
+              onClick={createOnly}
+              style={{ padding: "10px 12px", borderRadius: 10 }}
+            >
+              {saving ? "Posting…" : "Post Only"}
+            </button>
+
+            <button
+              disabled={saving || !title.trim()}
+              onClick={createAndSend}
+              style={{ padding: "10px 12px", borderRadius: 10 }}
+            >
+              {saving ? "Posting+Sending…" : "Post + Send to Discord"}
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -382,11 +431,19 @@ export default function AllianceAnnouncementsPage() {
           <div style={{ display: "grid", gap: 10 }}>
             {items.map((a) => (
               <div key={a.id} style={{ border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
                   <div>
-                    <div style={{ fontWeight: 900 }}>{a.pinned ? "📌 " : ""}{a.title}</div>
-                    {a.created_at ? <div style={{ opacity: 0.6, marginTop: 4, fontSize: 12 }}>{new Date(a.created_at).toLocaleString()}</div> : null}
+                    <div style={{ fontWeight: 900 }}>
+                      {a.pinned ? "📌 " : ""}
+                      {a.title}
+                    </div>
+                    {a.created_at ? (
+                      <div style={{ opacity: 0.6, marginTop: 4, fontSize: 12 }}>
+                        {new Date(a.created_at).toLocaleString()}
+                      </div>
+                    ) : null}
                   </div>
+
                   {canManage ? (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                       <button
@@ -405,8 +462,8 @@ export default function AllianceAnnouncementsPage() {
                       </button>
                     </div>
                   ) : null}
-
                 </div>
+
                 {a.body ? <div style={{ marginTop: 10, whiteSpace: "pre-wrap", opacity: 0.9 }}>{a.body}</div> : null}
               </div>
             ))}
@@ -414,23 +471,7 @@ export default function AllianceAnnouncementsPage() {
         )}
       </div>
 
-      {/* --- Player Profile & HQs --- */}
       <PlayerProfileAndHqsPanel />
-      {/* --- /Player Profile & HQs --- */}
-
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
