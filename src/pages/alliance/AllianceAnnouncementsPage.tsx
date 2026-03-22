@@ -19,6 +19,12 @@ type DiscordWebhookRow = {
   active: boolean | null;
 };
 
+type MentionOption = {
+  key: string;
+  label: string;
+  source: string;
+};
+
 function getAllianceCodeFromParams(params: Record<string, string | undefined>) {
   return (params.code || params.allianceCode || params.tag || (Object.values(params)[0] ?? "") || "").toString();
 }
@@ -27,14 +33,12 @@ function upper(v: string) {
   return String(v || "").toUpperCase().trim();
 }
 
-function buildRoleMentionTokens(input: string) {
-  return String(input || "")
-    .split(/[\r\n,]+/)
-    .map((s) => s.trim())
-    .map((s) => s.replace(/^@+/, ""))
-    .filter(Boolean)
-    .map((s) => `{{role:${s}}}`)
-    .join(" ");
+function uniq<T>(arr: T[]) {
+  return Array.from(new Set(arr));
+}
+
+function normalizeKey(v: any) {
+  return String(v || "").trim();
 }
 
 async function isAppAdmin(userId: string) {
@@ -77,6 +81,14 @@ async function getAllianceRole(userId: string, allianceCode: string): Promise<st
   }
 }
 
+function buildRoleMentionTokens(keys: string[]) {
+  return uniq(
+    (keys || [])
+      .map((k) => normalizeKey(k))
+      .filter(Boolean)
+  ).map((k) => `{{role:${k}}}`);
+}
+
 export default function AllianceAnnouncementsPage() {
   const params = useParams();
   const allianceCode = useMemo(() => upper(getAllianceCodeFromParams(params as any)), [params]);
@@ -92,9 +104,14 @@ export default function AllianceAnnouncementsPage() {
 
   const [discordWebhookId, setDiscordWebhookId] = useState<string>("");
   const [discordWebhookRows, setDiscordWebhookRows] = useState<DiscordWebhookRow[]>([]);
-  const [discordMentionRoles, setDiscordMentionRoles] = useState<string>("");
 
-  const mentionPreview = useMemo(() => buildRoleMentionTokens(discordMentionRoles), [discordMentionRoles]);
+  const [mentionOptions, setMentionOptions] = useState<MentionOption[]>([]);
+  const [selectedMentionKeys, setSelectedMentionKeys] = useState<string[]>([]);
+
+  const mentionPreview = useMemo(
+    () => buildRoleMentionTokens(selectedMentionKeys).join(" "),
+    [selectedMentionKeys]
+  );
 
   const load = async () => {
     setLoading(true);
@@ -153,12 +170,68 @@ export default function AllianceAnnouncementsPage() {
     }
   };
 
+  const loadMentionOptions = async () => {
+    const out = new Map<string, MentionOption>();
+
+    const tryRows = async (tableName: string, apply: (q: any) => any) => {
+      try {
+        let q = supabase.from(tableName as any).select("*");
+        q = apply(q);
+        const { data, error } = await q;
+        if (error || !Array.isArray(data)) return;
+
+        for (const row of data as any[]) {
+          if (row?.active === false) continue;
+          if (row?.enabled === false) continue;
+
+          const key = normalizeKey(
+            row?.role_key ??
+            row?.role_name ??
+            row?.name ??
+            row?.label ??
+            row?.key
+          );
+
+          const label = normalizeKey(
+            row?.label ??
+            row?.role_name ??
+            row?.name ??
+            row?.role_key ??
+            row?.key
+          );
+
+          if (!key) continue;
+          if (!out.has(key)) {
+            out.set(key, {
+              key,
+              label: label || key,
+              source: tableName,
+            });
+          }
+        }
+      } catch {}
+    };
+
+    await tryRows("alliance_discord_role_mentions", (q) => q.eq("alliance_code", allianceCode));
+    await tryRows("alliance_discord_roles", (q) => q.eq("alliance_code", allianceCode));
+    await tryRows("alliance_discord_defaults", (q) => q.eq("alliance_code", allianceCode));
+    await tryRows("state_discord_role_mentions", (q) => q.eq("state_code", "789"));
+    await tryRows("state_discord_roles", (q) => q.eq("state_code", "789"));
+    await tryRows("state_discord_defaults", (q) => q.eq("state_code", "789"));
+    await tryRows("discord_role_mentions", (q) => q);
+    await tryRows("discord_role_defaults", (q) => q);
+
+    const rows = Array.from(out.values()).sort((a, b) => a.label.localeCompare(b.label));
+    setMentionOptions(rows);
+  };
+
   useEffect(() => {
     if (!allianceCode) return;
 
     void load();
     void loadPerms();
     void loadDiscordWebhooks();
+    void loadMentionOptions();
 
     const ch = supabase
       .channel("ann_page_" + allianceCode)
@@ -175,14 +248,22 @@ export default function AllianceAnnouncementsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allianceCode]);
 
+  function toggleMentionKey(key: string) {
+    const k = normalizeKey(key);
+    if (!k) return;
+    setSelectedMentionKeys((prev) =>
+      prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]
+    );
+  }
+
   function buildDiscordMessage(titleText: string, bodyText: string) {
-    const roleLine = buildRoleMentionTokens(discordMentionRoles);
+    const roleLines = buildRoleMentionTokens(selectedMentionKeys);
     const t = String(titleText || "").trim();
     const b = String(bodyText || "").trim();
     const link = `${window.location.origin}/dashboard/${encodeURIComponent(upper(allianceCode))}/announcements`;
 
     return [
-      roleLine || null,
+      roleLines.length ? roleLines.join(" ") : null,
       `📣 **${upper(allianceCode)} Announcement**`,
       t ? `**${t.slice(0, 180)}**` : null,
       b ? b.slice(0, 1500) : null,
@@ -195,15 +276,20 @@ export default function AllianceAnnouncementsPage() {
   async function queueAnnouncementToDiscord(titleText: string, bodyText: string) {
     const msg = buildDiscordMessage(titleText, bodyText);
 
-    const q = await supabase.rpc("queue_discord_send" as any, {
-      p_state_code: "789",
-      p_alliance_code: upper(allianceCode),
-      p_kind: "announcements",
+    const { error } = await supabase.rpc("queue_discord_send", {
+      p_kind: "discord_webhook",
+      p_target: `alliance:${upper(allianceCode)}`,
       p_channel_id: String(discordWebhookId || "").trim() || "default:announcements",
-      p_message: msg,
+      p_content: msg,
+      p_meta: {
+        alliance_code: upper(allianceCode),
+        kind: "announcements",
+        mention_roles: selectedMentionKeys,
+        route: `/dashboard/${encodeURIComponent(upper(allianceCode))}/announcements`,
+      },
     } as any);
 
-    if ((q as any)?.error) throw (q as any).error;
+    if (error) throw error;
   }
 
   async function createOnly() {
@@ -291,7 +377,10 @@ export default function AllianceAnnouncementsPage() {
         <h2 style={{ margin: 0 }}>📣 Announcements</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <a href={`/dashboard/${encodeURIComponent(allianceCode)}/discord-webhooks`} style={{ textDecoration: "none" }}>
-            Manage Discord destinations
+            Discord destinations
+          </a>
+          <a href="/owner/discord-defaults" style={{ textDecoration: "none" }}>
+            Discord defaults
           </a>
           <a href={`/dashboard/${encodeURIComponent(allianceCode)}`} style={{ textDecoration: "none" }}>
             ← Back
@@ -301,21 +390,9 @@ export default function AllianceAnnouncementsPage() {
 
       <div style={{ marginTop: 12 }}>
         <details>
-          <summary style={{ cursor: "pointer", fontWeight: 900 }}>⚙️ Discord role/channel mappings (mentions)</summary>
+          <summary style={{ cursor: "pointer", fontWeight: 900 }}>⚙️ Discord role/channel mappings</summary>
           <div style={{ marginTop: 10 }}>
             <AllianceDiscordChannelsManagerPanel allianceCode={allianceCode} />
-          </div>
-        </details>
-
-        <details style={{ marginTop: 10 }}>
-          <summary style={{ cursor: "pointer", fontWeight: 900 }}>🪝 Discord send destinations</summary>
-          <div style={{ marginTop: 10, opacity: 0.88 }}>
-            Sending now goes through saved Discord webhooks. Add one webhook per Discord channel you want to post into.
-          </div>
-          <div style={{ marginTop: 10 }}>
-            <a href={`/dashboard/${encodeURIComponent(allianceCode)}/discord-webhooks`} style={{ textDecoration: "none" }}>
-              Open Discord Webhooks / Destinations
-            </a>
           </div>
         </details>
       </div>
@@ -349,7 +426,7 @@ export default function AllianceAnnouncementsPage() {
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
               gap: 12,
-              alignItems: "end",
+              alignItems: "start",
               marginBottom: 12,
             }}
           >
@@ -360,7 +437,7 @@ export default function AllianceAnnouncementsPage() {
                 onChange={(e) => setDiscordWebhookId(e.target.value)}
                 style={{ width: "100%", padding: "10px 12px", borderRadius: 10 }}
               >
-                <option value="">Default announcements webhook</option>
+                <option value="">Default announcements destination</option>
                 {discordWebhookRows.map((r) => (
                   <option key={r.id} value={r.id}>
                     {String(r.label || r.id).slice(0, 80)}
@@ -368,39 +445,61 @@ export default function AllianceAnnouncementsPage() {
                 ))}
               </select>
               <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
-                Choose a saved destination, or leave on Default.
+                Pick a saved Discord webhook destination, or leave it on default.
               </div>
               <div style={{ marginTop: 6 }}>
                 <a href={`/dashboard/${encodeURIComponent(allianceCode)}/discord-webhooks`} style={{ fontSize: 12, textDecoration: "none" }}>
-                  Add another Discord channel destination
+                  Add/edit destinations
                 </a>
               </div>
             </div>
 
             <div>
-              <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9, marginBottom: 6 }}>Mention roles (optional)</div>
-              <input
-                value={discordMentionRoles}
-                onChange={(e) => setDiscordMentionRoles(e.target.value)}
-                placeholder="Leadership, R4, R5"
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 10 }}
-              />
-              <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6 }}>
-                Comma separated. Example: Leadership, R4
-              </div>
+              <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9, marginBottom: 6 }}>Mention roles</div>
+
+              {mentionOptions.length ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: 8,
+                    maxHeight: 210,
+                    overflow: "auto",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 10,
+                    padding: 10,
+                  }}
+                >
+                  {mentionOptions.map((opt) => (
+                    <label key={opt.key} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedMentionKeys.includes(opt.key)}
+                        onChange={() => toggleMentionKey(opt.key)}
+                      />
+                      <span>{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ opacity: 0.75, fontSize: 12 }}>
+                  No mention options loaded yet from Discord defaults.
+                </div>
+              )}
+
               {mentionPreview ? (
-                <div style={{ opacity: 0.75, fontSize: 12, marginTop: 6, wordBreak: "break-word" }}>
+                <div style={{ opacity: 0.75, fontSize: 12, marginTop: 8, wordBreak: "break-word" }}>
                   Will prepend: {mentionPreview}
                 </div>
               ) : null}
+
+              <div style={{ marginTop: 6 }}>
+                <a href="/owner/discord-defaults" style={{ fontSize: 12, textDecoration: "none" }}>
+                  Manage mention defaults
+                </a>
+              </div>
             </div>
           </div>
-
-          {!discordWebhookRows.length ? (
-            <div style={{ opacity: 0.78, fontSize: 12, marginBottom: 12 }}>
-              No saved Discord destinations found yet. Add one in Discord Webhooks / Destinations, then it will appear in the dropdown here.
-            </div>
-          ) : null}
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
