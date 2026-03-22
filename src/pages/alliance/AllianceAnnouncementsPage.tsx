@@ -163,6 +163,90 @@ export default function AllianceAnnouncementsPage() {
       return String(input || "");
     }
   };
+  const extractDiscordRoleId = (row: any): string => {
+    const direct = [
+      row?.discord_role_id,
+      row?.role_id,
+      row?.discord_id,
+      row?.mention_id,
+      row?.target_id,
+      row?.value,
+    ];
+
+    for (const value of direct) {
+      const s = String(value ?? "").trim();
+      if (/^\d{5,}$/.test(s)) return s;
+    }
+
+    const mentionText = String(
+      row?.mention_text ??
+      row?.mention ??
+      row?.value_text ??
+      row?.value ??
+      ""
+    ).trim();
+
+    const match = mentionText.match(/<@&(\d+)>/);
+    return match?.[1] ?? "";
+  };
+
+  const loadDiscordRoleMentionMapFromDb = async () => {
+    const lut = new Map<string, string>();
+
+    const addRow = (row: any) => {
+      const id = extractDiscordRoleId(row);
+      if (!id) return;
+
+      const keys = [
+        row?.role_key,
+        row?.role_name,
+        row?.name,
+        row?.label,
+        row?.key,
+      ];
+
+      for (const raw of keys) {
+        const key = String(raw ?? "").trim().toLowerCase();
+        if (key) lut.set(key, id);
+      }
+    };
+
+    const tryRows = async (table: string, apply: (q: any) => any) => {
+      try {
+        const { data, error } = await apply(supabase.from(table).select("*"));
+        if (!error) (data ?? []).forEach(addRow);
+      } catch {}
+    };
+
+    await tryRows("alliance_discord_role_mentions", (q) => q.eq("alliance_code", allianceCode));
+    await tryRows("state_discord_role_mentions", (q) => q.eq("state_code", "789"));
+    await tryRows("discord_role_mentions", (q) => q);
+
+    return lut;
+  };
+
+  const resolveDiscordRoleMentionsFromDb = async (input: string) => {
+    try {
+      const lut = await loadDiscordRoleMentionMapFromDb();
+      let out = String(input ?? "");
+
+      out = out.replace(/\{\{\s*role\s*:\s*([^}]+?)\s*\}\}/gi, (full, roleKey) => {
+        const id = lut.get(String(roleKey ?? "").trim().toLowerCase());
+        return id ? `<@&${id}>` : full;
+      });
+
+      out = out.replace(/\{\{\s*([^}:][^}]*)\s*\}\}/g, (full, roleKey) => {
+        const id = lut.get(String(roleKey ?? "").trim().toLowerCase());
+        return id ? `<@&${id}>` : full;
+      });
+
+      return out;
+    } catch (e) {
+      console.error("resolveDiscordRoleMentionsFromDb failed", e);
+      return String(input ?? "");
+    }
+  };
+
 const load = async () => {
     setLoading(true);
     try {
@@ -628,6 +712,8 @@ const load = async () => {
     </div>
   );
 }
+
+
 
 
 
