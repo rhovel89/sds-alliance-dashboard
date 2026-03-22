@@ -19,8 +19,6 @@ const buildDiscordPayload = (payload: any) => {
 
   return base;
 };
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -59,7 +57,7 @@ async function resolveDiscordRoleTokensFromDb(input: string, stateCode: string, 
         row?.snowflake,
       ]
         .map((v) => String(v ?? "").trim())
-        .find((v) => /^\d{5,}$/.test(v));
+        .find(Boolean);
 
       if (!id) continue;
 
@@ -71,11 +69,9 @@ async function resolveDiscordRoleTokensFromDb(input: string, stateCode: string, 
         row?.label,
         row?.title,
       ]
-        .map(norm)
+        .map((v) => norm(v))
         .filter(Boolean)
-        .forEach((k) => {
-          if (!lut.has(k)) lut.set(k, id);
-        });
+        .forEach((key) => lut.set(key, id));
     }
   };
 
@@ -102,50 +98,12 @@ async function resolveDiscordRoleTokensFromDb(input: string, stateCode: string, 
     addRows(data as any[]);
   } catch {}
 
-  return source.replace(/{{\s*role\s*:\s*([^}]+)\s*}}/gi, (full, rawKey) => {
+  return source.replace(/{{\s*role\s*:\s*([^}]+?)\s*}}/gi, (full, rawKey) => {
     const id = lut.get(norm(rawKey));
     return id ? `<@&${id}>` : full;
   });
 }
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
-  if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
-
-  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const DISCORD_BOT_TOKEN = Deno.env.get("DISCORD_BOT_TOKEN") ?? "";
-
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return json(500, { ok: false, error: "Missing SUPABASE_URL/ANON_KEY" });
-  if (!DISCORD_BOT_TOKEN) return json(500, { ok: false, error: "Missing DISCORD_BOT_TOKEN secret" });
-
-  const authHeader = req.headers.get("Authorization") ?? "";
-  if (!authHeader.toLowerCase().startsWith("bearer ")) {
-    return json(401, { ok: false, error: "Missing Authorization Bearer token" });
-  }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  // Validate JWT
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !userData?.user) return json(401, { ok: false, error: "Invalid session" });
-
-  // Require app admin OR dashboard owner
-  const { data: isOwner } = await supabase.rpc("is_dashboard_owner");
-  const { data: isAdmin } = await supabase.rpc("is_app_admin");
-  if (!(isOwner === true || isAdmin === true)) return json(403, { ok: false, error: "Forbidden" });
-
-  let body: any = null;
-  try {
-    body = await req.json();
-  } catch {
-    return json(400, { ok: false, error: "Invalid JSON" });
-  }
-
-  const channelId = String(body?.channelId || body?.channel_id || "").trim();
+const channelId = String(body?.channelId || body?.channel_id || "").trim();
   const content = String(body?.content || body?.message || "").trim();
   const dryRun = body?.dryRun === true || body?.dry_run === true;
 
@@ -198,6 +156,9 @@ Deno.serve(async (req) => {
     discordRaw: txt,
   });
 });
+
+
+
 
 
 
