@@ -138,7 +138,7 @@ export default function AllianceAnnouncementsPage() {
         p_state_code: "789",
         p_alliance_code: String(allianceCode || "").toUpperCase(),
         p_kind: "announcements",
-        p_channel_id: discordChannelId || "",
+        p_channel_id: String(discordChannelId || "").trim() || "default:announcements",
         p_message: msg,
       } as any);
 
@@ -229,7 +229,7 @@ discordChannelId
         p_state_code: "789",
         p_alliance_code: String(allianceCode || "").toUpperCase(),
         p_kind: "announcements",
-        p_channel_id: ch,
+        p_channel_id: ch || "default:announcements",
         p_message: msg,
       } as any);
 
@@ -286,7 +286,7 @@ discordChannelId
             Auto-send to Discord
           </label>
           <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 10 }}>
-            Tip: leave Channel blank to use the default Discord channel.
+            Uses the alliance default announcements webhook.
           </div>
             <DiscordChannelSelect
               scope="alliance"
@@ -327,7 +327,7 @@ discordChannelId
                   p_state_code: "789",
                   p_alliance_code: String(allianceCode || "").toUpperCase(),
                   p_kind: "announcements",
-                  p_channel_id: discordChannelId || "",
+                  p_channel_id: String(discordChannelId || "").trim() || "default:announcements",
                   p_message: msg,
                 } as any);
 
@@ -398,6 +398,9 @@ discordChannelId
     </div>
   );
 }
+
+
+
 
 
 
