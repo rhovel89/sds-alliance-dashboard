@@ -1,3 +1,24 @@
+const buildDiscordPayload = (payload: any) => {
+  const base = payload && typeof payload === "object" ? { ...payload } : {};
+  const content = String(base.content ?? base.message ?? "");
+
+  base.content = content;
+
+  const roleIds = Array.from(
+    new Set(
+      [...content.matchAll(/<@&(\d+)>/g)].map((m) => m[1])
+    )
+  );
+
+  base.allowed_mentions = {
+    parse: ["users"],
+    roles: roleIds,
+  };
+
+  if ("message" in base) delete base.message;
+
+  return base;
+};
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
@@ -10,6 +31,80 @@ function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+
+async function resolveDiscordRoleTokensFromDb(input: string, stateCode: string, allianceCode: string): Promise<string> {
+  const source = String(input ?? "");
+  if (!/{{\s*role\s*:/i.test(source)) return source;
+
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } },
+  );
+
+  const norm = (v: any) => String(v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  const lut = new Map<string, string>();
+
+  const addRows = (rows: any[] | null | undefined) => {
+    for (const row of (rows ?? [])) {
+      const id = [
+        row?.discord_role_id,
+        row?.role_id,
+        row?.discord_id,
+        row?.mention_id,
+        row?.target_id,
+        row?.snowflake,
+      ]
+        .map((v) => String(v ?? "").trim())
+        .find((v) => /^\d{5,}$/.test(v));
+
+      if (!id) continue;
+
+      [
+        row?.role_key,
+        row?.role_name,
+        row?.display_name,
+        row?.name,
+        row?.label,
+        row?.title,
+      ]
+        .map(norm)
+        .filter(Boolean)
+        .forEach((k) => {
+          if (!lut.has(k)) lut.set(k, id);
+        });
+    }
+  };
+
+  try {
+    const { data } = await supabaseAdmin
+      .from("alliance_discord_role_mentions")
+      .select("*")
+      .eq("alliance_code", String(allianceCode ?? "").toUpperCase());
+    addRows(data as any[]);
+  } catch {}
+
+  try {
+    const { data } = await supabaseAdmin
+      .from("state_discord_role_mentions")
+      .select("*")
+      .eq("state_code", String(stateCode ?? "789"));
+    addRows(data as any[]);
+  } catch {}
+
+  try {
+    const { data } = await supabaseAdmin
+      .from("discord_role_mentions")
+      .select("*");
+    addRows(data as any[]);
+  } catch {}
+
+  return source.replace(/{{\s*role\s*:\s*([^}]+)\s*}}/gi, (full, rawKey) => {
+    const id = lut.get(norm(rawKey));
+    return id ? `<@&${id}>` : full;
   });
 }
 
@@ -70,10 +165,14 @@ Deno.serve(async (req) => {
       "Authorization": `Bot ${DISCORD_BOT_TOKEN}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      content,
+    body: JSON.stringify(buildDiscordPayload({
+        content: await resolveDiscordRoleTokensFromDb(
+          String(content ?? ""),
+          String(body?.state_code ?? body?.p_state_code ?? body?.meta?.state_code ?? "789"),
+          String(body?.alliance_code ?? body?.p_alliance_code ?? body?.meta?.alliance_code ?? "")
+        ),
       allowed_mentions: { parse: ["roles", "users"], replied_user: false },
-    }),
+    })),
   });
 
   const txt = await resp.text();
@@ -99,4 +198,8 @@ Deno.serve(async (req) => {
     discordRaw: txt,
   });
 });
+
+
+
+
 
