@@ -247,6 +247,66 @@ export default function AllianceAnnouncementsPage() {
     }
   };
 
+  async function resolveDiscordRoleMentionsFromDb(input: string): Promise<string> {
+    const source = String(input || "");
+    if (!source.includes("{{role:")) return source;
+
+    const rows: any[] = [];
+
+    const tryRows = async (table: string, apply: (q: any) => any) => {
+      try {
+        let q = supabase.from(table as any).select("*");
+        q = apply(q);
+        const { data, error } = await q;
+        if (!error && Array.isArray(data)) rows.push(...data);
+      } catch {}
+    };
+
+    await tryRows("alliance_discord_role_mentions", (q) => q.eq("alliance_code", allianceCode));
+    await tryRows("state_discord_role_mentions", (q) => q.eq("state_code", "789"));
+    await tryRows("discord_role_mentions", (q) => q);
+
+    const getId = (row: any): string => {
+      const v =
+        row?.discord_role_id ??
+        row?.role_id ??
+        row?.discord_id ??
+        row?.mention_id ??
+        row?.id_value ??
+        row?.value ??
+        "";
+      return String(v || "").trim();
+    };
+
+    const lut = new Map<string, string>();
+
+    for (const row of rows) {
+      const id = getId(row);
+      if (!id) continue;
+
+      const keys = [
+        row?.role_key,
+        row?.role_name,
+        row?.name,
+        row?.label,
+        row?.display_name,
+      ]
+        .map((v) => String(v || "").trim().toLowerCase())
+        .filter(Boolean);
+
+      for (const k of keys) {
+        if (!lut.has(k)) lut.set(k, id);
+      }
+    }
+
+    return source.replace(/\{\{\s*role\s*:\s*([^}]+?)\s*\}\}/gi, (full, rawKey) => {
+      const key = String(rawKey || "").trim().toLowerCase();
+      const id = lut.get(key);
+      return id ? `<@&${id}>` : full;
+    });
+  }
+
+
 const load = async () => {
     setLoading(true);
     try {
@@ -712,6 +772,7 @@ const load = async () => {
     </div>
   );
 }
+
 
 
 
