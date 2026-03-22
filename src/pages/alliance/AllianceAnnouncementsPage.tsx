@@ -171,59 +171,63 @@ export default function AllianceAnnouncementsPage() {
   };
 
   const loadMentionOptions = async () => {
-    const out = new Map<string, MentionOption>();
+    try {
+      const raw = window.localStorage.getItem("sad_discord_role_map_v1");
+      const parsed = raw ? JSON.parse(raw) : null;
 
-    const tryRows = async (tableName: string, apply: (q: any) => any) => {
-      try {
-        let q = supabase.from(tableName as any).select("*");
-        q = apply(q);
-        const { data, error } = await q;
-        if (error || !Array.isArray(data)) return;
+      const store =
+        parsed && typeof parsed === "object"
+          ? parsed
+          : { version: 1, global: {}, alliances: {} };
 
-        for (const row of data as any[]) {
-          if (row?.active === false) continue;
-          if (row?.enabled === false) continue;
+      const globalMap =
+        store && typeof store.global === "object" && store.global
+          ? store.global
+          : {};
 
-          const key = normalizeKey(
-            row?.role_key ??
-            row?.role_name ??
-            row?.name ??
-            row?.label ??
-            row?.key
-          );
+      const alliancesMap =
+        store && typeof store.alliances === "object" && store.alliances
+          ? store.alliances
+          : {};
 
-          const label = normalizeKey(
-            row?.label ??
-            row?.role_name ??
-            row?.name ??
-            row?.role_key ??
-            row?.key
-          );
+      const scopedMap =
+        alliancesMap && typeof alliancesMap[allianceCode] === "object" && alliancesMap[allianceCode]
+          ? alliancesMap[allianceCode]
+          : {};
 
-          if (!key) continue;
-          if (!out.has(key)) {
-            out.set(key, {
-              key,
-              label: label || key,
-              source: tableName,
-            });
-          }
-        }
-      } catch {}
-    };
+      const keys = Array.from(
+        new Set([
+          ...Object.keys(globalMap),
+          ...Object.keys(scopedMap),
+        ])
+      )
+        .map((k) => String(k || "").trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
 
-    await tryRows("alliance_discord_role_mentions", (q) => q.eq("alliance_code", allianceCode));
-    await tryRows("alliance_discord_roles", (q) => q.eq("alliance_code", allianceCode));
-    await tryRows("alliance_discord_defaults", (q) => q.eq("alliance_code", allianceCode));
-    await tryRows("state_discord_role_mentions", (q) => q.eq("state_code", "789"));
-    await tryRows("state_discord_roles", (q) => q.eq("state_code", "789"));
-    await tryRows("state_discord_defaults", (q) => q.eq("state_code", "789"));
-    await tryRows("discord_role_mentions", (q) => q);
-    await tryRows("discord_role_defaults", (q) => q);
-
-    const rows = Array.from(out.values()).sort((a, b) => a.label.localeCompare(b.label));
-    setMentionOptions(rows);
+      setMentionOptions(
+        keys.map((key) => ({
+          key,
+          label: key,
+          source: Object.prototype.hasOwnProperty.call(scopedMap, key) ? "alliance" : "global",
+        }))
+      );
+    } catch (e) {
+      console.error("Failed to load Discord role mentions", e);
+      setMentionOptions([]);
+    }
   };
+
+  useEffect(() => {
+    const onLocalStore = () => { void loadMentionOptions(); };
+    window.addEventListener("storage", onLocalStore);
+    window.addEventListener("sad:localstorage", onLocalStore as EventListener);
+
+    return () => {
+      window.removeEventListener("storage", onLocalStore);
+      window.removeEventListener("sad:localstorage", onLocalStore as EventListener);
+    };
+  }, [allianceCode]);
 
   useEffect(() => {
     if (!allianceCode) return;
@@ -574,3 +578,4 @@ export default function AllianceAnnouncementsPage() {
     </div>
   );
 }
+
