@@ -135,11 +135,16 @@ export default function AllianceAnnouncementsPage() {
         ("\nView: https://state789.site/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
 
       const q = await supabase.rpc("queue_discord_send" as any, {
-        p_state_code: "789",
-        p_alliance_code: String(allianceCode || "").toUpperCase(),
-        p_kind: "announcements",
+        p_kind: "discord_webhook",
+        p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
         p_channel_id: "default:announcements",
-        p_message: msg,
+        p_content: msg,
+        p_meta: {
+          state_code: "789",
+          alliance_code: String(allianceCode || "").toUpperCase(),
+          kind: "announcements",
+          source: "AllianceAnnouncementsPage",
+        },
       } as any);
 
       if (q.error) throw q.error;
@@ -185,12 +190,17 @@ export default function AllianceAnnouncementsPage() {
           ("`nView: https://state789.site/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
 
         const q = await supabase.rpc("queue_discord_send" as any, {
-          p_state_code: "789",
-          p_alliance_code: String(allianceCode || "").toUpperCase(),
-          p_kind: "announcements",
-          p_channel_id: "default:announcements",
-          p_message: msg,
-        } as any);
+        p_kind: "discord_webhook",
+        p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
+        p_channel_id: "default:announcements",
+        p_content: msg,
+        p_meta: {
+          state_code: "789",
+          alliance_code: String(allianceCode || "").toUpperCase(),
+          kind: "announcements",
+          source: "AllianceAnnouncementsPage",
+        },
+      } as any);
 
         if (q.error) throw q.error;
       }
@@ -223,11 +233,16 @@ export default function AllianceAnnouncementsPage() {
         ("\n\n" + window.location.origin + "/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
 
       const q = await supabase.rpc("queue_discord_send" as any, {
-        p_state_code: "789",
-        p_alliance_code: String(allianceCode || "").toUpperCase(),
-        p_kind: "announcements",
+        p_kind: "discord_webhook",
+        p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
         p_channel_id: "default:announcements",
-        p_message: msg,
+        p_content: msg,
+        p_meta: {
+          state_code: "789",
+          alliance_code: String(allianceCode || "").toUpperCase(),
+          kind: "announcements",
+          source: "AllianceAnnouncementsPage",
+        },
       } as any);
 
       if ((q as any)?.error) {
@@ -304,12 +319,17 @@ export default function AllianceAnnouncementsPage() {
                   ("\nView: https://state789.site/dashboard/" + encodeURIComponent(String(allianceCode || "").toUpperCase()) + "/announcements");
 
                 const q = await supabase.rpc("queue_discord_send" as any, {
-                  p_state_code: "789",
-                  p_alliance_code: String(allianceCode || "").toUpperCase(),
-                  p_kind: "announcements",
-                  p_channel_id: "default:announcements",
-                  p_message: msg,
-                } as any);
+        p_kind: "discord_webhook",
+        p_target: `alliance:${String(allianceCode || "").toUpperCase()}`,
+        p_channel_id: "default:announcements",
+        p_content: msg,
+        p_meta: {
+          state_code: "789",
+          alliance_code: String(allianceCode || "").toUpperCase(),
+          kind: "announcements",
+          source: "AllianceAnnouncementsPage",
+        },
+      } as any);
 
                 if (q.error) throw q.error;
 
@@ -378,6 +398,7 @@ export default function AllianceAnnouncementsPage() {
     </div>
   );
 }
+
 
 
 
