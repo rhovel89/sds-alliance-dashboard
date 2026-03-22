@@ -225,28 +225,6 @@ export default function AllianceAnnouncementsPage() {
     return lut;
   };
 
-  const resolveDiscordRoleMentionsFromDb = async (input: string) => {
-    try {
-      const lut = await loadDiscordRoleMentionMapFromDb();
-      let out = String(input ?? "");
-
-      out = out.replace(/\{\{\s*role\s*:\s*([^}]+?)\s*\}\}/gi, (full, roleKey) => {
-        const id = lut.get(String(roleKey ?? "").trim().toLowerCase());
-        return id ? `<@&${id}>` : full;
-      });
-
-      out = out.replace(/\{\{\s*([^}:][^}]*)\s*\}\}/g, (full, roleKey) => {
-        const id = lut.get(String(roleKey ?? "").trim().toLowerCase());
-        return id ? `<@&${id}>` : full;
-      });
-
-      return out;
-    } catch (e) {
-      console.error("resolveDiscordRoleMentionsFromDb failed", e);
-      return String(input ?? "");
-    }
-  };
-
   async function resolveDiscordRoleMentionsFromDb(input: string): Promise<string> {
     const source = String(input || "");
     if (!source.includes("{{role:")) return source;
