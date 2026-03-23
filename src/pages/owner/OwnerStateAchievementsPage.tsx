@@ -949,40 +949,32 @@ export default function OwnerStateAchievementsPage() {
     <div className="owner-state-achievements-page owner-state-achievements-page__btnfix" style={{ padding: 16, maxWidth: 1400, margin: "0 auto", display: "grid", gap: 12 }}>
 <style>{`
   .owner-state-achievements-page__btnfix button,
-  .owner-state-achievements-page__btnfix [role="button"] {
-    font-weight: 800;
-  }
-
-  .owner-state-achievements-page__btnfix button:not(.zombie-btn),
-  .owner-state-achievements-page__btnfix a:not(.zombie-btn)[role="button"] {
-    color: #111111 !important;
-    background: #f3f3f3 !important;
-    border: 1px solid #cfcfcf !important;
-    text-shadow: none !important;
-  }
-
-  .owner-state-achievements-page__btnfix button:not(.zombie-btn):hover:not(:disabled),
-  .owner-state-achievements-page__btnfix a:not(.zombie-btn)[role="button"]:hover {
-    color: #000000 !important;
-    background: #ffffff !important;
-  }
-
-  .owner-state-achievements-page__btnfix button:not(.zombie-btn):disabled {
-    color: #666666 !important;
-    background: #dddddd !important;
-    border-color: #c8c8c8 !important;
-    opacity: 1 !important;
-    text-shadow: none !important;
-  }
-
+  .owner-state-achievements-page__btnfix a[role="button"],
   .owner-state-achievements-page__btnfix .zombie-btn,
   .owner-state-achievements-page__btnfix .zombie-btn:link,
   .owner-state-achievements-page__btnfix .zombie-btn:visited {
-    color: #F5F7FF !important;
+    color: #111111 !important;
+    background: #e8e8e8 !important;
+    border: 1px solid #bdbdbd !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+    font-weight: 800 !important;
   }
 
+  .owner-state-achievements-page__btnfix button:hover:not(:disabled),
+  .owner-state-achievements-page__btnfix a[role="button"]:hover,
+  .owner-state-achievements-page__btnfix .zombie-btn:hover:not(:disabled) {
+    color: #000000 !important;
+    background: #ffffff !important;
+    border-color: #9f9f9f !important;
+  }
+
+  .owner-state-achievements-page__btnfix button:disabled,
   .owner-state-achievements-page__btnfix .zombie-btn:disabled {
-    color: rgba(245,247,255,0.55) !important;
+    color: #555555 !important;
+    background: #dcdcdc !important;
+    border-color: #bbbbbb !important;
+    text-shadow: none !important;
     opacity: 1 !important;
   }
 `}</style>
@@ -1333,40 +1325,32 @@ export default function OwnerStateAchievementsPage() {
                 >
 <style>{`
   .owner-state-achievements-page__btnfix button,
-  .owner-state-achievements-page__btnfix [role="button"] {
-    font-weight: 800;
-  }
-
-  .owner-state-achievements-page__btnfix button:not(.zombie-btn),
-  .owner-state-achievements-page__btnfix a:not(.zombie-btn)[role="button"] {
-    color: #111111 !important;
-    background: #f3f3f3 !important;
-    border: 1px solid #cfcfcf !important;
-    text-shadow: none !important;
-  }
-
-  .owner-state-achievements-page__btnfix button:not(.zombie-btn):hover:not(:disabled),
-  .owner-state-achievements-page__btnfix a:not(.zombie-btn)[role="button"]:hover {
-    color: #000000 !important;
-    background: #ffffff !important;
-  }
-
-  .owner-state-achievements-page__btnfix button:not(.zombie-btn):disabled {
-    color: #666666 !important;
-    background: #dddddd !important;
-    border-color: #c8c8c8 !important;
-    opacity: 1 !important;
-    text-shadow: none !important;
-  }
-
+  .owner-state-achievements-page__btnfix a[role="button"],
   .owner-state-achievements-page__btnfix .zombie-btn,
   .owner-state-achievements-page__btnfix .zombie-btn:link,
   .owner-state-achievements-page__btnfix .zombie-btn:visited {
-    color: #F5F7FF !important;
+    color: #111111 !important;
+    background: #e8e8e8 !important;
+    border: 1px solid #bdbdbd !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+    font-weight: 800 !important;
   }
 
+  .owner-state-achievements-page__btnfix button:hover:not(:disabled),
+  .owner-state-achievements-page__btnfix a[role="button"]:hover,
+  .owner-state-achievements-page__btnfix .zombie-btn:hover:not(:disabled) {
+    color: #000000 !important;
+    background: #ffffff !important;
+    border-color: #9f9f9f !important;
+  }
+
+  .owner-state-achievements-page__btnfix button:disabled,
   .owner-state-achievements-page__btnfix .zombie-btn:disabled {
-    color: rgba(245,247,255,0.55) !important;
+    color: #555555 !important;
+    background: #dcdcdc !important;
+    border-color: #bbbbbb !important;
+    text-shadow: none !important;
     opacity: 1 !important;
   }
 `}</style>
@@ -1658,6 +1642,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
