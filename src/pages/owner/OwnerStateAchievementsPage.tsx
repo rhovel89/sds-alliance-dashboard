@@ -946,7 +946,38 @@ export default function OwnerStateAchievementsPage() {
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 1400, margin: "0 auto", display: "grid", gap: 12 }}>
+    <div className="owner-state-achievements-page owner-state-achievements-page__btnfix" style={{ padding: 16, maxWidth: 1400, margin: "0 auto", display: "grid", gap: 12 }}>
+      <style>{`
+        .owner-state-achievements-page__btnfix button,
+        .owner-state-achievements-page__btnfix [role="button"] {
+          color: #F5F7FF !important;
+          font-weight: 800;
+        }
+
+        .owner-state-achievements-page__btnfix button:not(.zombie-btn) {
+          background: rgba(255,255,255,0.10);
+          border: 1px solid rgba(255,255,255,0.18);
+          border-radius: 10px;
+          padding: 10px 12px;
+        }
+
+        .owner-state-achievements-page__btnfix button:hover:not(:disabled):not(.zombie-btn) {
+          background: rgba(255,255,255,0.16);
+        }
+
+        .owner-state-achievements-page__btnfix button:disabled {
+          color: rgba(245,247,255,0.45) !important;
+          background: rgba(255,255,255,0.05) !important;
+          border-color: rgba(255,255,255,0.10) !important;
+          opacity: 1 !important;
+          cursor: not-allowed;
+        }
+
+        .owner-state-achievements-page__btnfix .zombie-btn:disabled {
+          color: rgba(245,247,255,0.55) !important;
+          opacity: 1 !important;
+        }
+      `}</style>
       <div
         className="zombie-card"
         style={{
@@ -1283,7 +1314,7 @@ export default function OwnerStateAchievementsPage() {
               const cur = reqCurrent(r);
               const done = (String(r.status) === "completed") || (cur >= req);
               return (
-                <div
+    <div className="owner-state-achievements-page owner-state-achievements-page__btnfix"
                   key={String(r.id)}
                   style={{
                     padding: 10,
@@ -1292,6 +1323,37 @@ export default function OwnerStateAchievementsPage() {
                     background: done ? "rgba(120,255,120,0.05)" : "rgba(0,0,0,0.20)"
                   }}
                 >
+      <style>{`
+        .owner-state-achievements-page__btnfix button,
+        .owner-state-achievements-page__btnfix [role="button"] {
+          color: #F5F7FF !important;
+          font-weight: 800;
+        }
+
+        .owner-state-achievements-page__btnfix button:not(.zombie-btn) {
+          background: rgba(255,255,255,0.10);
+          border: 1px solid rgba(255,255,255,0.18);
+          border-radius: 10px;
+          padding: 10px 12px;
+        }
+
+        .owner-state-achievements-page__btnfix button:hover:not(:disabled):not(.zombie-btn) {
+          background: rgba(255,255,255,0.16);
+        }
+
+        .owner-state-achievements-page__btnfix button:disabled {
+          color: rgba(245,247,255,0.45) !important;
+          background: rgba(255,255,255,0.05) !important;
+          border-color: rgba(255,255,255,0.10) !important;
+          opacity: 1 !important;
+          cursor: not-allowed;
+        }
+
+        .owner-state-achievements-page__btnfix .zombie-btn:disabled {
+          color: rgba(245,247,255,0.55) !important;
+          opacity: 1 !important;
+        }
+      `}</style>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <input
@@ -1580,6 +1642,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
