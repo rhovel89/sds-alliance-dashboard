@@ -534,7 +534,7 @@ const load = async () => {
       p_kind: "discord_webhook",
       p_target: `alliance:${upper(allianceCode)}`,
       p_channel_id: String(discordWebhookId || "").trim() || "default:announcements",
-      p_content: msg,
+      p_content: await resolveDiscordRoleMentionsFromDb(msg),
       p_meta: {
         alliance_code: upper(allianceCode),
         kind: "announcements",
@@ -828,6 +828,7 @@ const load = async () => {
     </div>
   );
 }
+
 
 
 
