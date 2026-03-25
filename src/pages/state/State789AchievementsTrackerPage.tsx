@@ -157,7 +157,32 @@ export default function State789AchievementsTrackerPage() {
     setLoading(false);
   }
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+  void loadAll();
+
+  const channel = supabase
+    .channel("state-achievements-live-sync")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "state_achievement_requests", filter: "state_code=eq.789" },
+      () => { void loadAll(); }
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "state_achievement_types", filter: "state_code=eq.789" },
+      () => { void loadAll(); }
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "state_achievement_options" },
+      () => { void loadAll(); }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
 
   const filtered = useMemo(() => {
     const s = norm(q);
@@ -165,6 +190,26 @@ export default function State789AchievementsTrackerPage() {
     return rows.filter((r) => {
       const t = typeById[r.achievement_type_id]?.name || "";
       const o = r.option_id ? (optionById[r.option_id]?.label || "") : "";
+  async function deletePlayerRequests(playerName: string) {
+    const name = String(playerName ?? "").trim();
+    if (!name) return;
+
+    if (!window.confirm(`Delete all achievement requests for ${name}?`)) return;
+
+    const { error } = await supabase
+      .from("state_achievement_requests")
+      .delete()
+      .eq("state_code", "789")
+      .eq("player_name", name);
+
+    if (error) {
+      window.alert("Delete failed: " + error.message);
+      return;
+    }
+
+    await loadAll();
+  }
+
       return (
         norm(r.player_name).includes(s) ||
         norm(r.alliance_name).includes(s) ||
@@ -196,6 +241,26 @@ export default function State789AchievementsTrackerPage() {
     setMsg("✅ Updated.");
     await loadAll();
   }
+  async function deletePlayerRequests(playerName: string) {
+    const name = String(playerName ?? "").trim();
+    if (!name) return;
+
+    if (!window.confirm(`Delete all achievement requests for ${name}?`)) return;
+
+    const { error } = await supabase
+      .from("state_achievement_requests")
+      .delete()
+      .eq("state_code", "789")
+      .eq("player_name", name);
+
+    if (error) {
+      window.alert("Delete failed: " + error.message);
+      return;
+    }
+
+    await loadAll();
+  }
+
 
   return (
     <div style={{ padding: 14 }}>
@@ -237,6 +302,26 @@ export default function State789AchievementsTrackerPage() {
               const cur = r.current_count || 0;
               const done = (r.status === "completed" || cur >= req);
               const title = (t?.name || "Achievement") + (o ? (" — " + o.label) : "");
+  async function deletePlayerRequests(playerName: string) {
+    const name = String(playerName ?? "").trim();
+    if (!name) return;
+
+    if (!window.confirm(`Delete all achievement requests for ${name}?`)) return;
+
+    const { error } = await supabase
+      .from("state_achievement_requests")
+      .delete()
+      .eq("state_code", "789")
+      .eq("player_name", name);
+
+    if (error) {
+      window.alert("Delete failed: " + error.message);
+      return;
+    }
+
+    await loadAll();
+  }
+
 
               return (
                 <div key={r.id} style={{ padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.20)" }}>
@@ -302,4 +387,6 @@ export default function State789AchievementsTrackerPage() {
     </div>
   );
 }
+
+
 

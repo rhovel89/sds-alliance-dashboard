@@ -126,7 +126,32 @@ export default function State789AchievementsProgressPage() {
     setLoading(false);
   }
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+  void loadAll();
+
+  const channel = supabase
+    .channel("state-achievements-live-sync")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "state_achievement_requests", filter: "state_code=eq.789" },
+      () => { void loadAll(); }
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "state_achievement_types", filter: "state_code=eq.789" },
+      () => { void loadAll(); }
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "state_achievement_options" },
+      () => { void loadAll(); }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
 
   const governorRows = useMemo(() => {
     if (!governorTypeIds.size) return [];
@@ -296,5 +321,6 @@ export default function State789AchievementsProgressPage() {
     </div>
   );
 }
+
 
 
