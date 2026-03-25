@@ -96,14 +96,13 @@ export default function State789AchievementsProgressPage() {
   useEffect(() => { loadAll(); }, []);
 
   const governorRows = useMemo(() => {
-    if (!governorType?.id) return [];
-    const tid = String(governorType.id);
-    const req = Math.max(1, asInt(governorType.required_count, 3));
+    if (!governorTypeIds.size) return [];
+    const req = Math.max(1, asInt(governorType?.required_count, 3));
 
     // Pick max current_count per player
     const byPlayer: Record<string, AnyRow> = {};
     for (const r of requests) {
-      if (String(r.achievement_type_id) !== tid) continue;
+      if (!governorTypeIds.has(String(r.achievement_type_id))) continue;
       const name = String(r.player_name || "").trim();
       if (!name) continue;
 
@@ -132,18 +131,17 @@ export default function State789AchievementsProgressPage() {
 
     out.sort((a, b) => (b.cur - a.cur) || a.player_name.localeCompare(b.player_name));
     return out;
-  }, [requests, governorType]);
+  }, [requests, governorType, governorTypeIds]);
 
   const swpRows = useMemo(() => {
-    if (!swpType?.id) return [];
-    const tid = String(swpType.id);
+    if (!swpTypeIds.size) return [];
 
     // Most recent request per player (by created_at order already desc)
     const seen: Record<string, boolean> = {};
     const out: AnyRow[] = [];
 
     for (const r of requests) {
-      if (String(r.achievement_type_id) !== tid) continue;
+      if (!governorTypeIds.has(String(r.achievement_type_id))) continue;
       const name = String(r.player_name || "").trim();
       if (!name || seen[name]) continue;
       seen[name] = true;
@@ -159,7 +157,7 @@ export default function State789AchievementsProgressPage() {
     }
 
     return out;
-  }, [requests, swpType, optionById]);
+  }, [requests, swpType, swpTypeIds, optionById]);
 
   const governorSummary = useMemo(() => {
     const total = governorRows.length;
@@ -265,3 +263,4 @@ export default function State789AchievementsProgressPage() {
     </div>
   );
 }
+
