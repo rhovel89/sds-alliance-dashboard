@@ -944,6 +944,43 @@ export default function OwnerStateAchievementsPage() {
     const o = options.find((x) => String(x.id) === String(id));
     return o ? String(o.label || "") : "";
   }
+  async function deleteAchievementRequest(id: string) {
+    const rowId = String(id ?? "").trim();
+    if (!rowId) return;
+    if (!window.confirm("Delete this achievement request?")) return;
+
+    const { error } = await supabase
+      .from("state_achievement_requests")
+      .delete()
+      .eq("id", rowId);
+
+    if (error) {
+      window.alert("Delete failed: " + error.message);
+      return;
+    }
+
+    await loadAll();
+  }
+
+  async function deleteAchievementRequestsForPlayer(playerName: string) {
+    const name = String(playerName ?? "").trim();
+    if (!name) return;
+    if (!window.confirm(`Delete ALL achievement requests for ${name}?`)) return;
+
+    const { error } = await supabase
+      .from("state_achievement_requests")
+      .delete()
+      .eq("state_code", stateCode)
+      .eq("player_name", name);
+
+    if (error) {
+      window.alert("Delete-all failed: " + error.message);
+      return;
+    }
+
+    await loadAll();
+  }
+
 
   return (
     <div className="owner-state-achievements-page owner-state-achievements-page__btnfix" style={{ padding: 16, maxWidth: 1400, margin: "0 auto", display: "grid", gap: 12 }}>
@@ -1313,6 +1350,43 @@ export default function OwnerStateAchievementsPage() {
               const req = reqRequired(r);
               const cur = reqCurrent(r);
               const done = (String(r.status) === "completed") || (cur >= req);
+  async function deleteAchievementRequest(id: string) {
+    const rowId = String(id ?? "").trim();
+    if (!rowId) return;
+    if (!window.confirm("Delete this achievement request?")) return;
+
+    const { error } = await supabase
+      .from("state_achievement_requests")
+      .delete()
+      .eq("id", rowId);
+
+    if (error) {
+      window.alert("Delete failed: " + error.message);
+      return;
+    }
+
+    await loadAll();
+  }
+
+  async function deleteAchievementRequestsForPlayer(playerName: string) {
+    const name = String(playerName ?? "").trim();
+    if (!name) return;
+    if (!window.confirm(`Delete ALL achievement requests for ${name}?`)) return;
+
+    const { error } = await supabase
+      .from("state_achievement_requests")
+      .delete()
+      .eq("state_code", stateCode)
+      .eq("player_name", name);
+
+    if (error) {
+      window.alert("Delete-all failed: " + error.message);
+      return;
+    }
+
+    await loadAll();
+  }
+
               return (
     <div className="owner-state-achievements-page owner-state-achievements-page__btnfix"
                   key={String(r.id)}
@@ -1642,6 +1716,7 @@ export default function OwnerStateAchievementsPage() {
     </div>
   );
 }
+
 
 
 
