@@ -32,12 +32,45 @@ export default function State789AchievementsProgressPage() {
     return m;
   }, [options]);
 
+  const isGovernorTypeName = (v: any) => {
+    const n = normLower(v);
+    return n.includes("governor");
+  };
+
+  const isSwpTypeName = (v: any) => {
+    const n = normLower(v);
+    return (
+      n.includes("swp") ||
+      n.includes("weapon") ||
+      n.includes("sword of state") ||
+      n.includes("destroyer")
+    );
+  };
+
   const governorType = useMemo(() => {
-    return (types || []).find((t) => normLower(t.name) === "governor rotations") || null;
+    return (types ?? []).find((t) => isGovernorTypeName(t.name)) ?? null;
   }, [types]);
 
   const swpType = useMemo(() => {
-    return (types || []).find((t) => normLower(t.name) === "swp weapon") || null;
+    return (types ?? []).find((t) => isSwpTypeName(t.name)) ?? null;
+  }, [types]);
+
+  const governorTypeIds = useMemo(() => {
+    return new Set(
+      (types ?? [])
+        .filter((t) => isGovernorTypeName(t.name))
+        .map((t) => String(t.id))
+        .filter(Boolean)
+    );
+  }, [types]);
+
+  const swpTypeIds = useMemo(() => {
+    return new Set(
+      (types ?? [])
+        .filter((t) => isSwpTypeName(t.name))
+        .map((t) => String(t.id))
+        .filter(Boolean)
+    );
   }, [types]);
 
   async function loadAll() {
@@ -263,4 +296,5 @@ export default function State789AchievementsProgressPage() {
     </div>
   );
 }
+
 
