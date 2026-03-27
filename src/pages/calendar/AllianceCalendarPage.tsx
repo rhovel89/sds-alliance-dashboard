@@ -874,7 +874,6 @@ const formatEventTimeLabel = (e: any) => {
     basePayload.recurring_enabled = !!form.recurring_enabled && !!normalizedRecurrenceType;
     basePayload.recurrence_type = !!form.recurring_enabled ? normalizedRecurrenceType : null;
     basePayload.recurrence = !!form.recurring_enabled ? normalizedRecurrenceType : null;
-    basePayload.frequency = !!form.recurring_enabled ? normalizedRecurrenceType : null;
     basePayload.recurrence_days = normalizedRecurrenceDays;
     basePayload.days_of_week = normalizedRecurrenceDays;
     basePayload.recurrence_end_date = !!form.recurring_enabled ? (form.recurrence_end_date || null) : null;
@@ -1470,6 +1469,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
