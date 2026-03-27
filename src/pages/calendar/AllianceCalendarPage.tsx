@@ -1,14 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 
-const CALENDAR_WEEKDAYS_MONDAY_FIRST = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-] as const;
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useHQPermissions } from "../../hooks/useHQPermissions";
@@ -195,7 +186,7 @@ function expandEventsForMonthStable(rows: EventRow[], year: number, month: numbe
         ? (parsedDays.length ? parsedDays : [baseLocal.getDay()])
         : [];
 
-    const maxDay = new Date(year, month + 1, 0).getDate();
+    const maxDay = getDaysInCalendarMonth(year, month );
 
     for (let day = 1; day <= maxDay; day++) {
       const candLocal = new Date(
@@ -331,7 +322,7 @@ function occurrenceLocalTime(ev: any) {
 
 function expandMonthLocally(rows: EventRow[], year: number, month: number): CalendarLocalExpandedEvent[] {
   const out: CalendarLocalExpandedEvent[] = [];
-  const maxDay = new Date(year, month + 1, 0).getDate();
+  const maxDay = getDaysInCalendarMonth(year, month );
 
   for (const ev of rows) {
     const baseDateIso = String(ev.start_date || "");
@@ -432,8 +423,22 @@ function dedupeCalendarDayEvents<T = any>(items: T[]): T[] {
   });
 }
 
-function getMondayFirstDayIndex(d: Date): number {
-  return (d.getDay() + 6) % 7;
+
+const CALENDAR_WEEK_START = "monday" as const;
+// Change to "sunday" if you want Sunday in the first column instead.
+
+const CALENDAR_WEEKDAYS =
+  CALENDAR_WEEK_START === "monday"
+    ? (["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const)
+    : (["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const);
+
+function getCalendarMonthOffset(year: number, month: number): number {
+  const dow = getCalendarMonthOffset(year, month); // 0=Sun ... 6=Sat
+  return CALENDAR_WEEK_START === "monday" ? ((dow + 6) % 7) : dow;
+}
+
+function getDaysInCalendarMonth(year: number, month: number): number {
+  return getDaysInCalendarMonth(year, month );
 }
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
@@ -538,7 +543,7 @@ const formatEventTimeLabel = (e: any) => {
 };
 
   const daysInMonth = useMemo(
-    () => new Date(year, month + 1, 0).getDate(),
+    () => getDaysInCalendarMonth(year, month ),
     [month, year]
   );
 
@@ -1212,7 +1217,7 @@ const deleteEvent = async (arg: any) => {
           gap: 10,
         }}
       >
-{CALENDAR_WEEKDAYS_MONDAY_FIRST.map((label) => (
+{CALENDAR_WEEKDAYS.map((label) => (
   <div
     key={"weekday-" + label}
     style={{
@@ -1453,6 +1458,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
