@@ -865,30 +865,39 @@ const formatEventTimeLabel = (e: any) => {
       end_date: toLocalISODate(storageEnd),
       end_time: hhmmss(storageEnd),
 
-      recurring_enabled: form.recurrenc_enabled,
-      recurrence_type: form.recurrence_type || null,
-      recurrence_days: normalizedRecurrenceDays,
-      recurrence_end_date: form.recurrence_end_date || null,
+      recurring_enabled: !!form.recurring_enabled && !!normalizedRecurrenceType,
+      recurrence_type: !!form.recurring_enabled ? normalizedRecurrenceType : null,
+      recurrence_days:
+        !!form.recurring_enabled && (normalizedRecurrenceType === "weekly" || normalizedRecurrenceType === "biweekly")
+          ? normalizedRecurrenceDays
+          : [],
+      recurrence_end_date: !!form.recurring_enabled ? (form.recurrence_end_date || null) : null,
     };
-
-    basePayload.recurring_enabled = !!form.recurring_enabled && !!normalizedRecurrenceType;
-    basePayload.recurrence_type = !!form.recurring_enabled ? normalizedRecurrenceType : null;
-    basePayload.recurrence = !!form.recurring_enabled ? normalizedRecurrenceType : null;
-    basePayload.recurrence_days = normalizedRecurrenceDays;
-    basePayload.days_of_week = normalizedRecurrenceDays;
-    basePayload.recurrence_end_date = !!form.recurring_enabled ? (form.recurrence_end_date || null) : null;
 
     const writePayloadBase: any = editingEventId
       ? basePayload
       : { ...basePayload, created_by: userId };
 
-    const wantRecurring = form.recurring_enabled && form.recurrence_type !== "none";
+    const wantRecurring = !!form.recurring_enabled && normalizedRecurrenceType !== "none";
 
     const payloadA = {
       ...writePayloadBase,
       ...(wantRecurring
-        ? { recurrence_type: form.recurrence_type, recurrence_days: normalizedRecurrenceDays }
-        : { recurrence_type: null, recurrence_days: null }),
+        ? {
+            recurring_enabled: true,
+            recurrence_type: normalizedRecurrenceType,
+            recurrence_days:
+              normalizedRecurrenceType === "weekly" || normalizedRecurrenceType === "biweekly"
+                ? normalizedRecurrenceDays
+                : [],
+            recurrence_end_date: form.recurrence_end_date || null,
+          }
+        : {
+            recurring_enabled: false,
+            recurrence_type: null,
+            recurrence_days: [],
+            recurrence_end_date: null,
+          }),
     };
 
     const resA = editingEventId
@@ -921,7 +930,7 @@ const formatEventTimeLabel = (e: any) => {
         const payloadB = {
           ...writePayloadBase,
           ...(wantRecurring
-            ? { recurrence: form.recurrence_type, days_of_week: normalizedRecurrenceDays }
+            ? { recurrence: normalizedRecurrenceType, days_of_week: normalizedRecurrenceDays }
             : { recurrence: null, days_of_week: null }),
         };
         const resB = editingEventId
@@ -1469,6 +1478,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
