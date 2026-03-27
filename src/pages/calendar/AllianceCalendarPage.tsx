@@ -867,12 +867,14 @@ const formatEventTimeLabel = (e: any) => {
 
       recurring_enabled: !!form.recurring_enabled && !!normalizedRecurrenceType,
       recurrence_type: !!form.recurring_enabled ? normalizedRecurrenceType : null,
-      recurrence_days:
-        !!form.recurring_enabled && (normalizedRecurrenceType === "weekly" || normalizedRecurrenceType === "biweekly")
-          ? normalizedRecurrenceDays
-          : [],
-      recurrence_end_date: !!form.recurring_enabled ? (form.recurrence_end_date || null) : null,
+      recurrence_days: !!form.recurring_enabled && (normalizedRecurrenceType === "weekly" || normalizedRecurrenceType === "biweekly") ? normalizedRecurrenceDays : null,
+      recurrence_end_date: form.recurrence_end_date || null,
     };
+
+    basePayload.recurring_enabled = !!form.recurring_enabled && !!normalizedRecurrenceType;
+    basePayload.recurrence_type = !!form.recurring_enabled ? normalizedRecurrenceType : null;
+    basePayload.recurrence_days = normalizedRecurrenceDays;
+    basePayload.recurrence_end_date = !!form.recurring_enabled ? (form.recurrence_end_date || null) : null;
 
     const writePayloadBase: any = editingEventId
       ? basePayload
@@ -883,21 +885,8 @@ const formatEventTimeLabel = (e: any) => {
     const payloadA = {
       ...writePayloadBase,
       ...(wantRecurring
-        ? {
-            recurring_enabled: true,
-            recurrence_type: normalizedRecurrenceType,
-            recurrence_days:
-              normalizedRecurrenceType === "weekly" || normalizedRecurrenceType === "biweekly"
-                ? normalizedRecurrenceDays
-                : [],
-            recurrence_end_date: form.recurrence_end_date || null,
-          }
-        : {
-            recurring_enabled: false,
-            recurrence_type: null,
-            recurrence_days: [],
-            recurrence_end_date: null,
-          }),
+        ? { recurrence_type: normalizedRecurrenceType, recurrence_days: (normalizedRecurrenceType === "weekly" || normalizedRecurrenceType === "biweekly") ? normalizedRecurrenceDays : null }
+        : { recurrence_type: null, recurrence_days: null }),
     };
 
     const resA = editingEventId
@@ -930,7 +919,7 @@ const formatEventTimeLabel = (e: any) => {
         const payloadB = {
           ...writePayloadBase,
           ...(wantRecurring
-            ? { recurrence: normalizedRecurrenceType, days_of_week: normalizedRecurrenceDays }
+            ? { recurrence: form.recurrence_type, days_of_week: normalizedRecurrenceDays }
             : { recurrence: null, days_of_week: null }),
         };
         const resB = editingEventId
