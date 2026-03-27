@@ -158,7 +158,7 @@ function expandEventsForMonthStable(rows: EventRow[], year: number, month: numbe
     if (!baseLocal) continue;
 
     const baseUtc = String(ev.start_time_utc || baseLocal.toISOString());
-    const recurrenceType = String(ev.recurrence_type || ev.recurrence || "").toLowerCase();
+    const recurrenceType = String(ev.recurrence_type ?? ev.recurrence ?? (ev as any).frequency ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
     const recurring = !!ev.recurring_enabled && !!recurrenceType;
     const recurrenceEnd = parseRecurrenceEndLocal(ev.recurrence_end_date);
 
@@ -354,7 +354,7 @@ function expandMonthLocally(rows: EventRow[], year: number, month: number): Cale
       start_time_utc: String(ev.start_time_utc || baseDateTime.toISOString()),
     });
 
-    const rtype = String(ev.recurrence_type || ev.recurrence || "").toLowerCase();
+    const rtype = String(ev.recurrence_type ?? ev.recurrence ?? (ev as any).frequency ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
     const recurring = !!ev.recurring_enabled && !!rtype;
     if (!recurring) continue;
 
@@ -726,7 +726,7 @@ const formatEventTimeLabel = (e: any) => {
     const timeMode: "local" | "utc" =
       String(source.timezone_origin || "").toUpperCase() === "UTC" ? "utc" : "local";
 
-    const recurrenceType = String(source.recurrence_type || source.recurrence || "weekly");
+    const recurrenceType = String(source.recurrence_type ?? source.recurrence ?? (source as any).frequency ?? "weekly").trim().toLowerCase().replace(/[\s_-]+/g, "") || "weekly";
     const recurrenceDays = Array.isArray(source.recurrence_days)
       ? source.recurrence_days
       : Array.isArray((source as any).days_of_week)
@@ -764,7 +764,7 @@ const formatEventTimeLabel = (e: any) => {
       start_time: formatTimeForMode(startInstant, timeMode),
       end_date: formatDateForMode(endInstant, timeMode),
       end_time: formatTimeForMode(endInstant, timeMode),
-      recurring_enabled: !!source.recurring_enabled && !!String(source.recurrence_type || source.recurrence || "").trim(),
+      recurring_enabled: !!source.recurring_enabled && !!String(source.recurrence_type ?? source.recurrence ?? (source as any).frequency ?? "").trim(),
       recurrence_type: recurrenceType && recurrenceType !== "none" ? recurrenceType : "weekly",
       recurrence_days: recurrenceDays,
       recurrence_end_date: String(source.recurrence_end_date || ""),
@@ -987,7 +987,7 @@ const tryTruncateSeries = async (eventId: string, occurrenceIso: string) => {
 };
 
 const isRecurringEvent = (e: any) => {
-  const rt = String(e?.recurrence_type ?? e?.recurrence ?? e?.frequency ?? "").toLowerCase();
+  const rt = String(e?.recurrence_type ?? e?.recurrence ?? e?.frequency ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
   if (rt && rt !== "none" && rt !== "single") return true;
   if (Array.isArray(e?.recurrence_days) && e.recurrence_days.length) return true;
   if (Array.isArray(e?.days_of_week) && e.days_of_week.length) return true;
@@ -1458,6 +1458,8 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
+
 
 
 
