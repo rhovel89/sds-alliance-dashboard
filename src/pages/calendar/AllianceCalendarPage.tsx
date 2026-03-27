@@ -433,12 +433,12 @@ const CALENDAR_WEEKDAYS =
     : (["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const);
 
 function getCalendarMonthOffset(year: number, month: number): number {
-  const dow = getCalendarMonthOffset(year, month); // 0=Sun ... 6=Sat
+  const dow = new Date(year, month, 1).getDay(); // 0=Sun ... 6=Sat
   return CALENDAR_WEEK_START === "monday" ? ((dow + 6) % 7) : dow;
 }
 
 function getDaysInCalendarMonth(year: number, month: number): number {
-  return getDaysInCalendarMonth(year, month );
+  return new Date(year, month + 1, 0).getDate();
 }
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
@@ -1458,6 +1458,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
