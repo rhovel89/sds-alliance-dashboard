@@ -834,15 +834,19 @@ const formatEventTimeLabel = (e: any) => {
     const chosenType = await upsertTypeIfNeeded();
     const chosenCategory = (form.event_category || "Alliance").trim() || "Alliance";
 
+    const rawRecurrenceType = String(form.recurrence_type || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+
+    const normalizedRecurrenceType = rawRecurrenceType === "day" ? "daily" : rawRecurrenceType === "week" ? "weekly" : rawRecurrenceType === "month" ? "monthly" : rawRecurrenceType;
+
     const normalizedRecurrenceDays =
       form.recurring_enabled &&
-      (form.recurrence_type === "weekly" || form.recurrence_type === "biweekly")
+      (normalizedRecurrenceType === "weekly" || normalizedRecurrenceType === "biweekly")
         ? (
             Array.isArray(form.recurrence_days) && form.recurrence_days.length
               ? form.recurrence_days
               : [weekdayNameFromLocalIsoDate(form.start_date)]
           )
-        : form.recurrence_days;
+        : [];
 
     const basePayload: any = {
       alliance_id: upperAlliance,
@@ -866,6 +870,14 @@ const formatEventTimeLabel = (e: any) => {
       recurrence_days: normalizedRecurrenceDays,
       recurrence_end_date: form.recurrence_end_date || null,
     };
+
+    basePayload.recurring_enabled = !!form.recurring_enabled && !!normalizedRecurrenceType;
+    basePayload.recurrence_type = !!form.recurring_enabled ? normalizedRecurrenceType : null;
+    basePayload.recurrence = !!form.recurring_enabled ? normalizedRecurrenceType : null;
+    basePayload.frequency = !!form.recurring_enabled ? normalizedRecurrenceType : null;
+    basePayload.recurrence_days = normalizedRecurrenceDays;
+    basePayload.days_of_week = normalizedRecurrenceDays;
+    basePayload.recurrence_end_date = !!form.recurring_enabled ? (form.recurrence_end_date || null) : null;
 
     const writePayloadBase: any = editingEventId
       ? basePayload
@@ -1458,6 +1470,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
