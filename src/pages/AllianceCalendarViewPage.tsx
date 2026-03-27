@@ -36,6 +36,10 @@ function pickWhen(e: AnyRow) {
   return s || t || "";
 }
 
+
+function getMondayFirstDayIndex(d: Date): number {
+  return (d.getDay() + 6) % 7;
+}
 export default function AllianceCalendarViewPage() {
   const params = useParams();
   const allianceCode = useMemo(() => upper((params as any)?.allianceCode), [params]);
@@ -156,4 +160,5 @@ export default function AllianceCalendarViewPage() {
     </div>
   );
 }
+
 

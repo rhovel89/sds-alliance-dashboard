@@ -431,6 +431,10 @@ function dedupeCalendarDayEvents<T = any>(items: T[]): T[] {
     return true;
   });
 }
+
+function getMondayFirstDayIndex(d: Date): number {
+  return (d.getDay() + 6) % 7;
+}
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = (alliance_id || "").toUpperCase();
@@ -1449,6 +1453,7 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
 
 
 
