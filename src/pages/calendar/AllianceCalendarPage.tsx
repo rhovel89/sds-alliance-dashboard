@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+
+const CALENDAR_WEEKDAYS_MONDAY_FIRST = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+] as const;
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useHQPermissions } from "../../hooks/useHQPermissions";
@@ -402,6 +412,25 @@ function expandMonthLocally(rows: EventRow[], year: number, month: number): Cale
   return out;
 }
 
+
+function dedupeCalendarDayEvents<T = any>(items: T[]): T[] {
+  const seen = new Set<string>();
+
+  return (items ?? []).filter((item: any, idx: number) => {
+    const key = [
+      String(item?.id ?? ""),
+      String(item?.event_id ?? ""),
+      String(item?.title ?? item?.name ?? ""),
+      String(item?.start_at ?? item?.start ?? item?.date ?? ""),
+      String(item?.end_at ?? item?.end ?? item?.date ?? ""),
+    ].join("|");
+
+    const finalKey = key === "|||||" ? "idx:" + String(idx) : key;
+    if (seen.has(finalKey)) return false;
+    seen.add(finalKey);
+    return true;
+  });
+}
 export default function AllianceCalendarPage() {
   const { alliance_id } = useParams<{ alliance_id: string }>();
   const upperAlliance = (alliance_id || "").toUpperCase();
@@ -1179,6 +1208,20 @@ const deleteEvent = async (arg: any) => {
           gap: 10,
         }}
       >
+{CALENDAR_WEEKDAYS_MONDAY_FIRST.map((label) => (
+  <div
+    key={"weekday-" + label}
+    style={{
+      fontWeight: 900,
+      opacity: 0.82,
+      padding: "8px 6px",
+      textAlign: "center",
+      borderBottom: "1px solid rgba(255,255,255,0.10)"
+    }}
+  >
+    {label}
+  </div>
+))}
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
 
@@ -1406,6 +1449,8 @@ const deleteEvent = async (arg: any) => {
     </div>
   );
 }
+
+
 
 
 

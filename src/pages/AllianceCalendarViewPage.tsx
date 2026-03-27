@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+
+const CALENDAR_WEEKDAYS_MONDAY_FIRST = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+] as const;
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
@@ -146,3 +156,4 @@ export default function AllianceCalendarViewPage() {
     </div>
   );
 }
+
