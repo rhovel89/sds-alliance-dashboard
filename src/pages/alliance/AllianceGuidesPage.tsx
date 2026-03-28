@@ -1,26 +1,211 @@
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 import { AllianceGuidesCommandCenter } from "./AllianceGuidesCommandCenter";
 import GuideMediaUploader from "../../components/guides/GuideMediaUploader";
-import { useParams, useSearchParams } from "react-router-dom";
 import { useAllianceGuideToolAccess } from "../../hooks/useAllianceGuideToolAccess";
 
+type SectionRow = {
+  id: string;
+  title?: string | null;
+  description?: string | null;
+};
+
+type EntryRow = {
+  id: string;
+  section_id: string;
+  title?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+function useGuideShareData(allianceCode: string) {
+  const [sections, setSections] = useState<SectionRow[]>([]);
+  const [entries, setEntries] = useState<EntryRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+
+    async function run() {
+      if (!allianceCode) {
+        if (!alive) return;
+        setSections([]);
+        setEntries([]);
+        setLoadError("");
+        return;
+      }
+
+      setLoading(true);
+      setLoadError("");
+
+      const [secRes, entRes] = await Promise.all([
+        supabase
+          .from("guide_sections")
+          .select("id,title,description")
+          .eq("alliance_code", allianceCode),
+
+        supabase
+          .from("guide_section_entries")
+          .select("id,section_id,title,created_at,updated_at")
+          .eq("alliance_code", allianceCode),
+      ]);
+
+      if (!alive) return;
+
+      if (secRes.error) {
+        setLoadError(secRes.error.message || "Could not load guide sections.");
+        setSections([]);
+      } else {
+        const nextSections = ((secRes.data ?? []) as SectionRow[]).slice().sort((a, b) =>
+          String(a?.title ?? "").localeCompare(String(b?.title ?? ""))
+        );
+        setSections(nextSections);
+      }
+
+      if (entRes.error) {
+        setLoadError((prev) => prev || entRes.error?.message || "Could not load guide pages.");
+        setEntries([]);
+      } else {
+        const nextEntries = ((entRes.data ?? []) as EntryRow[]).slice().sort((a, b) => {
+          const at = String(a?.title ?? "");
+          const bt = String(b?.title ?? "");
+          return at.localeCompare(bt);
+        });
+        setEntries(nextEntries);
+      }
+
+      setLoading(false);
+    }
+
+    void run();
+    return () => {
+      alive = false;
+    };
+  }, [allianceCode]);
+
+  return { sections, entries, loading, loadError };
+}
+
 function GuideShareCard({ allianceCode }: { allianceCode: string }) {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { sections, entries, loading, loadError } = useGuideShareData(allianceCode);
 
-  const sectionId = String(searchParams.get("section") ?? "").trim();
-  const entryId = String(searchParams.get("entry") ?? searchParams.get("page") ?? "").trim();
+  const selectedSectionId = String(searchParams.get("section") ?? "").trim();
+  const selectedEntryId = String(searchParams.get("entry") ?? searchParams.get("page") ?? "").trim();
 
-  const shareKind = entryId ? "page" : sectionId ? "section" : "guides";
+  const selectedSection = useMemo(
+    () => sections.find((s) => String(s.id) === selectedSectionId) ?? null,
+    [sections, selectedSectionId]
+  );
 
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/dashboard/${encodeURIComponent(allianceCode)}/guides${window.location.search || ""}`
-      : `/dashboard/${encodeURIComponent(allianceCode)}/guides`;
+  const selectedEntry = useMemo(
+    () => entries.find((e) => String(e.id) === selectedEntryId) ?? null,
+    [entries, selectedEntryId]
+  );
+
+  const shareMode: "guides" | "section" | "page" =
+    selectedEntryId ? "page" : selectedSectionId ? "section" : "guides";
+
+  const pageOptions = useMemo(() => {
+    if (!selectedSectionId) return entries;
+    return entries.filter((e) => String(e.section_id) === selectedSectionId);
+  }, [entries, selectedSectionId]);
+
+  function setTarget(nextSectionId: string, nextEntryId: string) {
+    const next = new URLSearchParams(searchParams.toString());
+
+    if (nextSectionId) next.set("section", nextSectionId);
+    else next.delete("section");
+
+    if (nextEntryId) next.set("entry", nextEntryId);
+    else {
+      next.delete("entry");
+      next.delete("page");
+    }
+
+    setSearchParams(next);
+  }
+
+  function onModeChange(mode: "guides" | "section" | "page") {
+    if (mode === "guides") {
+      setTarget("", "");
+      return;
+    }
+
+    if (mode === "section") {
+      const fallbackSectionId =
+        selectedSectionId ||
+        selectedEntry?.section_id ||
+        (sections[0] ? String(sections[0].id) : "");
+      setTarget(fallbackSectionId, "");
+      return;
+    }
+
+    const firstEntry =
+      selectedEntry ||
+      (selectedSectionId ? pageOptions[0] : entries[0]) ||
+      null;
+
+    if (firstEntry) {
+      setTarget(String(firstEntry.section_id), String(firstEntry.id));
+      return;
+    }
+
+    const fallbackSectionId = selectedSectionId || (sections[0] ? String(sections[0].id) : "");
+    setTarget(fallbackSectionId, "");
+  }
+
+  function onSectionChange(nextSectionId: string) {
+    if (!nextSectionId) {
+      setTarget("", "");
+      return;
+    }
+
+    if (shareMode === "page") {
+      const firstEntryInSection =
+        entries.find((e) => String(e.section_id) === nextSectionId) ?? null;
+      setTarget(nextSectionId, firstEntryInSection ? String(firstEntryInSection.id) : "");
+      return;
+    }
+
+    setTarget(nextSectionId, "");
+  }
+
+  function onPageChange(nextEntryId: string) {
+    const entry = entries.find((e) => String(e.id) === nextEntryId) ?? null;
+    if (!entry) {
+      setTarget(selectedSectionId, "");
+      return;
+    }
+    setTarget(String(entry.section_id), String(entry.id));
+  }
+
+  const shareUrl = useMemo(() => {
+    const params = new URLSearchParams();
+
+    if (selectedSectionId) params.set("section", selectedSectionId);
+    if (selectedEntryId) params.set("entry", selectedEntryId);
+
+    const qs = params.toString();
+    const rel = `/dashboard/${encodeURIComponent(allianceCode)}/guides${qs ? `?${qs}` : ""}`;
+
+    if (typeof window === "undefined") return rel;
+    return `${window.location.origin}${rel}`;
+  }, [allianceCode, selectedSectionId, selectedEntryId]);
+
+  const shareTitle = selectedEntry
+    ? String(selectedEntry.title || "Guide Page")
+    : selectedSection
+    ? String(selectedSection.title || "Guide Section")
+    : `${allianceCode} Guides`;
 
   const discordPost =
-    shareKind === "page"
-      ? `📘 ${allianceCode} guide page` + "\n" + shareUrl
-      : shareKind === "section"
-      ? `📚 ${allianceCode} guide section` + "\n" + shareUrl
+    shareMode === "page"
+      ? `📘 ${allianceCode} guide page: ${shareTitle}` + "\n" + shareUrl
+      : shareMode === "section"
+      ? `📚 ${allianceCode} guide section: ${shareTitle}` + "\n" + shareUrl
       : `📚 ${allianceCode} guides` + "\n" + shareUrl;
 
   async function copyText(text: string, okMessage: string) {
@@ -49,21 +234,59 @@ function GuideShareCard({ allianceCode }: { allianceCode: string }) {
         gap: 10,
       }}
     >
-      <div style={{ fontWeight: 900 }}>
-        Share this {shareKind} to Discord
-      </div>
+      <div style={{ fontWeight: 900 }}>Share a specific guide section or page to Discord</div>
 
       <div style={{ opacity: 0.82, fontSize: 12 }}>
-        Open the exact guide page or section you want, then use these buttons.
+        Pick exactly what you want to share, then copy the Discord post or open Discord.
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          flexWrap: "wrap",
-        }}
-      >
+      <div style={{ display: "grid", gap: 8 }}>
+        <label style={{ display: "grid", gap: 4 }}>
+          <span style={{ fontSize: 12, opacity: 0.78 }}>Share target</span>
+          <select
+            value={shareMode}
+            onChange={(e) => onModeChange(e.target.value as "guides" | "section" | "page")}
+          >
+            <option value="guides">All guides</option>
+            <option value="section">Specific section</option>
+            <option value="page">Specific page</option>
+          </select>
+        </label>
+
+        {(shareMode === "section" || shareMode === "page") ? (
+          <label style={{ display: "grid", gap: 4 }}>
+            <span style={{ fontSize: 12, opacity: 0.78 }}>Section</span>
+            <select value={selectedSectionId} onChange={(e) => onSectionChange(e.target.value)}>
+              <option value="">Choose a section</option>
+              {sections.map((section) => (
+                <option key={section.id} value={section.id}>
+                  {String(section.title || "Untitled Section")}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        {shareMode === "page" ? (
+          <label style={{ display: "grid", gap: 4 }}>
+            <span style={{ fontSize: 12, opacity: 0.78 }}>Page</span>
+            <select
+              value={selectedEntryId}
+              onChange={(e) => onPageChange(e.target.value)}
+              disabled={!pageOptions.length}
+            >
+              <option value="">{pageOptions.length ? "Choose a page" : "No pages in this section"}</option>
+              {pageOptions.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {String(entry.title || "Untitled Page")}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button
           type="button"
           className="zombie-btn"
@@ -89,6 +312,10 @@ function GuideShareCard({ allianceCode }: { allianceCode: string }) {
         </button>
       </div>
 
+      <div style={{ fontSize: 12, opacity: 0.78 }}>
+        Now sharing: <b>{shareTitle}</b>
+      </div>
+
       <div
         style={{
           fontSize: 12,
@@ -99,6 +326,9 @@ function GuideShareCard({ allianceCode }: { allianceCode: string }) {
       >
         {shareUrl}
       </div>
+
+      {loading ? <div style={{ fontSize: 12, opacity: 0.72 }}>Loading sections and pages…</div> : null}
+      {loadError ? <div style={{ fontSize: 12, color: "#ffb4b4" }}>{loadError}</div> : null}
     </div>
   );
 }
