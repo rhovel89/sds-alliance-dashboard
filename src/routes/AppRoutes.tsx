@@ -25,6 +25,7 @@ import AllianceCalendarExportPage from "../pages/calendar/AllianceCalendarExport
 import AllianceAnnouncementsPage from "../pages/alliance/AllianceAnnouncementsPage";
 import AllianceGuidesPage from "../pages/alliance/AllianceGuidesPage";
 import AllianceGuidesExportPage from "../pages/alliance/AllianceGuidesExportPage";
+import SharedGuidePage from "../pages/alliance/SharedGuidePage";
 
 import PlayerDashboardPage from "../pages/PlayerDashboardPage";
 
@@ -317,7 +318,8 @@ export default function AppRoutes() {
               <Route path="/owner/player-progress" element={<OwnerPlayerProgressPage />} />
               <Route path="/owner/player-progress-compare" element={<OwnerPlayerProgressComparePage />} />
               <Route path="/owner/alliance-dashboard-links" element={<OwnerAllianceDashboardLinksPage />} />
-      </Routes>
+        <Route path="/shared/guides/:token" element={<SharedGuidePage />} />
+</Routes>
   );
 }
 

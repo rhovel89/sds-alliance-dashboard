@@ -1,12 +1,13 @@
 import { AllianceGuidesCommandCenter } from "./AllianceGuidesCommandCenter";
 import GuideMediaUploader from "../../components/guides/GuideMediaUploader";
+import GuideShareTools from "../../components/guides/GuideShareTools";
 import { useParams } from "react-router-dom";
 import { useAllianceGuideToolAccess } from "../../hooks/useAllianceGuideToolAccess";
 
 export default function AllianceGuidesPage() {
   const params = useParams();
   const allianceCode = String(
-    params.alliance_id ?? params.allianceCode ?? params.code ?? ""
+    params.code ?? params.allianceCode ?? params.alliance_id ?? ""
   ).trim().toUpperCase();
 
   const {
@@ -88,6 +89,7 @@ export default function AllianceGuidesPage() {
             </div>
 
             <GuideMediaUploader allianceCode={allianceCode} />
+            <GuideShareTools allianceCode={allianceCode} />
           </div>
         ) : null}
       </div>
