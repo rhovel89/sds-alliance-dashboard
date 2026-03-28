@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabaseClient";
 import { AllianceGuidesCommandCenter } from "./AllianceGuidesCommandCenter";
 import GuideMediaUploader from "../../components/guides/GuideMediaUploader";
 import { useAllianceGuideToolAccess } from "../../hooks/useAllianceGuideToolAccess";
