@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { GUIDE_MEDIA_BUCKET } from "../../lib/storageBuckets";
+import { createGuideSignedUrl } from "../../lib/guideSignedUrls";
 import { useGuidesEditAccess } from "../../hooks/useGuidesEditAccess";
 import GuideEntryAttachmentsPanel from "../../components/guides/GuideEntryAttachmentsPanel";
 import GuideSectionAttachmentsPanel from "../../components/guides/GuideSectionAttachmentsPanel";
@@ -210,9 +211,7 @@ async function resolveImageUrls(blocks: PageBlock[]): Promise<Record<string, str
   for (const block of blocks) {
     if (block.type !== "image") continue;
 
-    const signed = await supabase.storage
-      .from(GUIDE_MEDIA_BUCKET)
-      .createSignedUrl(block.storage_path, 60 * 30);
+    const signed = await createGuideSignedUrl(supabase, block.storage_path, 60 * 30);
 
     if (!signed.error && signed.data?.signedUrl) {
       next[block.id] = signed.data.signedUrl;

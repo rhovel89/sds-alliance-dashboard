@@ -13,20 +13,32 @@ create table if not exists public.guide_share_links (
 );
 
 create index if not exists idx_guide_share_links_token
-  on public.guide_share_links(share_token);
+  on public.guide_share_links (share_token);
 
 create index if not exists idx_guide_share_links_target
-  on public.guide_share_links(target_type, target_id);
+  on public.guide_share_links (target_type, target_id);
 
 alter table public.guide_share_links enable row level security;
 
-drop policy if exists gsl_manage_editors on public.guide_share_links;
-create policy gsl_manage_editors
-on public.guide_share_links
-for all
-to authenticated
-using (public.user_can_edit_guides(alliance_code))
-with check (public.user_can_edit_guides(alliance_code));
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'guide_share_links'
+      and policyname = 'gsl_manage_editors'
+  ) then
+    execute '
+      create policy gsl_manage_editors
+      on public.guide_share_links
+      for all
+      to authenticated
+      using (public.user_can_edit_guides(alliance_code))
+      with check (public.user_can_edit_guides(alliance_code))
+    ';
+  end if;
+end $$;
 
 grant select, insert, update, delete on public.guide_share_links to authenticated;
 
@@ -40,7 +52,7 @@ declare
   v_link public.guide_share_links%rowtype;
 begin
   select *
-  into v_link
+    into v_link
   from public.guide_share_links
   where share_token = p_token
     and revoked_at is null

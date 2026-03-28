@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { GUIDE_MEDIA_BUCKET } from "../../lib/storageBuckets";
+import { createGuideSignedUrl } from "../../lib/guideSignedUrls";
 
 type Row = {
   id: string;
@@ -68,9 +69,7 @@ export default function GuideEntryAttachmentsPanel(props: {
 
     const next: Record<string, string> = {};
     for (const r of list.filter(isImage)) {
-      const signed = await supabase.storage
-        .from(GUIDE_MEDIA_BUCKET)
-        .createSignedUrl(r.storage_path, 60 * 30);
+      const signed = await createGuideSignedUrl(supabase, r.storage_path, 60 * 30);
 
       if (!signed.error && signed.data?.signedUrl) {
         next[r.id] = signed.data.signedUrl;
@@ -176,9 +175,7 @@ export default function GuideEntryAttachmentsPanel(props: {
   }
 
   async function openFile(r: Row) {
-    const signed = await supabase.storage
-      .from(GUIDE_MEDIA_BUCKET)
-      .createSignedUrl(r.storage_path, 60 * 30);
+    const signed = await createGuideSignedUrl(supabase, r.storage_path, 60 * 30);
 
     if (signed.error || !signed.data?.signedUrl) {
       alert(signed.error?.message || "Could not open file.");
