@@ -1,13 +1,13 @@
 import { AllianceGuidesCommandCenter } from "./AllianceGuidesCommandCenter";
 import GuideMediaUploader from "../../components/guides/GuideMediaUploader";
-import GuideShareTools from "../../components/guides/GuideShareTools";
+import GuideDiscordShareTools from "../../components/guides/GuideDiscordShareTools";
 import { useParams } from "react-router-dom";
 import { useAllianceGuideToolAccess } from "../../hooks/useAllianceGuideToolAccess";
 
 export default function AllianceGuidesPage() {
   const params = useParams();
   const allianceCode = String(
-    params.code ?? params.allianceCode ?? params.alliance_id ?? ""
+    params.allianceCode ?? params.code ?? params.alliance_id ?? ""
   ).trim().toUpperCase();
 
   const {
@@ -29,6 +29,8 @@ export default function AllianceGuidesPage() {
         overflowX: "hidden",
       }}
     >
+      <GuideDiscordShareTools allianceCode={allianceCode} />
+
       <div
         style={{
           width: "100%",
@@ -89,7 +91,6 @@ export default function AllianceGuidesPage() {
             </div>
 
             <GuideMediaUploader allianceCode={allianceCode} />
-            <GuideShareTools allianceCode={allianceCode} />
           </div>
         ) : null}
       </div>
