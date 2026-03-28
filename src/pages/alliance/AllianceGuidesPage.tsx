@@ -4,8 +4,10 @@ import { useParams } from "react-router-dom";
 import { useAllianceGuideToolAccess } from "../../hooks/useAllianceGuideToolAccess";
 
 export default function AllianceGuidesPage() {
-  const { alliance_id } = useParams();
-  const allianceCode = String(alliance_id ?? "").trim().toUpperCase();
+  const params = useParams();
+  const allianceCode = String(
+    params.alliance_id ?? params.allianceCode ?? params.code ?? ""
+  ).trim().toUpperCase();
 
   const {
     loading,

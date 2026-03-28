@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { GUIDE_MEDIA_BUCKET } from "../../lib/storageBuckets";
 import { supabase } from "../../lib/supabaseBrowserClient";
 
 type Item = { name: string; url: string; isImage: boolean };
@@ -28,14 +29,24 @@ export default function GuideMediaUploader({ allianceCode }: { allianceCode: str
   async function refresh() {
     if (!code) return;
     setStatus("Loading…");
-    const res = await supabase.storage.from("guide-media").list(prefix, { limit: 200, sortBy: { column: "created_at", order: "desc" } });
+    const res = await supabase.storage.from(GUIDE_MEDIA_BUCKET).list(prefix, { limit: 200, sortBy: { column: "created_at", order: "desc" } });
     if (res.error) { setStatus(res.error.message); return; }
 
-    const out: Item[] = (res.data ?? []).map((o) => {
+    const out: Item[] = [];
+    for (const o of (res.data ?? [])) {
       const path = `${prefix}/${o.name}`;
-      const { data } = supabase.storage.from("guide-media").getPublicUrl(path);
-      return { name: o.name, url: data.publicUrl, isImage: isImageName(o.name) };
-    });
+      const signed = await supabase.storage
+        .from(GUIDE_MEDIA_BUCKET)
+        .createSignedUrl(path, 60 * 30);
+
+      if (signed.error || !signed.data?.signedUrl) continue;
+
+      out.push({
+        name: o.name,
+        url: signed.data.signedUrl,
+        isImage: isImageName(o.name),
+      });
+    }
     setItems(out);
     setStatus("");
   }
@@ -49,7 +60,7 @@ export default function GuideMediaUploader({ allianceCode }: { allianceCode: str
       const safe = safeFileName(f.name || "upload");
       const key = `${prefix}/${Date.now()}-${safe}`;
 
-      const up = await supabase.storage.from("guide-media").upload(key, f, {
+      const up = await supabase.storage.from(GUIDE_MEDIA_BUCKET).upload(key, f, {
         cacheControl: "3600",
         upsert: false,
         contentType: f.type || undefined
@@ -181,3 +192,4 @@ export default function GuideMediaUploader({ allianceCode }: { allianceCode: str
     </div>
   );
 }
+
