@@ -8,43 +8,36 @@ export default function GuideDiscordShareTools(props: { allianceCode: string }) 
 
   const allianceCode = String(props.allianceCode ?? "").trim().toUpperCase();
   const sectionId = String(searchParams.get("section") || "").trim();
-  const entryId = String(searchParams.get("entry") || "").trim();
 
   const shareUrl = useMemo(() => {
     if (!allianceCode) return "";
     const base = `${window.location.origin}/dashboard/${encodeURIComponent(allianceCode)}/guides`;
     const qs = new URLSearchParams();
     if (sectionId) qs.set("section", sectionId);
-    if (entryId) qs.set("entry", entryId);
     const suffix = qs.toString();
     return suffix ? `${base}?${suffix}` : base;
-  }, [allianceCode, sectionId, entryId]);
+  }, [allianceCode, sectionId]);
 
   const shareTitle = useMemo(() => {
-    if (entryId) return `Guide entry for ${allianceCode}`;
     if (sectionId) return `Guide section for ${allianceCode}`;
     return `Guides page for ${allianceCode}`;
-  }, [allianceCode, sectionId, entryId]);
+  }, [allianceCode, sectionId]);
 
   const discordMessage = useMemo(() => {
     if (!shareUrl) return "";
     const lines: string[] = [];
 
-    if (entryId) {
-      lines.push(`📘 **${allianceCode} Guide Entry**`);
-    } else if (sectionId) {
+    if (sectionId) {
       lines.push(`📚 **${allianceCode} Guide Section**`);
     } else {
       lines.push(`📓 **${allianceCode} Guides Page**`);
     }
 
-    if (note.trim()) {
-      lines.push(note.trim());
-    }
-
+    if (note.trim()) lines.push(note.trim());
     lines.push(shareUrl);
+
     return lines.join("\n");
-  }, [allianceCode, entryId, sectionId, note, shareUrl]);
+  }, [allianceCode, sectionId, note, shareUrl]);
 
   async function copy(text: string, ok = "Copied ✅") {
     try {
@@ -73,7 +66,6 @@ export default function GuideDiscordShareTools(props: { allianceCode: string }) 
         await copy(discordMessage || shareUrl, "Copied share text ✅");
       }
     } catch {
-      // user cancelled or share unavailable
     }
   }
 
@@ -85,9 +77,7 @@ export default function GuideDiscordShareTools(props: { allianceCode: string }) 
 
   if (!allianceCode) return null;
 
-  const targetText = entryId
-    ? "Currently sharing this guide entry"
-    : sectionId
+  const targetText = sectionId
     ? "Currently sharing this guide section"
     : "Currently sharing the main guides page";
 
@@ -106,7 +96,7 @@ export default function GuideDiscordShareTools(props: { allianceCode: string }) 
       <div>
         <div style={{ fontWeight: 900 }}>Share to Discord</div>
         <div style={{ opacity: 0.78, fontSize: 12, marginTop: 4 }}>
-          {targetText}. Open a section first if you want to share a specific section.
+          {targetText}. To share a section, open that section first so the URL includes <code>?section=...</code>.
         </div>
       </div>
 
