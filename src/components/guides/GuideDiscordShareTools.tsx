@@ -1,85 +1,79 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
+
+function firstNonEmpty(values: Array<string | null | undefined>) {
+  for (const v of values) {
+    const s = String(v || "").trim();
+    if (s) return s;
+  }
+  return "";
+}
 
 export default function GuideDiscordShareTools(props: { allianceCode: string }) {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [note, setNote] = useState("");
   const [status, setStatus] = useState("");
 
-  const allianceCode = String(props.allianceCode ?? "").trim().toUpperCase();
-  const sectionId = String(searchParams.get("section") || "").trim();
+  const allianceCode = String(props.allianceCode || "").trim().toUpperCase();
+
+  const sectionId = firstNonEmpty([
+    searchParams.get("section"),
+    searchParams.get("sectionId"),
+  ]);
+
+  const pageId = firstNonEmpty([
+    searchParams.get("page"),
+    searchParams.get("pageId"),
+    searchParams.get("entry"),
+    searchParams.get("entryId"),
+    searchParams.get("guide"),
+    searchParams.get("guideId"),
+  ]);
 
   const shareUrl = useMemo(() => {
     if (!allianceCode) return "";
-    const base = `${window.location.origin}/dashboard/${encodeURIComponent(allianceCode)}/guides`;
-    const qs = new URLSearchParams();
-    if (sectionId) qs.set("section", sectionId);
-    const suffix = qs.toString();
-    return suffix ? `${base}?${suffix}` : base;
-  }, [allianceCode, sectionId]);
+    return `${window.location.origin}${location.pathname}${location.search}`;
+  }, [allianceCode, location.pathname, location.search]);
 
-  const shareTitle = useMemo(() => {
-    if (sectionId) return `Guide section for ${allianceCode}`;
-    return `Guides page for ${allianceCode}`;
-  }, [allianceCode, sectionId]);
+  const targetLabel = useMemo(() => {
+    if (pageId) return "specific page";
+    if (sectionId) return "specific section";
+    return "guides page";
+  }, [pageId, sectionId]);
 
   const discordMessage = useMemo(() => {
     if (!shareUrl) return "";
+
     const lines: string[] = [];
+    lines.push(`📚 **${allianceCode} ${targetLabel}**`);
 
-    if (sectionId) {
-      lines.push(`📚 **${allianceCode} Guide Section**`);
-    } else {
-      lines.push(`📓 **${allianceCode} Guides Page**`);
-    }
-
+    if (sectionId) lines.push(`Section ID: ${sectionId}`);
+    if (pageId) lines.push(`Page ID: ${pageId}`);
     if (note.trim()) lines.push(note.trim());
-    lines.push(shareUrl);
 
+    lines.push(shareUrl);
     return lines.join("\n");
-  }, [allianceCode, sectionId, note, shareUrl]);
+  }, [allianceCode, targetLabel, sectionId, pageId, note, shareUrl]);
 
   async function copy(text: string, ok = "Copied ✅") {
     try {
       await navigator.clipboard.writeText(text);
       setStatus(ok);
-      window.setTimeout(() => setStatus(""), 2500);
+      window.setTimeout(() => setStatus(""), 2400);
     } catch {
       setStatus("Copy failed.");
-      window.setTimeout(() => setStatus(""), 2500);
-    }
-  }
-
-  async function nativeShare() {
-    if (!shareUrl) return;
-    try {
-      const nav = navigator as any;
-      if (nav.share) {
-        await nav.share({
-          title: shareTitle,
-          text: note.trim() || shareTitle,
-          url: shareUrl,
-        });
-        setStatus("Shared ✅");
-        window.setTimeout(() => setStatus(""), 2500);
-      } else {
-        await copy(discordMessage || shareUrl, "Copied share text ✅");
-      }
-    } catch {
+      window.setTimeout(() => setStatus(""), 2400);
     }
   }
 
   function openDiscord() {
     if (!discordMessage) return;
-    void copy(discordMessage, "Discord message copied ✅");
+    void copy(discordMessage, "Discord post copied ✅");
     window.open("https://discord.com/app", "_blank", "noopener,noreferrer");
   }
 
   if (!allianceCode) return null;
-
-  const targetText = sectionId
-    ? "Currently sharing this guide section"
-    : "Currently sharing the main guides page";
 
   return (
     <div
@@ -95,8 +89,8 @@ export default function GuideDiscordShareTools(props: { allianceCode: string }) 
     >
       <div>
         <div style={{ fontWeight: 900 }}>Share to Discord</div>
-        <div style={{ opacity: 0.78, fontSize: 12, marginTop: 4 }}>
-          {targetText}. To share a section, open that section first so the URL includes <code>?section=...</code>.
+        <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
+          This shares the <b>current URL</b>. Open the exact section or page first, then click <b>Copy Discord Post</b>.
         </div>
       </div>
 
@@ -144,10 +138,10 @@ export default function GuideDiscordShareTools(props: { allianceCode: string }) 
         <button
           type="button"
           className="zombie-btn"
-          onClick={() => void copy(discordMessage, "Discord message copied ✅")}
+          onClick={() => void copy(discordMessage, "Discord post copied ✅")}
           disabled={!discordMessage}
         >
-          Copy Discord Message
+          Copy Discord Post
         </button>
 
         <button
@@ -158,22 +152,9 @@ export default function GuideDiscordShareTools(props: { allianceCode: string }) 
         >
           Open Discord
         </button>
-
-        <button
-          type="button"
-          className="zombie-btn"
-          onClick={() => void nativeShare()}
-          disabled={!shareUrl}
-        >
-          Share…
-        </button>
       </div>
 
-      {status ? (
-        <div style={{ fontSize: 12, opacity: 0.85 }}>
-          {status}
-        </div>
-      ) : null}
+      {status ? <div style={{ fontSize: 12, opacity: 0.85 }}>{status}</div> : null}
     </div>
   );
 }

@@ -1,101 +1,133 @@
 import { useEffect, useMemo, useState } from "react";
 import supabase from "../../lib/supabaseClient";
 import { GUIDE_MEDIA_BUCKET } from "../../lib/storageBuckets";
+import { candidateGuideBuckets, createGuideSignedUrlFlexible } from "./guideStorage";
 
 type Item = {
-  name: string;
+  bucket: string;
   path: string;
+  name: string;
   url: string;
   isImage: boolean;
 };
 
+function safeName(v: string) {
+  return String(v || "file")
+    .replace(/[^\w.\-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 function isImageName(name: string) {
-  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
+  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(String(name || ""));
 }
 
 export default function GuideMediaUploader({ allianceCode }: { allianceCode: string }) {
-  const code = String(allianceCode ?? "").trim().toUpperCase();
-  const prefix = useMemo(() => `${code}/guides`, [code]);
+  const code = useMemo(() => String(allianceCode || "").trim().toUpperCase(), [allianceCode]);
+  const prefix = useMemo(() => (code ? `${code}/guides` : ""), [code]);
 
   const [items, setItems] = useState<Item[]>([]);
   const [status, setStatus] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  async function load() {
-    if (!code) {
+  async function copy(text: string, ok = "Copied ✅") {
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus(ok);
+      window.setTimeout(() => setStatus(""), 2200);
+    } catch {
+      setStatus("Copy failed.");
+      window.setTimeout(() => setStatus(""), 2200);
+    }
+  }
+
+  async function refresh() {
+    if (!prefix) {
       setItems([]);
       return;
     }
 
-    setLoading(true);
+    setBusy(true);
     setStatus("Loading guide media…");
 
-    const res = await supabase.storage
-      .from(GUIDE_MEDIA_BUCKET)
-      .list(prefix, { limit: 200, sortBy: { column: "created_at", order: "desc" } });
+    try {
+      const out: Item[] = [];
+      const seen = new Set<string>();
 
-    if (res.error) {
-      setStatus(res.error.message);
-      setLoading(false);
-      return;
-    }
-
-    const next: Item[] = [];
-    for (const o of (res.data ?? [])) {
-      const path = `${prefix}/${o.name}`;
-      const signed = await supabase.storage.from(GUIDE_MEDIA_BUCKET).createSignedUrl(path, 60 * 60);
-      if (!signed.error && signed.data?.signedUrl) {
-        next.push({
-          name: o.name,
-          path,
-          url: signed.data.signedUrl,
-          isImage: isImageName(o.name),
+      for (const bucket of candidateGuideBuckets()) {
+        const res = await supabase.storage.from(bucket).list(prefix, {
+          limit: 200,
+          sortBy: { column: "created_at", order: "desc" },
         });
-      }
-    }
 
-    setItems(next);
-    setStatus(next.length ? "" : "No uploaded guide media yet.");
-    setLoading(false);
+        if (res.error) continue;
+
+        for (const o of res.data ?? []) {
+          const name = String((o as any)?.name || "").trim();
+          if (!name) continue;
+
+          const path = `${prefix}/${name}`;
+          const dedupe = `${bucket}::${path}`;
+          if (seen.has(dedupe)) continue;
+          seen.add(dedupe);
+
+          const signed = await createGuideSignedUrlFlexible(`${bucket}/${path}`, 60 * 60);
+          const url = signed.data?.signedUrl || "";
+
+          out.push({
+            bucket,
+            path,
+            name,
+            url,
+            isImage: isImageName(name),
+          });
+        }
+      }
+
+      setItems(out);
+      setStatus(out.length ? "" : "No guide media found yet.");
+    } catch (err: any) {
+      setStatus(err?.message || "Could not load guide media.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   useEffect(() => {
-    void load();
+    void refresh();
   }, [prefix]);
 
   async function upload(files: FileList | null) {
-    if (!files || !files.length) return;
-    if (!code) {
-      alert("Missing alliance code.");
-      return;
-    }
+    if (!files || !files.length || !prefix) return;
 
-    setStatus("Uploading…");
+    setBusy(true);
 
-    for (const f of Array.from(files)) {
-      const safe = f.name.replace(/[^a-zA-Z0-9._-]+/g, "_");
-      const key = `${prefix}/${Date.now()}-${safe}`;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        const name = `${Date.now()}-${safeName(f.name)}`;
+        const key = `${prefix}/${name}`;
 
-      const up = await supabase.storage.from(GUIDE_MEDIA_BUCKET).upload(key, f, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: f.type || undefined,
-      });
+        setStatus(`Uploading ${i + 1}/${files.length}…`);
 
-      if (up.error) {
-        setStatus(up.error.message);
-        alert(up.error.message);
-        return;
+        const up = await supabase.storage.from(GUIDE_MEDIA_BUCKET).upload(key, f, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: f.type || undefined,
+        });
+
+        if (up.error) {
+          throw up.error;
+        }
       }
+
+      setStatus("Upload complete ✅");
+      await refresh();
+    } catch (err: any) {
+      setStatus(err?.message || "Upload failed.");
+    } finally {
+      setBusy(false);
     }
-
-    setStatus("Uploaded ✅");
-    await load();
-  }
-
-  async function copyUrl(url: string) {
-    await navigator.clipboard.writeText(url);
-    alert("Signed URL copied ✅");
   }
 
   return (
@@ -103,61 +135,98 @@ export default function GuideMediaUploader({ allianceCode }: { allianceCode: str
       className="zombie-card"
       style={{
         padding: 12,
-        border: "1px solid rgba(255,255,255,0.10)",
-        background: "rgba(255,255,255,0.03)",
         borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "rgba(255,255,255,0.03)",
         display: "grid",
         gap: 10,
       }}
     >
-      <div style={{ fontWeight: 900 }}>Guide media</div>
-      <div style={{ opacity: 0.78, fontSize: 12 }}>
-        Bucket: <code>{GUIDE_MEDIA_BUCKET}</code> • Folder: <code>{prefix}</code>
+      <div style={{ display: "grid", gap: 4 }}>
+        <div style={{ fontWeight: 900 }}>Guide media</div>
+        <div style={{ opacity: 0.78, fontSize: 12 }}>
+          Image previews now use signed URLs. For image blocks, use <b>Copy Path</b> first when you need a stable stored file reference.
+        </div>
       </div>
 
-      <input type="file" multiple onChange={(e) => void upload(e.target.files)} />
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <input
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={(e) => void upload(e.target.files)}
+          disabled={busy}
+        />
+        <button type="button" className="zombie-btn" onClick={() => void refresh()} disabled={busy}>
+          Refresh
+        </button>
+      </div>
 
-      {status ? <div style={{ opacity: 0.82, fontSize: 12 }}>{status}</div> : null}
-      {loading ? <div style={{ opacity: 0.75, fontSize: 12 }}>Refreshing media…</div> : null}
+      {status ? (
+        <div style={{ fontSize: 12, opacity: 0.85 }}>{status}</div>
+      ) : null}
 
       <div style={{ display: "grid", gap: 10 }}>
-        {items.map((item) => (
+        {items.map((it) => (
           <div
-            key={item.path}
+            key={`${it.bucket}:${it.path}`}
             style={{
               display: "grid",
               gap: 8,
               padding: 10,
               borderRadius: 12,
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.02)",
             }}
           >
-            <div style={{ fontWeight: 700, wordBreak: "break-word" }}>{item.name}</div>
+            <div style={{ fontWeight: 800, wordBreak: "break-word" }}>{it.name}</div>
 
-            {item.isImage ? (
+            <div style={{ opacity: 0.72, fontSize: 12, wordBreak: "break-all" }}>
+              {it.bucket}/{it.path}
+            </div>
+
+            {it.isImage && it.url ? (
               <img
-                src={item.url}
-                alt={item.name}
+                src={it.url}
+                alt={it.name}
                 style={{
-                  maxWidth: "100%",
+                  width: "100%",
+                  maxWidth: 420,
+                  maxHeight: 260,
+                  objectFit: "contain",
                   borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(0,0,0,0.12)",
                 }}
               />
-            ) : (
-              <a href={item.url} target="_blank" rel="noreferrer">
-                Open file
-              </a>
-            )}
+            ) : null}
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button type="button" className="zombie-btn" onClick={() => void copyUrl(item.url)}>
-                Copy signed URL
+              <button
+                type="button"
+                className="zombie-btn"
+                onClick={() => void copy(it.path, "Path copied ✅")}
+              >
+                Copy Path
               </button>
-              <a className="zombie-btn" href={item.url} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                Open
-              </a>
+
+              <button
+                type="button"
+                className="zombie-btn"
+                onClick={() => void copy(it.url || `${it.bucket}/${it.path}`, "URL copied ✅")}
+              >
+                Copy URL
+              </button>
+
+              {it.url ? (
+                <button
+                  type="button"
+                  className="zombie-btn"
+                  onClick={() => window.open(it.url, "_blank", "noopener,noreferrer")}
+                >
+                  Open
+                </button>
+              ) : null}
             </div>
           </div>
         ))}

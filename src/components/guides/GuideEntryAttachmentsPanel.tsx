@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { GUIDE_MEDIA_BUCKET } from "../../lib/storageBuckets";
 import { createGuideSignedUrl } from "../../lib/guideSignedUrls";
+import { createGuideSignedUrlFlexible } from "./guideStorage";
 
 type Row = {
   id: string;

@@ -7,6 +7,7 @@ import { useGuidesEditAccess } from "../../hooks/useGuidesEditAccess";
 import GuideEntryAttachmentsPanel from "../../components/guides/GuideEntryAttachmentsPanel";
 import GuideSectionAttachmentsPanel from "../../components/guides/GuideSectionAttachmentsPanel";
 import { useRealtimeRefresh } from "../../hooks/useRealtimeRefresh";
+import { createGuideSignedUrlFlexible } from "../../components/guides/guideStorage";
 
 type SectionRow = Record<string, any>;
 type EntryRow = Record<string, any>;
